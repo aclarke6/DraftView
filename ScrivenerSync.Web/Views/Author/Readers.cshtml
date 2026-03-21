@@ -1,0 +1,27 @@
+@model IReadOnlyList<User>
+@{ ViewData["Title"] = "Beta Readers"; }
+
+<h2>Beta Readers</h2>
+<p><a asp-action="InviteReader" class="btn">Invite Reader</a></p>
+
+<table>
+    <tr><th>Email</th><th>Name</th><th>Active</th><th>Actions</th></tr>
+    @foreach (var r in Model)
+    {
+        <tr>
+            <td>@r.Email</td>
+            <td>@r.DisplayName</td>
+            <td>@(r.IsActive ? "Yes" : "No")</td>
+            <td>
+                @if (r.IsActive)
+                {
+                    <form asp-action="DeactivateReader" method="post" style="display:inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="userId" value="@r.Id" />
+                        <button type="submit" class="btn btn-sm btn-danger">Deactivate</button>
+                    </form>
+                }
+            </td>
+        </tr>
+    }
+</table>

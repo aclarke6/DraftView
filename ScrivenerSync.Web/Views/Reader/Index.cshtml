@@ -1,0 +1,23 @@
+@model IReadOnlyList<Section>
+@{ ViewData["Title"] = "Reading List"; }
+
+<h2>Reading List</h2>
+@if (!Model.Any())
+{
+    <p>No sections are available to read yet.</p>
+}
+else
+{
+    <ul style="list-style:none; padding:0">
+        @foreach (var s in Model)
+        {
+            <li style="margin-bottom:12px">
+                <a asp-action="Read" asp-route-id="@s.Id" style="font-size:1.1em">@s.Title</a>
+                @if (s.ContentChangedSincePublish)
+                {
+                    <span style="color:#e67e22; font-size:12px; margin-left:8px">[Updated]</span>
+                }
+            </li>
+        }
+    </ul>
+}

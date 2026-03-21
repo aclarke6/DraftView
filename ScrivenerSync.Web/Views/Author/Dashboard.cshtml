@@ -1,0 +1,85 @@
+@model DashboardViewModel
+@{ ViewData["Title"] = "Dashboard"; }
+
+<h2>Dashboard</h2>
+
+<section style="margin-bottom:32px">
+    <h3>Projects</h3>
+    <table>
+        <tr><th>Name</th><th>Status</th><th>Reader Active</th><th>Actions</th></tr>
+        @foreach (var p in Model.AllProjects)
+        {
+            <tr>
+                <td><a asp-action="Sections" asp-route-projectId="@p.Id">@p.Name</a></td>
+                <td>@p.SyncStatus @(p.SyncErrorMessage != null ? $"- {p.SyncErrorMessage}" : "")</td>
+                <td>@(p.IsReaderActive ? "Yes" : "No")</td>
+                <td style="display:flex;gap:8px">
+                    <form asp-action="Sync" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="projectId" value="@p.Id" />
+                        <button type="submit" class="btn btn-sm">Sync</button>
+                    </form>
+                    @if (!p.IsReaderActive)
+                    {
+                        <form asp-action="ActivateProject" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="projectId" value="@p.Id" />
+                            <button type="submit" class="btn btn-sm">Activate</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <form asp-action="DeactivateProject" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="projectId" value="@p.Id" />
+                            <button type="submit" class="btn btn-sm btn-secondary">Deactivate</button>
+                        </form>
+                    }
+                </td>
+            </tr>
+        }
+    </table>
+</section>
+
+<section style="margin-bottom:32px">
+    <h3>Published Sections (@Model.PublishedSections.Count)</h3>
+    @if (Model.PublishedSections.Count == 0)
+    {
+        <p>No sections published yet. Sync a project and publish sections to get started.</p>
+    }
+    else
+    {
+        <table>
+            <tr><th>Title</th><th>Status</th><th>Changed</th><th>Actions</th></tr>
+            @foreach (var s in Model.PublishedSections)
+            {
+                <tr>
+                    <td><a asp-action="Section" asp-route-id="@s.Id">@s.Title</a></td>
+                    <td>@s.ScrivenerStatus</td>
+                    <td>@(s.ContentChangedSincePublish ? "Yes" : "No")</td>
+                    <td>
+                        <form asp-action="Unpublish" method="post" style="display:inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="sectionId" value="@s.Id" />
+                            <button type="submit" class="btn btn-sm btn-danger">Unpublish</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </table>
+    }
+</section>
+
+<section>
+    <h3>Email Health</h3>
+    @if (Model.EmailFailures.Count == 0)
+    {
+        <p>No email failures.</p>
+    }
+    else
+    {
+        <p style="color:#c0392b">@Model.EmailFailures.Count failed email(s).</p>
+    }
+    <p>Active readers: @Model.ActiveReaderCount</p>
+</section>
+

@@ -9,6 +9,7 @@ using ScrivenerSync.Infrastructure.Sync;
 using ScrivenerSync.Infrastructure.Persistence;
 using ScrivenerSync.Infrastructure.Persistence.Repositories;
 using ScrivenerSync.Web;
+using ScrivenerSync.Web.Data;
 using ScrivenerSync.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -140,6 +141,14 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
 }
 
+// Seed initial data
+var seedEmail    = builder.Configuration["Seed:AuthorEmail"]    ?? "author@scrivener-sync.local";
+var seedPassword = builder.Configuration["Seed:AuthorPassword"] ?? "Password1!";
+var seedName     = builder.Configuration["Seed:AuthorName"]     ?? "Author";
+var seedPath     = builder.Configuration["Seed:TestProjectPath"] ?? "/Apps/Scrivener/Test.scriv";
+
+await DatabaseSeeder.SeedAsync(app.Services, seedEmail, seedPassword, seedName, seedPath);
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -157,4 +166,5 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run();
+
 

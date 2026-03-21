@@ -1,0 +1,21 @@
+@model LoginViewModel
+@{ ViewData["Title"] = "Log in"; }
+
+<h2>Log in</h2>
+<form asp-action="Login" method="post" style="max-width:400px">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
+    <div asp-validation-summary="All" style="color:red; margin-bottom:12px;"></div>
+    <div style="margin-bottom:12px">
+        <label asp-for="Email">Email</label><br/>
+        <input asp-for="Email" type="email" style="width:100%; padding:8px;" />
+    </div>
+    <div style="margin-bottom:12px">
+        <label asp-for="Password">Password</label><br/>
+        <input asp-for="Password" type="password" style="width:100%; padding:8px;" />
+    </div>
+    <div style="margin-bottom:16px">
+        <label><input asp-for="RememberMe" type="checkbox" /> Remember me</label>
+    </div>
+    <button type="submit" class="btn">Log in</button>
+</form>

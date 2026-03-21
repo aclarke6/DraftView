@@ -1,0 +1,17 @@
+@model InviteReaderViewModel
+@{ ViewData["Title"] = "Invite Reader"; }
+
+<h2>Invite Beta Reader</h2>
+<form asp-action="InviteReader" method="post" style="max-width:400px">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="All" style="color:red; margin-bottom:12px;"></div>
+    <div style="margin-bottom:12px">
+        <label>Email address</label><br/>
+        <input asp-for="Email" type="email" style="width:100%; padding:8px;" />
+    </div>
+    <div style="margin-bottom:16px">
+        <label><input asp-for="NeverExpires" type="checkbox" /> Invitation never expires</label>
+    </div>
+    <button type="submit" class="btn">Send Invitation</button>
+    <a asp-action="Readers" style="margin-left:12px">Cancel</a>
+</form>

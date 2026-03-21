@@ -1,0 +1,68 @@
+@model IReadOnlyList<Section>
+@{
+    ViewData["Title"] = "Sections";
+    var project = ViewBag.Project as ScrivenerSync.Domain.Entities.ScrivenerProject;
+}
+
+<h2>@project?.Name - Sections</h2>
+<p><a asp-action="Dashboard">&larr; Back to Dashboard</a></p>
+
+@if (!Model.Any())
+{
+    <p>No sections found. Try syncing the project first.</p>
+}
+else
+{
+    <table>
+        <tr>
+            <th>Title</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Published</th>
+            <th>Changed</th>
+            <th>Actions</th>
+        </tr>
+        @foreach (var s in Model.OrderBy(x => x.SortOrder))
+        {
+            <tr style="@(s.NodeType == NodeType.Folder ? "background:#f5f5f0; font-weight:bold" : "")">
+                <td style="padding-left: @(s.ParentId != null ? "24px" : "8px")">
+                    @if (s.NodeType == NodeType.Document)
+                    {
+                        <a asp-action="Section" asp-route-id="@s.Id">@s.Title</a>
+                    }
+                    else
+                    {
+                        @s.Title
+                    }
+                </td>
+                <td>@s.NodeType</td>
+                <td>@(s.ScrivenerStatus ?? "-")</td>
+                <td>@(s.IsPublished ? "Yes" : "No")</td>
+                <td>@(s.ContentChangedSincePublish ? "Yes" : "-")</td>
+                <td>
+                    @if (s.NodeType == NodeType.Document)
+                    {
+                        if (!s.IsPublished)
+                        {
+                            <form asp-action="PublishSection" method="post" style="display:inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="sectionId" value="@s.Id" />
+                                <input type="hidden" name="projectId" value="@project!.Id" />
+                                <button type="submit" class="btn btn-sm">Publish</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form asp-action="UnpublishSection" method="post" style="display:inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="sectionId" value="@s.Id" />
+                                <input type="hidden" name="projectId" value="@project!.Id" />
+                                <button type="submit" class="btn btn-sm btn-danger">Unpublish</button>
+                            </form>
+                        }
+                    }
+                </td>
+            </tr>
+        }
+    </table>
+}
