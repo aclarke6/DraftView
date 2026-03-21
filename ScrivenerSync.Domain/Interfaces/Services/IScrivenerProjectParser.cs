@@ -1,4 +1,4 @@
-namespace ScrivenerSync.Infrastructure.Parsing;
+namespace ScrivenerSync.Domain.Interfaces.Services;
 
 public enum ParsedNodeType
 {
@@ -20,4 +20,9 @@ public sealed class ParsedProject
 {
     public ParsedBinderNode? ManuscriptRoot { get; init; }
     public Dictionary<string, string> StatusMap { get; init; } = new();
+}
+
+public interface IScrivenerProjectParser
+{
+    ParsedProject Parse(string scrivxPath);
 }

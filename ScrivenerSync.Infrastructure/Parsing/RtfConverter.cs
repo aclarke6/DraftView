@@ -1,28 +1,20 @@
 using System.Security.Cryptography;
 using System.Text;
 using RtfPipe;
+using ScrivenerSync.Domain.Interfaces.Services;
 
 namespace ScrivenerSync.Infrastructure.Parsing;
 
-public class RtfConverter
+public class RtfConverter : IRtfConverter
 {
     static RtfConverter()
     {
-        // RtfPipe requires Windows-1252 which is not included in .NET by default.
-        // Registering CodePagesEncodingProvider makes all legacy encodings available.
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
     }
 
-    /// <summary>
-    /// Returns the expected path to a Scrivener document RTF file.
-    /// </summary>
     public string GetContentPath(string scrivFolderPath, string uuid) =>
         Path.Combine(scrivFolderPath, "Files", "Data", uuid, "content.rtf");
 
-    /// <summary>
-    /// Reads and converts the RTF content for the given UUID.
-    /// Returns null if no content.rtf file exists (folder nodes, empty documents).
-    /// </summary>
     public async Task<RtfConversionResult?> ConvertAsync(
         string scrivFolderPath,
         string uuid,
@@ -47,10 +39,6 @@ public class RtfConverter
             Hash = hash
         };
     }
-
-    // ---------------------------------------------------------------------------
-    // Private helpers
-    // ---------------------------------------------------------------------------
 
     private static string ConvertRtfToHtml(byte[] rtfBytes)
     {

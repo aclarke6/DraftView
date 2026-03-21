@@ -1,8 +1,9 @@
 using System.Xml.Linq;
+using ScrivenerSync.Domain.Interfaces.Services;
 
 namespace ScrivenerSync.Infrastructure.Parsing;
 
-public class ScrivenerProjectParser
+public class ScrivenerProjectParser : IScrivenerProjectParser
 {
     private static readonly HashSet<string> SkippedTypes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -30,10 +31,6 @@ public class ScrivenerProjectParser
         };
     }
 
-    // ---------------------------------------------------------------------------
-    // Status map
-    // ---------------------------------------------------------------------------
-
     private static Dictionary<string, string> ParseStatusMap(XElement root)
     {
         var map = new Dictionary<string, string>();
@@ -55,10 +52,6 @@ public class ScrivenerProjectParser
         return map;
     }
 
-    // ---------------------------------------------------------------------------
-    // Manuscript discovery
-    // ---------------------------------------------------------------------------
-
     private static ParsedBinderNode? FindAndParseManuscript(
         XElement root,
         Dictionary<string, string> statusMap)
@@ -66,7 +59,6 @@ public class ScrivenerProjectParser
         var binder = root.Element("Binder");
         if (binder is null) return null;
 
-        // Find the single DraftFolder - this is the Manuscript root
         var draftFolder = binder
             .Elements("BinderItem")
             .FirstOrDefault(e => e.Attribute("Type")?.Value == "DraftFolder");
@@ -75,10 +67,6 @@ public class ScrivenerProjectParser
 
         return ParseNode(draftFolder, statusMap, sortOrder: 0);
     }
-
-    // ---------------------------------------------------------------------------
-    // Recursive node parser
-    // ---------------------------------------------------------------------------
 
     private static ParsedBinderNode ParseNode(
         XElement element,
@@ -93,7 +81,7 @@ public class ScrivenerProjectParser
             ? ParsedNodeType.Folder
             : ParsedNodeType.Document;
 
-        var statusId      = element.Element("MetaData")?.Element("StatusID")?.Value;
+        var statusId       = element.Element("MetaData")?.Element("StatusID")?.Value;
         var statusResolved = statusId is not null && statusMap.TryGetValue(statusId, out var s) ? s : null;
 
         var children = ParseChildren(element, statusMap);
@@ -116,14 +104,12 @@ public class ScrivenerProjectParser
         var childrenElement = element.Element("Children");
         if (childrenElement is null) return new List<ParsedBinderNode>();
 
-        var result = new List<ParsedBinderNode>();
+        var result    = new List<ParsedBinderNode>();
         var sortOrder = 0;
 
         foreach (var child in childrenElement.Elements("BinderItem"))
         {
             var type = child.Attribute("Type")?.Value ?? string.Empty;
-
-            // Skip trash, research, images, PDFs and other non-prose types
             if (SkippedTypes.Contains(type))
                 continue;
 

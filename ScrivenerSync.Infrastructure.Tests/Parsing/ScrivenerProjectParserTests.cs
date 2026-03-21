@@ -1,4 +1,5 @@
 using ScrivenerSync.Infrastructure.Parsing;
+using ScrivenerSync.Domain.Interfaces.Services;
 
 namespace ScrivenerSync.Infrastructure.Tests.Parsing;
 
