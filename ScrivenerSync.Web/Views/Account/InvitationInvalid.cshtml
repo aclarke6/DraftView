@@ -1,0 +1,19 @@
+@model InvitationExpiredViewModel
+@{ ViewData["Title"] = "Invitation Unavailable"; }
+
+<div class="login-wrap">
+    <div class="login-header">
+        <h1>Invitation unavailable</h1>
+    </div>
+    <div class="card">
+        <div class="card__body" style="text-align:center; padding:var(--space-8);">
+            <div class="ornament">&#10022;</div>
+            <p style="color:var(--color-ink-muted); margin-bottom:var(--space-6);">
+                @Model.Reason
+            </p>
+            <p style="font-size:var(--text-sm); color:var(--color-ink-subtle);">
+                Please contact the author to request a new invitation.
+            </p>
+        </div>
+    </div>
+</div>

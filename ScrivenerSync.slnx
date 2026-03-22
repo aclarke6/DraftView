@@ -5,6 +5,9 @@
   <Folder Name="/Solution Items/">
     <File Path=".gitignore" />
     <File Path="Copy-SourceFiles.ps1" />
+    <File Path="fix-console-email.ps1" />
+    <File Path="fix-console-email2.ps1" />
+    <File Path="fix-email-final.ps1" />
     <File Path="Get-CodeFiles.ps1" />
     <File Path="setup-packages.ps1" />
     <File Path="Show-ProjectTree.ps1" />

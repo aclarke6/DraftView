@@ -1,4 +1,12 @@
 @{ ViewData["Title"] = "Access Denied"; }
-<h2>Access Denied</h2>
-<p>You do not have permission to view this page.</p>
-<a asp-controller="Home" asp-action="Index">Go home</a>
+<div class="login-wrap">
+    <div class="login-header">
+        <h1>Access denied</h1>
+        <p>You do not have permission to view that page.</p>
+    </div>
+    <div style="text-align:center; margin-top:var(--space-6);">
+        <a asp-controller="Home" asp-action="Index" class="btn btn--secondary">
+            Go home
+        </a>
+    </div>
+</div>

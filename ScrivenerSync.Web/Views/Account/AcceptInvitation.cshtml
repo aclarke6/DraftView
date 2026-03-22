@@ -1,0 +1,60 @@
+@model AcceptInvitationViewModel
+@{ ViewData["Title"] = "Accept Invitation"; Layout = "_Layout"; }
+
+<div class="login-wrap">
+
+    <div class="login-header">
+        <h1>You have been invited</h1>
+        <p>Create your account to start reading</p>
+    </div>
+
+    <div class="card">
+        <div class="card__body">
+
+            <div style="background:var(--color-surface-alt); border:1px solid var(--color-border);
+                        border-radius:var(--radius); padding:var(--space-3) var(--space-4);
+                        margin-bottom:var(--space-6); font-size:var(--text-sm);">
+                <span style="color:var(--color-ink-muted);">Invitation for</span>
+                <strong style="margin-left:var(--space-2);">@Model.Email</strong>
+            </div>
+
+            <form asp-action="AcceptInvitation" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="Token" />
+                <input type="hidden" asp-for="Email" />
+
+                <div asp-validation-summary="All"
+                     class="alert alert--error"
+                     style="margin-bottom:var(--space-5);"></div>
+
+                <div class="form-group">
+                    <label asp-for="DisplayName">Your name</label>
+                    <input asp-for="DisplayName" type="text"
+                           placeholder="How you will appear to other readers"
+                           autocomplete="name" />
+                    <span asp-validation-for="DisplayName" class="form-error"></span>
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Password">Choose a password</label>
+                    <input asp-for="Password" type="password"
+                           autocomplete="new-password" />
+                    <span class="form-hint">At least 8 characters</span>
+                    <span asp-validation-for="Password" class="form-error"></span>
+                </div>
+
+                <div class="form-group" style="margin-bottom:var(--space-6);">
+                    <label asp-for="ConfirmPassword">Confirm password</label>
+                    <input asp-for="ConfirmPassword" type="password"
+                           autocomplete="new-password" />
+                    <span asp-validation-for="ConfirmPassword" class="form-error"></span>
+                </div>
+
+                <button type="submit" class="btn btn--primary" style="width:100%;">
+                    Create account and start reading
+                </button>
+            </form>
+        </div>
+    </div>
+
+</div>
