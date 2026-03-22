@@ -25,7 +25,8 @@ public class AuthorController(
     public async Task<IActionResult> Dashboard()
     {
         var author = await GetAuthorAsync();
-        if (author is null) return Forbid();
+        if (author is null)
+            return RedirectToAction("Index", "Reader");
 
         var projects         = await projectRepo.GetAllAsync();
         var active           = await projectRepo.GetReaderActiveProjectAsync();
@@ -243,8 +244,14 @@ public class AuthorController(
     // Private helpers
     // ---------------------------------------------------------------------------
 
-    private async Task<User?> GetAuthorAsync() =>
-        await userRepo.GetAuthorAsync();
+    private async Task<User?> GetAuthorAsync()
+    {
+        var email = User.Identity?.Name;
+        if (email is null)
+            return null;
+        var user = await userRepo.GetByEmailAsync(email);
+        return user?.Role == Domain.Enumerations.Role.Author ? user : null;
+    }
 
     private IUnitOfWork GetUnitOfWork() =>
         HttpContext.RequestServices.GetRequiredService<IUnitOfWork>();
