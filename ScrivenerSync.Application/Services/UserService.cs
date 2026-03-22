@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using ScrivenerSync.Domain.Entities;
 using ScrivenerSync.Domain.Enumerations;
 using ScrivenerSync.Domain.Exceptions;
@@ -11,7 +12,8 @@ public class UserService(
     IInvitationRepository invitationRepo,
     IUserNotificationPreferencesRepository prefsRepo,
     IEmailSender emailSender,
-    IUnitOfWork unitOfWork) : IUserService
+    IUnitOfWork unitOfWork,
+    IConfiguration configuration) : IUserService
 {
     public async Task<Invitation> IssueInvitationAsync(
         string email, ExpiryPolicy expiryPolicy, DateTime? expiresAt,
@@ -40,10 +42,13 @@ public class UserService(
         await prefsRepo.AddAsync(prefs, ct);
         await unitOfWork.SaveChangesAsync(ct);
 
+        var baseUrl = configuration["App:BaseUrl"]?.TrimEnd('/') ?? "http://localhost:5078";
+        var inviteUrl = $"{baseUrl}/Account/AcceptInvitation?token={invitation.Token}";
+
         await emailSender.SendAsync(
             email, "Invited Reader",
             "You have been invited to review a manuscript on ScrivenerSync",
-            $"Click the link to accept your invitation: /invite/{invitation.Token}",
+            $"Click the link to accept your invitation: <a href=\"{inviteUrl}\">{inviteUrl}</a>",
             ct);
 
         return invitation;

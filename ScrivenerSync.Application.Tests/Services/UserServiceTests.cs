@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Moq;
 using ScrivenerSync.Application.Services;
 using ScrivenerSync.Domain.Entities;
@@ -15,13 +16,15 @@ public class UserServiceTests
     private readonly Mock<IUserNotificationPreferencesRepository> _prefsRepo   = new();
     private readonly Mock<IEmailSender>                          _emailSender = new();
     private readonly Mock<IUnitOfWork>                           _unitOfWork  = new();
+    private readonly Mock<IConfiguration>                        _config      = new();
 
     private UserService CreateSut() => new(
         _userRepo.Object,
         _inviteRepo.Object,
         _prefsRepo.Object,
         _emailSender.Object,
-        _unitOfWork.Object);
+        _unitOfWork.Object,
+        _config.Object);
 
     private static User MakeAuthor()
     {
