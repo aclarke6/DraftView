@@ -7,8 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="~/css/DraftReader.css?v=1" />
-    <link rel="stylesheet" href="~/css/_notifications.css" />
+    <link rel="stylesheet" href="~/css/DraftReader.css?v=3" />
+    <link rel="stylesheet" href="~/css/_notifications.css?v=3" />
     <link rel="icon" type="image/png" href="~/images/DraftReader.Logo.web.png" />
 </head>
 <body>
@@ -25,27 +25,38 @@
 
             @if (User.Identity?.IsAuthenticated == true)
             {
-                <div class="site-nav__links">
-                    @if ((ViewBag.IsAuthor == true))
-                    {
-                        <a asp-controller="Author"  asp-action="Dashboard" class="site-nav__link">Dashboard</a>
-                        <a asp-controller="Reader"  asp-action="Index"     class="site-nav__link">Reader View</a>
-                        <a asp-controller="Author"  asp-action="Readers"   class="site-nav__link">Readers</a>
-                    }
-                    else
-                    {
-                        <a asp-controller="Reader"  asp-action="Dashboard" class="site-nav__link">My Reading</a>
-                        <a asp-controller="Reader"  asp-action="Index"     class="site-nav__link">Browse</a>
-                        <a asp-controller="Account" asp-action="Settings"  class="site-nav__link">Account</a>
-                    }
-                </div>
+                <button type="button"
+                        class="nav-toggle"
+                        id="navToggle"
+                        aria-label="Open navigation menu"
+                        aria-controls="navMenu"
+                        aria-expanded="false">
+                    ☰
+                </button>
 
-                <div class="site-nav__user">
-                    <span>@User.Identity.Name</span>
-                    <form asp-controller="Account" asp-action="Logout" method="post" style="margin:0">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="site-nav__logout">Sign out</button>
-                    </form>
+                <div class="site-nav__menu" id="navMenu">
+                    <div class="site-nav__links">
+                        @if ((ViewBag.IsAuthor == true))
+                        {
+                            <a asp-controller="Author" asp-action="Dashboard" class="site-nav__link">Dashboard</a>
+                            <a asp-controller="Reader" asp-action="Index" class="site-nav__link">Reader View</a>
+                            <a asp-controller="Author" asp-action="Readers" class="site-nav__link">Readers</a>
+                        }
+                        else
+                        {
+                            <a asp-controller="Reader" asp-action="Dashboard" class="site-nav__link">My Reading</a>
+                            <a asp-controller="Reader" asp-action="Index" class="site-nav__link">Browse</a>
+                            <a asp-controller="Account" asp-action="Settings" class="site-nav__link">Account</a>
+                        }
+                    </div>
+
+                    <div class="site-nav__user">
+                        <span>@User.Identity.Name</span>
+                        <form asp-controller="Account" asp-action="Logout" method="post" style="margin:0">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="site-nav__logout">Sign out</button>
+                        </form>
+                    </div>
                 </div>
             }
         </div>
@@ -72,14 +83,36 @@
 
     <!-- Footer -->
     <footer style="text-align:center; padding:var(--space-8) var(--space-6);
-                   color:var(--color-text-muted); font-size:var(--text-sm);
-                   border-top:1px solid var(--color-border); margin-top:var(--space-16);">
+        color:var(--color-text-muted); font-size:var(--text-sm);
+        border-top:1px solid var(--color-border); margin-top:var(--space-16);">
         <img src="~/images/DraftReader.Logo.web.png"
              alt="DraftReader"
              class="site-footer__logo" />
         &copy; @DateTime.Now.Year DraftReader
     </footer>
 
+    <script>
+            document.addEventListener("DOMContentLoaded", function () {
+                const navToggle = document.getElementById("navToggle");
+                const navMenu = document.getElementById("navMenu");
+
+                if (!navToggle || !navMenu) {
+                    return;
+                }
+
+                navToggle.addEventListener("click", function () {
+                    const isOpen = navMenu.classList.toggle("is-open");
+                    navToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+                });
+
+                window.addEventListener("resize", function () {
+                    if (window.innerWidth > 768) {
+                        navMenu.classList.remove("is-open");
+                        navToggle.setAttribute("aria-expanded", "false");
+                    }
+                });
+            });
+    </script>
+
 </body>
 </html>
-
