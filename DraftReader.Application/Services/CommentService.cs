@@ -63,9 +63,14 @@ public class CommentService(
             ?? throw new EntityNotFoundException(nameof(Comment), commentId);
         var user = await userRepo.GetByIdAsync(userId, ct)
             ?? throw new EntityNotFoundException(nameof(User), userId);
-        if (comment.AuthorId != userId && user.Role != Role.Author)
+
+        // Authorisation rule:
+        // Editing is strictly ownership-based.
+        // Role.Author does NOT grant permission to edit other users' comments.
+        if (comment.AuthorId != userId)
             throw new UnauthorisedOperationException(
                 "Only the comment author may edit a comment.");
+
         comment.Edit(newBody);
         await unitOfWork.SaveChangesAsync(ct);
     }
