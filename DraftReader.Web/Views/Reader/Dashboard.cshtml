@@ -2,7 +2,7 @@
 @{ ViewData["Title"] = "My Reading"; }
 
 <!-- Atmosphere hero -->
-<div class="site-hero" style="min-height:200px; margin-bottom:var(--space-8);">
+<div class="site-hero reader-dashboard__hero" >
     <div class="site-hero__content">
         <div class="site-hero__title">Welcome back</div>
         <div class="site-hero__subtitle">
@@ -18,16 +18,16 @@
     </div>
 </div>
 
-<div style="max-width:800px; margin:0 auto; padding:0 var(--space-6);">
+<div class="reader-dashboard">
 
     @if (Model.ProjectName is null)
     {
         <div class="card">
-            <div class="card__body" style="text-align:center; padding:var(--space-12);">
-                <p style="color:var(--color-text-muted); margin-bottom:var(--space-4);">
+            <div class="card__body reader-dashboard__empty-body">
+                <p class="reader-dashboard__empty-text">
                     No manuscript is currently available for reading.
                 </p>
-                <p style="color:var(--color-text-muted); font-size:var(--text-sm);">
+                <p class="reader-dashboard__empty-note">
                     The author will notify you when chapters are ready.
                 </p>
             </div>
@@ -36,88 +36,66 @@
     else
     {
         <!-- Progress bar -->
-        <div class="card" style="margin-bottom:var(--space-6);">
+        <div class="card reader-dashboard__progress-card">
             <div class="card__body">
-                <div style="display:flex; justify-content:space-between; align-items:center;
-                            margin-bottom:var(--space-3);">
-                    <span style="font-weight:var(--font-medium);">@Model.ProjectName</span>
-                    <span style="font-size:var(--text-sm); color:var(--color-text-muted);">
-                        @Model.ReadChapters / @Model.TotalChapters chapters
-                    </span>
+                <div class="reader-dashboard__progress-header">
+                    <span class="reader-dashboard__progress-title">@Model.ProjectName</span>
+                    <span class="reader-dashboard__progress-meta">@Model.ReadChapters / @Model.TotalChapters chapters</span>
                 </div>
                 @{
                     var pct = Model.TotalChapters > 0
                         ? (int)((double)Model.ReadChapters / Model.TotalChapters * 100)
                         : 0;
                 }
-                <div style="background:var(--color-border); border-radius:999px; height:8px;">
-                    <div style="background:var(--color-accent); border-radius:999px;
-                                height:8px; width:@(pct)%; transition:width 0.3s;">
-                    </div>
+                <div class="reader-dashboard__progress-track">
+                    <div class="reader-dashboard__progress-fill" style="width:@(pct)%;"></div>
                 </div>
             </div>
         </div>
 
         <!-- Chapter list -->
         <div class="card">
-            <div class="card__body" style="padding:0;">
+            <div class="card__body reader-dashboard__chapters-body">
                 @if (!Model.PublishedChapters.Any())
                 {
-                    <p style="padding:var(--space-8); text-align:center;
-                              color:var(--color-text-muted);">
-                        No chapters published yet.
-                    </p>
+                    <p class="reader-dashboard__chapters-empty">No chapters published yet.</p>
                 }
                 else
                 {
-                    <table style="width:100%; border-collapse:collapse;">
-                        <thead>
-                            <tr style="border-bottom:1px solid var(--color-border);">
-                                <th style="text-align:left; padding:var(--space-3) var(--space-5);
-                                           font-size:var(--text-xs); font-weight:var(--font-bold);
-                                           text-transform:uppercase; letter-spacing:0.06em;
-                                           color:var(--color-text-muted);">Chapter</th>
-                                <th style="text-align:left; padding:var(--space-3) var(--space-5);
-                                           font-size:var(--text-xs); font-weight:var(--font-bold);
-                                           text-transform:uppercase; letter-spacing:0.06em;
-                                           color:var(--color-text-muted);">Status</th>
-                                <th style="padding:var(--space-3) var(--space-5);"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var item in Model.PublishedChapters)
-                            {
-                                <tr style="border-bottom:1px solid var(--color-border);">
-                                    <td style="padding:var(--space-4) var(--space-5);
-                                               font-weight:var(--font-medium);">
-                                        @item.Chapter.Title
-                                    </td>
-                                    <td style="padding:var(--space-4) var(--space-5);">
-                                        @if (item.HasRead)
-                                        {
-                                            <span style="color:var(--color-success);
-                                                         font-size:var(--text-sm);">Read</span>
-                                        }
-                                        else
-                                        {
-                                            <span style="color:var(--color-accent);
-                                                         font-size:var(--text-sm);
-                                                         font-weight:var(--font-medium);">New</span>
-                                        }
-                                    </td>
-                                    <td style="padding:var(--space-4) var(--space-5);
-                                               text-align:right;">
-                                        <a asp-controller="Reader" asp-action="Read"
-                                           asp-route-id="@item.Chapter.Id"
-                                           class="btn btn--primary"
-                                           style="font-size:var(--text-sm); padding:var(--space-2) var(--space-4);">
-                                            @(item.HasRead ? "Continue" : "Read")
-                                        </a>
-                                    </td>
+                    <div class="reader-dashboard__table-wrap">
+                        <table class="reader-dashboard__table">
+                            <thead>
+                                <tr class="reader-dashboard__row">
+                                    <th class="reader-dashboard__head">Chapter</th>
+                                    <th class="reader-dashboard__head">Status</th>
                                 </tr>
-                            }
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.PublishedChapters)
+                                {
+                                    <tr class="reader-dashboard__row">
+                                        <td class="reader-dashboard__cell reader-dashboard__cell--chapter">
+                                            <a asp-controller="Reader" asp-action="Read"
+                                                   asp-route-id="@item.Chapter.Id" 
+                                            class="reader-dashboard__chapter-link">
+                                                   @item.Chapter.Title
+                                            </a>
+                                        </td>
+                                        <td class="reader-dashboard__cell reader-dashboard__cell--status">
+                                            @if (item.HasRead)
+                                            {
+                                                <span class="reader-dashboard__status reader-dashboard__status--read">Read</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="reader-dashboard__status reader-dashboard__status--new">New</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 }
             </div>
         </div>

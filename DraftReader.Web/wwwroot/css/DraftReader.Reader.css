@@ -118,108 +118,7 @@
     margin-bottom: var(--space-3);
 }
 
-/* --------------------------------------------------------------------------
-   3. Reader Contents Navigation
-   -------------------------------------------------------------------------- */
-.reader-page {
-    width: 100%;
-}
 
-.reader__contents-toggle {
-    display: none;
-    width: 100%;
-    margin-bottom: var(--space-4);
-    padding: var(--space-3) var(--space-4);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    color: var(--color-text);
-    text-align: left;
-    font-size: var(--text-sm);
-    font-weight: var(--font-medium);
-    cursor: pointer;
-}
-
-.reader__contents {
-    display: none;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: var(--space-4);
-    margin-bottom: var(--space-6);
-    box-shadow: var(--shadow-sm);
-}
-
-    .reader__contents.is-open {
-        display: block;
-    }
-
-.reader__contents-header {
-    margin-bottom: var(--space-2);
-}
-
-.reader__contents-section + .reader__contents-section {
-    margin-top: var(--space-4);
-}
-
-.reader__contents-label {
-    font-size: var(--text-xs);
-    font-weight: var(--font-bold);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--color-text-muted);
-    margin-bottom: var(--space-2);
-}
-
-.reader__contents-link {
-    display: block;
-    font-size: var(--text-sm);
-    padding: var(--space-1) 0;
-    color: var(--color-accent);
-    text-decoration: none;
-    line-height: 1.4;
-}
-
-    .reader__contents-link:hover {
-        color: var(--color-text);
-        text-decoration: none;
-    }
-
-.reader__contents-link--chapter {
-    color: var(--color-text-muted);
-    font-size: var(--text-sm);
-}
-
-.reader__contents-link--muted {
-    color: var(--color-text-muted);
-    margin-top: var(--space-2);
-}
-
-.reader__contents-link--active {
-    color: var(--color-text);
-    font-weight: var(--font-medium);
-}
-
-.reader__contents-link--indented {
-    padding-left: var(--space-4);
-}
-
-.reader__contents-subheading {
-    font-size: var(--text-xs);
-    font-weight: var(--font-medium);
-    color: var(--color-text-muted);
-    margin: var(--space-2) 0 var(--space-1) 0;
-}
-
-.reader__contents-subheading--nested {
-    padding-left: var(--space-2);
-}
-
-.reader__contents-divider {
-    border: none;
-    border-top: 1px solid var(--color-border);
-    margin: var(--space-3) 0;
-}
 
 /* --------------------------------------------------------------------------
    4. Chapter Layout and Sidebar
@@ -464,32 +363,6 @@
     margin-left: var(--space-5);
 }
 
-.chapter-comment__meta {
-    margin-bottom: var(--space-2);
-}
-
-.chapter-comment__date {
-    font-size: var(--text-sm);
-    color: var(--color-text-muted);
-    margin-left: var(--space-2);
-}
-
-.chapter-comment__private {
-    color: var(--color-private);
-    font-size: var(--text-xs);
-    margin-left: var(--space-2);
-}
-
-.chapter-comment__body {
-    margin: 0 0 var(--space-3) 0;
-}
-
-.chapter-comment__removed {
-    color: var(--color-text-muted);
-    font-style: italic;
-    margin: 0;
-}
-
 .chapter-comment__reply-form {
     display: flex;
     gap: var(--space-2);
@@ -568,3 +441,131 @@
     font-size: 1.2em;
     font-weight: var(--font-bold);
 }
+
+/* --------------------------------------------------------------------------
+   7. Reader Dashboard
+   -------------------------------------------------------------------------- */
+.reader-dashboard {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 var(--space-6);
+}
+
+.reader-dashboard__table-wrap {
+    width: 100%;
+}
+
+.reader-dashboard__hero {
+    min-height: 200px;
+    margin-bottom: var(--space-8);
+}
+
+.reader-dashboard__empty-body {
+    text-align: center;
+    padding: var(--space-12);
+}
+
+.reader-dashboard__empty-text {
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-4);
+}
+
+.reader-dashboard__empty-note {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+}
+
+.reader-dashboard__progress-card {
+    margin-bottom: var(--space-6);
+}
+
+.reader-dashboard__progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-3);
+}
+
+.reader-dashboard__progress-title {
+    font-weight: var(--font-medium);
+}
+
+.reader-dashboard__progress-meta {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+}
+
+.reader-dashboard__progress-track {
+    background: var(--color-border);
+    border-radius: 999px;
+    height: 8px;
+}
+
+.reader-dashboard__progress-fill {
+    background: var(--color-accent);
+    border-radius: 999px;
+    height: 8px;
+    transition: width 0.3s;
+}
+
+.reader-dashboard__chapters-body {
+    padding: 0;
+}
+
+.reader-dashboard__chapters-empty {
+    padding: var(--space-8);
+    text-align: center;
+    color: var(--color-text-muted);
+}
+
+.reader-dashboard__table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.reader-dashboard__row {
+    border-bottom: 1px solid var(--color-border);
+}
+
+.reader-dashboard__head {
+    text-align: left;
+    padding: var(--space-3) var(--space-5);
+    font-size: var(--text-xs);
+    font-weight: var(--font-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+}
+
+.reader-dashboard__cell {
+    padding: var(--space-4) var(--space-5);
+}
+
+.reader-dashboard__cell--chapter {
+    font-weight: var(--font-medium);
+}
+
+.reader-dashboard__status {
+    font-size: var(--text-sm);
+    text-align: right;
+}
+
+.reader-dashboard__status--read {
+    color: var(--color-success);
+}
+
+.reader-dashboard__status--new {
+    color: var(--color-accent);
+    font-weight: var(--font-medium);
+}
+
+.reader-dashboard__chapter-link {
+    color: var(--color-text);
+    font-weight: var(--font-medium);
+    text-decoration: none;
+}
+
+    .reader-dashboard__chapter-link:hover {
+        color: var(--color-accent);
+        text-decoration: underline;
+    }

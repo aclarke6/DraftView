@@ -13,7 +13,7 @@
    -------------------------------------------------------------------------- */
 :root {
     /* Update for every change */
-    --css-version: "v2026-03-28-9";
+    --css-version: "v2026-03-28-11";
     /* Colour palette */
     --color-bg: #F7F4EF;
     --color-surface: #FFFFFF;
@@ -37,7 +37,7 @@
     --color-private-bg: #FEF3C7;
     /* Typography */
     --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
-    --font-prose: Georgia, 'Times New Roman', serif;
+    --font-prose: Palatino, Georgia, 'Times New Roman', serif;
     --text-xs: 0.75rem;
     --text-sm: 0.875rem;
     --text-base: 1rem;
