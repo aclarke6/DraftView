@@ -1,3 +1,12 @@
+<!--
+_Layout page.
+This is default layout for all pages. It includes the navigation bar, flash messages,
+and footer. The main content of each page is rendered in the RenderBody() section.
+All pages should use this layout unless they specify otherwise.
+All css files are included here to ensure consistent styling across the site.
+-->
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,10 +16,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="~/css/DraftReader.global.css?v=1" />
-    <link rel="stylesheet" href="~/css/DraftReader.desktop.css?v=1" />
-    <link rel="stylesheet" href="~/css/DraftReader.mobile.css?v=1" />
-    <link rel="stylesheet" href="~/css/_notifications.css?v=3" />
+    <link rel="stylesheet" href="/css/DraftReader.Core.css?v=4" />
+    <link rel="stylesheet" href="/css/DraftReader.Navigation.css?v=4" />
+    <link rel="stylesheet" href="/css/DraftReader.Components.css?v=4" />
+    <link rel="stylesheet" href="/css/DraftReader.Reader.css?v=4" />
+    <link rel="stylesheet" href="/css/DraftReader.Dashboard.css?v=4" />
+    <link rel="stylesheet" href="/css/DraftReader.Notifications.css?v=4" />    
+    <link rel="stylesheet" href="/css/DraftReader.Mobile.css?v=4" />
+    
     <link rel="icon" type="image/png" href="~/images/DraftReader.Logo.web.png" />
 </head>
 <body>
@@ -38,7 +51,7 @@
 
                 <div class="site-nav__menu" id="navMenu">
                     <div class="site-nav__links">
-                        @if ((ViewBag.IsAuthor == true))
+                        @if (ViewBag.IsAuthor == true)
                         {
                             <a asp-controller="Author" asp-action="Dashboard" class="site-nav__link">Dashboard</a>
                             <a asp-controller="Reader" asp-action="Index" class="site-nav__link">Reader View</a>
@@ -54,7 +67,7 @@
 
                     <div class="site-nav__user">
                         <span>@User.Identity.Name</span>
-                        <form asp-controller="Account" asp-action="Logout" method="post" style="margin:0">
+                        <form asp-controller="Account" asp-action="Logout" method="post" class="logout-form">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="site-nav__logout">Sign out</button>
                         </form>
@@ -67,13 +80,13 @@
     <!-- Flash messages -->
     @if (TempData["Success"] != null)
     {
-        <div style="max-width:1200px; margin:0 auto; padding:var(--space-4) var(--space-6) 0;">
+        <div class="flash-container">
             <div class="alert alert--success">@TempData["Success"]</div>
         </div>
     }
     @if (TempData["Error"] != null)
     {
-        <div style="max-width:1200px; margin:0 auto; padding:var(--space-4) var(--space-6) 0;">
+        <div class="flash-container">
             <div class="alert alert--error">@TempData["Error"]</div>
         </div>
     }
@@ -84,9 +97,7 @@
     </main>
 
     <!-- Footer -->
-    <footer style="text-align:center; padding:var(--space-8) var(--space-6);
-        color:var(--color-text-muted); font-size:var(--text-sm);
-        border-top:1px solid var(--color-border); margin-top:var(--space-16);">
+    <footer class="site-footer">
         <img src="~/images/DraftReader.Logo.web.png"
              alt="DraftReader"
              class="site-footer__logo" />

@@ -1,0 +1,166 @@
+/* ==========================================================================
+   DraftReader Navigation Styles
+
+   Shared navigation components for the application shell, including the site
+   header and breadcrumb navigation.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Site Header Navigation
+   -------------------------------------------------------------------------- */
+.site-nav {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background-image: url('/images/DraftReader.Header.web.jpg');
+    background-size: cover;
+    background-position: center 40%;
+}
+
+    .site-nav::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: rgba(10, 15, 30, 0.72);
+        pointer-events: none;
+    }
+
+.site-nav__inner {
+    position: relative;
+    z-index: 1;
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 0 var(--space-6);
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+}
+
+.site-nav__brand {
+    display: inline-flex;
+    align-items: center;
+    font-size: var(--text-lg);
+    font-weight: var(--font-bold);
+    color: #ffffff;
+    letter-spacing: -0.02em;
+    text-decoration: none;
+    flex-shrink: 0;
+}
+
+    .site-nav__brand:hover {
+        color: #ffffff;
+        text-decoration: none;
+    }
+
+.site-nav__logo {
+    height: 40px;
+    width: auto;
+    vertical-align: middle;
+    margin-right: var(--space-2);
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
+    flex-shrink: 0;
+}
+
+.site-nav__menu {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+    flex: 1;
+    min-width: 0;
+}
+
+.site-nav__links {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    flex: 1;
+    min-width: 0;
+}
+
+.site-nav__link {
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--color-text-muted);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius);
+    transition: all var(--transition);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+    .site-nav__link:hover {
+        color: var(--color-text);
+        background: var(--color-accent-light);
+        text-decoration: none;
+    }
+
+.site-nav__link--active {
+    color: var(--color-accent);
+    background: var(--color-accent-light);
+}
+
+.site-nav__user {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-shrink: 0;
+}
+
+.site-nav__logout {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius);
+    transition: all var(--transition);
+    font-family: var(--font-ui);
+    white-space: nowrap;
+}
+
+    .site-nav__logout:hover {
+        color: var(--color-danger);
+        background: var(--color-danger-bg);
+    }
+
+.nav-toggle {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #ffffff;
+    font-size: 1.5rem;
+    line-height: 1;
+    padding: var(--space-2);
+    border-radius: var(--radius);
+}
+
+/* --------------------------------------------------------------------------
+   2. Breadcrumb Navigation
+   -------------------------------------------------------------------------- */
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-2);
+}
+
+    .breadcrumb a {
+        color: var(--color-text-muted);
+        text-decoration: none;
+    }
+
+        .breadcrumb a:hover {
+            color: var(--color-accent);
+        }
+
+.breadcrumb__sep {
+    color: var(--color-border-strong);
+    font-size: var(--text-xs);
+}

@@ -1,13 +1,14 @@
-/* Mobile-only overrides and responsive rules for DraftReader
-   Load DraftReader.desktop.css after DraftReader.global.css, then this file for mobile behaviour.
-*/
+/* ==========================================================================
+   DraftReader Mobile Styles
+
+   Responsive overrides for tablet and mobile viewports.
+   This file should contain breakpoint-based adjustments only.
+   ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   20. Responsive and mobile-specific rules
+   1. Large Tablet and Small Desktop
+   Up to 1024px
    -------------------------------------------------------------------------- */
-
-/* Desktop-first approach: mobile overrides only */
-
 @media (max-width: 1024px) {
     .dashboard-body {
         grid-template-columns: 1fr;
@@ -18,6 +19,10 @@
     }
 }
 
+/* --------------------------------------------------------------------------
+   2. Tablet Layout Adjustments
+   Up to 900px
+   -------------------------------------------------------------------------- */
 @media (max-width: 900px) {
     .reading-layout {
         grid-template-columns: 1fr;
@@ -46,6 +51,10 @@
     }
 }
 
+/* --------------------------------------------------------------------------
+   3. Mobile Layout Adjustments
+   Up to 768px
+   -------------------------------------------------------------------------- */
 @media (max-width: 768px) {
     .site-nav {
         background-position: center 25%;
@@ -81,9 +90,9 @@
         margin-top: var(--space-2);
     }
 
-    .site-nav__menu.is-open {
-        display: flex;
-    }
+        .site-nav__menu.is-open {
+            display: flex;
+        }
 
     .site-nav__links {
         flex-direction: column;
@@ -99,10 +108,10 @@
         text-align: left;
     }
 
-    .site-nav__link:hover {
-        background: rgba(255,255,255,0.06);
-        color: #ffffff;
-    }
+        .site-nav__link:hover {
+            background: rgba(255,255,255,0.06);
+            color: #ffffff;
+        }
 
     .site-nav__user {
         flex-direction: column;
@@ -111,10 +120,10 @@
         font-size: var(--text-xs);
     }
 
-    .site-nav__user span {
-        min-width: 0;
-        overflow-wrap: anywhere;
-    }
+        .site-nav__user span {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
 
     .site-nav__logout {
         width: 100%;
@@ -135,13 +144,13 @@
         margin: 0 auto;
     }
 
-    .prose * {
-        font-size: 1.05rem !important;
-    }
+        .prose * {
+            font-size: 1.05rem !important;
+        }
 
-    .prose p {
-        margin-bottom: var(--space-5);
-    }
+        .prose p {
+            margin-bottom: var(--space-5);
+        }
 
     .scene-block {
         display: block;
@@ -201,9 +210,9 @@
         gap: var(--space-2);
     }
 
-    .actions-cell .btn {
-        width: 100%;
-    }
+        .actions-cell .btn {
+            width: 100%;
+        }
 
     .table-wrapper {
         overflow-x: auto;
@@ -220,30 +229,38 @@
         font-size: var(--text-xs);
     }
 
-    td .btn,
-    td button,
-    td a.btn {
-        display: inline-flex;
-        margin: var(--space-1) var(--space-1) 0 0;
-    }
+        td .btn,
+        td button,
+        td a.btn {
+            display: inline-flex;
+            margin: var(--space-1) var(--space-1) 0 0;
+        }
 
-    td:last-child {
-        display: flex;
-        flex-wrap: wrap;
-        gap: var(--space-1);
-    }
+        td:last-child {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-1);
+        }
 
-    td:last-child .btn {
-        flex: 0 0 auto;
-    }
+            td:last-child .btn {
+                flex: 0 0 auto;
+            }
 }
 
+/* --------------------------------------------------------------------------
+   4. Small Mobile Refinements
+   Up to 640px
+   -------------------------------------------------------------------------- */
 @media (max-width: 640px) {
     .site-main {
         padding: var(--space-6) var(--space-3);
     }
 }
 
+/* --------------------------------------------------------------------------
+   5. Narrow Mobile Tables
+   Up to 480px
+   -------------------------------------------------------------------------- */
 @media (max-width: 480px) {
     table {
         min-width: 520px;
@@ -253,91 +270,5 @@
     td {
         padding: var(--space-2);
         font-size: var(--text-xs);
-    }
-}
-
-/* Reader-specific mobile behavior */
-@media (max-width: 900px) {
-    .reading-sidebar {
-        display: none;
-    }
-
-    .reader__contents-toggle {
-        display: block;
-    }
-}
-
-/* Mobile table + action layout (narrow override) */
-@media (max-width: 768px) {
-    /* Kill horizontal bleed */
-    html, body {
-        overflow-x: hidden;
-    }
-
-    /* Swap table → cards */
-    .dashboard-table {
-        display: none;
-    }
-
-    .dashboard-cards {
-        display: block;
-    }
-
-    /* Cards */
-    .dashboard-card {
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-lg);
-        padding: var(--space-4);
-        margin-bottom: var(--space-3);
-        box-shadow: var(--shadow-sm);
-    }
-
-    .dashboard-card__title {
-        font-weight: var(--font-medium);
-        font-size: var(--text-base);
-        margin-bottom: var(--space-2);
-    }
-
-    .dashboard-card__meta {
-        font-size: var(--text-sm);
-        color: var(--color-text-muted);
-        margin-bottom: var(--space-3);
-        display: grid;
-        gap: var(--space-1);
-    }
-
-    .dashboard-card__actions {
-        display: grid;
-        gap: var(--space-2);
-    }
-
-    .dashboard-card__actions form {
-        margin: 0;
-    }
-
-    .dashboard-card__actions .btn {
-        width: 100%;
-    }
-
-    .actions-cell {
-        display: flex;
-        gap: var(--space-2);
-        flex-wrap: wrap;
-    }
-
-    .actions-cell form {
-        margin: 0;
-    }
-
-    .dashboard-body {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: var(--space-6);
-        align-items: start;
-    }
-
-    .dashboard-sidebar {
-        min-width: 0;
     }
 }
