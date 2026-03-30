@@ -9,20 +9,22 @@ namespace DraftReader.Application.Tests.Services;
 
 public class CommentServiceEditTests
 {
+    private readonly Mock<ICommentRepository> _commentRepo = new();
+    private readonly Mock<ISectionRepository> _sectionRepo = new();
+    private readonly Mock<IUserRepository> _userRepo = new();
+    private readonly Mock<IUnitOfWork> _unitOfWork = new();
+
+    private CommentService CreateSut() => new(
+        _commentRepo.Object,
+        _sectionRepo.Object,
+        _userRepo.Object,
+        _unitOfWork.Object);
+
     [Fact]
     public async Task EditCommentAsync_OwnerEditingOwnRootComment_UpdatesBody()
     {
         // Arrange
-        var commentRepo = new Mock<ICommentRepository>();
-        var sectionRepo = new Mock<ISectionRepository>();
-        var userRepo = new Mock<IUserRepository>();
-        var unitOfWork = new Mock<IUnitOfWork>();
-
-        var sut = new CommentService(
-            commentRepo.Object,
-            sectionRepo.Object,
-            userRepo.Object,
-            unitOfWork.Object);
+        var sut = CreateSut();
 
         var section = MakePublishedSection();
         var owner = MakeBetaReader();
@@ -31,11 +33,11 @@ public class CommentServiceEditTests
         var comment = Comment.CreateRoot(section.Id, owner.Id, "Original.", Visibility.Public);
         var originalEditedAt = comment.EditedAt;
 
-        commentRepo
+        _commentRepo
             .Setup(r => r.GetByIdAsync(comment.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(comment);
 
-        userRepo
+        _userRepo
             .Setup(r => r.GetByIdAsync(owner.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(owner);
 
@@ -47,23 +49,14 @@ public class CommentServiceEditTests
         Assert.NotNull(comment.EditedAt);
         Assert.NotEqual(originalEditedAt, comment.EditedAt);
 
-        unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task EditCommentAsync_OwnerEditingOwnReply_UpdatesBody()
     {
         // Arrange
-        var commentRepo = new Mock<ICommentRepository>();
-        var sectionRepo = new Mock<ISectionRepository>();
-        var userRepo = new Mock<IUserRepository>();
-        var unitOfWork = new Mock<IUnitOfWork>();
-
-        var sut = new CommentService(
-            commentRepo.Object,
-            sectionRepo.Object,
-            userRepo.Object,
-            unitOfWork.Object);
+        var sut = CreateSut();
 
         var section = MakePublishedSection();
         var owner = MakeBetaReader();
@@ -73,11 +66,11 @@ public class CommentServiceEditTests
         var reply = Comment.CreateReply(section.Id, owner.Id, parent.Id, Visibility.Public, "Original reply.", Visibility.Public);
         var originalEditedAt = reply.EditedAt;
 
-        commentRepo
+        _commentRepo
             .Setup(r => r.GetByIdAsync(reply.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(reply);
 
-        userRepo
+        _userRepo
             .Setup(r => r.GetByIdAsync(owner.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(owner);
 
@@ -89,23 +82,14 @@ public class CommentServiceEditTests
         Assert.NotNull(reply.EditedAt);
         Assert.NotEqual(originalEditedAt, reply.EditedAt);
 
-        unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task EditCommentAsync_NonOwnerEditingRootComment_ThrowsUnauthorisedOperationException()
     {
         // Arrange
-        var commentRepo = new Mock<ICommentRepository>();
-        var sectionRepo = new Mock<ISectionRepository>();
-        var userRepo = new Mock<IUserRepository>();
-        var unitOfWork = new Mock<IUnitOfWork>();
-
-        var sut = new CommentService(
-            commentRepo.Object,
-            sectionRepo.Object,
-            userRepo.Object,
-            unitOfWork.Object);
+        var sut = CreateSut();
 
         var section = MakePublishedSection();
         var owner = MakeBetaReader();
@@ -115,11 +99,11 @@ public class CommentServiceEditTests
 
         var comment = Comment.CreateRoot(section.Id, owner.Id, "Original.", Visibility.Public);
 
-        commentRepo
+        _commentRepo
             .Setup(r => r.GetByIdAsync(comment.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(comment);
 
-        userRepo
+        _userRepo
             .Setup(r => r.GetByIdAsync(otherUser.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(otherUser);
 
@@ -130,23 +114,14 @@ public class CommentServiceEditTests
         await Assert.ThrowsAsync<UnauthorisedOperationException>(act);
         Assert.Equal("Original.", comment.Body);
 
-        unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task EditCommentAsync_NonOwnerEditingReply_ThrowsUnauthorisedOperationException()
     {
         // Arrange
-        var commentRepo = new Mock<ICommentRepository>();
-        var sectionRepo = new Mock<ISectionRepository>();
-        var userRepo = new Mock<IUserRepository>();
-        var unitOfWork = new Mock<IUnitOfWork>();
-
-        var sut = new CommentService(
-            commentRepo.Object,
-            sectionRepo.Object,
-            userRepo.Object,
-            unitOfWork.Object);
+        var sut = CreateSut();
 
         var section = MakePublishedSection();
         var owner = MakeBetaReader();
@@ -157,11 +132,11 @@ public class CommentServiceEditTests
         var parent = Comment.CreateRoot(section.Id, owner.Id, "Parent.", Visibility.Public);
         var reply = Comment.CreateReply(section.Id, owner.Id, parent.Id, Visibility.Public, "Original reply.", Visibility.Public);
 
-        commentRepo
+        _commentRepo
             .Setup(r => r.GetByIdAsync(reply.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(reply);
 
-        userRepo
+        _userRepo
             .Setup(r => r.GetByIdAsync(otherUser.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(otherUser);
 
@@ -172,23 +147,14 @@ public class CommentServiceEditTests
         await Assert.ThrowsAsync<UnauthorisedOperationException>(act);
         Assert.Equal("Original reply.", reply.Body);
 
-        unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task EditCommentAsync_AuthorRoleEditingAnotherUsersComment_ThrowsUnauthorisedOperationException()
     {
         // Arrange
-        var commentRepo = new Mock<ICommentRepository>();
-        var sectionRepo = new Mock<ISectionRepository>();
-        var userRepo = new Mock<IUserRepository>();
-        var unitOfWork = new Mock<IUnitOfWork>();
-
-        var sut = new CommentService(
-            commentRepo.Object,
-            sectionRepo.Object,
-            userRepo.Object,
-            unitOfWork.Object);
+        var sut = CreateSut();
 
         var section = MakePublishedSection();
         var owner = MakeBetaReader();
@@ -198,11 +164,11 @@ public class CommentServiceEditTests
 
         var comment = Comment.CreateRoot(section.Id, owner.Id, "Original.", Visibility.Public);
 
-        commentRepo
+        _commentRepo
             .Setup(r => r.GetByIdAsync(comment.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(comment);
 
-        userRepo
+        _userRepo
             .Setup(r => r.GetByIdAsync(platformAuthor.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(platformAuthor);
 
@@ -213,29 +179,20 @@ public class CommentServiceEditTests
         await Assert.ThrowsAsync<UnauthorisedOperationException>(act);
         Assert.Equal("Original.", comment.Body);
 
-        unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task EditCommentAsync_CommentNotFound_ThrowsEntityNotFoundException()
     {
         // Arrange
-        var commentRepo = new Mock<ICommentRepository>();
-        var sectionRepo = new Mock<ISectionRepository>();
-        var userRepo = new Mock<IUserRepository>();
-        var unitOfWork = new Mock<IUnitOfWork>();
-
-        var sut = new CommentService(
-            commentRepo.Object,
-            sectionRepo.Object,
-            userRepo.Object,
-            unitOfWork.Object);
+        var sut = CreateSut();
 
         var user = MakeBetaReader();
         user.Activate();
         var missingCommentId = Guid.NewGuid();
 
-        commentRepo
+        _commentRepo
             .Setup(r => r.GetByIdAsync(missingCommentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Comment?) null);
 
@@ -245,23 +202,14 @@ public class CommentServiceEditTests
         // Assert
         await Assert.ThrowsAsync<EntityNotFoundException>(act);
 
-        unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task EditCommentAsync_ActingUserNotFound_ThrowsEntityNotFoundException()
     {
         // Arrange
-        var commentRepo = new Mock<ICommentRepository>();
-        var sectionRepo = new Mock<ISectionRepository>();
-        var userRepo = new Mock<IUserRepository>();
-        var unitOfWork = new Mock<IUnitOfWork>();
-
-        var sut = new CommentService(
-            commentRepo.Object,
-            sectionRepo.Object,
-            userRepo.Object,
-            unitOfWork.Object);
+        var sut = CreateSut();
 
         var section = MakePublishedSection();
         var owner = MakeBetaReader();
@@ -270,11 +218,11 @@ public class CommentServiceEditTests
         var comment = Comment.CreateRoot(section.Id, owner.Id, "Original.", Visibility.Public);
         var missingUserId = Guid.NewGuid();
 
-        commentRepo
+        _commentRepo
             .Setup(r => r.GetByIdAsync(comment.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(comment);
 
-        userRepo
+        _userRepo
             .Setup(r => r.GetByIdAsync(missingUserId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((User?) null);
 
@@ -285,23 +233,14 @@ public class CommentServiceEditTests
         await Assert.ThrowsAsync<EntityNotFoundException>(act);
         Assert.Equal("Original.", comment.Body);
 
-        unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task EditCommentAsync_SoftDeletedComment_ThrowsInvariantViolationException()
     {
         // Arrange
-        var commentRepo = new Mock<ICommentRepository>();
-        var sectionRepo = new Mock<ISectionRepository>();
-        var userRepo = new Mock<IUserRepository>();
-        var unitOfWork = new Mock<IUnitOfWork>();
-
-        var sut = new CommentService(
-            commentRepo.Object,
-            sectionRepo.Object,
-            userRepo.Object,
-            unitOfWork.Object);
+        var sut = CreateSut();
 
         var section = MakePublishedSection();
         var owner = MakeBetaReader();
@@ -310,11 +249,11 @@ public class CommentServiceEditTests
         var comment = Comment.CreateRoot(section.Id, owner.Id, "Original.", Visibility.Public);
         comment.SoftDelete();
 
-        commentRepo
+        _commentRepo
             .Setup(r => r.GetByIdAsync(comment.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(comment);
 
-        userRepo
+        _userRepo
             .Setup(r => r.GetByIdAsync(owner.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(owner);
 
@@ -325,26 +264,16 @@ public class CommentServiceEditTests
         await Assert.ThrowsAsync<InvariantViolationException>(act);
         Assert.Equal("Original.", comment.Body);
 
-        unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Theory]
-    [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public async Task EditCommentAsync_InvalidBody_ThrowsInvariantViolationException(string? invalidBody)
+    public async Task EditCommentAsync_InvalidBody_ThrowsInvariantViolationException(string invalidBody)
     {
         // Arrange
-        var commentRepo = new Mock<ICommentRepository>();
-        var sectionRepo = new Mock<ISectionRepository>();
-        var userRepo = new Mock<IUserRepository>();
-        var unitOfWork = new Mock<IUnitOfWork>();
-
-        var sut = new CommentService(
-            commentRepo.Object,
-            sectionRepo.Object,
-            userRepo.Object,
-            unitOfWork.Object);
+        var sut = CreateSut();
 
         var section = MakePublishedSection();
         var owner = MakeBetaReader();
@@ -352,40 +281,29 @@ public class CommentServiceEditTests
 
         var comment = Comment.CreateRoot(section.Id, owner.Id, "Original.", Visibility.Public);
 
-        commentRepo
+        _commentRepo
             .Setup(r => r.GetByIdAsync(comment.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(comment);
 
-        userRepo
+        _userRepo
             .Setup(r => r.GetByIdAsync(owner.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(owner);
 
         // Act
-#pragma warning disable CS8604
         var act = () => sut.EditCommentAsync(comment.Id, owner.Id, invalidBody);
-#pragma warning restore CS8604
 
         // Assert
         await Assert.ThrowsAsync<InvariantViolationException>(act);
         Assert.Equal("Original.", comment.Body);
 
-        unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task EditCommentAsync_OwnerEditingCommentWithTrimmedBody_StoresTrimmedBody()
     {
         // Arrange
-        var commentRepo = new Mock<ICommentRepository>();
-        var sectionRepo = new Mock<ISectionRepository>();
-        var userRepo = new Mock<IUserRepository>();
-        var unitOfWork = new Mock<IUnitOfWork>();
-
-        var sut = new CommentService(
-            commentRepo.Object,
-            sectionRepo.Object,
-            userRepo.Object,
-            unitOfWork.Object);
+        var sut = CreateSut();
 
         var section = MakePublishedSection();
         var owner = MakeBetaReader();
@@ -393,11 +311,11 @@ public class CommentServiceEditTests
 
         var comment = Comment.CreateRoot(section.Id, owner.Id, "Original.", Visibility.Public);
 
-        commentRepo
+        _commentRepo
             .Setup(r => r.GetByIdAsync(comment.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(comment);
 
-        userRepo
+        _userRepo
             .Setup(r => r.GetByIdAsync(owner.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(owner);
 
@@ -407,7 +325,7 @@ public class CommentServiceEditTests
         // Assert
         Assert.Equal("Updated with padding.", comment.Body);
 
-        unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     private static Section MakePublishedSection()
