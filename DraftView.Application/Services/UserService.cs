@@ -53,11 +53,19 @@ public class UserService(
         var baseUrl = configuration["App:BaseUrl"]?.TrimEnd('/') ?? "http://localhost:5078";
         var inviteUrl = $"{baseUrl}/Account/AcceptInvitation?token={invitation.Token}";
 
+        var expiryLine = expiryPolicy == ExpiryPolicy.AlwaysOpen
+            ? "<p>This invitation does not expire.</p>"
+            : $"<p>This invitation expires on <strong>{expiresAt!.Value:d MMMM yyyy}</strong>.</p>";
+
+        var toName = email.Contains('@') ? email.Split('@')[0] : email;
+
         await emailSender.SendAsync(
             email,
-            "Invited Reader",
+            toName,
             "You have been invited to review a manuscript on DraftView",
-            $"Click the link to accept your invitation: <a href=\"{inviteUrl}\">{inviteUrl}</a>",
+            $"<p>Click the link below to accept your invitation and create your account.</p>" +
+            $"<p><a href=\"{inviteUrl}\">{inviteUrl}</a></p>" +
+            expiryLine,
             ct);
 
         return invitation;
@@ -146,3 +154,5 @@ public class UserService(
             throw new UnauthorisedOperationException("Only the Author may perform this action.");
     }
 }
+
+
