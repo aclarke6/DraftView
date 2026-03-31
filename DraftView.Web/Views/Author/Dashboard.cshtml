@@ -69,10 +69,10 @@
         <div class="card" style="margin-bottom:var(--space-8);">
             <div class="card__header">
                 <span class="card__title">Projects</span>
-                <a asp-action="Projects" class="btn btn--secondary btn--sm">+ Add Project</a>
+                <a asp-action="Projects" class="btn btn--secondary btn--sm desktop-only">+ Add Project</a>
             </div>
             <div class="table-wrapper" style="border:none; border-radius:0; box-shadow:none;">
-                <table>
+                <table class="projects-table">
                     <thead>
                         <tr>
                             <th>Name</th>
@@ -126,7 +126,7 @@
                                         <form asp-action="Sync" method="post" style="display:inline">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="projectId" value="@p.Id" />
-                                            <button type="submit" class="btn btn--secondary btn--sm"
+                                            <button type="submit" class="btn btn--secondary btn--sm desktop-only"
                                                     @(p.SyncStatus == SyncStatus.Syncing ? "disabled" : "")>Sync</button>
                                         </form>
                                         @if (!p.IsReaderActive)
@@ -149,7 +149,7 @@
                                               onsubmit="return confirm(@Html.Raw(Json.Serialize($"Remove {p.Name}? You can re-add it later.")))">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="projectId" value="@p.Id" />
-                                            <button type="submit" class="btn btn--danger btn--sm">Remove</button>
+                                            <button type="submit" class="btn btn--danger btn--sm desktop-only">Remove</button>
                                         </form>
                                     </div>
                                 </td>
@@ -381,4 +381,6 @@
         setTimeout(pollSyncStatus, 2000);
     </script>
 }
+
+
 

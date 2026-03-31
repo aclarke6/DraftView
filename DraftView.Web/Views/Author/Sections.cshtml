@@ -48,7 +48,7 @@ else
                     // (i.e. it doesn't contain sub-folders itself, only scenes)
                     var isChapter = isFolder && !folderChildIds.Contains(s.Id);
 
-                    <tr class="@(isFolder ? "tr--folder" : "")">
+                    <tr class="@(isFolder ? "tr--folder" : "tr--scene")">
                         <td style="padding-left: @(8 + indent)px">
                             @if (!isFolder)
                             {
@@ -106,4 +106,6 @@ else
         </table>
     </div>
 }
+
+
 

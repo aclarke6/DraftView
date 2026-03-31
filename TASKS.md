@@ -5,27 +5,11 @@ Last updated: 2026-03-31
 
 ## IMMEDIATE - Current Sprint
 
-### Phase 1 Defect Fixes (in order)
-
-**1A - Persist accepted reader display name** [SEVERITY: HIGH]
-- Reader enters name on invitation acceptance, but Readers list still shows "Pending"
-- Fix area: `UserService.AcceptInvitationAsync`, domain `User` entity, controller flow
-- TDD first
-
-**1B - Invitation email missing expiry information** [SEVERITY: MEDIUM]
-- Never-expiring invite: email should state it does not expire
-- Expiring invite: email must clearly state expiry date in readable form
-- Fix area: `UserService.IssueInvitationAsync`
-
-**1C - Readers list status wording misleading** [SEVERITY: MEDIUM]
-- Newly invited reader shows: name=Pending, status=Inactive, joined=Pending
-- Better model: status should be Invited / Active / Inactive
-- "Pending" should not be used as a display name in the list
-- Fix area: Readers view / view model
-
-**1D - Invite email recipient name is generic** [SEVERITY: LOW]
-- Email goes to: "Invited Reader <email>" - use email local part or no name
-- Fix area: `UserService.IssueInvitationAsync`
+### Phase 1 Defect Fixes
+- [DONE] 1A - Persist accepted reader display name
+- [DONE] 1B - Invitation email includes expiry info (never-expiring or expiry date)
+- [DONE] 1C - Readers list status wording (Invited / Active / Inactive, no "Pending")
+- [DONE] 1D - Invite email recipient name uses email local part
 
 ---
 
@@ -56,12 +40,12 @@ Last updated: 2026-03-31
 - Report Fault button -> popup form (not full page)
   - Pre-populate user email and name from DB
   - Subject + comment box + Send/Cancel
-  - Emails support@DraftView.co.uk -> alastair_clarke@yahoo.com
-- Cloudflare email routing setup for support@DraftView.co.uk
+  - Emails support@draftview.co.uk -> alastair_clarke@yahoo.com
+- Cloudflare email routing setup for support@draftview.co.uk
 
 ### Email Infrastructure
 - Wire up Oracle Email Delivery into IEmailSender (currently Console only)
-- Cloudflare email routing: support@DraftView.co.uk -> alastair_clarke@yahoo.com
+- Cloudflare email routing: support@draftview.co.uk -> alastair_clarke@yahoo.com
 
 ### Fix prose font in reader view
 - Scrivener monospace overriding Georgia
@@ -120,14 +104,13 @@ Last updated: 2026-03-31
 - RTF annotations
 
 ### GitHub Repository Rename
-- DraftView -> DraftView
+- ScrivenerSync -> DraftView (pending)
 
 ---
 
 ## ARCHITECTURE - Phase 1-5 Review (stored, not started)
 
 ### Phase 1 - Stabilise single-tenancy
-- Fix invitation acceptance flow (overlaps with 1A above)
 - Fix SmtpEmailSender From vs FromAddress
 - Remove sync-over-async from RedirectToLocal
 - Pass CancellationToken consistently in SyncService
@@ -170,6 +153,9 @@ Last updated: 2026-03-31
 
 ## DONE (this project)
 
+- [DONE] 1A - Persist accepted reader display name
+- [DONE] 1B - Invitation email expiry info + recipient name (1D combined)
+- [DONE] 1C - Readers list status wording (Invited / Active / Inactive)
 - [DONE] CommentStatus enum (New, AuthorReply, Ignore, Consider, Todo, Done, Keep)
 - [DONE] Notifications panel on author dashboard
 - [DONE] Comment author display names
@@ -185,4 +171,4 @@ Last updated: 2026-03-31
 - [DONE] Sections view: Published badge suppressed on scene rows
 - [DONE] Comment edit and delete (including moderator delete)
 - [DONE] pg.ps1 helper script committed to git
-- [DONE] 276 tests, all green
+- [DONE] 285 tests, all green
