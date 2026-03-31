@@ -16,17 +16,17 @@ Last updated: 2026-03-31
 ## SHORT TERM - Go-Live Requirements
 
 ### Mobile Author Views
-- Simplified mobile Sections view: chapters only, no scene rows, Publish/Unpublish only
+- [DONE] Scene rows hidden on mobile (tr--scene)
+- [DONE] Sync, Remove, Add Project desktop-only on mobile
+- [DONE] Projects table fits mobile without horizontal scroll
+- Readers page mobile: name, status, Deactivate only (table scrolls - acceptable)
 - Author/Comments view: per chapter, all scenes comments, reply/delete inline
 - Recent Activity: tap to open Author/Comments for that scene
-- Readers page mobile: name, status, Deactivate only
-- Must have on mobile: view comments, reply, moderator delete, invite reader, deactivate reader
-- Desktop only: sync controls, project management, add/remove projects
 
 ### Author Chapter Page (Author/Chapter/{id})
 - Full chapter view with all scenes
 - Scene comments on RHS sidebar
-- Chapter level comments in floating bar at bottom
+- Chapter level comments in floating bar at bottom (BetaBooks comments land here)
 - Reader progress: who has read it, date last visited
 - Link from Sections list chapter rows
 
@@ -50,6 +50,21 @@ Last updated: 2026-03-31
 ### Fix prose font in reader view
 - Scrivener monospace overriding Georgia
 
+### Reader Flow
+- Reactivate reader flow UI (exists but needs wiring)
+- Reader notification emails (new chapter published)
+
+---
+
+## ORACLE DEPLOYMENT - Pre-Beta Push
+Required before Becca and Hilary can use the live system:
+- Fix prose font in reader view
+- Reactivate reader flow
+- Wire up Oracle Email Delivery into IEmailSender
+- Configure Nginx + Certbot for draftview.co.uk on Oracle VM
+- GitHub Actions or manual deploy script
+- Send password reset emails to becca@the-dunlops.co.uk and hilaryrrb@gmail.com
+
 ---
 
 ## MEDIUM TERM - Core Platform Features
@@ -58,13 +73,9 @@ Last updated: 2026-03-31
 - [DONE] Chapter-only publishing in Sections view
 - [DONE] Parts/Books excluded from Publish button
 - [DONE] Domain invariant: PublishAsPartOfChapter enforced
+- [DONE] Sections view scroll to chapter after publish/unpublish
 - Part-level publish cascades all chapters + scenes below
 - Book-level publish cascades everything below
-
-### Reader Flow
-- Reactivate reader flow UI (exists but needs wiring)
-- Reader notification emails (new chapter published)
-- CSS for reader view: iOS, Android, phones, tablets, full screens
 
 ### Dropbox
 - Webhook controller for push-based sync (replace polling)
@@ -90,14 +101,16 @@ Last updated: 2026-03-31
 - Three tiers: Free, Paid, Ultimate
 
 ### BetaBooks Comment Importer
-- Create Account records, issue invitations
-- Seed historical comments from betabooks-export.json
-- Match by chapter number and reader name
+- [DONE] Comment.CreateForImport domain factory (TDD)
+- [DONE] BetaBooksImporter DevTools command
+- [DONE] 54 comments seeded for Becca and Hilary
+- [DONE] Reader accounts created with real emails
+- Importer scoped to project name (prevents cross-project contamination)
 
 ### Add Project Discovery
-- IScrivenerProjectDiscoveryService
-- Projects page UI: discover and add without manual DB work
-- Add The Fractured Lattice as Books 1, 2, 3 (UUIDs known)
+- IScrivenerProjectDiscoveryService (exists)
+- Projects page UI (exists)
+- Add The Fractured Lattice as Books 2, 3 (UUIDs known)
 - Dropbox vault scanning
 
 ### Scrivener Write-back (Phase 2)
@@ -156,6 +169,13 @@ Last updated: 2026-03-31
 - [DONE] 1A - Persist accepted reader display name
 - [DONE] 1B - Invitation email expiry info + recipient name (1D combined)
 - [DONE] 1C - Readers list status wording (Invited / Active / Inactive)
+- [DONE] BetaBooks importer: Comment.CreateForImport, DevTools command, 54 comments seeded
+- [DONE] Becca Dunlop and Hilary Royston-Bishop accounts created with real emails
+- [DONE] Sections view: scroll to chapter after publish/unpublish
+- [DONE] Toast notifications (fixed position, auto-dismiss, no layout shift)
+- [DONE] Mobile author views: scene rows hidden, desktop-only controls, projects table fix
+- [DONE] SyncService: ILogger added, errors logged to console
+- [DONE] Rebrand: DraftReader -> DraftView throughout (folder, DB, user-secrets, seed)
 - [DONE] CommentStatus enum (New, AuthorReply, Ignore, Consider, Todo, Done, Keep)
 - [DONE] Notifications panel on author dashboard
 - [DONE] Comment author display names
@@ -171,4 +191,6 @@ Last updated: 2026-03-31
 - [DONE] Sections view: Published badge suppressed on scene rows
 - [DONE] Comment edit and delete (including moderator delete)
 - [DONE] pg.ps1 helper script committed to git
-- [DONE] 285 tests, all green
+- [DONE] PowerShell.md scripting standards document
+- [DONE] Get-LineEndings.ps1 reusable utility
+- [DONE] 287 tests, all green
