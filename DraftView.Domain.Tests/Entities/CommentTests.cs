@@ -220,6 +220,30 @@ public class CommentTests
         Assert.False(comment.IsVisibleTo(otherUserId, Role.BetaReader));
     }
 
+    // ---------------------------------------------------------------------------
+    // CreateForImport
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateForImport_SetsCreatedAtToProvidedTimestamp()
+    {
+        var postedAt = new DateTime(2026, 2, 10, 22, 40, 0, DateTimeKind.Utc);
+        var comment  = Comment.CreateForImport(SectionId, UserId, "Imported body.", Visibility.Public, CommentStatus.New, postedAt);
+        Assert.Equal(postedAt, comment.CreatedAt);
+        Assert.Equal(CommentStatus.New, comment.Status);
+        Assert.Null(comment.ParentCommentId);
+    }
+
+    [Fact]
+    public void CreateForImport_WithParent_SetsParentCommentId()
+    {
+        var postedAt = new DateTime(2026, 2, 10, 22, 40, 0, DateTimeKind.Utc);
+        var parentId = Guid.NewGuid();
+        var comment  = Comment.CreateForImport(SectionId, UserId, "Reply.", Visibility.Public, CommentStatus.AuthorReply, postedAt, parentId);
+        Assert.Equal(parentId, comment.ParentCommentId);
+        Assert.Equal(CommentStatus.AuthorReply, comment.Status);
+    }
+
     // Add these test methods to DraftView.Domain.Tests\Entities\CommentTests.cs
     // ---------------------------------------------------------------------------
     // Status â€” initial state
@@ -299,4 +323,5 @@ public class CommentTests
     }
 
 }
+
 

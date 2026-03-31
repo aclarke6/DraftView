@@ -197,7 +197,10 @@ public class AuthorController(
         {
             TempData["Error"] = ex.Message;
         }
-        return RedirectToAction("Sections", new { projectId });
+        return Redirect(Url.Action("Sections", new
+        {
+            projectId
+        }) + "#section-" + chapterId);
     }
 
     [HttpPost]
@@ -209,7 +212,10 @@ public class AuthorController(
 
         await publicationService.UnpublishChapterAsync(chapterId, author.Id);
         TempData["Success"] = "Chapter unpublished.";
-        return RedirectToAction("Sections", new { projectId });
+        return Redirect(Url.Action("Sections", new
+        {
+            projectId
+        }) + "#section-" + chapterId);
     }
 
     // ---------------------------------------------------------------------------

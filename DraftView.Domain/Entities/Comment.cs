@@ -60,6 +60,26 @@ public sealed class Comment
         };
     }
 
+    public static Comment CreateForImport(
+        Guid sectionId, Guid authorId, string body,
+        Visibility visibility, CommentStatus status, DateTime createdAt,
+        Guid? parentCommentId = null)
+    {
+        ValidateBody(body);
+        return new Comment
+        {
+            Id              = Guid.NewGuid(),
+            SectionId       = sectionId,
+            AuthorId        = authorId,
+            ParentCommentId = parentCommentId,
+            Body            = body.Trim(),
+            Visibility      = visibility,
+            Status          = status,
+            CreatedAt       = createdAt,
+            IsSoftDeleted   = false
+        };
+    }
+
     public void Edit(string body)
     {
         if (IsSoftDeleted)
@@ -108,3 +128,4 @@ public sealed class Comment
                 "Comment body must not be null or whitespace.");
     }
 }
+

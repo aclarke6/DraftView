@@ -77,19 +77,17 @@ All css files are included here to ensure consistent styling across the site.
         </div>
     </nav>
 
-    <!-- Flash messages -->
+    <!-- Toast notifications -->
+    <div class="toast-container" id="toastContainer">
     @if (TempData["Success"] != null)
     {
-        <div class="flash-container">
-            <div class="alert alert--success">@TempData["Success"]</div>
-        </div>
+        <div class="toast toast--success">@TempData["Success"]</div>
     }
     @if (TempData["Error"] != null)
     {
-        <div class="flash-container">
-            <div class="alert alert--error">@TempData["Error"]</div>
-        </div>
+        <div class="toast toast--error">@TempData["Error"]</div>
     }
+    </div>
 
     <!-- Page content -->
     <main class="site-main">
@@ -106,6 +104,13 @@ All css files are included here to ensure consistent styling across the site.
 
     <script>
             document.addEventListener("DOMContentLoaded", function () {
+                // Auto-dismiss toasts
+                document.querySelectorAll('.toast').forEach(function(t) {
+                    setTimeout(function() {
+                        t.style.opacity = '0';
+                        setTimeout(function() { t.remove(); }, 400);
+                    }, 3000);
+                });
                 const navToggle = document.getElementById("navToggle");
                 const navMenu = document.getElementById("navMenu");
 
@@ -129,5 +134,7 @@ All css files are included here to ensure consistent styling across the site.
 
 </body>
 </html>
+
+
 
 

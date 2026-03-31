@@ -2,6 +2,18 @@
 using System.Text;
 using DraftView.Domain.Interfaces.Services;
 using DraftView.Infrastructure.Parsing;
+using DraftView.DevTools;
+
+// ---------------------------------------------------------------------------
+// --import mode
+// ---------------------------------------------------------------------------
+if (args.Length > 0 && args[0] == "--import")
+{
+    var connString  = args.Length > 1 ? args[1] : throw new ArgumentException("Connection string required.");
+    var jsonPath    = args.Length > 2 ? args[2] : @"C:\Users\alast\source\repos\DraftView\betabooks-export.json";
+    var authorEmail = args.Length > 3 ? args[3] : "ajclarke@myyahoo.com";
+    return await BetaBooksImporter.RunAsync(connString, jsonPath, authorEmail);
+}
 
 // ---------------------------------------------------------------------------
 // DraftView DevTools - Scrivener project parser test harness
@@ -300,3 +312,4 @@ void Error(string text)
     Console.WriteLine($"  ERROR: {text}");
     Console.ResetColor();
 }
+

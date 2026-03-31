@@ -20,6 +20,19 @@
     Publishing a chapter makes all its scenes visible to readers.
 </p>
 
+<script>
+    (function () {
+        if (history.scrollRestoration) history.scrollRestoration = 'manual';
+        var hash = window.location.hash;
+        if (hash) {
+            setTimeout(function () {
+                var el = document.querySelector(hash);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 50);
+        }
+    })();
+</script>
+
 @if (!Model.Any())
 {
     <p>No sections found. Try syncing the project first.</p>
@@ -48,7 +61,7 @@ else
                     // (i.e. it doesn't contain sub-folders itself, only scenes)
                     var isChapter = isFolder && !folderChildIds.Contains(s.Id);
 
-                    <tr class="@(isFolder ? "tr--folder" : "tr--scene")">
+                    <tr class="@(isFolder ? "tr--folder" : "tr--scene")" id="section-@s.Id">
                         <td style="padding-left: @(8 + indent)px">
                             @if (!isFolder)
                             {
@@ -106,6 +119,11 @@ else
         </table>
     </div>
 }
+
+
+
+
+
 
 
 
