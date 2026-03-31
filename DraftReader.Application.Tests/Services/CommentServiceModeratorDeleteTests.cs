@@ -638,7 +638,7 @@ public class CommentServiceModeratorDeleteTests
             "hash",
             "First Draft");
 
-        section.Publish("hash");
+        section.PublishAsPartOfChapter("hash");
         return section;
     }
 

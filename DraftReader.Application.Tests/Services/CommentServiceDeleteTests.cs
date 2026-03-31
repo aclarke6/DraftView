@@ -490,7 +490,7 @@ public class CommentServiceDeleteTests
             "hash",
             "First Draft");
 
-        section.Publish("hash");
+        section.PublishAsPartOfChapter("hash");
         return section;
     }
 

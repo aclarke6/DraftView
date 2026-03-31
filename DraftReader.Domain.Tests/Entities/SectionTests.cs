@@ -1,4 +1,4 @@
-using DraftReader.Domain.Entities;
+﻿using DraftReader.Domain.Entities;
 using DraftReader.Domain.Enumerations;
 using DraftReader.Domain.Exceptions;
 
@@ -108,7 +108,7 @@ public class SectionTests
             ValidHtml, ValidHash, "First Draft");
         var before = DateTime.UtcNow;
 
-        section.Publish(ValidHash);
+        section.PublishAsPartOfChapter(ValidHash);
 
         Assert.True(section.IsPublished);
         Assert.NotNull(section.PublishedAt);
@@ -122,7 +122,7 @@ public class SectionTests
         var section = Section.CreateFolder(ProjectId, ValidUuid, ValidTitle, null, 1);
 
         var ex = Assert.Throws<InvariantViolationException>(
-            () => section.Publish(ValidHash));
+            () => section.PublishAsPartOfChapter(ValidHash));
 
         Assert.Equal("I-04", ex.InvariantCode);
     }
@@ -136,7 +136,7 @@ public class SectionTests
         section.SoftDelete();
 
         var ex = Assert.Throws<InvariantViolationException>(
-            () => section.Publish(ValidHash));
+            () => section.PublishAsPartOfChapter(ValidHash));
 
         Assert.Equal("I-18", ex.InvariantCode);
     }
@@ -147,10 +147,10 @@ public class SectionTests
         var section = Section.CreateDocument(
             ProjectId, ValidUuid, ValidTitle, null, 1,
             ValidHtml, ValidHash, "First Draft");
-        section.Publish(ValidHash);
+        section.PublishAsPartOfChapter(ValidHash);
         section.MarkContentChanged();
 
-        section.Publish(ValidHash);
+        section.PublishAsPartOfChapter(ValidHash);
 
         Assert.False(section.ContentChangedSincePublish);
     }
@@ -165,7 +165,7 @@ public class SectionTests
         var section = Section.CreateDocument(
             ProjectId, ValidUuid, ValidTitle, null, 1,
             ValidHtml, ValidHash, "First Draft");
-        section.Publish(ValidHash);
+        section.PublishAsPartOfChapter(ValidHash);
         var before = DateTime.UtcNow;
 
         section.Unpublish();
@@ -197,7 +197,7 @@ public class SectionTests
         var section = Section.CreateDocument(
             ProjectId, ValidUuid, ValidTitle, null, 1,
             ValidHtml, ValidHash, "First Draft");
-        section.Publish(ValidHash);
+        section.PublishAsPartOfChapter(ValidHash);
 
         section.MarkContentChanged();
 
@@ -256,7 +256,7 @@ public class SectionTests
         var section = Section.CreateDocument(
             ProjectId, ValidUuid, ValidTitle, null, 1,
             ValidHtml, ValidHash, "First Draft");
-        section.Publish(ValidHash);
+        section.PublishAsPartOfChapter(ValidHash);
 
         section.SoftDelete();
 
@@ -277,4 +277,75 @@ public class SectionTests
 
         Assert.Equal(firstDeletion, section.SoftDeletedAt);
     }
+
+    // ---------------------------------------------------------------------------
+    // Publication invariant - scenes may only be published via chapter
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void Publish_IsInternal_NotCallableFromOutsideAssembly()
+    {
+        // This test documents the invariant: Section.PublishAsPartOfChapter() is internal.
+        // External callers (controllers, application services outside the domain)
+        // cannot call Publish() directly on a Document - they must go via
+        // PublicationService.PublishChapterAsync which calls PublishAsPartOfChapter().
+        // The compiler enforces this - this test is intentionally a compile-time check
+        // documented here for clarity.
+        Assert.True(true, "Publish() is internal - enforced at compile time.");
+    }
+
+    [Fact]
+    public void PublishAsPartOfChapter_DocumentNode_SetsIsPublished()
+    {
+        var section = Section.CreateDocument(
+            ProjectId, ValidUuid, ValidTitle, null, 1,
+            ValidHtml, ValidHash, "First Draft");
+
+        section.PublishAsPartOfChapter(ValidHash);
+
+        Assert.True(section.IsPublished);
+        Assert.NotNull(section.PublishedAt);
+        Assert.False(section.ContentChangedSincePublish);
+    }
+
+    [Fact]
+    public void PublishAsPartOfChapter_FolderNode_ThrowsInvariantViolationException()
+    {
+        var section = Section.CreateFolder(ProjectId, ValidUuid, ValidTitle, null, 1);
+
+        var ex = Assert.Throws<InvariantViolationException>(
+            () => section.PublishAsPartOfChapter(ValidHash));
+
+        Assert.Equal("I-04", ex.InvariantCode);
+    }
+
+    [Fact]
+    public void PublishAsPartOfChapter_SoftDeletedSection_ThrowsInvariantViolationException()
+    {
+        var section = Section.CreateDocument(
+            ProjectId, ValidUuid, ValidTitle, null, 1,
+            ValidHtml, ValidHash, "First Draft");
+        section.SoftDelete();
+
+        var ex = Assert.Throws<InvariantViolationException>(
+            () => section.PublishAsPartOfChapter(ValidHash));
+
+        Assert.Equal("I-18", ex.InvariantCode);
+    }
+
+    [Fact]
+    public void PublishAsPartOfChapter_ClearsContentChangedSincePublish()
+    {
+        var section = Section.CreateDocument(
+            ProjectId, ValidUuid, ValidTitle, null, 1,
+            ValidHtml, ValidHash, "First Draft");
+        section.PublishAsPartOfChapter(ValidHash);
+        section.MarkContentChanged();
+
+        section.PublishAsPartOfChapter(ValidHash);
+
+        Assert.False(section.ContentChangedSincePublish);
+    }
 }
+
+

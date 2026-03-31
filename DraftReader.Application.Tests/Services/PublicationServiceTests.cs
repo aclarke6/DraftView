@@ -1,4 +1,4 @@
-using Moq;
+﻿using Moq;
 using DraftReader.Application.Services;
 using DraftReader.Domain.Entities;
 using DraftReader.Domain.Enumerations;
@@ -88,7 +88,7 @@ public class PublicationServiceTests
         var chapter   = MakeChapter(projectId);
         var scene     = MakeScene(projectId, chapter.Id, "First Draft");
         chapter.MarkAsPublishedContainer();
-        scene.Publish("hash");
+        scene.PublishAsPartOfChapter("hash");
         var sut = CreateSut();
 
         _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default)).ReturnsAsync(chapter);
@@ -137,4 +137,5 @@ public class PublicationServiceTests
         Assert.False(result);
     }
 }
+
 

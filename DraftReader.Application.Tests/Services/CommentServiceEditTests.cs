@@ -340,7 +340,7 @@ public class CommentServiceEditTests
             "hash",
             "First Draft");
 
-        section.Publish("hash");
+        section.PublishAsPartOfChapter("hash");
         return section;
     }
 

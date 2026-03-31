@@ -29,8 +29,14 @@ public class ReaderController(
             return View(new ReaderDashboardViewModel { ProjectName = null });
 
         var allSections = await sectionRepo.GetByProjectIdAsync(project.Id);
+        var folderChildIds = allSections
+            .Where(s => s.NodeType == NodeType.Folder && s.ParentId.HasValue)
+            .Select(s => s.ParentId!.Value)
+            .ToHashSet();
+
         var publishedChapters = allSections
-            .Where(s => s.NodeType == NodeType.Folder && s.IsPublished && !s.IsSoftDeleted)
+            .Where(s => s.NodeType == NodeType.Folder && s.IsPublished && !s.IsSoftDeleted
+                        && !folderChildIds.Contains(s.Id))
             .OrderBy(s => s.SortOrder)
             .ToList();
 
@@ -344,3 +350,6 @@ public class ReaderController(
         return groups;
     }
 }
+
+
+

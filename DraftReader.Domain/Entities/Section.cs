@@ -5,10 +5,6 @@ namespace DraftReader.Domain.Entities;
 
 public sealed class Section
 {
-    // ---------------------------------------------------------------------------
-    // Properties
-    // ---------------------------------------------------------------------------
-
     public Guid Id { get; private set; }
     public Guid ProjectId { get; private set; }
     public string ScrivenerUuid { get; private set; } = default!;
@@ -26,25 +22,13 @@ public sealed class Section
     public bool IsSoftDeleted { get; private set; }
     public DateTime? SoftDeletedAt { get; private set; }
 
-    // ---------------------------------------------------------------------------
-    // Constructor
-    // ---------------------------------------------------------------------------
-
     private Section() { }
 
-    // ---------------------------------------------------------------------------
-    // Factories
-    // ---------------------------------------------------------------------------
-
     public static Section CreateFolder(
-        Guid projectId,
-        string scrivenerUuid,
-        string title,
-        Guid? parentId,
-        int sortOrder)
+        Guid projectId, string scrivenerUuid, string title,
+        Guid? parentId, int sortOrder)
     {
         ValidateCommon(scrivenerUuid, title);
-
         return new Section
         {
             Id             = Guid.NewGuid(),
@@ -61,17 +45,11 @@ public sealed class Section
     }
 
     public static Section CreateDocument(
-        Guid projectId,
-        string scrivenerUuid,
-        string title,
-        Guid? parentId,
-        int sortOrder,
-        string? htmlContent,
-        string? contentHash,
-        string? scrivenerStatus)
+        Guid projectId, string scrivenerUuid, string title,
+        Guid? parentId, int sortOrder, string? htmlContent,
+        string? contentHash, string? scrivenerStatus)
     {
         ValidateCommon(scrivenerUuid, title);
-
         return new Section
         {
             Id             = Guid.NewGuid(),
@@ -91,10 +69,15 @@ public sealed class Section
     }
 
     // ---------------------------------------------------------------------------
-    // Behaviour
+    // Publication
     // ---------------------------------------------------------------------------
 
-    public void Publish(string contentHash)
+    /// <summary>
+    /// Publishes a scene as part of a chapter publication.
+    /// This is the only permitted way to publish a Document section.
+    /// Call only from PublicationService.PublishChapterAsync.
+    /// </summary>
+    public void PublishAsPartOfChapter(string contentHash)
     {
         if (NodeType == NodeType.Folder)
             throw new InvariantViolationException("I-04",
@@ -112,39 +95,33 @@ public sealed class Section
 
     /// <summary>
     /// Marks a Folder section as a published container (e.g. a published chapter).
-    /// Unlike Publish(), this does not enforce the Document-only invariant.
     /// </summary>
     public void MarkAsPublishedContainer()
     {
-        if (NodeType != Enumerations.NodeType.Folder)
-            throw new Exceptions.InvariantViolationException("I-CONTAINER",
+        if (NodeType != NodeType.Folder)
+            throw new InvariantViolationException("I-CONTAINER",
                 "MarkAsPublishedContainer is only valid on Folder sections.");
 
         if (IsSoftDeleted)
-            throw new Exceptions.InvariantViolationException("I-18",
+            throw new InvariantViolationException("I-18",
                 "A soft-deleted section may not be published.");
 
         IsPublished = true;
         PublishedAt = DateTime.UtcNow;
     }
 
-    /// <summary>
-    /// Marks a Folder section as unpublished container.
-    /// </summary>
     public void UnmarkAsPublishedContainer()
     {
-        if (NodeType != Enumerations.NodeType.Folder) return;
+        if (NodeType != NodeType.Folder) return;
         IsPublished   = false;
         UnpublishedAt = DateTime.UtcNow;
     }
 
     public void Unpublish()
     {
-        if (!IsPublished)
-            return;
-
-        IsPublished    = false;
-        UnpublishedAt  = DateTime.UtcNow;
+        if (!IsPublished) return;
+        IsPublished   = false;
+        UnpublishedAt = DateTime.UtcNow;
     }
 
     public void MarkContentChanged()
@@ -158,40 +135,25 @@ public sealed class Section
         ContentHash = contentHash;
     }
 
-    public void UpdateSortOrder(int sortOrder)
-    {
-        SortOrder = sortOrder;
-    }
+    public void UpdateSortOrder(int sortOrder) => SortOrder = sortOrder;
 
     public void UpdateTitle(string title)
     {
         if (string.IsNullOrWhiteSpace(title))
             throw new InvariantViolationException("I-SEC-TITLE",
                 "Section title must not be null or whitespace.");
-
         Title = title.Trim();
     }
 
-    public void UpdateScrivenerStatus(string? status)
-    {
-        ScrivenerStatus = status;
-    }
+    public void UpdateScrivenerStatus(string? status) => ScrivenerStatus = status;
 
     public void SoftDelete()
     {
-        if (IsSoftDeleted)
-            return;
-
-        if (IsPublished)
-            Unpublish();
-
+        if (IsSoftDeleted) return;
+        if (IsPublished) Unpublish();
         IsSoftDeleted = true;
         SoftDeletedAt = DateTime.UtcNow;
     }
-
-    // ---------------------------------------------------------------------------
-    // Private helpers
-    // ---------------------------------------------------------------------------
 
     private static void ValidateCommon(string scrivenerUuid, string title)
     {
@@ -204,4 +166,3 @@ public sealed class Section
                 "Section title must not be null or whitespace.");
     }
 }
-

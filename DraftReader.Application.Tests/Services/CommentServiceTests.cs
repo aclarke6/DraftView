@@ -24,7 +24,7 @@ public class CommentServiceTests
     {
         var s = Section.CreateDocument(Guid.NewGuid(), Guid.NewGuid().ToString(),
             "Scene 1", null, 0, "<p>Content</p>", "hash", "First Draft");
-        s.Publish("hash");
+        s.PublishAsPartOfChapter("hash");
         return s;
     }
 
@@ -203,4 +203,5 @@ public class CommentServiceTests
         Assert.Equal("Public.", result[0].Body);
     }
 }
+
 

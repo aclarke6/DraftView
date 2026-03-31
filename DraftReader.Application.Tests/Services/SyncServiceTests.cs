@@ -1,4 +1,4 @@
-using Moq;
+﻿using Moq;
 using DraftReader.Application.Services;
 using DraftReader.Domain.Entities;
 using DraftReader.Domain.Enumerations;
@@ -265,7 +265,7 @@ public class SyncServiceTests
         var sut     = CreateSut();
         var section = Section.CreateDocument(project.Id, "SCEN-001", "Scene 1",
             null, 0, "<p>Old</p>", "oldhash", "First Draft");
-        section.Publish("oldhash");
+        section.PublishAsPartOfChapter("oldhash");
 
         SetupPathResolver(project, "/fake/path");
 
@@ -287,7 +287,7 @@ public class SyncServiceTests
         var sut     = CreateSut();
         var section = Section.CreateDocument(project.Id, "SCEN-001", "Scene 1",
             null, 0, "<p>Same</p>", "samehash", "First Draft");
-        section.Publish("samehash");
+        section.PublishAsPartOfChapter("samehash");
 
         SetupPathResolver(project, "/fake/path");
 
@@ -318,5 +318,6 @@ public class SyncServiceTests
             });
     }
 }
+
 
 

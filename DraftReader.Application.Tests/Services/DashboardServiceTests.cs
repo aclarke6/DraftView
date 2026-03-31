@@ -29,7 +29,7 @@ public class DashboardServiceTests
         var projectId = Guid.NewGuid();
         var section   = Section.CreateDocument(projectId, "UUID-1", "Scene 1",
             null, 0, "<p>x</p>", "h", "First Draft");
-        section.Publish("h");
+        section.PublishAsPartOfChapter("h");
         var sut = CreateSut();
 
         _sectionRepo.Setup(r => r.GetPublishedByProjectIdAsync(projectId, default))
@@ -73,3 +73,4 @@ public class DashboardServiceTests
         Assert.Equal(EmailStatus.Failed, result[0].Status);
     }
 }
+

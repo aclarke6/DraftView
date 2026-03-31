@@ -1,4 +1,4 @@
-using DraftReader.Domain.Entities;
+﻿using DraftReader.Domain.Entities;
 using DraftReader.Domain.Enumerations;
 using DraftReader.Domain.Exceptions;
 using DraftReader.Domain.Interfaces.Repositories;
@@ -47,7 +47,7 @@ public class PublicationService(
 
         // Publish all scenes
         foreach (var scene in scenes)
-            scene.Publish(scene.ContentHash ?? string.Empty);
+            scene.PublishAsPartOfChapter(scene.ContentHash ?? string.Empty);
 
         await unitOfWork.SaveChangesAsync(ct);
     }
@@ -106,4 +106,5 @@ public class PublicationService(
             PublishableStatuses.Contains(s.ScrivenerStatus));
     }
 }
+
 

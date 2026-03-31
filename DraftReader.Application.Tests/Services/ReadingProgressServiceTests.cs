@@ -1,4 +1,4 @@
-using Moq;
+﻿using Moq;
 using DraftReader.Application.Services;
 using DraftReader.Domain.Entities;
 using DraftReader.Domain.Enumerations;
@@ -21,7 +21,7 @@ public class ReadingProgressServiceTests
     {
         var s = Section.CreateDocument(projectId, Guid.NewGuid().ToString(),
             "Scene 1", null, 0, "<p>x</p>", "h", "First Draft");
-        s.Publish("h");
+        s.PublishAsPartOfChapter("h");
         return s;
     }
 
@@ -143,3 +143,4 @@ public class ReadingProgressServiceTests
         Assert.True(result);
     }
 }
+

@@ -1,4 +1,4 @@
-@model IReadOnlyList<(DraftReader.Domain.Entities.Section Section, int Depth)>
+﻿@model IReadOnlyList<(DraftReader.Domain.Entities.Section Section, int Depth)>
 @{
     ViewData["Title"] = "Sections";
     var project     = ViewBag.Project as DraftReader.Domain.Entities.ScrivenerProject;
@@ -64,11 +64,11 @@ else
                         </td>
                         <td>@(s.ScrivenerStatus ?? "-")</td>
                         <td>
-                            @if (s.IsPublished)
+                            @if (isChapter && s.IsPublished)
                             {
                                 <span class="badge badge--success">Published</span>
                             }
-                            else
+                            else if (isChapter)
                             {
                                 <span style="color:var(--color-text-subtle)">-</span>
                             }
@@ -106,3 +106,4 @@ else
         </table>
     </div>
 }
+
