@@ -1,4 +1,4 @@
-﻿<Solution>
+<Solution>
   <Folder Name="/Docs/">
     <File Path="DraftView Billing Model v2.docx" />
     <File Path="DraftView Business Model v3.docx" />
@@ -10,6 +10,7 @@
     <File Path="ChatGPT-Mobile-Fix1.ps1" />
     <File Path="Copy-SourceFiles.ps1" />
     <File Path="fix-publish-invariant.ps1" />
+    <File Path="fix-remaining-refs.ps1" />
     <File Path="fix-sections-publish.ps1" />
     <File Path="Get-CodeFiles.ps1" />
     <File Path="get-dropbox-refresh-token.ps1" />

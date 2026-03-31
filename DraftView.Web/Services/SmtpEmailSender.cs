@@ -17,7 +17,7 @@ public class SmtpEmailSender(IConfiguration config) : IEmailSender
         var port     = int.Parse(config["Email:Smtp:Port"] ?? "587");
         var user     = config["Email:Smtp:Username"] ?? string.Empty;
         var pass     = config["Email:Smtp:Password"] ?? string.Empty;
-        var fromAddr = config["Email:Smtp:From"]     ?? "noreply@scrivener-sync.local";
+        var fromAddr = config["Email:Smtp:From"]     ?? "noreply@draftview.co.uk";
         var fromName = config["Email:Smtp:FromName"] ?? "DraftView";
 
         using var client = new SmtpClient(host, port)

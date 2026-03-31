@@ -1,5 +1,5 @@
-/* ==========================================================================
-   DraftReader Components Styles
+﻿/* ==========================================================================
+   DraftView Components Styles
 
    Reusable interface components shared across multiple pages.
    This file should contain component styles that are not tied to a specific
@@ -230,7 +230,7 @@
     position: relative;
     width: 100%;
     min-height: 260px;
-    background-image: url('/images/DraftReader.Atmosphere.web.jpg');
+    background-image: url('/images/DraftView.Atmosphere.web.jpg');
     background-size: cover;
     background-position: center 30%;
     display: flex;
@@ -283,7 +283,7 @@
 }
 
 .page-header--image {
-    background-image: url('/images/DraftReader.Header.web.jpg');
+    background-image: url('/images/DraftView.Header.web.jpg');
     background-size: cover;
     background-position: center 35%;
     position: relative;

@@ -1,5 +1,5 @@
-/* ==========================================================================
-   DraftReader Core Styles
+﻿/* ==========================================================================
+   DraftView Core Styles
 
    Global design tokens, base/reset rules, and shared layout scaffolding.
    This file should contain only styles that are foundational across the
@@ -101,7 +101,7 @@ body {
     color: var(--color-text);
     background-color: var(--color-bg);
     min-height: 100vh;
-    background-image: url('/images/DraftReader.Tile.web.jpg');
+    background-image: url('/images/DraftView.Tile.web.jpg');
     background-repeat: repeat;
     background-size: 800px auto;
     overflow-x: hidden;

@@ -140,7 +140,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Seed initial data
-var seedEmail    = builder.Configuration["Seed:AuthorEmail"]    ?? "author@scrivener-sync.local";
+var seedEmail    = builder.Configuration["Seed:AuthorEmail"]    ?? "author@draftview.local";
 var seedPassword = builder.Configuration["Seed:AuthorPassword"] ?? "Password1!";
 var seedName     = builder.Configuration["Seed:AuthorName"]     ?? "Author";
 var seedPath     = builder.Configuration["Seed:TestProjectPath"] ?? "/Apps/Scrivener/Test.scriv";

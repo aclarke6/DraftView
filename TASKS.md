@@ -1,4 +1,4 @@
-# DraftReader Task List
+﻿# DraftView Task List
 Last updated: 2026-03-31
 
 ---
@@ -56,12 +56,12 @@ Last updated: 2026-03-31
 - Report Fault button -> popup form (not full page)
   - Pre-populate user email and name from DB
   - Subject + comment box + Send/Cancel
-  - Emails support@draftreader.co.uk -> alastair_clarke@yahoo.com
-- Cloudflare email routing setup for support@draftreader.co.uk
+  - Emails support@DraftView.co.uk -> alastair_clarke@yahoo.com
+- Cloudflare email routing setup for support@DraftView.co.uk
 
 ### Email Infrastructure
 - Wire up Oracle Email Delivery into IEmailSender (currently Console only)
-- Cloudflare email routing: support@draftreader.co.uk -> alastair_clarke@yahoo.com
+- Cloudflare email routing: support@DraftView.co.uk -> alastair_clarke@yahoo.com
 
 ### Fix prose font in reader view
 - Scrivener monospace overriding Georgia
@@ -120,7 +120,7 @@ Last updated: 2026-03-31
 - RTF annotations
 
 ### GitHub Repository Rename
-- ScrivenerSync -> DraftReader
+- DraftView -> DraftView
 
 ---
 

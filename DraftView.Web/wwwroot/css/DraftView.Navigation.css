@@ -1,5 +1,5 @@
-/* ==========================================================================
-   DraftReader Navigation Styles
+﻿/* ==========================================================================
+   DraftView Navigation Styles
 
    Shared navigation components for the application shell, including the site
    header and breadcrumb navigation.
@@ -12,7 +12,7 @@
     position: sticky;
     top: 0;
     z-index: 1000;
-    background-image: url('/images/DraftReader.Header.web.jpg');
+    background-image: url('/images/DraftView.Header.web.jpg');
     background-size: cover;
     background-position: center 40%;
 }
