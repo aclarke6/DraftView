@@ -5,15 +5,17 @@
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".gitignore" />
+    <File Path="add-heroicons.ps1" />
     <File Path="betabooks-export.json" />
+    <File Path="ChatGPT-Mobile-Fix1.ps1" />
     <File Path="Copy-SourceFiles.ps1" />
     <File Path="fix-publish-invariant.ps1" />
+    <File Path="fix-sections-publish.ps1" />
     <File Path="Get-CodeFiles.ps1" />
     <File Path="get-dropbox-refresh-token.ps1" />
     <File Path="pg.ps1" />
-    <File Path="rename-to-draftview.ps1" />
+    <File Path="Project Forweard Plan.Txt" />
     <File Path="Show-ProjectTree.ps1" />
-    <File Path="TASKS.md" />
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="DraftView.Application.Tests/DraftView.Application.Tests.csproj" />

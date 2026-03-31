@@ -1,0 +1,384 @@
+﻿@using DraftView.Domain.Notifications
+@using DraftView.Domain.Enumerations
+@model DashboardViewModel
+@{ ViewData["Title"] = "Dashboard"; }
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Dashboard</h1>
+        @if (Model.ActiveProject is not null)
+        {
+            <p class="page-subtitle">Active project: @Model.ActiveProject.Name</p>
+        }
+    </div>
+</div>
+
+<!-- Stat cards -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-card__label">Active Readers</div>
+        <div class="stat-card__value">@Model.ActiveReaderCount</div>
+        <div class="stat-card__sub">
+            <a asp-action="Readers">Manage readers</a>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card__label">Published Chapters</div>
+        <div class="stat-card__value">@Model.PublishedSections.Count</div>
+        <div class="stat-card__sub">
+            @if (Model.ActiveProject is not null)
+            {
+                <a asp-action="Sections" asp-route-projectId="@Model.ActiveProject.Id">
+                    View sections
+                </a>
+            }
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card__label">Email Health</div>
+        <div class="stat-card__value">
+            @if (Model.EmailFailures.Count > 0)
+            {
+                <span style="color:var(--color-danger);">@Model.EmailFailures.Count</span>
+            }
+            else
+            {
+                <span style="color:var(--color-success);">OK</span>
+            }
+        </div>
+        <div class="stat-card__sub">
+            @if (Model.EmailFailures.Count > 0)
+            {
+                <span style="color:var(--color-danger);">@Model.EmailFailures.Count failed</span>
+            }
+            else
+            {
+                <span>No failures</span>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Two-column lower layout: main content left, notifications right -->
+<div class="dashboard-body">
+
+    <!-- â”€â”€ LEFT COLUMN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+    <div class="dashboard-main">
+
+        <!-- Projects -->
+        <div class="card" style="margin-bottom:var(--space-8);">
+            <div class="card__header">
+                <span class="card__title">Projects</span>
+                <a asp-action="Projects" class="btn btn--secondary btn--sm">+ Add Project</a>
+            </div>
+            <div class="table-wrapper" style="border:none; border-radius:0; box-shadow:none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Sync Status</th>
+                            <th>Reader Active</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in Model.AllProjects)
+                        {
+                            <tr>
+                                <td>
+                                    <a asp-action="Sections" asp-route-projectId="@p.Id"
+                                       style="font-weight:500;">@p.Name</a>
+                                </td>
+                                <td>
+                                    @if (p.SyncStatus == SyncStatus.Healthy)
+                                    {
+                                        <span class="badge badge--success">Healthy</span>
+                                    }
+                                    else if (p.SyncStatus == SyncStatus.Error)
+                                    {
+                                        <span class="badge badge--danger" title="@p.SyncErrorMessage">Error</span>
+                                    }
+                                    else if (p.SyncStatus == SyncStatus.Syncing)
+                                    {
+                                        <span class="badge badge--accent" id="sync-badge-@p.Id">Syncing...</span>
+                                        <div id="sync-count-@p.Id" style="font-size:0.75rem; color:var(--color-ink-muted); margin-top:2px;">Starting...</div>
+                                        <div style="margin-top:4px; width:120px; height:4px; background:var(--color-border); border-radius:2px; overflow:hidden; position:relative;">
+                                            <div id="sync-bar-@p.Id" style="height:100%; width:30%; background:var(--color-accent); border-radius:2px; position:absolute; animation: syncsweep 1.6s ease-in-out infinite;"></div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge--neutral">@p.SyncStatus</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (p.IsReaderActive)
+                                    {
+                                        <span class="badge badge--accent">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span style="color:var(--color-ink-subtle); font-size:var(--text-sm);">-</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div style="display:flex; gap:var(--space-2);">
+                                        <form asp-action="Sync" method="post" style="display:inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="projectId" value="@p.Id" />
+                                            <button type="submit" class="btn btn--secondary btn--sm"
+                                                    @(p.SyncStatus == SyncStatus.Syncing ? "disabled" : "")>Sync</button>
+                                        </form>
+                                        @if (!p.IsReaderActive)
+                                        {
+                                            <form asp-action="ActivateProject" method="post" style="display:inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="projectId" value="@p.Id" />
+                                                <button type="submit" class="btn btn--primary btn--sm">Activate</button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <form asp-action="DeactivateProject" method="post" style="display:inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="projectId" value="@p.Id" />
+                                                <button type="submit" class="btn btn--secondary btn--sm">Deactivate</button>
+                                            </form>
+                                        }
+                                        <form asp-action="RemoveProject" method="post" style="display:inline"
+                                              onsubmit="return confirm(@Html.Raw(Json.Serialize($"Remove {p.Name}? You can re-add it later.")))">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="projectId" value="@p.Id" />
+                                            <button type="submit" class="btn btn--danger btn--sm">Remove</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Published chapters -->
+        @if (Model.PublishedSections.Any())
+        {
+            <div class="card">
+                <div class="card__header">
+                    <span class="card__title">Published Chapters</span>
+                    @if (Model.ActiveProject is not null)
+                    {
+                        <a asp-action="Sections" asp-route-projectId="@Model.ActiveProject.Id"
+                           class="btn btn--ghost btn--sm">All sections</a>
+                    }
+                </div>
+                <div class="table-wrapper" style="border:none; border-radius:0; box-shadow:none;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Chapter</th>
+                                <th>Published</th>
+                                <th>Content Changed</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var s in Model.PublishedSections)
+                            {
+                                <tr>
+                                    <td style="font-weight:500;">@s.Title</td>
+                                    <td style="color:var(--color-ink-muted); font-size:var(--text-sm);">
+                                        @(s.PublishedAt.HasValue ? s.PublishedAt.Value.ToString("dd MMM yyyy") : "-")
+                                    </td>
+                                    <td>
+                                        @if (s.ContentChangedSincePublish)
+                                        {
+                                            <span class="badge badge--warning">Updated</span>
+                                        }
+                                        else
+                                        {
+                                            <span style="color:var(--color-ink-subtle); font-size:var(--text-sm);">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (Model.ActiveProject is not null)
+                                        {
+                                            <form asp-action="UnpublishChapter" method="post" style="display:inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="chapterId" value="@s.Id" />
+                                                <input type="hidden" name="projectId" value="@Model.ActiveProject.Id" />
+                                                <button type="submit" class="btn btn--danger btn--sm">Unpublish</button>
+                                            </form>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+        else if (Model.ActiveProject is not null)
+        {
+            <div class="card">
+                <div class="card__body">
+                    <div class="empty-state" style="padding:var(--space-10);">
+                        <div class="empty-state__title">No chapters published yet</div>
+                        <p class="empty-state__body" style="margin-bottom:var(--space-5);">
+                            Sync your project and publish chapters to make them available to readers.
+                        </p>
+                        <a asp-action="Sections" asp-route-projectId="@Model.ActiveProject.Id"
+                           class="btn btn--primary">Go to Sections</a>
+                    </div>
+                </div>
+            </div>
+        }
+
+    </div><!-- /dashboard-main -->
+
+    <!-- â”€â”€ RIGHT COLUMN: NOTIFICATIONS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+    <aside class="dashboard-sidebar">
+        <div class="card notifications-panel">
+            <div class="card__header">
+                <span class="card__title">Recent Activity</span>
+                @if (Model.Notifications.Any())
+                {
+                    <span class="badge badge--neutral" style="font-size:var(--text-xs);">
+                        @Model.Notifications.Count
+                    </span>
+                }
+            </div>
+
+            @if (!Model.Notifications.Any())
+            {
+                <div class="notifications-empty">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="1.5"
+                         stroke-linecap="round" stroke-linejoin="round"
+                         style="color:var(--color-ink-subtle); margin-bottom:var(--space-3);">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                    </svg>
+                    <p style="color:var(--color-ink-muted); font-size:var(--text-sm); margin:0;">
+                        No recent activity
+                    </p>
+                </div>
+            }
+            else
+            {
+                <ul class="notifications-list">
+                    @foreach (var n in Model.Notifications)
+                    {
+                        <li class="notification-item">
+                            <span class="notification-item__icon notification-item__icon--@NotificationIconClass(n.EventType)"
+                                  aria-hidden="true">
+                                @Html.Raw(NotificationSvgIcon(n.EventType))
+                            </span>
+                            <div class="notification-item__body">
+                                @if (n.LinkUrl is not null)
+                                {
+                                    <a href="@n.LinkUrl" class="notification-item__title">@n.Title</a>
+                                }
+                                else
+                                {
+                                    <span class="notification-item__title">@n.Title</span>
+                                }
+                                @if (!string.IsNullOrEmpty(n.Detail))
+                                {
+                                    <p class="notification-item__detail">@n.Detail</p>
+                                }
+                                <time class="notification-item__time"
+                                      datetime="@n.OccurredAt.ToString("o")"
+                                      title="@n.OccurredAt.ToString("dd MMM yyyy HH:mm") UTC">
+                                    @RelativeTime(n.OccurredAt)
+                                </time>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </aside>
+
+</div><!-- /dashboard-body -->
+
+
+@functions {
+    static string NotificationIconClass(NotificationEventType t) => t switch
+    {
+        NotificationEventType.NewComment    => "comment",
+        NotificationEventType.ReplyToAuthor => "reply",
+        NotificationEventType.ReaderJoined  => "reader",
+        NotificationEventType.SyncCompleted => "sync",
+        _                                   => "comment"
+    };
+
+    static string NotificationSvgIcon(NotificationEventType t) => t switch
+    {
+        NotificationEventType.NewComment =>
+            """<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>""",
+
+        NotificationEventType.ReplyToAuthor =>
+            """<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>""",
+
+        NotificationEventType.ReaderJoined =>
+            """<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>""",
+
+        NotificationEventType.SyncCompleted =>
+            """<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>""",
+
+        _ => ""
+    };
+
+    static string RelativeTime(DateTime utc)
+    {
+        var diff = DateTime.UtcNow - utc;
+        if (diff.TotalMinutes < 2)   return "just now";
+        if (diff.TotalMinutes < 60)  return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours   < 24)  return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays    < 7)   return $"{(int)diff.TotalDays}d ago";
+        return utc.ToString("dd MMM");
+    }
+}
+
+
+@if (Model.AllProjects.Any(p => p.SyncStatus == SyncStatus.Syncing))
+{
+    <style>
+        @@keyframes syncpulse {
+            0%   { width: 15%; }
+            50%  { width: 85%; }
+            100% { width: 15%; }
+        }
+    </style>
+    <script>
+        var syncingProjects = [@Html.Raw(string.Join(",", Model.AllProjects
+            .Where(p => p.SyncStatus == SyncStatus.Syncing)
+            .Select(p => $"\"{p.Id}\"")))];
+
+        function pollSyncStatus() {
+            syncingProjects.forEach(function(projectId) {
+                fetch('/Author/GetSyncStatus?projectId=' + projectId)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.status !== 'Syncing') {
+                            window.location.reload();
+                        } else {
+                            var countEl = document.getElementById('sync-count-' + projectId);
+                            if (countEl && data.sectionsProcessed > 0) {
+                                countEl.textContent = data.sectionsProcessed + ' sections processed';
+                            }
+                        }
+                    })
+                    .catch(function() {});
+            });
+
+            if (syncingProjects.length > 0) {
+                setTimeout(pollSyncStatus, 2000);
+            }
+        }
+
+        setTimeout(pollSyncStatus, 2000);
+    </script>
+}
+

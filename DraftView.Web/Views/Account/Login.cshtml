@@ -1,0 +1,60 @@
+﻿@model LoginViewModel
+@{ ViewData["Title"] = "Sign in"; Layout = "_Layout"; }
+
+<!-- Hero atmosphere image -->
+<div class="site-hero">
+    <div class="site-hero__content">
+        <img src="~/images/DraftView.Logo.web.png"
+             alt="DraftView"
+             style="height:64px; width:auto; display:block; margin:0 auto var(--space-4);" />
+        <div class="site-hero__title">DraftView</div>
+        <div class="site-hero__subtitle">Beta reading, beautifully done</div>
+    </div>
+</div>
+
+<div style="max-width:420px; margin:var(--space-10) auto var(--space-16);">
+
+    <div class="card">
+        <div class="card__body">
+            <h2 style="font-size:var(--text-xl); font-weight:var(--font-bold);
+                       margin-bottom:var(--space-6); text-align:center;">
+                Welcome back
+            </h2>
+
+            <form asp-action="Login" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
+
+                <div asp-validation-summary="All" class="alert alert--error"
+                     style="margin-bottom:var(--space-5);"></div>
+
+                <div class="form-group">
+                    <label asp-for="Email">Email address</label>
+                    <input asp-for="Email" type="email" autocomplete="email" />
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Password">Password</label>
+                    <input asp-for="Password" type="password" autocomplete="current-password" />
+                </div>
+
+                <div class="form-group" style="margin-bottom:var(--space-6);">
+                    <label class="checkbox-label">
+                        <input asp-for="RememberMe" type="checkbox" />
+                        Keep me signed in
+                    </label>
+                </div>
+
+                <div style="text-align:right; margin-bottom:var(--space-4);">
+                    <a asp-action="ForgotPassword" style="font-size:var(--text-sm);">
+                        Forgot your password?
+                    </a>
+                </div>
+                <button type="submit" class="btn btn--primary" style="width:100%;">
+                    Sign in
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
