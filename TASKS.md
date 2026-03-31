@@ -48,7 +48,7 @@ Last updated: 2026-03-31
 - Cloudflare email routing: support@draftview.co.uk -> alastair_clarke@yahoo.com
 
 ### Fix prose font in reader view
-- Scrivener monospace overriding Georgia
+- [PROBABLY ALREADY FIXED] Scrivener monospace overriding Georgia - needs verification after next sync
 
 ### Reader Flow
 - Reactivate reader flow UI (exists but needs wiring)
@@ -58,7 +58,7 @@ Last updated: 2026-03-31
 
 ## ORACLE DEPLOYMENT - Pre-Beta Push
 Required before Becca and Hilary can use the live system:
-- Fix prose font in reader view
+- Fix prose font in reader view (probably already fixed - verify after next sync)
 - Reactivate reader flow
 - Wire up Oracle Email Delivery into IEmailSender
 - Configure Nginx + Certbot for draftview.co.uk on Oracle VM
