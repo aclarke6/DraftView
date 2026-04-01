@@ -1,4 +1,5 @@
-﻿using DraftView.Domain.Enumerations;
+﻿using Microsoft.AspNetCore.HttpOverrides;
+using DraftView.Domain.Enumerations;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using DraftView.Application.Services;
@@ -172,6 +173,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+app.UseForwardedHeaders(new ForwardedHeadersOptions { ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto });
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
@@ -184,5 +186,7 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run();
+
+
 
 
