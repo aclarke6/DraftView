@@ -428,7 +428,7 @@ public class AuthorController(
         var author = await GetAuthorAsync();
         if (author is null) return Forbid();
 
-        var discovered = await discoveryService.DiscoverAsync();
+        var discovered = await discoveryService.DiscoverAsync(author.Id);
         return View(discovered);
     }
 
@@ -445,7 +445,7 @@ public class AuthorController(
             return RedirectToAction("Projects");
         }
 
-        var discovered = await discoveryService.DiscoverAsync();
+        var discovered = await discoveryService.DiscoverAsync(author.Id);
         var toAdd      = discovered
             .Where(d => selectedUuids.Contains(d.ScrivenerRootUuid) && !d.AlreadyAdded)
             .ToList();
@@ -545,6 +545,7 @@ public class AuthorController(
         return result;
     }
 }
+
 
 
 

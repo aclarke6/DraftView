@@ -9,14 +9,16 @@ public sealed class DiscoveryServiceOptions
 }
 
 public class ScrivenerProjectDiscoveryService(
-    IDropboxClient dropboxClient,
+    IDropboxClientFactory clientFactory,
     IScrivenerProjectParser parser,
     IScrivenerProjectRepository projectRepo,
     DiscoveryServiceOptions options) : IScrivenerProjectDiscoveryService
 {
     public async Task<IReadOnlyList<DiscoveredProject>> DiscoverAsync(
-        CancellationToken ct = default)
+        Guid userId, CancellationToken ct = default)
     {
+        var dropboxClient = await clientFactory.CreateForUserAsync(userId, ct);
+
         var existing     = await projectRepo.GetAllAsync(ct);
         var existingKeys = existing
             .Where(p => p.ScrivenerRootUuid is not null && !p.IsSoftDeleted)
@@ -30,7 +32,7 @@ public class ScrivenerProjectDiscoveryService(
         {
             try
             {
-                var projects = await DiscoverFromVaultAsync(folder, existingKeys, ct);
+                var projects = await DiscoverFromVaultAsync(dropboxClient, folder, existingKeys, ct);
                 discovered.AddRange(projects);
             }
             catch
@@ -43,11 +45,12 @@ public class ScrivenerProjectDiscoveryService(
     }
 
     private async Task<IReadOnlyList<DiscoveredProject>> DiscoverFromVaultAsync(
+        IDropboxClient dropboxClient,
         DropboxFileInfo folder,
         HashSet<string> existingKeys,
         CancellationToken ct)
     {
-        var vaultName    = Path.GetFileNameWithoutExtension(folder.Name);
+        var vaultName     = Path.GetFileNameWithoutExtension(folder.Name);
         var localCacheDir = Path.Combine(options.LocalCachePath, "_discovery", vaultName);
         Directory.CreateDirectory(localCacheDir);
 
@@ -103,4 +106,3 @@ public class ScrivenerProjectDiscoveryService(
         };
     }
 }
-

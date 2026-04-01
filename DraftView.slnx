@@ -21,6 +21,8 @@
     <File Path="step5-fix-migration.ps1" />
     <File Path="step6-phase2-infrastructure.ps1" />
     <File Path="step7-phase3-syncservice.ps1" />
+    <File Path="step8-phase4-oauth.ps1" />
+    <File Path="step9-fix-discovery.ps1" />
     <File Path="TASKS.md" />
   </Folder>
   <Folder Name="/Tests/">
