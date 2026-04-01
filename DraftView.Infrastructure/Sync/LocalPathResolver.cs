@@ -25,7 +25,6 @@ public class LocalPathResolver : ILocalPathResolver
         }
         else
         {
-            // Scope cache path per user: {cachePath}/{userId}/{projectFolder}
             var userCachePath = _userId != Guid.Empty
                 ? Path.Combine(_localCachePath, _userId.ToString())
                 : _localCachePath;
@@ -41,7 +40,18 @@ public class LocalPathResolver : ILocalPathResolver
     public async Task<string> ResolveScrivxAsync(ScrivenerProject project, CancellationToken ct = default)
     {
         var vaultPath = await ResolveAsync(project, ct);
-        var dirName   = Path.GetFileNameWithoutExtension(vaultPath);
+
+        // Search for the .scrivx file (case-insensitive on Linux)
+        if (Directory.Exists(vaultPath))
+        {
+            var scrivxFile = Directory.GetFiles(vaultPath, "*.scrivx", SearchOption.TopDirectoryOnly)
+                .FirstOrDefault();
+            if (scrivxFile is not null)
+                return scrivxFile;
+        }
+
+        // Fallback to constructed path
+        var dirName = Path.GetFileNameWithoutExtension(vaultPath);
         return Path.Combine(vaultPath, dirName + ".scrivx");
     }
 }
