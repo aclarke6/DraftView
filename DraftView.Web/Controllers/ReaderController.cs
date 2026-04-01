@@ -25,14 +25,21 @@ public class ReaderController(
         if (user is null)
             return Forbid();
 
-        // Get all projects this reader has active access to
-        var accessRecords = await readerAccessRepo.GetByReaderIdAsync(user.Id);
+        // Authors see all active projects; readers see only their assigned projects
+        var projectIds = user.Role == DraftView.Domain.Enumerations.Role.Author
+            ? (await projectRepo.GetAllAsync())
+                .Where(p => p.IsReaderActive && !p.IsSoftDeleted)
+                .Select(p => p.Id)
+                .ToList()
+            : (await readerAccessRepo.GetByReaderIdAsync(user.Id))
+                .Select(a => a.ProjectId)
+                .ToList();
 
         var viewModel = new ReaderDashboardViewModel();
 
-        foreach (var access in accessRecords)
+        foreach (var projectId in projectIds)
         {
-            var project = await projectRepo.GetByIdAsync(access.ProjectId);
+            var project = await projectRepo.GetByIdAsync(projectId);
             if (project is null || !project.IsReaderActive || project.IsSoftDeleted)
                 continue;
 
@@ -362,6 +369,7 @@ public class ReaderController(
         return groups;
     }
 }
+
 
 
 
