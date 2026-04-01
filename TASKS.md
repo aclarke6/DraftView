@@ -9,14 +9,28 @@ Last updated: 2026-04-01
 - [DONE] ReaderAccess entity (TDD) — ReaderId, AuthorId, ProjectId, GrantedAt, RevokedAt
 - [DONE] IReaderAccessRepository + ReaderAccessRepository
 - [DONE] AddReaderAccess migration applied to dev
-- Wire ReaderAccess into reader dashboard (filter projects by access)
-- Assign readers to projects UI (on Add Project + Readers page)
+- [DONE] Reader dashboard filters projects by ReaderAccess
+- [DONE] Author Reader View bypasses ReaderAccess — sees all active projects
+- [DONE] Multiple active projects per author (removed single-active constraint)
+- [DONE] ReaderController.Read uses chapter.ProjectId (fixes multi-project prose display)
+- Assign readers to projects UI — dual-list (left=no access, right=has access, arrows to move)
+  - Author/Reader/{id} GET — reader detail with dual-list project selector
+  - Author/UpdateReaderAccess POST — grant/reinstate/revoke per project
+  - Link from Readers list to reader detail page
 - Invitation flow: existing account → skip to project assignment UI
-- Auto-assign when author adds project (prompt on Add Project)
+- Auto-assign when author adds project — prompt to assign existing readers
 
 ---
 
 ## SHORT TERM - Go-Live Requirements
+
+### Reader UX
+- Project switcher for readers/authors with multiple projects
+  - Dropdown or tab strip when >1 project accessible
+  - Remember last selected project (cookie or session)
+- Kindle-style resume on login
+  - Redirect reader to last chapter/scene they were reading
+  - Derive from most recent ReadEvent for the reader
 
 ### Dropbox Sync (DONE - production live)
 - [DONE] Per-author DropboxConnection entity (TDD)
@@ -67,9 +81,6 @@ Last updated: 2026-04-01
 - Wire up SMTP (Resend) into IEmailSender (currently Console only)
 - Cloudflare email routing: support@draftview.co.uk -> alastair_clarke@yahoo.com
 
-### Fix prose font in reader view
-- [PROBABLY ALREADY FIXED] Scrivener monospace overriding Georgia - needs verification
-
 ### Reader Flow
 - Reactivate reader flow UI (exists but needs wiring)
 - Reader notification emails (new chapter published)
@@ -117,7 +128,7 @@ Last updated: 2026-04-01
 - Creem preferred (0% fee on first EUR1k/month)
 - Paddle as alternative
 - Backend-agnostic IBillingProvider abstraction
-- Three tiers: Free, Paid, Ultimate
+- Three tiers: Free, Basic, Full (1 / 3 / unlimited active projects)
 
 ### Standalone Sync Worker (DraftView.SyncWorker)
 - Extract SyncBackgroundService into a separate worker service project
@@ -177,10 +188,14 @@ Last updated: 2026-04-01
 
 ## DONE (this project)
 
+- [DONE] ReaderAccess entity + repository (TDD, migration)
+- [DONE] Reader dashboard filters by ReaderAccess per reader
+- [DONE] Author Reader View shows all active projects (bypasses ReaderAccess)
+- [DONE] Multiple active projects per author
+- [DONE] ReaderController.Read fixed for multi-project (uses chapter.ProjectId)
 - [DONE] Per-author Dropbox OAuth connection (DropboxConnection entity, IDropboxClientFactory, OAuth flow)
 - [DONE] IDropboxFileDownloader — full Dropbox sync working end to end
 - [DONE] AuthorId added to ScrivenerProject (migration with backfill)
-- [DONE] ReaderAccess entity + repository (TDD, migration)
 - [DONE] UseForwardedHeaders — fixes OAuth behind Nginx on production
 - [DONE] Case-insensitive .scrivx lookup (Linux compatibility)
 - [DONE] AddProjects background task (fixes 504 timeout)
