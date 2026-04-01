@@ -1,24 +1,44 @@
 ﻿# DraftView Task List
-Last updated: 2026-03-31
+Last updated: 2026-04-01
 
 ---
 
 ## IMMEDIATE - Current Sprint
 
-### Phase 1 Defect Fixes
-- [DONE] 1A - Persist accepted reader display name
-- [DONE] 1B - Invitation email includes expiry info (never-expiring or expiry date)
-- [DONE] 1C - Readers list status wording (Invited / Active / Inactive, no "Pending")
-- [DONE] 1D - Invite email recipient name uses email local part
+### ReaderAccess (In Progress)
+- [DONE] ReaderAccess entity (TDD) — ReaderId, AuthorId, ProjectId, GrantedAt, RevokedAt
+- [DONE] IReaderAccessRepository + ReaderAccessRepository
+- [DONE] AddReaderAccess migration applied to dev
+- Wire ReaderAccess into reader dashboard (filter projects by access)
+- Assign readers to projects UI (on Add Project + Readers page)
+- Invitation flow: existing account → skip to project assignment UI
+- Auto-assign when author adds project (prompt on Add Project)
 
 ---
 
 ## SHORT TERM - Go-Live Requirements
 
+### Dropbox Sync (DONE - production live)
+- [DONE] Per-author DropboxConnection entity (TDD)
+- [DONE] OAuth2 connect/callback/disconnect flow (DropboxController)
+- [DONE] IDropboxClientFactory — per-author token, auto-refresh
+- [DONE] IDropboxFileDownloader — downloads .scriv folder to per-author cache
+- [DONE] SyncService scoped to project AuthorId
+- [DONE] LocalPathResolver per-author cache path ({cachePath}/{userId}/)
+- [DONE] ScrivenerProjectDiscoveryService uses IDropboxClientFactory
+- [DONE] AddAuthorId migration (with backfill)
+- [DONE] AddReaderAccess migration
+- [DONE] UseForwardedHeaders (fixes OAuth behind Nginx)
+- [DONE] Case-insensitive .scrivx file lookup (Linux fix)
+- [DONE] AddProjects fires sync as background task (fixes 504)
+- Incremental sync — only download changed files (cursor-based, post-launch)
+- Dropbox webhook controller for push-based sync (replace polling)
+
+### Author Dashboard - Sync Visibility
+- Show cache file count per project on dashboard (visible sync health indicator)
+- Show last download timestamp alongside last sync timestamp
+
 ### Mobile Author Views
-- [DONE] Scene rows hidden on mobile (tr--scene)
-- [DONE] Sync, Remove, Add Project desktop-only on mobile
-- [DONE] Projects table fits mobile without horizontal scroll
 - Readers page mobile: name, status, Deactivate only (table scrolls - acceptable)
 - Author/Comments view: per chapter, all scenes comments, reply/delete inline
 - Recent Activity: tap to open Author/Comments for that scene
@@ -44,47 +64,46 @@ Last updated: 2026-03-31
 - Cloudflare email routing setup for support@draftview.co.uk
 
 ### Email Infrastructure
-- Wire up Oracle Email Delivery into IEmailSender (currently Console only)
+- Wire up SMTP (Resend) into IEmailSender (currently Console only)
 - Cloudflare email routing: support@draftview.co.uk -> alastair_clarke@yahoo.com
 
 ### Fix prose font in reader view
-- [PROBABLY ALREADY FIXED] Scrivener monospace overriding Georgia - needs verification after next sync
+- [PROBABLY ALREADY FIXED] Scrivener monospace overriding Georgia - needs verification
 
 ### Reader Flow
 - Reactivate reader flow UI (exists but needs wiring)
 - Reader notification emails (new chapter published)
 
----
-
-## ORACLE DEPLOYMENT - Pre-Beta Push
-Required before Becca and Hilary can use the live system:
-- Fix prose font in reader view (probably already fixed - verify after next sync)
+### Production - Pre-Beta Push
+- Fix prose font in reader view (verify after sync)
 - Reactivate reader flow
-- Wire up Oracle Email Delivery into IEmailSender
-- Configure Nginx + Certbot for draftview.co.uk on Oracle VM
-- GitHub Actions or manual deploy script
+- Wire up SMTP email
 - Send password reset emails to becca@the-dunlops.co.uk and hilaryrrb@gmail.com
+- Fail2ban setup on production VM
 
 ---
 
 ## MEDIUM TERM - Core Platform Features
 
-### Publishing (PARTIALLY DONE)
-- [DONE] Chapter-only publishing in Sections view
-- [DONE] Parts/Books excluded from Publish button
-- [DONE] Domain invariant: PublishAsPartOfChapter enforced
-- [DONE] Sections view scroll to chapter after publish/unpublish
+### Publishing
 - Part-level publish cascades all chapters + scenes below
 - Book-level publish cascades everything below
 
 ### Dropbox
+- Incremental sync: cursor-based change detection (only download changed files)
 - Webhook controller for push-based sync (replace polling)
-- Dropbox OAuth2 token refresh (eliminate manual re-auth)
-- In-app Dropbox re-auth page
+- In-app Dropbox re-auth page (deferred to go-live)
 
-### SMTP Email for Production
-- Currently Console only
-- Fix SmtpEmailSender using FromAddress not From
+### BetaBooks Comment Importer
+- [DONE] Comment.CreateForImport domain factory (TDD)
+- [DONE] BetaBooksImporter DevTools command
+- [DONE] 54 comments seeded for Becca and Hilary
+- [DONE] Reader accounts created with real emails
+- Importer scoped to project name (prevents cross-project contamination)
+
+### Add Project Discovery
+- Add The Fractured Lattice as Books 2, 3 (UUIDs known)
+- Dropbox vault scanning
 
 ---
 
@@ -100,24 +119,16 @@ Required before Becca and Hilary can use the live system:
 - Backend-agnostic IBillingProvider abstraction
 - Three tiers: Free, Paid, Ultimate
 
-### BetaBooks Comment Importer
-- [DONE] Comment.CreateForImport domain factory (TDD)
-- [DONE] BetaBooksImporter DevTools command
-- [DONE] 54 comments seeded for Becca and Hilary
-- [DONE] Reader accounts created with real emails
-- Importer scoped to project name (prevents cross-project contamination)
-
-### Add Project Discovery
-- IScrivenerProjectDiscoveryService (exists)
-- Projects page UI (exists)
-- Add The Fractured Lattice as Books 2, 3 (UUIDs known)
-- Dropbox vault scanning
+### Standalone Sync Worker (DraftView.SyncWorker)
+- Extract SyncBackgroundService into a separate worker service project
+- Shares DraftView.Application and DraftView.Infrastructure
+- Cycles through all tenants' projects independently of web app restarts
+- Deployable as a separate process or cheap VM
+- Prerequisite: multi-tenancy model in place
+- Design note: current interfaces are already clean enough for extraction
 
 ### Scrivener Write-back (Phase 2)
 - RTF annotations
-
-### GitHub Repository Rename
-- ScrivenerSync -> DraftView (pending)
 
 ---
 
@@ -166,6 +177,13 @@ Required before Becca and Hilary can use the live system:
 
 ## DONE (this project)
 
+- [DONE] Per-author Dropbox OAuth connection (DropboxConnection entity, IDropboxClientFactory, OAuth flow)
+- [DONE] IDropboxFileDownloader — full Dropbox sync working end to end
+- [DONE] AuthorId added to ScrivenerProject (migration with backfill)
+- [DONE] ReaderAccess entity + repository (TDD, migration)
+- [DONE] UseForwardedHeaders — fixes OAuth behind Nginx on production
+- [DONE] Case-insensitive .scrivx lookup (Linux compatibility)
+- [DONE] AddProjects background task (fixes 504 timeout)
 - [DONE] 1A - Persist accepted reader display name
 - [DONE] 1B - Invitation email expiry info + recipient name (1D combined)
 - [DONE] 1C - Readers list status wording (Invited / Active / Inactive)
@@ -175,13 +193,13 @@ Required before Becca and Hilary can use the live system:
 - [DONE] Toast notifications (fixed position, auto-dismiss, no layout shift)
 - [DONE] Mobile author views: scene rows hidden, desktop-only controls, projects table fix
 - [DONE] SyncService: ILogger added, errors logged to console
-- [DONE] Rebrand: DraftReader -> DraftView throughout (folder, DB, user-secrets, seed)
-- [DONE] CommentStatus enum (New, AuthorReply, Ignore, Consider, Todo, Done, Keep)
+- [DONE] Rebrand: DraftReader -> DraftView throughout
+- [DONE] CommentStatus enum
 - [DONE] Notifications panel on author dashboard
 - [DONE] Comment author display names
 - [DONE] Reply threading (roots + replies in reader and author views)
-- [DONE] Heroicons (Edit, Delete, Reply, Send, Save, Cancel)
-- [DONE] Read.cshtml migrated to CSS classes, no inline styles
+- [DONE] Heroicons
+- [DONE] Read.cshtml migrated to CSS classes
 - [DONE] CSS split into 7 files by concern
 - [DONE] Mobile CSS for reader and author views
 - [DONE] Chapter-only publishing enforced (domain + view)
@@ -190,7 +208,6 @@ Required before Becca and Hilary can use the live system:
 - [DONE] Reader dashboard excludes Part/Book folders
 - [DONE] Sections view: Published badge suppressed on scene rows
 - [DONE] Comment edit and delete (including moderator delete)
-- [DONE] pg.ps1 helper script committed to git
+- [DONE] pg.ps1 helper script
 - [DONE] PowerShell.md scripting standards document
-- [DONE] Get-LineEndings.ps1 reusable utility
-- [DONE] 287 tests, all green
+- [DONE] 320 tests, all green

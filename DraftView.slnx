@@ -16,6 +16,9 @@
     <File Path="Show-ProjectTree.ps1" />
     <File Path="step1-authorid-tests.ps1" />
     <File Path="step10-file-downloader.ps1" />
+    <File Path="step11-reader-access.ps1" />
+    <File Path="step12-reader-dashboard.ps1" />
+    <File Path="step13-fix-activate.ps1" />
     <File Path="step2-fix-callers.ps1" />
     <File Path="step3-dropbox-entity.ps1" />
     <File Path="step4-dropbox-tests.ps1" />

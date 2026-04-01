@@ -89,6 +89,7 @@ builder.Services.AddScoped<IReadEventRepository, ReadEventRepository>();
 builder.Services.AddScoped<IUserNotificationPreferencesRepository, UserNotificationPreferencesRepository>();
 builder.Services.AddScoped<IEmailDeliveryLogRepository, EmailDeliveryLogRepository>();
 builder.Services.AddScoped<IDropboxConnectionRepository, DropboxConnectionRepository>();
+builder.Services.AddScoped<IReaderAccessRepository, ReaderAccessRepository>();
 
 // ---------------------------------------------------------------------------
 // Application services
@@ -186,6 +187,7 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run();
+
 
 
 

@@ -1,1 +1,1 @@
-SELECT "Id", "Email" FROM "AppUsers" WHERE "Role" = 'Author';
+SELECT "Name", "IsReaderActive" FROM "Projects" WHERE "IsSoftDeleted" = false;

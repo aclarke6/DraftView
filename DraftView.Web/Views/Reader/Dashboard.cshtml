@@ -2,13 +2,13 @@
 @{ ViewData["Title"] = "My Reading"; }
 
 <!-- Atmosphere hero -->
-<div class="site-hero reader-dashboard__hero" >
+<div class="site-hero reader-dashboard__hero">
     <div class="site-hero__content">
         <div class="site-hero__title">Welcome back</div>
         <div class="site-hero__subtitle">
-            @if (Model.ProjectName is not null)
+            @if (Model.HasProjects)
             {
-                @($"{Model.ReadChapters} of {Model.TotalChapters} chapters read")
+                @($"{Model.TotalReadChapters} of {Model.TotalChapters} chapters read across {Model.Projects.Count} {(Model.Projects.Count == 1 ? "manuscript" : "manuscripts")}")
             }
             else
             {
@@ -20,7 +20,7 @@
 
 <div class="reader-dashboard">
 
-    @if (Model.ProjectName is null)
+    @if (!Model.HasProjects)
     {
         <div class="card">
             <div class="card__body reader-dashboard__empty-body">
@@ -35,70 +35,67 @@
     }
     else
     {
-        <!-- Progress bar -->
-        <div class="card reader-dashboard__progress-card">
-            <div class="card__body">
-                <div class="reader-dashboard__progress-header">
-                    <span class="reader-dashboard__progress-title">@Model.ProjectName</span>
-                    <span class="reader-dashboard__progress-meta">@Model.ReadChapters / @Model.TotalChapters chapters</span>
-                </div>
-                @{
-                    var pct = Model.TotalChapters > 0
-                        ? (int)((double)Model.ReadChapters / Model.TotalChapters * 100)
-                        : 0;
-                }
-                <div class="reader-dashboard__progress-track">
-                    <div class="reader-dashboard__progress-fill" style="width:@(pct)%;"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Chapter list -->
-        <div class="card">
-            <div class="card__body reader-dashboard__chapters-body">
-                @if (!Model.PublishedChapters.Any())
-                {
-                    <p class="reader-dashboard__chapters-empty">No chapters published yet.</p>
-                }
-                else
-                {
-                    <div class="reader-dashboard__table-wrap">
-                        <table class="reader-dashboard__table">
-                            <thead>
-                                <tr class="reader-dashboard__row">
-                                    <th class="reader-dashboard__head">Chapter</th>
-                                    <th class="reader-dashboard__head">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var item in Model.PublishedChapters)
-                                {
-                                    <tr class="reader-dashboard__row">
-                                        <td class="reader-dashboard__cell reader-dashboard__cell--chapter">
-                                            <a asp-controller="Reader" asp-action="Read"
-                                                   asp-route-id="@item.Chapter.Id" 
-                                            class="reader-dashboard__chapter-link">
-                                                   @item.Chapter.Title
-                                            </a>
-                                        </td>
-                                        <td class="reader-dashboard__cell reader-dashboard__cell--status">
-                                            @if (item.HasRead)
-                                            {
-                                                <span class="reader-dashboard__status reader-dashboard__status--read">Read</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="reader-dashboard__status reader-dashboard__status--new">New</span>
-                                            }
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+        @foreach (var project in Model.Projects)
+        {
+            <!-- Progress bar -->
+            <div class="card reader-dashboard__progress-card">
+                <div class="card__body">
+                    <div class="reader-dashboard__progress-header">
+                        <span class="reader-dashboard__progress-title">@project.ProjectName</span>
+                        <span class="reader-dashboard__progress-meta">@project.ReadChapters / @project.TotalChapters chapters</span>
                     </div>
-                }
+                    <div class="reader-dashboard__progress-track">
+                        <div class="reader-dashboard__progress-fill" style="width:@(project.ProgressPercent)%;"></div>
+                    </div>
+                </div>
             </div>
-        </div>
+
+            <!-- Chapter list -->
+            <div class="card">
+                <div class="card__body reader-dashboard__chapters-body">
+                    @if (!project.PublishedChapters.Any())
+                    {
+                        <p class="reader-dashboard__chapters-empty">No chapters published yet.</p>
+                    }
+                    else
+                    {
+                        <div class="reader-dashboard__table-wrap">
+                            <table class="reader-dashboard__table">
+                                <thead>
+                                    <tr class="reader-dashboard__row">
+                                        <th class="reader-dashboard__head">Chapter</th>
+                                        <th class="reader-dashboard__head">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in project.PublishedChapters)
+                                    {
+                                        <tr class="reader-dashboard__row">
+                                            <td class="reader-dashboard__cell reader-dashboard__cell--chapter">
+                                                <a asp-controller="Reader" asp-action="Read"
+                                                   asp-route-id="@item.Chapter.Id"
+                                                   class="reader-dashboard__chapter-link">
+                                                    @item.Chapter.Title
+                                                </a>
+                                            </td>
+                                            <td class="reader-dashboard__cell reader-dashboard__cell--status">
+                                                @if (item.HasRead)
+                                                {
+                                                    <span class="reader-dashboard__status reader-dashboard__status--read">Read</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="reader-dashboard__status reader-dashboard__status--new">New</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
     }
 </div>
-

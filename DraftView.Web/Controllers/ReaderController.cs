@@ -16,6 +16,7 @@ public class ReaderController(
     ICommentService commentService,
     IReadingProgressService progressService,
     IUserRepository userRepository,
+    IReaderAccessRepository readerAccessRepo,
     ILogger<ReaderController> logger) : BaseController(userRepository)
 {
     public async Task<IActionResult> Dashboard()
@@ -24,38 +25,49 @@ public class ReaderController(
         if (user is null)
             return Forbid();
 
-        var project = await projectRepo.GetReaderActiveProjectAsync();
-        if (project is null)
-            return View(new ReaderDashboardViewModel { ProjectName = null });
+        // Get all projects this reader has active access to
+        var accessRecords = await readerAccessRepo.GetByReaderIdAsync(user.Id);
 
-        var allSections = await sectionRepo.GetByProjectIdAsync(project.Id);
-        var folderChildIds = allSections
-            .Where(s => s.NodeType == NodeType.Folder && s.ParentId.HasValue)
-            .Select(s => s.ParentId!.Value)
-            .ToHashSet();
+        var viewModel = new ReaderDashboardViewModel();
 
-        var publishedChapters = allSections
-            .Where(s => s.NodeType == NodeType.Folder && s.IsPublished && !s.IsSoftDeleted
-                        && !folderChildIds.Contains(s.Id))
-            .OrderBy(s => s.SortOrder)
-            .ToList();
-
-        var chaptersWithProgress = new List<ChapterProgressViewModel>();
-        foreach (var chapter in publishedChapters)
+        foreach (var access in accessRecords)
         {
-            var hasRead = await progressService.HasReadSectionAsync(user.Id, chapter.Id);
-            chaptersWithProgress.Add(new ChapterProgressViewModel {
-                Chapter = chapter,
-                HasRead = hasRead
+            var project = await projectRepo.GetByIdAsync(access.ProjectId);
+            if (project is null || !project.IsReaderActive || project.IsSoftDeleted)
+                continue;
+
+            var allSections = await sectionRepo.GetByProjectIdAsync(project.Id);
+            var folderChildIds = allSections
+                .Where(s => s.NodeType == NodeType.Folder && s.ParentId.HasValue)
+                .Select(s => s.ParentId!.Value)
+                .ToHashSet();
+
+            var publishedChapters = allSections
+                .Where(s => s.NodeType == NodeType.Folder && s.IsPublished && !s.IsSoftDeleted
+                            && !folderChildIds.Contains(s.Id))
+                .OrderBy(s => s.SortOrder)
+                .ToList();
+
+            var chaptersWithProgress = new List<ChapterProgressViewModel>();
+            foreach (var chapter in publishedChapters)
+            {
+                var hasRead = await progressService.HasReadSectionAsync(user.Id, chapter.Id);
+                chaptersWithProgress.Add(new ChapterProgressViewModel {
+                    Chapter = chapter,
+                    HasRead = hasRead
+                });
+            }
+
+            viewModel.Projects.Add(new ReaderProjectViewModel {
+                ProjectId       = project.Id,
+                ProjectName     = project.Name,
+                TotalChapters   = publishedChapters.Count,
+                ReadChapters    = chaptersWithProgress.Count(c => c.HasRead),
+                PublishedChapters = chaptersWithProgress
             });
         }
 
-        return View(new ReaderDashboardViewModel {
-            ProjectName = project.Name,
-            PublishedChapters = chaptersWithProgress,
-            TotalChapters = publishedChapters.Count,
-            ReadChapters = chaptersWithProgress.Count(c => c.HasRead)
-        });
+        return View(viewModel);
     }
 
     public async Task<IActionResult> Index() => RedirectToAction("Dashboard");
@@ -350,6 +362,7 @@ public class ReaderController(
         return groups;
     }
 }
+
 
 
 
