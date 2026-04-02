@@ -365,8 +365,12 @@
                             window.location.reload();
                         } else {
                             var countEl = document.getElementById('sync-count-' + projectId);
-                            if (countEl && data.sectionsProcessed > 0) {
-                                countEl.textContent = data.sectionsProcessed + ' sections processed';
+                            if (countEl) {
+                                if (data.filesDownloaded > 0 && data.sectionsProcessed === 0) {
+                                    countEl.textContent = 'Downloading... ' + data.filesDownloaded + ' files';
+                                } else if (data.sectionsProcessed > 0) {
+                                    countEl.textContent = data.filesDownloaded + ' files • ' + data.sectionsProcessed + ' sections processed';
+                                }
                             }
                         }
                     })
@@ -381,6 +385,7 @@
         setTimeout(pollSyncStatus, 2000);
     </script>
 }
+
 
 
 

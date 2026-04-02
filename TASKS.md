@@ -32,6 +32,12 @@ All new domain entities require tests before implementation. No exceptions.
 ### CSS Version — MANDATORY on Every CSS Change
 Every script that modifies any `.css` file must also bump `--css-version` in `DraftView.Core.css`. Format: `v{YYYY}-{MM}-{DD}-{n}` where n increments if multiple changes on the same day. Never skip this step.
 
+Always use regex replace so it matches whatever version is currently there — never hardcode the expected current value:
+```powershell
+$core = $core -replace '--css-version: "v[^"]+";', '--css-version: "v2026-04-02-1";'
+if ($core -notmatch 'v2026-04-02-1') { Write-Host "ERROR: bump failed" -ForegroundColor Red; exit 1 }
+```
+
 ### Controller Action Guards — MANDATORY
 Every public action in `AuthorController` must call `RequireAuthorAsync()` or `GetAuthorAsync()` as the first statement. No exceptions. Before adding any new action, verify the guard is present. When auditing, use:
 ```
@@ -56,14 +62,37 @@ For complex files, prefer full rewrites delivered as `.ps1` files over inline re
 
 ### Scene Status Not Updating on Sync
 - **Reported:** 2026-04-02, production
-- **Symptom:** Scenes updated in Scrivener (e.g. Chapter 13 scenes marked First Draft) are not reflecting updated status after sync. Chapter remains unpublishable.
-- **Likely cause:** SyncService reconciliation creates new sections but does not update `Status` field on existing sections when Scrivener label changes.
-- **Impact:** Author cannot publish chapters where scenes were previously unstatused and later updated in Scrivener.
-- **Fix:** Review `SyncService` reconciliation — ensure existing section `Status` is updated from parsed Scrivener data on every sync, not just on creation.
+- **Status:** RESOLVED — not a code defect. Scrivener defers metadata writes until explicit save. Author must save in Scrivener before triggering a DraftView sync for status changes to be picked up. Code is correct end-to-end.
+- **Workflow note:** Document in author help: always save in Scrivener (Ctrl+S) before syncing in DraftView.
 
 ---
 
 ## IMMEDIATE - Current Sprint
+
+### Sync Progress: Live File Count During Download (High Priority)
+- **Why:** Dropbox downloads for large projects (e.g. Fractured Lattice) take significant time. The author sees "Syncing... Starting..." with no feedback, making the UI feel stuck.
+- Show a running count of files downloaded during the Dropbox download phase, e.g. "Downloading... 142 / ~800 files"
+- `ISyncProgressTracker` already exists — extend it to track file download count
+- `DropboxFileDownloader` calls `client.DownloadFolderAsync` — surface per-file progress from there
+- Dashboard polls for sync status already — add file count to the polled response
+- Display below the progress bar on the Projects table row while syncing
+
+### Account/Settings Page (Both Roles)
+- **Why:** Authors have no way to reach Dropbox settings from the nav. Readers have an Account link but the page doesn't exist. Both roles need account management in one place.
+- Add "Account" nav link for authors in `_Layout.cshtml` (currently only shown to readers)
+- `Account/Settings` renders differently by role — shared fields at top, role-specific panel below
+- **Shared (Author + Reader):**
+  - Display name change
+  - Password change (inline form using current password as verification — not email reset)
+  - Email change
+- **Author only (below account fields):**
+  - Dropbox connection panel: shows Connected/Disconnected status, Connect/Reconnect/Disconnect button
+  - Replaces orphaned `/Dropbox/Settings` as the author entry point for Dropbox management
+  - `/Dropbox/Settings` controller actions remain — `Account/Settings` links through to them
+- **Reader only:**
+  - No additional fields at this stage
+  - BragSheet and Genre preferences are deferred to Reader Marketplace (tenancy phase)
+- **Note:** The existing ForgotPassword/ResetPassword email flow on the login page covers unauthenticated reset. `Account/Settings` provides authenticated password change only.
 
 ### ReaderAccess (In Progress)
 - [DONE] ReaderAccess entity (TDD) — ReaderId, AuthorId, ProjectId, GrantedAt, RevokedAt
@@ -76,9 +105,8 @@ For complex files, prefer full rewrites delivered as `.ps1` files over inline re
 - [DONE] Dual-list project assignment UI (Author/ManageReaderAccess)
 - [DONE] Readers list redesign — name as link, icon buttons (NoSymbol, Restore, Delete)
 - [DONE] AuthorController access control — RequireAuthorAsync guard on all actions
-- Fix Reader/Read LHS sidebar — position:sticky not working, parent container issue
-- Reader Dashboard layout redesign — LHS sticky book list, RHS chapter list for selected book
-- Reader Account page (/Reader/Account) — display name, password change, email change
+- [HELD] Fix Reader/Read LHS sidebar — position:sticky not working, parent container issue
+- [HELD] Reader Dashboard layout redesign — LHS sticky book list, RHS chapter list for selected book
 - Invitation flow: existing account → skip to project assignment UI
 - Auto-assign when author adds project — prompt to assign existing readers
 - Fix Deactivate to also revoke all ReaderAccess records for this author
@@ -108,12 +136,19 @@ For complex files, prefer full rewrites delivered as `.ps1` files over inline re
 - [DONE] UseForwardedHeaders (fixes OAuth behind Nginx)
 - [DONE] Case-insensitive .scrivx file lookup (Linux fix)
 - [DONE] AddProjects fires sync as background task (fixes 504)
-- Incremental sync — only download changed files (cursor-based, post-launch)
+- Dropbox OAuth2 token refresh — automatic refresh using stored refresh token (medium-term)
 - Dropbox webhook controller for push-based sync (replace polling)
+- Incremental sync — only download changed files (cursor-based, post-launch)
 
 ### Author Dashboard - Sync Visibility
+- [DONE via ISyncProgressTracker] Progress bar during sync
+- Live file download count during Dropbox download phase (see Immediate above)
 - Show cache file count per project on dashboard (visible sync health indicator)
 - Show last download timestamp alongside last sync timestamp
+
+### Config: Move Non-Secret Settings Out of User Secrets
+- [DONE] `LocalCachePath` moved to `appsettings.json` (was incorrectly in user secrets)
+- Audit remaining user secrets — anything not a password/token/key belongs in appsettings
 
 ### Mobile Author Views
 - Readers page mobile: name, status, Deactivate only (table scrolls - acceptable)
@@ -186,6 +221,13 @@ For complex files, prefer full rewrites delivered as `.ps1` files over inline re
 ### Multi-tenancy
 - Account / TenancyMembership model (per v3 business model doc)
 - Mark intentional single-tenancy seams for future refactor
+- Concurrent per-tenant sync — each tenant's sync runs independently; SyncWorker uses one Task per tenant with isolated failure handling
+
+### System Admin
+- Prerequisite: tenancy model in place
+- System Admin page — tenant list, connection status, reader count, disk/data size, tier (Free/Basic/Unlimited)
+- SystemAdmin role attached to support@draftview.co.uk
+- Tenant-level actions: suspend, unsuspend, view audit log
 
 ### ReaderTenant (Tenancy Phase)
 - New table scoping reader state per author/tenant:
@@ -202,6 +244,7 @@ For complex files, prefer full rewrites delivered as `.ps1` files over inline re
   - GenreList (many-to-many) — genres they enjoy beta reading
 - Genre table seeded with common fiction genres
 - Author can browse available readers and invite directly
+- Reader Account/Settings page gains BragSheet and Genre fields at this point
 
 ### Subscription / Billing
 - Creem preferred (0% fee on first EUR1k/month)
@@ -305,4 +348,6 @@ For complex files, prefer full rewrites delivered as `.ps1` files over inline re
 - [DONE] Comment edit and delete (including moderator delete)
 - [DONE] pg.ps1 helper script
 - [DONE] PowerShell.md scripting standards document
+- [DONE] LocalCachePath moved from user secrets to appsettings.json
+- [DONE] Scene status sync confirmed working — Scrivener save timing documented
 - [DONE] 320 tests, all green

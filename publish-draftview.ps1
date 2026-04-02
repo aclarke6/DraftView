@@ -5,6 +5,18 @@ $server  = "ubuntu@193.123.182.208"
 $key     = "C:\Users\alast\.ssh\draftview-prod.key"
 $remote  = "/var/www/draftview"
 
+# ---------------------------------------------------------------------------
+# Guard: require clean git state before publishing
+# ---------------------------------------------------------------------------
+Write-Host "Checking git status..." -ForegroundColor Cyan
+$gitStatus = git status --porcelain
+if ($gitStatus) {
+    Write-Host "ERROR: Uncommitted changes detected. Commit or stash before publishing:" -ForegroundColor Red
+    git status --short
+    exit 1
+}
+Write-Host "Git working tree is clean." -ForegroundColor Green
+
 Write-Host "Cleaning previous publish..." -ForegroundColor Cyan
 if (Test-Path $output) { Remove-Item $output -Recurse -Force }
 
@@ -20,9 +32,6 @@ Write-Host "Copying to server..." -ForegroundColor Cyan
 scp -i $key -r "$output/*" "${server}:${remote}"
 if ($LASTEXITCODE -ne 0) { Write-Host "SCP failed." -ForegroundColor Red; exit 1 }
 
-# Note: migrations run automatically on startup via db.Database.Migrate() in Program.cs
-# The above is informational â€” the restart below will apply them
-
 Write-Host "Restarting service..." -ForegroundColor Cyan
 ssh -i $key $server "sudo systemctl restart draftview"
 if ($LASTEXITCODE -ne 0) { Write-Host "Restart failed." -ForegroundColor Red; exit 1 }
@@ -30,5 +39,4 @@ if ($LASTEXITCODE -ne 0) { Write-Host "Restart failed." -ForegroundColor Red; ex
 Write-Host "Verifying service is running..." -ForegroundColor Cyan
 Start-Sleep -Seconds 3
 ssh -i $key $server "sudo systemctl is-active draftview"
-
 Write-Host "Done." -ForegroundColor Green

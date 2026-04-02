@@ -123,7 +123,8 @@ public class AuthorController(
             status            = project.SyncStatus.ToString(),
             errorMessage      = project.SyncErrorMessage,
             sectionsProcessed = progress?.SectionsProcessed ?? 0,
-            currentSection    = progress?.CurrentSection ?? string.Empty
+            currentSection    = progress?.CurrentSection ?? string.Empty,
+            filesDownloaded   = progress?.FilesDownloaded ?? 0
         });
     }
 
@@ -657,6 +658,7 @@ public class AuthorController(
         return result;
     }
 }
+
 
 
 
