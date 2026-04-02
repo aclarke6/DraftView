@@ -1,6 +1,8 @@
-﻿@using DraftView.Web.Models
+﻿@using DraftView.Web.Infrastructure
+@using DraftView.Web.Models
 @model IReadOnlyList<ReaderRowViewModel>
 @{ ViewData["Title"] = "Beta Readers"; }
+
 <div class="page-header">
     <div>
         <h1 class="page-title">Beta Readers</h1>
@@ -8,6 +10,7 @@
     </div>
     <a asp-action="InviteReader" class="btn btn--primary">Invite a Reader</a>
 </div>
+
 @if (!Model.Any())
 {
     <div class="empty-state">
@@ -32,8 +35,11 @@ else
                 @foreach (var r in Model)
                 {
                     <tr>
-                        <td>@r.DisplayName</td>
-                        <td style="color:var(--color-ink-muted);">@r.Email</td>
+                        <td>
+                            <a asp-action="ManageReaderAccess" asp-route-readerId="@r.Id"
+                               style="font-weight: var(--font-medium);">@r.DisplayName</a>
+                        </td>
+                        <td style="color:var(--color-text-muted);">@r.Email</td>
                         <td>
                             @switch (r.Status)
                             {
@@ -48,26 +54,37 @@ else
                                     break;
                             }
                         </td>
-                        <td style="color:var(--color-ink-muted); font-size:var(--text-sm);">
+                        <td style="color:var(--color-text-muted); font-size:var(--text-sm);">
                             @(r.ActivatedAt.HasValue ? r.ActivatedAt.Value.ToString("dd MMM yyyy") : "-")
                         </td>
                         <td>
-                            @if (r.Status == ReaderStatus.Active)
-                            {
-                                <form asp-action="DeactivateReader" method="post" style="display:inline">
+                            <div class="actions-cell">
+                                @if (r.Status == ReaderStatus.Active)
+                                {
+                                    <form asp-action="DeactivateReader" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="userId" value="@r.Id" />
+                                        <button type="submit" class="comment-action-btn comment-action-btn--danger"
+                                                title="Deactivate reader">@Html.Raw(Icons.NoSymbol())</button>
+                                    </form>
+                                }
+                                else if (r.Status == ReaderStatus.Inactive)
+                                {
+                                    <form asp-action="ReactivateReader" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="userId" value="@r.Id" />
+                                        <button type="submit" class="comment-action-btn"
+                                                title="Reactivate reader">@Html.Raw(Icons.Restore())</button>
+                                    </form>
+                                }
+                                <form asp-action="SoftDeleteReader" method="post"
+                                      onsubmit="return confirm('Remove @r.DisplayName from your readers list?')">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="userId" value="@r.Id" />
-                                    <button type="submit" class="btn btn--danger btn--sm">Deactivate</button>
+                                    <button type="submit" class="comment-action-btn comment-action-btn--danger"
+                                            title="Remove reader">@Html.Raw(Icons.Delete())</button>
                                 </form>
-                            }
-                            else if (r.Status == ReaderStatus.Inactive)
-                            {
-                                <form asp-action="ReactivateReader" method="post" style="display:inline">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="userId" value="@r.Id" />
-                                    <button type="submit" class="btn btn--secondary btn--sm">Reactivate</button>
-                                </form>
-                            }
+                            </div>
                         </td>
                     </tr>
                 }
@@ -75,3 +92,5 @@ else
         </table>
     </div>
 }
+
+

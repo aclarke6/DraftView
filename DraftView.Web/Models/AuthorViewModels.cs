@@ -40,3 +40,12 @@ public class InviteReaderViewModel
     public DateTime? ExpiresAt { get; set; }
 }
 
+public class ReaderAccessViewModel
+{
+    public Guid ReaderId { get; init; }
+    public string DisplayName { get; init; } = string.Empty;
+    public string Email { get; init; } = string.Empty;
+    public ReaderStatus Status { get; init; }
+    public IReadOnlyList<ScrivenerProject> ProjectsWithAccess { get; init; } = [];
+    public IReadOnlyList<ScrivenerProject> ProjectsWithoutAccess { get; init; } = [];
+}

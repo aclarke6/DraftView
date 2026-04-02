@@ -23,6 +23,7 @@ public class AuthorController(
     IInvitationRepository invitationRepo,
     IServiceScopeFactory scopeFactory,
     ISyncProgressTracker progressTracker,
+    IReaderAccessRepository readerAccessRepo,
     ILogger<AuthorController> logger) : BaseController(userRepo)
 {
     // ---------------------------------------------------------------------------
@@ -61,6 +62,9 @@ public class AuthorController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Sync(Guid projectId)
     {
+        var guard = await RequireAuthorAsync();
+        if (guard is not null) return guard;
+
         var project = await projectRepo.GetByIdAsync(projectId);
         if (project is not null)
         {
@@ -106,6 +110,9 @@ public class AuthorController(
     [HttpGet]
     public async Task<IActionResult> GetSyncStatus(Guid projectId)
     {
+        var guard = await RequireAuthorAsync();
+        if (guard is not null) return guard;
+
         var project = await projectRepo.GetByIdAsync(projectId);
         if (project is null) return NotFound();
 
@@ -127,6 +134,9 @@ public class AuthorController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ActivateProject(Guid projectId)
     {
+        var guard = await RequireAuthorAsync();
+        if (guard is not null) return guard;
+
         var project = await projectRepo.GetByIdAsync(projectId);
         if (project is null) return NotFound();
 
@@ -141,6 +151,9 @@ public class AuthorController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeactivateProject(Guid projectId)
     {
+        var guard = await RequireAuthorAsync();
+        if (guard is not null) return guard;
+
         var project = await projectRepo.GetByIdAsync(projectId);
         if (project is null) return NotFound();
 
@@ -156,6 +169,9 @@ public class AuthorController(
     // ---------------------------------------------------------------------------
     public async Task<IActionResult> Sections(Guid projectId)
     {
+        var guard = await RequireAuthorAsync();
+        if (guard is not null) return guard;
+
         var project = await projectRepo.GetByIdAsync(projectId);
         if (project is null) return NotFound();
 
@@ -219,6 +235,9 @@ public class AuthorController(
     // ---------------------------------------------------------------------------
     public async Task<IActionResult> Readers()
     {
+        var guard = await RequireAuthorAsync();
+        if (guard is not null) return guard;
+
         var readers = await userRepo.GetAllBetaReadersAsync();
 
         var rows = new List<ReaderRowViewModel>();
@@ -490,6 +509,103 @@ public class AuthorController(
     }
 
     // ---------------------------------------------------------------------------
+    // Reader project access management
+    // ---------------------------------------------------------------------------
+    [HttpGet]
+    public async Task<IActionResult> ManageReaderAccess(Guid readerId)
+    {
+        var author = await GetAuthorAsync();
+        if (author is null) return Forbid();
+
+        var reader = await userRepo.GetByIdAsync(readerId);
+        if (reader is null) return NotFound();
+
+        var allProjects = await projectRepo.GetAllAsync();
+        var activeProjects = allProjects.Where(p => !p.IsSoftDeleted).ToList();
+
+        var accessRecords = await readerAccessRepo.GetByReaderIdAsync(readerId);
+        var accessProjectIds = accessRecords.Select(a => a.ProjectId).ToHashSet();
+
+        var invitation = await invitationRepo.GetByUserIdAsync(readerId);
+        var isPending = invitation is not null
+                     && invitation.Status == Domain.Enumerations.InvitationStatus.Pending;
+        var status = reader.IsActive
+            ? ReaderStatus.Active
+            : isPending ? ReaderStatus.Invited : ReaderStatus.Inactive;
+
+        return View(new ReaderAccessViewModel
+        {
+            ReaderId            = reader.Id,
+            DisplayName         = reader.DisplayName,
+            Email               = reader.Email,
+            Status              = status,
+            ProjectsWithAccess    = activeProjects.Where(p => accessProjectIds.Contains(p.Id)).ToList(),
+            ProjectsWithoutAccess = activeProjects.Where(p => !accessProjectIds.Contains(p.Id)).ToList()
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateReaderAccess(
+        Guid readerId, List<Guid> grantIds, List<Guid> revokeIds)
+    {
+        var author = await GetAuthorAsync();
+        if (author is null) return Forbid();
+
+        foreach (var projectId in grantIds)
+        {
+            var existing = await readerAccessRepo.GetByReaderAndProjectAsync(readerId, projectId);
+            if (existing is null)
+            {
+                var access = ReaderAccess.Grant(readerId, author.Id, projectId);
+                await readerAccessRepo.AddAsync(access);
+            }
+            else if (!existing.IsActive)
+            {
+                existing.Reinstate();
+            }
+        }
+
+        foreach (var projectId in revokeIds)
+        {
+            var existing = await readerAccessRepo.GetByReaderAndProjectAsync(readerId, projectId);
+            existing?.Revoke();
+        }
+
+        await GetUnitOfWork().SaveChangesAsync();
+        TempData["Success"] = "Project access updated.";
+        TempData["Success"] = "Project access updated.";
+        return RedirectToAction("Readers");
+    }
+
+    // ---------------------------------------------------------------------------
+    // Soft-delete reader (bin)
+    // ---------------------------------------------------------------------------
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SoftDeleteReader(Guid userId)
+    {
+        var author = await GetAuthorAsync();
+        if (author is null) return Forbid();
+
+        // Revoke all ReaderAccess for this author
+        var allProjects = await projectRepo.GetAllAsync();
+        foreach (var project in allProjects.Where(p => !p.IsSoftDeleted))
+        {
+            var access = await readerAccessRepo.GetByReaderAndProjectAsync(userId, project.Id);
+            access?.Revoke();
+        }
+
+        // Deactivate the user
+        try { await userService.DeactivateUserAsync(userId, author.Id); }
+        catch { /* already inactive */ }
+
+        await GetUnitOfWork().SaveChangesAsync();
+        TempData["Success"] = "Reader removed.";
+        return RedirectToAction("Readers");
+    }
+
+    // ---------------------------------------------------------------------------
     // Private helpers
     // ---------------------------------------------------------------------------
     private async Task<User?> GetAuthorAsync()
@@ -541,6 +657,10 @@ public class AuthorController(
         return result;
     }
 }
+
+
+
+
 
 
 

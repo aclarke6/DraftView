@@ -1,0 +1,148 @@
+﻿@using DraftView.Web.Infrastructure
+@model DraftView.Web.Models.ReaderAccessViewModel
+@{ ViewData["Title"] = "Manage Project Access"; }
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">@Model.DisplayName</h1>
+        <p class="page-subtitle">@Model.Email &mdash;
+            @switch (Model.Status)
+            {
+                case DraftView.Web.Models.ReaderStatus.Active:
+                    <span class="badge badge--success">Active</span>
+                    break;
+                case DraftView.Web.Models.ReaderStatus.Invited:
+                    <span class="badge badge--neutral">Invited</span>
+                    break;
+                default:
+                    <span class="badge badge--neutral">Inactive</span>
+                    break;
+            }
+        </p>
+    </div>
+</div>
+
+<form asp-action="UpdateReaderAccess" method="post" id="access-form">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="readerId" value="@Model.ReaderId" />
+
+    <div class="dual-list">
+        <div class="dual-list__panel">
+            <div class="dual-list__header">No Access</div>
+            <select id="no-access" multiple class="dual-list__list" size="12">
+                @foreach (var p in Model.ProjectsWithoutAccess)
+                {
+                    <option value="@p.Id">@p.Name</option>
+                }
+            </select>
+        </div>
+
+        <div class="dual-list__controls">
+            <button type="button" class="btn btn--secondary dual-list__arrow" id="grant-btn" title="Grant access">&#8594;</button>
+            <button type="button" class="btn btn--secondary dual-list__arrow" id="revoke-btn" title="Revoke access">&#8592;</button>
+        </div>
+
+        <div class="dual-list__panel">
+            <div class="dual-list__header">Has Access</div>
+            <select id="has-access" multiple class="dual-list__list" size="12">
+                @foreach (var p in Model.ProjectsWithAccess)
+                {
+                    <option value="@p.Id">@p.Name</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    <div id="grant-inputs"></div>
+    <div id="revoke-inputs"></div>
+
+    <div class="dual-list__actions">
+        <button type="submit" class="btn btn--primary">
+            @Html.Raw(Icons.Save()) Save
+        </button>
+        <a asp-action="Readers" class="btn btn--secondary">
+            @Html.Raw(Icons.Cancel()) Cancel
+        </a>
+    </div>
+</form>
+
+<style>
+.dual-list {
+    display: flex;
+    gap: var(--space-4);
+    align-items: center;
+    margin-top: var(--space-6);
+}
+.dual-list__panel {
+    flex: 1;
+    min-width: 0;
+}
+.dual-list__header {
+    font-size: var(--text-xs);
+    font-weight: var(--font-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-2);
+}
+.dual-list__list {
+    width: 100%;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius);
+    padding: var(--space-2);
+    font-size: var(--text-sm);
+    background: var(--color-surface);
+    min-height: 240px;
+    cursor: pointer;
+}
+.dual-list__controls {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    flex-shrink: 0;
+}
+.dual-list__arrow {
+    font-size: var(--text-lg);
+    padding: var(--space-2) var(--space-4);
+}
+.dual-list__actions {
+    display: flex;
+    gap: var(--space-3);
+    margin-top: var(--space-6);
+    align-items: center;
+}
+</style>
+
+<script>
+document.getElementById('grant-btn').addEventListener('click', function () {
+    moveSelected('no-access', 'has-access');
+});
+document.getElementById('revoke-btn').addEventListener('click', function () {
+    moveSelected('has-access', 'no-access');
+});
+
+function moveSelected(fromId, toId) {
+    const from = document.getElementById(fromId);
+    const to   = document.getElementById(toId);
+    Array.from(from.selectedOptions).forEach(opt => to.appendChild(opt));
+}
+
+document.getElementById('access-form').addEventListener('submit', function () {
+    const grantContainer  = document.getElementById('grant-inputs');
+    const revokeContainer = document.getElementById('revoke-inputs');
+    grantContainer.innerHTML  = '';
+    revokeContainer.innerHTML = '';
+
+    Array.from(document.getElementById('has-access').options).forEach(opt => {
+        const input = document.createElement('input');
+        input.type = 'hidden'; input.name = 'grantIds'; input.value = opt.value;
+        grantContainer.appendChild(input);
+    });
+
+    Array.from(document.getElementById('no-access').options).forEach(opt => {
+        const input = document.createElement('input');
+        input.type = 'hidden'; input.name = 'revokeIds'; input.value = opt.value;
+        revokeContainer.appendChild(input);
+    });
+});
+</script>

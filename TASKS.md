@@ -1,5 +1,44 @@
 ﻿# DraftView Task List
-Last updated: 2026-04-01
+Last updated: 2026-04-02
+
+---
+
+## ARCHITECTURE RULES
+
+These rules govern all new development and must be applied consistently.
+
+### Tenancy Stance: Tenancy-Agnostic
+Build everything tenancy-agnostic — not tenancy-unaware, not tenancy-enabled.
+
+**The rule:** If a table relates to a reader, project, or author-scoped resource, it must carry an `AuthorId`. When full multi-tenancy arrives, `AuthorId` becomes `TenancyId` and the queries stay the same shape. The refactor is then mechanical (migration + rename), not architectural.
+
+**Checklist for every new entity:**
+- Does it relate to a reader, project, or author-specific resource? → Add `AuthorId`
+- Does the repository method return scoped data? → It must accept or imply an `AuthorId`
+- Is there a global query with no author scope? → That is a bug, not a feature
+
+**What this means in practice:**
+- `ReaderTenant` gets `AuthorId` now, renamed to `TenancyId` later
+- Invitation flow must carry `AuthorId` explicitly
+- Every Readers list query must be scoped to the current author
+- Never use `GetAllBetaReadersAsync()` without an author scope (current usage is a known debt)
+
+### No Tenancy-Enabled Premature Build
+Do not build the full `Tenancy` / `TenancyMembership` entity model until billing is in place and the product is live with a single author. Reader Marketplace is explicitly deferred until then.
+
+### TDD Required for Domain Entities
+All new domain entities require tests before implementation. No exceptions.
+
+### Replacement Scripts Must Verify — MANDATORY
+Every PowerShell string replacement MUST verify the change applied before proceeding to the next step or building. This is not optional. Pattern:
+1. Apply replacement
+2. Compare old and new content — if equal, write ERROR and exit 1
+3. Only then proceed
+
+Silent failures cause cascading bugs and wasted cycles. No exceptions.
+
+### Full File Rewrites Over Regex Patching
+For complex files, prefer full rewrites delivered as `.ps1` files over inline regex patching.
 
 ---
 
@@ -13,12 +52,15 @@ Last updated: 2026-04-01
 - [DONE] Author Reader View bypasses ReaderAccess — sees all active projects
 - [DONE] Multiple active projects per author (removed single-active constraint)
 - [DONE] ReaderController.Read uses chapter.ProjectId (fixes multi-project prose display)
-- Assign readers to projects UI — dual-list (left=no access, right=has access, arrows to move)
-  - Author/Reader/{id} GET — reader detail with dual-list project selector
-  - Author/UpdateReaderAccess POST — grant/reinstate/revoke per project
-  - Link from Readers list to reader detail page
+- [DONE] Dual-list project assignment UI (Author/ManageReaderAccess)
+- [DONE] Readers list redesign — name as link, icon buttons (NoSymbol, Restore, Delete)
+- Fix AuthorController access control — readers can currently access author pages
+- Fix Reader/Read LHS sidebar — position:sticky not working, parent container issue
+- Reader Dashboard layout redesign — LHS sticky book list, RHS chapter list for selected book
+- Reader Account page (/Reader/Account) — display name, password change, email change
 - Invitation flow: existing account → skip to project assignment UI
 - Auto-assign when author adds project — prompt to assign existing readers
+- Fix Deactivate to also revoke all ReaderAccess records for this author
 
 ---
 
@@ -124,6 +166,22 @@ Last updated: 2026-04-01
 - Account / TenancyMembership model (per v3 business model doc)
 - Mark intentional single-tenancy seams for future refactor
 
+### ReaderTenant (Tenancy Phase)
+- New table scoping reader state per author/tenant:
+  - ReaderId, AuthorId, IsActive, IsDeleted, KnownAs, CreatedAt, DeactivatedAt, DeletedAt
+- Deactivate = sets ReaderTenant.IsActive = false + revokes all ReaderAccess (tenant-scoped)
+- Bin/Delete = sets ReaderTenant.IsDeleted = true (hidden from author's Readers list)
+- KnownAs = author's private nickname for this reader
+- Replaces current User.IsActive / User.IsSoftDeleted for tenant-scoped operations
+
+### Reader Marketplace (Tenancy Phase)
+- Reader can make themselves discoverable to other authors
+- ReaderProfile entity:
+  - BragSheet (RTF field) — reader's self-description as a beta reader
+  - GenreList (many-to-many) — genres they enjoy beta reading
+- Genre table seeded with common fiction genres
+- Author can browse available readers and invite directly
+
 ### Subscription / Billing
 - Creem preferred (0% fee on first EUR1k/month)
 - Paddle as alternative
@@ -188,6 +246,7 @@ Last updated: 2026-04-01
 
 ## DONE (this project)
 
+- [DONE] Dual-list project assignment UI (ManageReaderAccess)
 - [DONE] ReaderAccess entity + repository (TDD, migration)
 - [DONE] Reader dashboard filters by ReaderAccess per reader
 - [DONE] Author Reader View shows all active projects (bypasses ReaderAccess)
