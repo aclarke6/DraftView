@@ -18,8 +18,22 @@ public class RtfConverter : IRtfConverter
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
     }
 
-    public string GetContentPath(string scrivFolderPath, string uuid) =>
-        Path.Combine(scrivFolderPath, "Files", "Data", uuid, "content.rtf");
+    public string GetContentPath(string scrivFolderPath, string uuid)
+    {
+        var baseDir = new DirectoryInfo(scrivFolderPath);
+        var filesDir = baseDir.GetDirectories()
+            .FirstOrDefault(d => d.Name.Equals("files", StringComparison.OrdinalIgnoreCase));
+        if (filesDir is null) return Path.Combine(scrivFolderPath, "Files", "Data", uuid, "content.rtf");
+        var dataDir = filesDir.GetDirectories()
+            .FirstOrDefault(d => d.Name.Equals("data", StringComparison.OrdinalIgnoreCase));
+        if (dataDir is null) return Path.Combine(filesDir.FullName, "Data", uuid, "content.rtf");
+        var uuidDir = dataDir.GetDirectories()
+            .FirstOrDefault(d => d.Name.Equals(uuid, StringComparison.OrdinalIgnoreCase));
+        if (uuidDir is null) return Path.Combine(dataDir.FullName, uuid, "content.rtf");
+        var contentFile = uuidDir.GetFiles()
+            .FirstOrDefault(f => f.Name.Equals("content.rtf", StringComparison.OrdinalIgnoreCase));
+        return contentFile?.FullName ?? Path.Combine(uuidDir.FullName, "content.rtf");
+    }
 
     public async Task<RtfConversionResult?> ConvertAsync(
         string scrivFolderPath, string uuid, CancellationToken ct = default)
@@ -48,3 +62,4 @@ public class RtfConverter : IRtfConverter
     private static string ComputeHash(byte[] content) =>
         Convert.ToHexString(SHA256.HashData(content)).ToLowerInvariant();
 }
+

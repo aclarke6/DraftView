@@ -19,6 +19,27 @@ public class RtfConverterTests
     // ---------------------------------------------------------------------------
 
     [Fact]
+    public async Task ConvertAsync_WithLowercaseFilesDataPath_ReturnsContent()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        var dataDir = Path.Combine(tempDir, "files", "data", "SCEN-LC");
+        Directory.CreateDirectory(dataDir);
+        var srcRtf = Path.Combine(_testDataPath, "Files", "Data", "SCEN-001", "content.rtf");
+        File.Copy(srcRtf, Path.Combine(dataDir, "content.rtf"));
+        try
+        {
+            var converter = new RtfConverter();
+            var result = await converter.ConvertAsync(tempDir, "SCEN-LC");
+            Assert.NotNull(result);
+            Assert.NotEmpty(result!.Html);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [Fact]
     public void GetContentPath_ReturnsCorrectPath()
     {
         var converter = new RtfConverter();
@@ -197,3 +218,4 @@ public class RtfConverterTests
         Assert.Contains("Meet me at dawn", result!.Html);
     }
 }
+
