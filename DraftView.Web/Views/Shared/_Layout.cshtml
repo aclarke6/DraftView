@@ -56,18 +56,16 @@ All css files are included here to ensure consistent styling across the site.
                             <a asp-controller="Author" asp-action="Dashboard" class="site-nav__link">Dashboard</a>
                             <a asp-controller="Reader" asp-action="Index" class="site-nav__link">Reader View</a>
                             <a asp-controller="Author" asp-action="Readers" class="site-nav__link">Readers</a>
-                            <a asp-controller="Account" asp-action="Settings" class="site-nav__link">Account</a>
                         }
                         else
                         {
                             <a asp-controller="Reader" asp-action="Dashboard" class="site-nav__link">My Reading</a>
                             <a asp-controller="Reader" asp-action="Index" class="site-nav__link">Browse</a>
-                            <a asp-controller="Account" asp-action="Settings" class="site-nav__link">Account</a>
                         }
                     </div>
 
                     <div class="site-nav__user">
-                        <span>@User.Identity.Name</span>
+                        <a asp-controller="Account" asp-action="Settings" class="site-nav__user-email">@User.Identity.Name</a>
                         <form asp-controller="Account" asp-action="Logout" method="post" class="logout-form">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="site-nav__logout">Sign out</button>
@@ -135,6 +133,8 @@ All css files are included here to ensure consistent styling across the site.
 
 </body>
 </html>
+
+
 
 
 

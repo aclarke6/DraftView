@@ -26,8 +26,8 @@ Build everything tenancy-agnostic — not tenancy-unaware, not tenancy-enabled.
 ### No Tenancy-Enabled Premature Build
 Do not build the full `Tenancy` / `TenancyMembership` entity model until billing is in place and the product is live with a single author. Reader Marketplace is explicitly deferred until then.
 
-### TDD Required for Domain Entities
-All new domain entities require tests before implementation. No exceptions.
+### TDD Required for Domain, Application and Infrastructure Changes
+All new domain entities, application service changes, and infrastructure changes require tests before implementation. No exceptions.
 
 ### CSS Version — MANDATORY on Every CSS Change
 Every script that modifies any `.css` file must also bump `--css-version` in `DraftView.Core.css`. Format: `v{YYYY}-{MM}-{DD}-{n}` where n increments if multiple changes on the same day. Never skip this step.
@@ -47,9 +47,10 @@ and confirm every action has a guard on the following line.
 
 ### Replacement Scripts Must Verify — MANDATORY
 Every PowerShell string replacement MUST verify the change applied before proceeding to the next step or building. This is not optional. Pattern:
-1. Apply replacement
-2. Compare old and new content — if equal, write ERROR and exit 1
-3. Only then proceed
+1. Detect line endings: `$le = if ($content -match "\`r\`n") { "\`r\`n" } else { "\`n" }`
+2. Apply replacement using `$le` in match strings
+3. Compare old and new content — if equal, write ERROR and exit 1
+4. Only then proceed
 
 Silent failures cause cascading bugs and wasted cycles. No exceptions.
 
@@ -59,37 +60,21 @@ For complex files, prefer full rewrites delivered as `.ps1` files over inline re
 ### Script Standards
 - Name format: `Step{N}-{DayAbbrev}-{Description}.ps1` e.g. `Step12-Thur-SyncFileProgress.ps1`
 - Every script starts with a header comment block listing all files changed
+- Every script starts with `cls`
+- Every script ends with the next required command (build or test) — no trailing prose
 - Unicode characters (bullets etc.) must be built via `[char]0xNNNN` — never embed in here-strings
+- Every replacement block must detect line endings before building match strings
+- Every replacement block must verify the change applied before proceeding
+- Scripts 50+ lines delivered as `.ps1` files via `present_files`
+- Short blocks (<50 lines) pasted directly — must still include `cls`, `$le`, and verification
 
 ---
 
 ## BUGS - High Priority
 
-### Scene Status Not Updating on Sync
-- **Reported:** 2026-04-02, production
-- **Status:** RESOLVED — not a code defect. Scrivener defers metadata writes until explicit save. Author must save in Scrivener before triggering a DraftView sync for status changes to be picked up. Code is correct end-to-end.
-- **Workflow note:** Document in author help: always save in Scrivener (Ctrl+S) before syncing in DraftView.
-
 ---
 
 ## IMMEDIATE - Current Sprint
-
-### Account/Settings Page (Both Roles)
-- **Why:** Authors have no way to reach Dropbox settings from the nav. Readers have an Account link but the page doesn't exist. Both roles need account management in one place.
-- Add "Account" nav link for authors in `_Layout.cshtml` (currently only shown to readers)
-- `Account/Settings` renders differently by role — shared fields at top, role-specific panel below
-- **Shared (Author + Reader):**
-  - Display name change
-  - Password change (inline form using current password as verification — not email reset)
-  - Email change
-- **Author only (below account fields):**
-  - Dropbox connection panel: shows Connected/Disconnected status, Connect/Reconnect/Disconnect button
-  - Replaces orphaned `/Dropbox/Settings` as the author entry point for Dropbox management
-  - `/Dropbox/Settings` controller actions remain — `Account/Settings` links through to them
-- **Reader only:**
-  - No additional fields at this stage
-  - BragSheet and Genre preferences are deferred to Reader Marketplace (tenancy phase)
-- **Note:** The existing ForgotPassword/ResetPassword email flow on the login page covers unauthenticated reset. `Account/Settings` provides authenticated password change only.
 
 ### ReaderAccess (In Progress)
 - [DONE] ReaderAccess entity (TDD) — ReaderId, AuthorId, ProjectId, GrantedAt, RevokedAt
@@ -133,6 +118,7 @@ For complex files, prefer full rewrites delivered as `.ps1` files over inline re
 - [DONE] UseForwardedHeaders (fixes OAuth behind Nginx)
 - [DONE] Case-insensitive .scrivx file lookup (Linux fix)
 - [DONE] AddProjects fires sync as background task (fixes 504)
+- [DONE] RtfConverter case-insensitive Files/Data path (Linux fix — Step17)
 - Dropbox OAuth2 token refresh — automatic refresh using stored refresh token (medium-term)
 - Dropbox webhook controller for push-based sync (replace polling)
 - Incremental sync — only download changed files (cursor-based, post-launch)
@@ -308,6 +294,11 @@ For complex files, prefer full rewrites delivered as `.ps1` files over inline re
 
 ## DONE (this project)
 
+- [DONE] Step17-18: RtfConverter case-insensitive path fix (Linux content bug), chapter ordering fix, email-as-nav-link
+- [DONE] Step15-16: Account/Settings page — display name, email, password change; Dropbox panel for authors
+- [DONE] Step15-16: ReaderController.Read fixed — uses chapter.ProjectId
+- [DONE] Step15-16: User.UpdateDisplayName and UpdateEmail domain methods (TDD, 331 tests green)
+- [DONE] Read.cshtml: improved empty scene message
 - [DONE] Step12-14: Sync file download progress — live file count, total files, real percentage progress bar
 - [DONE] LocalCachePath moved from user secrets to appsettings.json
 - [DONE] Scene status sync confirmed working — Scrivener save timing documented
@@ -316,7 +307,6 @@ For complex files, prefer full rewrites delivered as `.ps1` files over inline re
 - [DONE] Reader dashboard filters by ReaderAccess per reader
 - [DONE] Author Reader View shows all active projects (bypasses ReaderAccess)
 - [DONE] Multiple active projects per author
-- [DONE] ReaderController.Read fixed for multi-project (uses chapter.ProjectId)
 - [DONE] Per-author Dropbox OAuth connection (DropboxConnection entity, IDropboxClientFactory, OAuth flow)
 - [DONE] IDropboxFileDownloader — full Dropbox sync working end to end
 - [DONE] AuthorId added to ScrivenerProject (migration with backfill)
@@ -350,4 +340,4 @@ For complex files, prefer full rewrites delivered as `.ps1` files over inline re
 - [DONE] pg.ps1 helper script
 - [DONE] PowerShell.md scripting standards document
 - [DONE] PRINCIPLES.md scripting standards document
-- [DONE] 320 tests, all green
+- [DONE] 331 tests, all green

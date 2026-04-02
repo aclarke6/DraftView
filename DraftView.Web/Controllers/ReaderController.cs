@@ -49,10 +49,12 @@ public class ReaderController(
                 .Select(s => s.ParentId!.Value)
                 .ToHashSet();
 
+            var sortOrderById = allSections.ToDictionary(s => s.Id, s => s.SortOrder);
             var publishedChapters = allSections
                 .Where(s => s.NodeType == NodeType.Folder && s.IsPublished && !s.IsSoftDeleted
                             && !folderChildIds.Contains(s.Id))
-                .OrderBy(s => s.SortOrder)
+                .OrderBy(s => s.ParentId.HasValue ? sortOrderById.GetValueOrDefault(s.ParentId.Value) : 0)
+                .ThenBy(s => s.SortOrder)
                 .ToList();
 
             var chaptersWithProgress = new List<ChapterProgressViewModel>();
@@ -369,6 +371,7 @@ public class ReaderController(
         return groups;
     }
 }
+
 
 
 
