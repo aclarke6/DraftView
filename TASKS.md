@@ -56,6 +56,11 @@ Silent failures cause cascading bugs and wasted cycles. No exceptions.
 ### Full File Rewrites Over Regex Patching
 For complex files, prefer full rewrites delivered as `.ps1` files over inline regex patching.
 
+### Script Standards
+- Name format: `Step{N}-{DayAbbrev}-{Description}.ps1` e.g. `Step12-Thur-SyncFileProgress.ps1`
+- Every script starts with a header comment block listing all files changed
+- Unicode characters (bullets etc.) must be built via `[char]0xNNNN` — never embed in here-strings
+
 ---
 
 ## BUGS - High Priority
@@ -68,14 +73,6 @@ For complex files, prefer full rewrites delivered as `.ps1` files over inline re
 ---
 
 ## IMMEDIATE - Current Sprint
-
-### Sync Progress: Live File Count During Download (High Priority)
-- **Why:** Dropbox downloads for large projects (e.g. Fractured Lattice) take significant time. The author sees "Syncing... Starting..." with no feedback, making the UI feel stuck.
-- Show a running count of files downloaded during the Dropbox download phase, e.g. "Downloading... 142 / ~800 files"
-- `ISyncProgressTracker` already exists — extend it to track file download count
-- `DropboxFileDownloader` calls `client.DownloadFolderAsync` — surface per-file progress from there
-- Dashboard polls for sync status already — add file count to the polled response
-- Display below the progress bar on the Projects table row while syncing
 
 ### Account/Settings Page (Both Roles)
 - **Why:** Authors have no way to reach Dropbox settings from the nav. Readers have an Account link but the page doesn't exist. Both roles need account management in one place.
@@ -141,8 +138,9 @@ For complex files, prefer full rewrites delivered as `.ps1` files over inline re
 - Incremental sync — only download changed files (cursor-based, post-launch)
 
 ### Author Dashboard - Sync Visibility
-- [DONE via ISyncProgressTracker] Progress bar during sync
-- Live file download count during Dropbox download phase (see Immediate above)
+- [DONE] Progress bar during sync
+- [DONE] Live file download count: "Downloading... 180 / 1771 files" (Steps 12-14)
+- [DONE] Real progress bar driven by filesDownloaded/totalFiles percentage (Step 14)
 - Show cache file count per project on dashboard (visible sync health indicator)
 - Show last download timestamp alongside last sync timestamp
 
@@ -310,6 +308,9 @@ For complex files, prefer full rewrites delivered as `.ps1` files over inline re
 
 ## DONE (this project)
 
+- [DONE] Step12-14: Sync file download progress — live file count, total files, real percentage progress bar
+- [DONE] LocalCachePath moved from user secrets to appsettings.json
+- [DONE] Scene status sync confirmed working — Scrivener save timing documented
 - [DONE] Dual-list project assignment UI (ManageReaderAccess)
 - [DONE] ReaderAccess entity + repository (TDD, migration)
 - [DONE] Reader dashboard filters by ReaderAccess per reader
@@ -348,6 +349,5 @@ For complex files, prefer full rewrites delivered as `.ps1` files over inline re
 - [DONE] Comment edit and delete (including moderator delete)
 - [DONE] pg.ps1 helper script
 - [DONE] PowerShell.md scripting standards document
-- [DONE] LocalCachePath moved from user secrets to appsettings.json
-- [DONE] Scene status sync confirmed working — Scrivener save timing documented
+- [DONE] PRINCIPLES.md scripting standards document
 - [DONE] 320 tests, all green

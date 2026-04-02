@@ -47,6 +47,43 @@ public class ForgotPasswordViewModel
     public string Email { get; set; } = string.Empty;
 }
 
+public class SettingsViewModel
+{
+    public string DisplayName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public bool IsAuthor { get; set; }
+    public string? DropboxStatus { get; set; }
+    public DateTime? DropboxAuthorisedAt { get; set; }
+}
+public class ChangeDisplayNameViewModel
+{
+    [Required(ErrorMessage = "Please enter a display name.")]
+    [StringLength(100, MinimumLength = 2, ErrorMessage = "Name must be at least 2 characters.")]
+    public string DisplayName { get; set; } = string.Empty;
+}
+public class ChangeEmailViewModel
+{
+    [Required(ErrorMessage = "Please enter an email address.")]
+    [EmailAddress(ErrorMessage = "Please enter a valid email address.")]
+    public string Email { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Please enter your current password.")]
+    [DataType(DataType.Password)]
+    public string CurrentPassword { get; set; } = string.Empty;
+}
+public class ChangePasswordViewModel
+{
+    [Required(ErrorMessage = "Please enter your current password.")]
+    [DataType(DataType.Password)]
+    public string CurrentPassword { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Please enter a new password.")]
+    [StringLength(100, MinimumLength = 8, ErrorMessage = "Password must be at least 8 characters.")]
+    [DataType(DataType.Password)]
+    public string NewPassword { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Please confirm your new password.")]
+    [DataType(DataType.Password)]
+    [Compare("NewPassword", ErrorMessage = "Passwords do not match.")]
+    public string ConfirmPassword { get; set; } = string.Empty;
+}
 public class ResetPasswordViewModel
 {
     public string Token { get; set; } = string.Empty;
@@ -62,3 +99,4 @@ public class ResetPasswordViewModel
     [System.ComponentModel.DataAnnotations.Compare("Password", ErrorMessage = "Passwords do not match.")]
     public string ConfirmPassword { get; set; } = string.Empty;
 }
+

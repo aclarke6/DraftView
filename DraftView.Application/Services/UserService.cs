@@ -145,6 +145,25 @@ public class UserService(
         await unitOfWork.SaveChangesAsync(ct);
     }
 
+    public async Task UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default)
+    {
+        var user = await userRepo.GetByIdAsync(userId, ct)
+            ?? throw new EntityNotFoundException(nameof(User), userId);
+        user.UpdateDisplayName(displayName);
+        await unitOfWork.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateEmailAsync(Guid userId, string email, CancellationToken ct = default)
+    {
+        var user = await userRepo.GetByIdAsync(userId, ct)
+            ?? throw new EntityNotFoundException(nameof(User), userId);
+        if (await userRepo.EmailExistsAsync(email, ct))
+            throw new InvariantViolationException("I-EMAIL-EXISTS",
+                $"A user with email {email} already exists.");
+        user.UpdateEmail(email);
+        await unitOfWork.SaveChangesAsync(ct);
+    }
+
     private async Task RequireAuthorAsync(Guid actorId, CancellationToken ct)
     {
         var actor = await userRepo.GetByIdAsync(actorId, ct)
@@ -154,5 +173,6 @@ public class UserService(
             throw new UnauthorisedOperationException("Only the Author may perform this action.");
     }
 }
+
 
 

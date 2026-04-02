@@ -52,6 +52,22 @@ public sealed class User
         IsActive = false;
     }
 
+    public void UpdateDisplayName(string displayName)
+    {
+        if (string.IsNullOrWhiteSpace(displayName))
+            throw new InvariantViolationException("I-DISPLAYNAME",
+                "Display name must not be null or whitespace.");
+        DisplayName = displayName.Trim();
+    }
+
+    public void UpdateEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            throw new InvariantViolationException("I-EMAIL",
+                "Email must not be null or whitespace.");
+        Email = email.Trim();
+    }
+
     public void SoftDelete()
     {
         EnforceNotAuthor("SoftDelete");
@@ -95,4 +111,5 @@ public sealed class User
         Activate();
     }
 }
+
 

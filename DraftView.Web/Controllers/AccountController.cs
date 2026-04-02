@@ -303,6 +303,144 @@ public class AccountController(
     public IActionResult AccessDenied() => View();
 
     // ---------------------------------------------------------------------------
+    // Settings
+    // ---------------------------------------------------------------------------
+    [HttpGet]
+    public async Task<IActionResult> Settings()
+    {
+        var email = User.Identity?.Name;
+        if (email is null) return RedirectToAction("Login");
+        var user = await userRepo.GetByEmailAsync(email);
+        if (user is null) return RedirectToAction("Login");
+
+        var vm = new SettingsViewModel
+        {
+            DisplayName = user.DisplayName,
+            Email       = user.Email,
+            IsAuthor    = user.Role == Domain.Enumerations.Role.Author
+        };
+
+        if (vm.IsAuthor)
+        {
+            var connection = await GetDropboxConnectionAsync(user.Id);
+            vm.DropboxStatus      = connection?.Status.ToString();
+            vm.DropboxAuthorisedAt = connection?.AuthorisedAt;
+        }
+
+        return View(vm);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangeDisplayName(ChangeDisplayNameViewModel model)
+    {
+        var email = User.Identity?.Name;
+        if (email is null) return RedirectToAction("Login");
+        var user = await userRepo.GetByEmailAsync(email);
+        if (user is null) return RedirectToAction("Login");
+
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Display name is invalid.";
+            return RedirectToAction("Settings");
+        }
+
+        try
+        {
+            await userService.UpdateDisplayNameAsync(user.Id, model.DisplayName);
+            TempData["Success"] = "Display name updated.";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction("Settings");
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangeEmail(ChangeEmailViewModel model)
+    {
+        var email = User.Identity?.Name;
+        if (email is null) return RedirectToAction("Login");
+        var user = await userRepo.GetByEmailAsync(email);
+        if (user is null) return RedirectToAction("Login");
+
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Please correct the errors and try again.";
+            return RedirectToAction("Settings");
+        }
+
+        var signInResult = await signInManager.CheckPasswordSignInAsync(
+            await userManager.FindByEmailAsync(email) ?? new IdentityUser(),
+            model.CurrentPassword, false);
+
+        if (!signInResult.Succeeded)
+        {
+            TempData["Error"] = "Current password is incorrect.";
+            return RedirectToAction("Settings");
+        }
+
+        try
+        {
+            await userService.UpdateEmailAsync(user.Id, model.Email);
+            var identityUser = await userManager.FindByEmailAsync(email);
+            if (identityUser is not null)
+            {
+                await userManager.SetEmailAsync(identityUser, model.Email);
+                await userManager.SetUserNameAsync(identityUser, model.Email);
+            }
+            await signInManager.SignOutAsync();
+            TempData["Success"] = "Email updated. Please sign in with your new email.";
+            return RedirectToAction("Login");
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+            return RedirectToAction("Settings");
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangePassword(ChangePasswordViewModel model)
+    {
+        var email = User.Identity?.Name;
+        if (email is null) return RedirectToAction("Login");
+
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Please correct the errors and try again.";
+            return RedirectToAction("Settings");
+        }
+
+        var identityUser = await userManager.FindByEmailAsync(email);
+        if (identityUser is null) return RedirectToAction("Login");
+
+        var result = await userManager.ChangePasswordAsync(
+            identityUser, model.CurrentPassword, model.NewPassword);
+
+        if (!result.Succeeded)
+        {
+            TempData["Error"] = string.Join(" ", result.Errors.Select(e => e.Description));
+            return RedirectToAction("Settings");
+        }
+
+        await signInManager.RefreshSignInAsync(identityUser);
+        TempData["Success"] = "Password changed successfully.";
+        return RedirectToAction("Settings");
+    }
+
+    private async Task<DraftView.Domain.Entities.DropboxConnection?> GetDropboxConnectionAsync(Guid userId)
+    {
+        var connectionRepo = HttpContext.RequestServices
+            .GetRequiredService<DraftView.Domain.Interfaces.Repositories.IDropboxConnectionRepository>();
+        return await connectionRepo.GetByUserIdAsync(userId);
+    }
+
+    // ---------------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------------
     private IActionResult RedirectToLocal(string? returnUrl)
@@ -319,6 +457,7 @@ public class AccountController(
         return RedirectToAction("Dashboard", "Reader");
     }
 }
+
 
 
 

@@ -218,4 +218,56 @@ public class UserTests
 
         Assert.True(user.LastNotificationCheckAt > first);
     }
+
+    [Fact]
+    public void UpdateDisplayName_WithValidName_SetsDisplayName()
+    {
+        var user = User.Create("test@example.com", "Old Name", Role.BetaReader);
+        user.UpdateDisplayName("New Name");
+        Assert.Equal("New Name", user.DisplayName);
+    }
+    [Fact]
+    public void UpdateDisplayName_TrimsWhitespace()
+    {
+        var user = User.Create("test@example.com", "Old Name", Role.BetaReader);
+        user.UpdateDisplayName("  New Name  ");
+        Assert.Equal("New Name", user.DisplayName);
+    }
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void UpdateDisplayName_WithInvalidName_ThrowsInvariantViolationException(string? name)
+    {
+#pragma warning disable CS8604
+        var user = User.Create("test@example.com", "Old Name", Role.BetaReader);
+        var ex = Assert.Throws<InvariantViolationException>(() => user.UpdateDisplayName(name));
+        Assert.Equal("I-DISPLAYNAME", ex.InvariantCode);
+    }
+    [Fact]
+    public void UpdateEmail_WithValidEmail_SetsEmail()
+    {
+        var user = User.Create("old@example.com", "Test User", Role.BetaReader);
+        user.UpdateEmail("new@example.com");
+        Assert.Equal("new@example.com", user.Email);
+    }
+    [Fact]
+    public void UpdateEmail_TrimsWhitespace()
+    {
+        var user = User.Create("old@example.com", "Test User", Role.BetaReader);
+        user.UpdateEmail("  new@example.com  ");
+        Assert.Equal("new@example.com", user.Email);
+    }
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void UpdateEmail_WithInvalidEmail_ThrowsInvariantViolationException(string? email)
+    {
+#pragma warning disable CS8604
+        var user = User.Create("old@example.com", "Test User", Role.BetaReader);
+        var ex = Assert.Throws<InvariantViolationException>(() => user.UpdateEmail(email));
+        Assert.Equal("I-EMAIL", ex.InvariantCode);
+    }
 }
+

@@ -19,6 +19,7 @@
     <File Path="Step10-Thur-Dashboard-Scroll.ps1" />
     <File Path="Step11-Thur-Dashboard-Sticky.ps1" />
     <File Path="Step12-Thur-SyncFileProgress.ps1" />
+    <File Path="Step15-Thur-AccountSettings-TDD.ps1" />
     <File Path="Step2-Thur-Fix-Readers.ps1" />
     <File Path="Step3-Thur-Readers-Redesign.ps1" />
     <File Path="Step4-Thur-Reader-Icons.ps1" />

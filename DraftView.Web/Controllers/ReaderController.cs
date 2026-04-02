@@ -111,7 +111,7 @@ public class ReaderController(
 
         await progressService.RecordOpenAsync(id, user.Id);
 
-        var project = await projectRepo.GetReaderActiveProjectAsync();
+        var project = await projectRepo.GetByIdAsync(chapter.ProjectId);
         var allSections = project is not null
             ? await sectionRepo.GetByProjectIdAsync(project.Id)
             : new List<Section>();
@@ -369,6 +369,8 @@ public class ReaderController(
         return groups;
     }
 }
+
+
 
 
 

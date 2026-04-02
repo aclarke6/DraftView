@@ -11,5 +11,8 @@ public interface IUserService
     Task DeactivateUserAsync(Guid targetUserId, Guid authorId, CancellationToken ct = default);
     Task ReactivateUserAsync(Guid targetUserId, Guid authorId, CancellationToken ct = default);
     Task SoftDeleteUserAsync(Guid targetUserId, Guid authorId, CancellationToken ct = default);
+    Task UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default);
+    Task UpdateEmailAsync(Guid userId, string email, CancellationToken ct = default);
 }
+
 

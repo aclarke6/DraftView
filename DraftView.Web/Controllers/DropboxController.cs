@@ -58,7 +58,7 @@ public class DropboxController(
         {
             logger.LogWarning("Dropbox OAuth error for user {UserId}: {Error}", author.Id, error);
             TempData["Error"] = "Dropbox connection was cancelled or denied.";
-            return RedirectToAction("Settings");
+            return RedirectToAction("Settings", "Account");
         }
 
         // Validate state to prevent CSRF
@@ -67,7 +67,7 @@ public class DropboxController(
         {
             logger.LogWarning("Dropbox OAuth state mismatch for user {UserId}", author.Id);
             TempData["Error"] = "Invalid OAuth state. Please try connecting again.";
-            return RedirectToAction("Settings");
+            return RedirectToAction("Settings", "Account");
         }
 
         HttpContext.Session.Remove("dropbox_oauth_state");
@@ -75,7 +75,7 @@ public class DropboxController(
         if (string.IsNullOrWhiteSpace(code))
         {
             TempData["Error"] = "No authorisation code received from Dropbox.";
-            return RedirectToAction("Settings");
+            return RedirectToAction("Settings", "Account");
         }
 
         try
@@ -103,7 +103,7 @@ public class DropboxController(
             TempData["Error"] = "Failed to connect Dropbox. Please try again.";
         }
 
-        return RedirectToAction("Settings");
+        return RedirectToAction("Settings", "Account");
     }
 
     // ---------------------------------------------------------------------------
@@ -124,7 +124,7 @@ public class DropboxController(
         }
 
         TempData["Success"] = "Dropbox disconnected.";
-        return RedirectToAction("Settings");
+        return RedirectToAction("Settings", "Account");
     }
 
     // ---------------------------------------------------------------------------
@@ -206,3 +206,4 @@ public class DropboxController(
         return (accessToken, refreshToken, expiresAt);
     }
 }
+
