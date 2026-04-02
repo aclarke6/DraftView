@@ -367,7 +367,8 @@
                             var countEl = document.getElementById('sync-count-' + projectId);
                             if (countEl) {
                                 if (data.filesDownloaded > 0 && data.sectionsProcessed === 0) {
-                                    countEl.textContent = 'Downloading... ' + data.filesDownloaded + ' files';
+                                    var total = data.totalFiles > 0 ? ' / ' + data.totalFiles : '';
+                                    countEl.textContent = 'Downloading... ' + data.filesDownloaded + total + ' files';
                                 } else if (data.sectionsProcessed > 0) {
                                     countEl.textContent = data.filesDownloaded + ' files • ' + data.sectionsProcessed + ' sections processed';
                                 }
@@ -385,6 +386,7 @@
         setTimeout(pollSyncStatus, 2000);
     </script>
 }
+
 
 
 

@@ -11,6 +11,7 @@ public class SyncProgressTracker : ISyncProgressTracker
             SectionsProcessed = 0,
             CurrentSection    = null,
             FilesDownloaded   = 0,
+            TotalFiles        = 0,
             StartedAt         = DateTime.UtcNow
         };
     }
@@ -32,6 +33,16 @@ public class SyncProgressTracker : ISyncProgressTracker
             (_, existing) =>
             {
                 existing.FilesDownloaded++;
+                return existing;
+            });
+    }
+    public void SetTotalFiles(Guid projectId, int total)
+    {
+        _progress.AddOrUpdate(projectId,
+            new SyncProgress { TotalFiles = total, StartedAt = DateTime.UtcNow },
+            (_, existing) =>
+            {
+                existing.TotalFiles = total;
                 return existing;
             });
     }

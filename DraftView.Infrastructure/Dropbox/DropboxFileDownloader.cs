@@ -22,6 +22,7 @@ public class DropboxFileDownloader(
 
         var files = await client.ListFilesAsync(project.DropboxPath, ct);
         logger.LogInformation("Downloading {Count} files for project {Name}", files.Count, project.Name);
+        progressTracker.SetTotalFiles(project.Id, files.Count);
 
         foreach (var file in files)
         {
@@ -37,3 +38,4 @@ public class DropboxFileDownloader(
         return localPath;
     }
 }
+
