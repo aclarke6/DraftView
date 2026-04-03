@@ -59,6 +59,7 @@ public class AddCommentViewModel
     public string Body { get; set; } = string.Empty;
     public bool IsPrivate { get; set; }
     public Guid? ParentCommentId { get; set; }
+    public Guid? ReturnSceneId { get; set; }
 }
 
 /// <summary>

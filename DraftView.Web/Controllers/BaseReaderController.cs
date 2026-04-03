@@ -1,0 +1,244 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using DraftView.Domain.Entities;
+using DraftView.Domain.Enumerations;
+using DraftView.Domain.Interfaces.Repositories;
+using DraftView.Domain.Interfaces.Services;
+using DraftView.Web.Models;
+
+namespace DraftView.Web.Controllers;
+
+/// <summary>
+/// Shared base for DesktopReaderController and MobileReaderController.
+/// Contains all dependencies, helper methods, and POST actions.
+/// GET actions are implemented in the derived controllers.
+/// </summary>
+[Authorize]
+#pragma warning disable CS9107
+public abstract class BaseReaderController(
+    IScrivenerProjectRepository projectRepo,
+    ISectionRepository sectionRepo,
+    ICommentService commentService,
+    IReadingProgressService progressService,
+    IUserRepository userRepository,
+    IReaderAccessRepository readerAccessRepo,
+    ILogger logger) : BaseController(userRepository)
+{
+    protected readonly IScrivenerProjectRepository ProjectRepo      = projectRepo;
+    protected readonly ISectionRepository          SectionRepo      = sectionRepo;
+    protected readonly ICommentService             CommentService   = commentService;
+    protected readonly IReadingProgressService     ProgressService  = progressService;
+    protected readonly IReaderAccessRepository     ReaderAccessRepo = readerAccessRepo;
+
+    // -----------------------------------------------------------------------
+    // POST: AddComment
+    // Optional ReturnSceneId: if supplied, redirects to Read(sceneId) for
+    // mobile; otherwise redirects to Read(chapterId) for desktop.
+    // -----------------------------------------------------------------------
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddComment(AddCommentViewModel model)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return Forbid();
+
+        var visibility = model.IsPrivate ? Visibility.Private : Visibility.Public;
+
+        try
+        {
+            if (model.ParentCommentId.HasValue)
+                await CommentService.CreateReplyAsync(
+                    model.ParentCommentId.Value, user.Id, model.Body, visibility);
+            else
+                await CommentService.CreateRootCommentAsync(
+                    model.SectionId, user.Id, model.Body, visibility);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to add comment for user {UserId}", user.Id);
+            TempData["Error"] = "Failed to save comment.";
+        }
+
+        if (model.ReturnSceneId.HasValue)
+            return RedirectToAction("Read", new { id = model.ReturnSceneId.Value });
+
+        var section   = await SectionRepo.GetByIdAsync(model.SectionId);
+        var chapterId = section?.NodeType == NodeType.Folder
+            ? section.Id
+            : section?.ParentId ?? model.SectionId;
+
+        return RedirectToAction("Read", new { id = chapterId });
+    }
+
+    // -----------------------------------------------------------------------
+    // POST: EditComment
+    // -----------------------------------------------------------------------
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditComment(Guid commentId, Guid chapterId, string body)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return Forbid();
+
+        try
+        {
+            await CommentService.EditCommentAsync(commentId, user.Id, body);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to edit comment {CommentId} for user {UserId}", commentId, user.Id);
+            TempData["Error"] = "Failed to update comment.";
+        }
+
+        return RedirectToAction("Read", new { id = chapterId });
+    }
+
+    // -----------------------------------------------------------------------
+    // POST: DeleteComment
+    // -----------------------------------------------------------------------
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteComment(Guid commentId, Guid chapterId)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return Forbid();
+
+        await CommentService.SoftDeleteCommentAsync(commentId, user.Id);
+        return RedirectToAction("Read", new { id = chapterId });
+    }
+
+    // -----------------------------------------------------------------------
+    // POST: ModerateDeleteComment
+    // -----------------------------------------------------------------------
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ModerateDeleteComment(Guid commentId, Guid chapterId)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return Forbid();
+
+        await CommentService.ModerateDeleteCommentAsync(commentId, user.Id);
+        return RedirectToAction("Read", new { id = chapterId });
+    }
+
+    // -----------------------------------------------------------------------
+    // Shared helpers
+    // -----------------------------------------------------------------------
+    protected async Task<IReadOnlyList<CommentDisplayViewModel>> BuildCommentDisplayModelsAsync(
+        IReadOnlyList<Comment> comments,
+        Guid currentUserId,
+        bool currentUserIsModerator)
+    {
+        var visibleComments = comments
+            .Where(c => !c.IsSoftDeleted)
+            .ToList();
+
+        var commentsByParentId = visibleComments
+            .Where(c => c.ParentCommentId.HasValue)
+            .GroupBy(c => c.ParentCommentId!.Value)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var authorIds   = visibleComments.Select(c => c.AuthorId).Distinct().ToList();
+        var authorNames = new Dictionary<Guid, string>();
+
+        foreach (var authorId in authorIds)
+        {
+            var author = await userRepository.GetByIdAsync(authorId);
+            authorNames[authorId] = author?.DisplayName ?? "Unknown";
+        }
+
+        return visibleComments
+            .Select(comment =>
+            {
+                var hasChildren = commentsByParentId.ContainsKey(comment.Id);
+                var canDelete   = comment.AuthorId == currentUserId && !hasChildren;
+
+                return new CommentDisplayViewModel {
+                    Comment           = comment,
+                    AuthorDisplayName = authorNames.TryGetValue(comment.AuthorId, out var name) ? name : "Unknown",
+                    HasChildren       = hasChildren,
+                    CanDelete         = canDelete,
+                    CanEdit           = comment.AuthorId == currentUserId,
+                    IsModerator       = currentUserIsModerator
+                };
+            })
+            .ToList();
+    }
+
+    protected static Section? GetTopLevelAncestor(Section section, IReadOnlyList<Section> all)
+    {
+        var lookup  = all.ToDictionary(s => s.Id);
+        var current = section;
+        while (current.ParentId.HasValue && lookup.TryGetValue(current.ParentId.Value, out var parent))
+        {
+            if (!parent.ParentId.HasValue)
+                return current;
+            current = parent;
+        }
+        return null;
+    }
+
+    protected static IReadOnlyList<string> BuildBreadcrumb(Section section, IReadOnlyList<Section> all)
+    {
+        var lookup    = all.ToDictionary(s => s.Id);
+        var crumbs    = new List<string>();
+        var currentId = section.ParentId;
+        while (currentId.HasValue && lookup.TryGetValue(currentId.Value, out var parent))
+        {
+            crumbs.Insert(0, parent.Title);
+            currentId = parent.ParentId;
+        }
+        if (crumbs.Count > 0)
+            crumbs.RemoveAt(0);
+        return crumbs;
+    }
+
+    protected static IReadOnlyList<ContentGroup> BuildContentGroups(
+        Section parent, IReadOnlyList<Section> all)
+    {
+        var children = all
+            .Where(s => s.ParentId == parent.Id && !s.IsSoftDeleted)
+            .OrderBy(s => s.SortOrder)
+            .ToList();
+
+        var groups = new List<ContentGroup>();
+        foreach (var child in children)
+        {
+            if (child.NodeType != NodeType.Folder)
+                continue;
+
+            var folderChildren      = all.Where(s => s.ParentId == child.Id && !s.IsSoftDeleted).ToList();
+            var folderHasSubFolders = folderChildren.Any(s => s.NodeType == NodeType.Folder);
+
+            if (folderHasSubFolders)
+            {
+                var subGroups = BuildContentGroups(child, all);
+                if (subGroups.Any())
+                    groups.Add(new ContentGroup { Heading = child.Title, Depth = 0, SubGroups = subGroups });
+            }
+            else if (child.IsPublished)
+            {
+                groups.Add(new ContentGroup {
+                    Heading        = string.Empty,
+                    Depth          = 0,
+                    ChapterSection = child,
+                    Scenes         = new List<Section>(),
+                    SubGroups      = new List<ContentGroup>()
+                });
+            }
+        }
+        return groups;
+    }
+
+    protected static bool HasPublishedChapter(Section section, IReadOnlyList<Section> all)
+    {
+        if (section.NodeType == NodeType.Folder && section.IsPublished)
+            return true;
+        return all.Where(s => s.ParentId == section.Id && !s.IsSoftDeleted)
+                  .Any(c => HasPublishedChapter(c, all));
+    }
+}
