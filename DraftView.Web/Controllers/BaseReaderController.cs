@@ -234,6 +234,21 @@ public abstract class BaseReaderController(
         return groups;
     }
 
+    protected bool IsMobile()
+    {
+        var ua = Request.Headers.UserAgent.ToString();
+        return !string.IsNullOrEmpty(ua) && (
+            ua.Contains("Mobile",      StringComparison.OrdinalIgnoreCase) ||
+            ua.Contains("Android",     StringComparison.OrdinalIgnoreCase) ||
+            ua.Contains("iPhone",      StringComparison.OrdinalIgnoreCase) ||
+            ua.Contains("iPad",        StringComparison.OrdinalIgnoreCase) ||
+            ua.Contains("iPod",        StringComparison.OrdinalIgnoreCase) ||
+            ua.Contains("BlackBerry",  StringComparison.OrdinalIgnoreCase) ||
+            ua.Contains("IEMobile",    StringComparison.OrdinalIgnoreCase) ||
+            ua.Contains("Opera Mini", StringComparison.OrdinalIgnoreCase) ||
+            ua.Contains("webOS",       StringComparison.OrdinalIgnoreCase));
+    }
+
     protected static bool HasPublishedChapter(Section section, IReadOnlyList<Section> all)
     {
         if (section.NodeType == NodeType.Folder && section.IsPublished)

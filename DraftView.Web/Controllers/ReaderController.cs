@@ -8,19 +8,19 @@ using DraftView.Web.Models;
 namespace DraftView.Web.Controllers;
 
 #pragma warning disable CS9107
-public class MobileReaderController(
+public class ReaderController(
     IScrivenerProjectRepository projectRepo,
     ISectionRepository sectionRepo,
     ICommentService commentService,
     IReadingProgressService progressService,
     IUserRepository userRepository,
     IReaderAccessRepository readerAccessRepo,
-    ILogger<MobileReaderController> logger)
+    ILogger<ReaderController> logger)
     : BaseReaderController(projectRepo, sectionRepo, commentService, progressService,
                            userRepository, readerAccessRepo, logger)
 {
     // -----------------------------------------------------------------------
-    // GET: /Reader/Dashboard -> redirects to MobileChapters for first project
+    // GET: /Reader/Dashboard
     // -----------------------------------------------------------------------
     public async Task<IActionResult> Dashboard()
     {
@@ -28,30 +28,16 @@ public class MobileReaderController(
         if (user is null)
             return Forbid();
 
-        var projectIds = user.Role == Role.Author
-            ? (await ProjectRepo.GetAllAsync())
-                .Where(p => p.IsReaderActive && !p.IsSoftDeleted)
-                .Select(p => p.Id)
-                .ToList()
-            : (await ReaderAccessRepo.GetByReaderIdAsync(user.Id))
-                .Select(a => a.ProjectId)
-                .ToList();
+        if (IsMobile())
+            return await MobileDashboard(user);
 
-        var projectId = projectIds.FirstOrDefault();
-        if (projectId == Guid.Empty)
-            return View("NoActiveProject");
-
-        var project = await ProjectRepo.GetByIdAsync(projectId);
-        if (project is null || !project.IsReaderActive || project.IsSoftDeleted)
-            return View("NoActiveProject");
-
-        return RedirectToAction("Chapters", new { projectId = project.Id });
+        return await DesktopDashboard(user);
     }
 
     public IActionResult Index() => RedirectToAction("Dashboard");
 
     // -----------------------------------------------------------------------
-    // GET: /Reader/Chapters?projectId=...
+    // GET: /Reader/Chapters?projectId=...  (mobile entry point)
     // -----------------------------------------------------------------------
     public async Task<IActionResult> Chapters(Guid projectId)
     {
@@ -117,7 +103,7 @@ public class MobileReaderController(
     }
 
     // -----------------------------------------------------------------------
-    // GET: /Reader/Scenes?chapterId=...
+    // GET: /Reader/Scenes?chapterId=...  (mobile)
     // -----------------------------------------------------------------------
     public async Task<IActionResult> Scenes(Guid chapterId)
     {
@@ -158,7 +144,29 @@ public class MobileReaderController(
     }
 
     // -----------------------------------------------------------------------
-    // GET: /Reader/Read/{id} -- single scene
+    // GET: /Reader/Browse/{id}  (desktop)
+    // -----------------------------------------------------------------------
+    public async Task<IActionResult> Browse(Guid id)
+    {
+        var project = await ProjectRepo.GetReaderActiveProjectAsync();
+        if (project is null)
+            return View("NoActiveProject");
+
+        var allSections = await SectionRepo.GetByProjectIdAsync(project.Id);
+        var topSection  = allSections.FirstOrDefault(s => s.Id == id);
+        if (topSection is null)
+            return NotFound();
+
+        return View("DesktopBrowse", new DesktopSectionContentsViewModel {
+            TopLevelSection = topSection,
+            Groups          = BuildContentGroups(topSection, allSections),
+            ProjectName     = project.Name
+        });
+    }
+
+    // -----------------------------------------------------------------------
+    // GET: /Reader/Read/{id}
+    // Routes to desktop chapter view or mobile scene view based on User-Agent
     // -----------------------------------------------------------------------
     public async Task<IActionResult> Read(Guid id)
     {
@@ -166,6 +174,152 @@ public class MobileReaderController(
         if (user is null)
             return Forbid();
 
+        if (IsMobile())
+            return await MobileRead(id, user);
+
+        return await DesktopRead(id, user);
+    }
+
+    // -----------------------------------------------------------------------
+    // Private: Desktop implementations
+    // -----------------------------------------------------------------------
+    private async Task<IActionResult> DesktopDashboard(Domain.Entities.User user)
+    {
+        var projectIds = user.Role == Role.Author
+            ? (await ProjectRepo.GetAllAsync())
+                .Where(p => p.IsReaderActive && !p.IsSoftDeleted)
+                .Select(p => p.Id)
+                .ToList()
+            : (await ReaderAccessRepo.GetByReaderIdAsync(user.Id))
+                .Select(a => a.ProjectId)
+                .ToList();
+
+        var viewModel = new DesktopDashboardViewModel();
+
+        foreach (var projectId in projectIds)
+        {
+            var project = await ProjectRepo.GetByIdAsync(projectId);
+            if (project is null || !project.IsReaderActive || project.IsSoftDeleted)
+                continue;
+
+            var allSections = await SectionRepo.GetByProjectIdAsync(project.Id);
+            var folderChildIds = allSections
+                .Where(s => s.NodeType == NodeType.Folder && s.ParentId.HasValue)
+                .Select(s => s.ParentId!.Value)
+                .ToHashSet();
+
+            var sortOrderById = allSections.ToDictionary(s => s.Id, s => s.SortOrder);
+            var publishedChapters = allSections
+                .Where(s => s.NodeType == NodeType.Folder && s.IsPublished && !s.IsSoftDeleted
+                            && !folderChildIds.Contains(s.Id))
+                .OrderBy(s => s.ParentId.HasValue ? sortOrderById.GetValueOrDefault(s.ParentId.Value) : 0)
+                .ThenBy(s => s.SortOrder)
+                .ToList();
+
+            var chaptersWithProgress = new List<DesktopChapterProgressViewModel>();
+            foreach (var chapter in publishedChapters)
+            {
+                var hasRead = await ProgressService.HasReadSectionAsync(user.Id, chapter.Id);
+                chaptersWithProgress.Add(new DesktopChapterProgressViewModel {
+                    Chapter = chapter,
+                    HasRead = hasRead
+                });
+            }
+
+            viewModel.Projects.Add(new DesktopProjectViewModel {
+                ProjectId         = project.Id,
+                ProjectName       = project.Name,
+                TotalChapters     = publishedChapters.Count,
+                ReadChapters      = chaptersWithProgress.Count(c => c.HasRead),
+                PublishedChapters = chaptersWithProgress
+            });
+        }
+
+        return View("DesktopDashboard", viewModel);
+    }
+
+    private async Task<IActionResult> MobileDashboard(Domain.Entities.User user)
+    {
+        var projectIds = user.Role == Role.Author
+            ? (await ProjectRepo.GetAllAsync())
+                .Where(p => p.IsReaderActive && !p.IsSoftDeleted)
+                .Select(p => p.Id)
+                .ToList()
+            : (await ReaderAccessRepo.GetByReaderIdAsync(user.Id))
+                .Select(a => a.ProjectId)
+                .ToList();
+
+        var projectId = projectIds.FirstOrDefault();
+        if (projectId == Guid.Empty)
+            return View("NoActiveProject");
+
+        var project = await ProjectRepo.GetByIdAsync(projectId);
+        if (project is null || !project.IsReaderActive || project.IsSoftDeleted)
+            return View("NoActiveProject");
+
+        return RedirectToAction("Chapters", new { projectId = project.Id });
+    }
+
+    private async Task<IActionResult> DesktopRead(Guid id, Domain.Entities.User user)
+    {
+        var chapter = await SectionRepo.GetByIdAsync(id);
+        if (chapter is null || !chapter.IsPublished)
+            return NotFound();
+
+        var isModerator = user.Role == Role.Author;
+
+        await ProgressService.RecordOpenAsync(id, user.Id);
+
+        var project     = await ProjectRepo.GetByIdAsync(chapter.ProjectId);
+        var allSections = project is not null
+            ? await SectionRepo.GetByProjectIdAsync(project.Id)
+            : new List<Section>();
+
+        var scenes = allSections
+            .Where(s => s.ParentId == chapter.Id &&
+                        s.NodeType == NodeType.Document &&
+                        s.IsPublished && !s.IsSoftDeleted)
+            .OrderBy(s => s.SortOrder)
+            .ToList();
+
+        var scenesWithComments = new List<SceneWithComments>();
+        foreach (var scene in scenes)
+        {
+            await ProgressService.RecordOpenAsync(scene.Id, user.Id);
+            var comments        = await CommentService.GetThreadsForSectionAsync(scene.Id, user.Id);
+            var displayComments = await BuildCommentDisplayModelsAsync(comments, user.Id, isModerator);
+            scenesWithComments.Add(new SceneWithComments { Scene = scene, Comments = displayComments });
+        }
+
+        var chapterCommentsRaw = await CommentService.GetThreadsForSectionAsync(id, user.Id);
+        var chapterComments    = await BuildCommentDisplayModelsAsync(chapterCommentsRaw, user.Id, isModerator);
+        var breadcrumb         = BuildBreadcrumb(chapter, allSections);
+        var topAncestor        = GetTopLevelAncestor(chapter, allSections);
+
+        DesktopSectionContentsViewModel? bookContents = null;
+        if (topAncestor is not null)
+        {
+            bookContents = new DesktopSectionContentsViewModel {
+                TopLevelSection = topAncestor,
+                Groups          = BuildContentGroups(topAncestor, allSections),
+                ProjectName     = project?.Name ?? string.Empty
+            };
+        }
+
+        return View("DesktopRead", new DesktopChapterReadViewModel {
+            Chapter                = chapter,
+            Breadcrumb             = breadcrumb,
+            Scenes                 = scenesWithComments,
+            ChapterComments        = chapterComments,
+            BookContents           = bookContents,
+            ProjectName            = project?.Name ?? string.Empty,
+            CurrentUserId          = user.Id,
+            CurrentUserIsModerator = isModerator
+        });
+    }
+
+    private async Task<IActionResult> MobileRead(Guid id, Domain.Entities.User user)
+    {
         var scene = await SectionRepo.GetByIdAsync(id);
         if (scene is null || !scene.IsPublished || scene.NodeType != NodeType.Document)
             return NotFound();

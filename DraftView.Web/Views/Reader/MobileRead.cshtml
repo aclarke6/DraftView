@@ -212,6 +212,26 @@
         </div>
     </div>
 
+        <nav class="mobile-read__nav mobile-read__nav--bottom">
+        @if (Model.HasPrev)
+        {
+            <a asp-action="Read" asp-route-id="@Model.PrevSceneId" class="mobile-read__nav-btn">&#8592; Prev</a>
+        }
+        else
+        {
+            <span class="mobile-read__nav-btn mobile-read__nav-btn--disabled">&#8592; Prev</span>
+        }
+        <a asp-action="Scenes" asp-route-chapterId="@Model.Chapter.Id" class="mobile-read__nav-up">&#8593; Scenes</a>
+        @if (Model.HasNext)
+        {
+            <a asp-action="Read" asp-route-id="@Model.NextSceneId" class="mobile-read__nav-btn">Next &#8594;</a>
+        }
+        else
+        {
+            <span class="mobile-read__nav-btn mobile-read__nav-btn--disabled">Next &#8594;</span>
+        }
+    </nav>
+
 </div>
 
 <script>

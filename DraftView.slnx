@@ -16,6 +16,11 @@
     <File Path="publish-draftview.ps1" />
     <File Path="Show-ProjectTree.ps1" />
     <File Path="Step1-Fri-RenameDesktopReader.ps1" />
+    <File Path="Step10-Fri-MobileAwareActionSelector.ps1" />
+    <File Path="Step11-Fri-FixActionSelectorWarnings.ps1" />
+    <File Path="Step12-Fri-FixActionSelectorCircularDep.ps1" />
+    <File Path="Step13-Fri-UnifyReaderController.ps1" />
+    <File Path="Step14-Fri-MobileReadBottomNav.ps1" />
     <File Path="Step2-Fri-BaseReaderController.ps1" />
     <File Path="Step3-Fri-FixBaseReaderWarnings.ps1" />
     <File Path="Step4-Fri-MobileDetectionMiddleware.ps1" />

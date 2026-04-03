@@ -216,6 +216,13 @@
     padding: 0 var(--space-4) var(--space-12);
 }
 
+.mobile-read__nav--bottom {
+    margin-top: var(--space-8);
+    border-top: 1px solid var(--color-border);
+    border-bottom: none;
+    padding-bottom: var(--space-4);
+}
+
 .mobile-read__nav {
     display: flex;
     align-items: center;
