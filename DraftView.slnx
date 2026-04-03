@@ -19,6 +19,9 @@
     <File Path="Step2-Fri-BaseReaderController.ps1" />
     <File Path="Step3-Fri-FixBaseReaderWarnings.ps1" />
     <File Path="Step4-Fri-MobileDetectionMiddleware.ps1" />
+    <File Path="Step5-Fri-MobileReaderController.ps1" />
+    <File Path="Step5b-Fri-GetLastReadEventImpl.ps1" />
+    <File Path="Step5c-Fri-FixDuplicateGetLastReadEvent.ps1" />
     <File Path="TASKS.md" />
   </Folder>
   <Folder Name="/Solution Items/OldScripts/" />
