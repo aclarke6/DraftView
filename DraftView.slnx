@@ -22,6 +22,9 @@
     <File Path="Step5-Fri-MobileReaderController.ps1" />
     <File Path="Step5b-Fri-GetLastReadEventImpl.ps1" />
     <File Path="Step5c-Fri-FixDuplicateGetLastReadEvent.ps1" />
+    <File Path="Step6-Fri-FixDuplicateReadingProgressService.ps1" />
+    <File Path="Step7-Fri-FixDuplicateTests.ps1" />
+    <File Path="Step8-Fri-MobileReaderController.ps1" />
     <File Path="TASKS.md" />
   </Folder>
   <Folder Name="/Solution Items/OldScripts/" />
