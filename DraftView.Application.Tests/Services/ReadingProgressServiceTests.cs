@@ -1,4 +1,4 @@
-﻿using Moq;
+using Moq;
 using DraftView.Application.Services;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
@@ -142,5 +142,81 @@ public class ReadingProgressServiceTests
 
         Assert.True(result);
     }
-}
 
+    // ---------------------------------------------------------------------------
+    // GetLastReadEventAsync
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetLastReadEventAsync_NoEvents_ReturnsNull()
+    {
+        var userId    = Guid.NewGuid();
+        var projectId = Guid.NewGuid();
+        var sut       = CreateSut();
+
+        _readEventRepo.Setup(r => r.GetByProjectIdAsync(projectId, default))
+            .ReturnsAsync(new List<ReadEvent>());
+
+        var result = await sut.GetLastReadEventAsync(userId, projectId);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetLastReadEventAsync_EventsForOtherUser_ReturnsNull()
+    {
+        var userId      = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+        var projectId   = Guid.NewGuid();
+        var sectionId   = Guid.NewGuid();
+        var sut         = CreateSut();
+
+        var ev = ReadEvent.Create(sectionId, otherUserId);
+        _readEventRepo.Setup(r => r.GetByProjectIdAsync(projectId, default))
+            .ReturnsAsync(new List<ReadEvent> { ev });
+
+        var result = await sut.GetLastReadEventAsync(userId, projectId);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetLastReadEventAsync_SingleEvent_ReturnsThatEvent()
+    {
+        var userId    = Guid.NewGuid();
+        var projectId = Guid.NewGuid();
+        var sectionId = Guid.NewGuid();
+        var sut       = CreateSut();
+
+        var ev = ReadEvent.Create(sectionId, userId);
+        _readEventRepo.Setup(r => r.GetByProjectIdAsync(projectId, default))
+            .ReturnsAsync(new List<ReadEvent> { ev });
+
+        var result = await sut.GetLastReadEventAsync(userId, projectId);
+
+        Assert.NotNull(result);
+        Assert.Equal(sectionId, result!.SectionId);
+    }
+
+    [Fact]
+    public async Task GetLastReadEventAsync_MultipleEvents_ReturnsMostRecentByLastOpenedAt()
+    {
+        var userId    = Guid.NewGuid();
+        var projectId = Guid.NewGuid();
+        var section1  = Guid.NewGuid();
+        var section2  = Guid.NewGuid();
+        var sut       = CreateSut();
+
+        var ev1 = ReadEvent.Create(section1, userId);
+        var ev2 = ReadEvent.Create(section2, userId);
+        ev2.RecordOpen(); // gives ev2 a later LastOpenedAt
+
+        _readEventRepo.Setup(r => r.GetByProjectIdAsync(projectId, default))
+            .ReturnsAsync(new List<ReadEvent> { ev1, ev2 });
+
+        var result = await sut.GetLastReadEventAsync(userId, projectId);
+
+        Assert.NotNull(result);
+        Assert.Equal(section2, result!.SectionId);
+    }
+}

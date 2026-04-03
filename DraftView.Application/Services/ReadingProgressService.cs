@@ -1,4 +1,4 @@
-﻿using DraftView.Domain.Entities;
+using DraftView.Domain.Entities;
 using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Interfaces.Services;
 
@@ -50,5 +50,14 @@ public class ReadingProgressService(
     public async Task<IReadOnlyList<ReadEvent>> GetProgressForProjectAsync(
         Guid projectId, CancellationToken ct = default) =>
         await readEventRepo.GetByProjectIdAsync(projectId, ct);
-}
 
+    public async Task<ReadEvent?> GetLastReadEventAsync(
+        Guid userId, Guid projectId, CancellationToken ct = default)
+    {
+        var events = await readEventRepo.GetByProjectIdAsync(projectId, ct);
+        return events
+            .Where(e => e.UserId == userId)
+            .OrderByDescending(e => e.LastOpenedAt)
+            .FirstOrDefault();
+    }
+}
