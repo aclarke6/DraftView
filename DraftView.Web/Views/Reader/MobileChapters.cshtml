@@ -1,0 +1,46 @@
+@model DraftView.Web.Models.MobileChaptersViewModel
+@{
+    ViewData["Title"] = Model.ProjectName;
+}
+
+<div class="mobile-reader">
+    <div class="mobile-reader__project">Manuscript</div>
+    <h1 class="mobile-reader__heading">@Model.ProjectName</h1>
+
+    @if (Model.HasContinue)
+    {
+        <a asp-action="Read" asp-route-id="@Model.LastReadSceneId"
+           class="mobile-continue">
+            <div>
+                <div class="mobile-continue__label">Continue Reading</div>
+                <div class="mobile-continue__title">Pick up where you left off</div>
+            </div>
+            <span class="mobile-continue__arrow">&#8594;</span>
+        </a>
+    }
+
+    @if (!Model.Chapters.Any())
+    {
+        <p style="color: var(--color-text-muted);">No chapters published yet.</p>
+    }
+    else
+    {
+        <ul class="mobile-chapter-list">
+            @foreach (var row in Model.Chapters)
+            {
+                <li class="mobile-chapter-list__item">
+                    <a asp-action="Scenes"
+                       asp-route-chapterId="@row.Chapter.Id"
+                       class="mobile-chapter-list__link">
+                        <span class="mobile-chapter-list__title">@row.Chapter.Title</span>
+                        <span class="mobile-chapter-list__meta">
+                            <span class="mobile-chapter-list__scenes">@row.SceneCount scene@(row.SceneCount == 1 ? "" : "s")</span>
+                            <span class="mobile-chapter-list__status @(row.HasRead ? "mobile-chapter-list__status--read" : "")"></span>
+                            <span class="mobile-chapter-list__chevron">&#8250;</span>
+                        </span>
+                    </a>
+                </li>
+            }
+        </ul>
+    }
+</div>

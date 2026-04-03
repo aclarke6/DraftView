@@ -1,0 +1,349 @@
+/* ==========================================================================
+   DraftView Mobile Reader Styles
+
+   Styles for the three mobile reader screens:
+     MobileChapters  -- chapter list with continue reading entry point
+     MobileScenes    -- scene list for a selected chapter
+     MobileRead      -- single scene text, comments, prev/next navigation
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Shared mobile reader layout
+   -------------------------------------------------------------------------- */
+.mobile-reader {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 0 var(--space-4);
+}
+
+.mobile-reader__project {
+    font-size: var(--text-xs);
+    font-weight: var(--font-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-1);
+}
+
+.mobile-reader__heading {
+    font-size: var(--text-xl);
+    font-weight: var(--font-bold);
+    margin: 0 0 var(--space-6) 0;
+    color: var(--color-text);
+}
+
+/* --------------------------------------------------------------------------
+   Continue reading banner
+   -------------------------------------------------------------------------- */
+.mobile-continue {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--color-accent);
+    color: #fff;
+    padding: var(--space-4) var(--space-5);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-6);
+    text-decoration: none;
+    transition: opacity var(--transition);
+}
+
+.mobile-continue:hover {
+    opacity: 0.92;
+    text-decoration: none;
+    color: #fff;
+}
+
+.mobile-continue__label {
+    font-size: var(--text-xs);
+    font-weight: var(--font-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.85;
+    margin-bottom: var(--space-1);
+}
+
+.mobile-continue__title {
+    font-size: var(--text-base);
+    font-weight: var(--font-medium);
+}
+
+.mobile-continue__arrow {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+    margin-left: var(--space-4);
+}
+
+/* --------------------------------------------------------------------------
+   Chapter list (MobileChapters)
+   -------------------------------------------------------------------------- */
+.mobile-chapter-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.mobile-chapter-list__item {
+    border-bottom: 1px solid var(--color-border);
+}
+
+.mobile-chapter-list__link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-4) 0;
+    text-decoration: none;
+    color: var(--color-text);
+    transition: color var(--transition);
+    gap: var(--space-3);
+}
+
+.mobile-chapter-list__link:hover {
+    color: var(--color-accent);
+    text-decoration: none;
+}
+
+.mobile-chapter-list__title {
+    font-size: var(--text-base);
+    font-weight: var(--font-medium);
+    flex: 1;
+    min-width: 0;
+}
+
+.mobile-chapter-list__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-shrink: 0;
+}
+
+.mobile-chapter-list__scenes {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+}
+
+.mobile-chapter-list__status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-border);
+    flex-shrink: 0;
+}
+
+.mobile-chapter-list__status--read {
+    background: var(--color-success);
+}
+
+.mobile-chapter-list__chevron {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+}
+
+/* --------------------------------------------------------------------------
+   Scene list (MobileScenes)
+   -------------------------------------------------------------------------- */
+.mobile-back {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--color-accent);
+    text-decoration: none;
+    margin-bottom: var(--space-5);
+    transition: color var(--transition);
+}
+
+.mobile-back:hover {
+    color: var(--color-text);
+    text-decoration: none;
+}
+
+.mobile-scene-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.mobile-scene-list__item {
+    border-bottom: 1px solid var(--color-border);
+}
+
+.mobile-scene-list__link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-4) 0;
+    text-decoration: none;
+    color: var(--color-text);
+    transition: color var(--transition);
+    gap: var(--space-3);
+}
+
+.mobile-scene-list__link:hover {
+    color: var(--color-accent);
+    text-decoration: none;
+}
+
+.mobile-scene-list__title {
+    font-size: var(--text-base);
+    flex: 1;
+    min-width: 0;
+}
+
+.mobile-scene-list__status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-border);
+    flex-shrink: 0;
+}
+
+.mobile-scene-list__status--read {
+    background: var(--color-success);
+}
+
+.mobile-scene-list__chevron {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+}
+
+/* --------------------------------------------------------------------------
+   Scene read view (MobileRead)
+   -------------------------------------------------------------------------- */
+.mobile-read {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 0 var(--space-4) var(--space-12);
+}
+
+.mobile-read__nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) 0 var(--space-5);
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--space-5);
+    gap: var(--space-2);
+}
+
+.mobile-read__nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: var(--text-sm);
+    color: var(--color-accent);
+    text-decoration: none;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius);
+    border: 1px solid var(--color-border);
+    transition: all var(--transition);
+    white-space: nowrap;
+}
+
+.mobile-read__nav-btn:hover {
+    background: var(--color-surface);
+    text-decoration: none;
+    color: var(--color-accent);
+}
+
+.mobile-read__nav-btn--disabled {
+    color: var(--color-text-muted);
+    border-color: var(--color-border);
+    pointer-events: none;
+    opacity: 0.4;
+}
+
+.mobile-read__nav-up {
+    font-size: var(--text-xs);
+    font-weight: var(--font-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    flex-shrink: 0;
+}
+
+.mobile-read__nav-up:hover {
+    color: var(--color-accent);
+    text-decoration: none;
+}
+
+.mobile-read__chapter {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-1);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: var(--font-bold);
+}
+
+.mobile-read__title {
+    font-size: var(--text-lg);
+    font-weight: var(--font-bold);
+    margin: 0 0 var(--space-5) 0;
+    color: var(--color-text);
+}
+
+.mobile-read__prose {
+    font-family: var(--font-prose);
+    font-size: 1.0625rem;
+    line-height: var(--leading-relaxed);
+    color: var(--color-text);
+}
+
+.mobile-read__prose p {
+    margin-bottom: var(--space-4);
+}
+
+.mobile-read__prose * {
+    font-family: var(--font-prose) !important;
+    font-size: 1.0625rem !important;
+}
+
+/* --------------------------------------------------------------------------
+   Mobile comments
+   -------------------------------------------------------------------------- */
+.mobile-comments {
+    margin-top: var(--space-10);
+    padding-top: var(--space-6);
+    border-top: 2px solid var(--color-border);
+}
+
+.mobile-comments__heading {
+    font-size: var(--text-sm);
+    font-weight: var(--font-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-4);
+}
+
+.mobile-comment-form {
+    margin-top: var(--space-5);
+}
+
+.mobile-comment-form__textarea {
+    width: 100%;
+    padding: var(--space-3);
+    font-family: var(--font-prose);
+    font-size: var(--text-sm);
+    box-sizing: border-box;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    resize: vertical;
+}
+
+.mobile-comment-form__actions {
+    margin-top: var(--space-2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.mobile-comment-form__private {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+}

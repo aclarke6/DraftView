@@ -1,0 +1,36 @@
+@model DraftView.Web.Models.MobileScenesViewModel
+@{
+    ViewData["Title"] = Model.Chapter.Title;
+}
+
+<div class="mobile-reader">
+    <a asp-action="Chapters" asp-route-projectId="@Model.ProjectId"
+       class="mobile-back">
+        &#8592; @Model.ProjectName
+    </a>
+
+    <div class="mobile-reader__project">@Model.ProjectName</div>
+    <h1 class="mobile-reader__heading">@Model.Chapter.Title</h1>
+
+    @if (!Model.Scenes.Any())
+    {
+        <p style="color: var(--color-text-muted);">No scenes in this chapter yet.</p>
+    }
+    else
+    {
+        <ul class="mobile-scene-list">
+            @foreach (var row in Model.Scenes)
+            {
+                <li class="mobile-scene-list__item">
+                    <a asp-action="Read"
+                       asp-route-id="@row.Scene.Id"
+                       class="mobile-scene-list__link">
+                        <span class="mobile-scene-list__title">@row.Scene.Title</span>
+                        <span class="mobile-scene-list__status @(row.HasRead ? "mobile-scene-list__status--read" : "")"></span>
+                        <span class="mobile-scene-list__chevron">&#8250;</span>
+                    </a>
+                </li>
+            }
+        </ul>
+    }
+</div>

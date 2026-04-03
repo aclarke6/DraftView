@@ -1,0 +1,231 @@
+@model DraftView.Web.Models.MobileReadViewModel
+@using DraftView.Domain.Enumerations
+@{
+    ViewData["Title"] = Model.Scene.Title;
+
+    Guid? editCommentId = null;
+    var editCommentIdRaw = Context.Request.Query["editCommentId"].ToString();
+    if (Guid.TryParse(editCommentIdRaw, out var parsedEditId))
+        editCommentId = parsedEditId;
+}
+
+<div class="mobile-read">
+
+    <nav class="mobile-read__nav">
+        @if (Model.HasPrev)
+        {
+            <a asp-action="Read" asp-route-id="@Model.PrevSceneId"
+               class="mobile-read__nav-btn">
+                &#8592; Prev
+            </a>
+        }
+        else
+        {
+            <span class="mobile-read__nav-btn mobile-read__nav-btn--disabled">&#8592; Prev</span>
+        }
+
+        <a asp-action="Scenes" asp-route-chapterId="@Model.Chapter.Id"
+           class="mobile-read__nav-up">
+            &#8593; Scenes
+        </a>
+
+        @if (Model.HasNext)
+        {
+            <a asp-action="Read" asp-route-id="@Model.NextSceneId"
+               class="mobile-read__nav-btn">
+                Next &#8594;
+            </a>
+        }
+        else
+        {
+            <span class="mobile-read__nav-btn mobile-read__nav-btn--disabled">Next &#8594;</span>
+        }
+    </nav>
+
+    <div class="mobile-read__chapter">@Model.Chapter.Title</div>
+    <h1 class="mobile-read__title">@Model.Scene.Title</h1>
+
+    <div class="mobile-read__prose">
+        @Html.Raw(Model.Scene.HtmlContent ?? "<p><em>The author has not added content to this scene yet.</em></p>")
+    </div>
+
+    <div class="mobile-comments" id="comments">
+        <div class="mobile-comments__heading">Comments</div>
+
+        @{
+            var roots   = Model.Comments.Where(c => c.Comment.ParentCommentId == null).ToList();
+            var replies = Model.Comments.Where(c => c.Comment.ParentCommentId != null)
+                .GroupBy(c => c.Comment.ParentCommentId!.Value)
+                .ToDictionary(g => g.Key, g => g.ToList());
+        }
+
+        @foreach (var c in roots)
+        {
+            <div class="comment-box @(c.Comment.Visibility == Visibility.Private ? "comment-box--private" : "")">
+                <div class="comment-box__meta">
+                    <strong>@c.AuthorDisplayName</strong>
+                    <span class="comment-box__date">@c.Comment.CreatedAt.ToString("dd MMM")</span>
+                    @if (c.Comment.Visibility == Visibility.Private)
+                    {
+                        <span class="comment-box__private">[Private]</span>
+                    }
+                    <span class="comment-box__actions">
+                        @if (c.CanEdit)
+                        {
+                            <a asp-action="Read" asp-route-id="@Model.Scene.Id"
+                               asp-route-editCommentId="@c.Comment.Id"
+                               class="comment-action-btn" title="Edit" aria-label="Edit comment">
+                                @Icons.Edit()
+                            </a>
+                        }
+                        @if (c.CanDelete || c.UseModeratorDelete)
+                        {
+                            <form asp-action="@(c.UseModeratorDelete ? "ModerateDeleteComment" : "DeleteComment")"
+                                  method="post" class="comment-delete-form"
+                                  data-delete-mode="@(c.UseModeratorDelete ? "moderator" : "normal")"
+                                  data-has-children="@(c.HasChildren ? "true" : "false")">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="commentId" value="@c.Comment.Id" />
+                                <input type="hidden" name="chapterId" value="@Model.Chapter.Id" />
+                                <button type="submit" class="comment-action-btn comment-action-btn--danger"
+                                        title="Delete" aria-label="Delete comment">
+                                    @Icons.Delete()
+                                </button>
+                            </form>
+                        }
+                    </span>
+                </div>
+
+                @if (editCommentId == c.Comment.Id)
+                {
+                    <form asp-action="EditComment" method="post" class="comment-box__reply-form">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="commentId" value="@c.Comment.Id" />
+                        <input type="hidden" name="chapterId" value="@Model.Chapter.Id" />
+                        <input type="text" name="body" value="@c.Comment.Body" class="comment-box__reply-input" />
+                        <button type="submit" class="comment-action-btn comment-action-btn--primary"
+                                title="Save" aria-label="Save comment">@Icons.Save()</button>
+                        <a asp-action="Read" asp-route-id="@Model.Scene.Id"
+                           class="comment-action-btn" title="Cancel" aria-label="Cancel edit">@Icons.Cancel()</a>
+                    </form>
+                }
+                else
+                {
+                    <p class="comment-box__body">@c.Comment.Body</p>
+                    <form asp-action="AddComment" method="post" class="comment-box__reply-form">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="SectionId" value="@Model.Scene.Id" />
+                        <input type="hidden" name="ParentCommentId" value="@c.Comment.Id" />
+                        <input type="hidden" name="ReturnSceneId" value="@Model.Scene.Id" />
+                        <input type="text" name="Body" placeholder="Reply..." class="comment-box__reply-input" />
+                        <button type="submit" class="comment-action-btn comment-action-btn--reply"
+                                title="Reply" aria-label="Reply to comment">@Icons.Reply()</button>
+                    </form>
+                }
+            </div>
+
+            @if (replies.TryGetValue(c.Comment.Id, out var childReplies))
+            {
+                @foreach (var r in childReplies)
+                {
+                    <div class="comment-box comment-box--reply @(r.Comment.Visibility == Visibility.Private ? "comment-box--private" : "")">
+                        <div class="comment-box__meta">
+                            <strong>@r.AuthorDisplayName</strong>
+                            <span class="comment-box__date">@r.Comment.CreatedAt.ToString("dd MMM")</span>
+                            @if (r.Comment.Visibility == Visibility.Private)
+                            {
+                                <span class="comment-box__private">[Private]</span>
+                            }
+                            <span class="comment-box__actions">
+                                @if (r.CanEdit)
+                                {
+                                    <a asp-action="Read" asp-route-id="@Model.Scene.Id"
+                                       asp-route-editCommentId="@r.Comment.Id"
+                                       class="comment-action-btn" title="Edit" aria-label="Edit reply">
+                                        @Icons.Edit()
+                                    </a>
+                                }
+                                @if (r.CanDelete || r.UseModeratorDelete)
+                                {
+                                    <form asp-action="@(r.UseModeratorDelete ? "ModerateDeleteComment" : "DeleteComment")"
+                                          method="post" class="comment-delete-form"
+                                          data-delete-mode="@(r.UseModeratorDelete ? "moderator" : "normal")"
+                                          data-has-children="@(r.HasChildren ? "true" : "false")">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="commentId" value="@r.Comment.Id" />
+                                        <input type="hidden" name="chapterId" value="@Model.Chapter.Id" />
+                                        <button type="submit" class="comment-action-btn comment-action-btn--danger"
+                                                title="Delete" aria-label="Delete reply">@Icons.Delete()</button>
+                                    </form>
+                                }
+                            </span>
+                        </div>
+                        @if (editCommentId == r.Comment.Id)
+                        {
+                            <form asp-action="EditComment" method="post" class="comment-box__reply-form">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="commentId" value="@r.Comment.Id" />
+                                <input type="hidden" name="chapterId" value="@Model.Chapter.Id" />
+                                <input type="text" name="body" value="@r.Comment.Body" class="comment-box__reply-input" />
+                                <button type="submit" class="comment-action-btn comment-action-btn--primary"
+                                        title="Save" aria-label="Save comment">@Icons.Save()</button>
+                                <a asp-action="Read" asp-route-id="@Model.Scene.Id"
+                                   class="comment-action-btn" title="Cancel" aria-label="Cancel edit">@Icons.Cancel()</a>
+                            </form>
+                        }
+                        else
+                        {
+                            <p class="comment-box__body">@r.Comment.Body</p>
+                            <form asp-action="AddComment" method="post" class="comment-box__reply-form">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="SectionId" value="@Model.Scene.Id" />
+                                <input type="hidden" name="ParentCommentId" value="@c.Comment.Id" />
+                                <input type="hidden" name="ReturnSceneId" value="@Model.Scene.Id" />
+                                <input type="text" name="Body" placeholder="Reply..." class="comment-box__reply-input" />
+                                <button type="submit" class="comment-action-btn comment-action-btn--reply"
+                                        title="Reply" aria-label="Reply to comment">@Icons.Reply()</button>
+                            </form>
+                        }
+                    </div>
+                }
+            }
+        }
+
+        <div class="mobile-comment-form">
+            <form asp-action="AddComment" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="SectionId" value="@Model.Scene.Id" />
+                <input type="hidden" name="ReturnSceneId" value="@Model.Scene.Id" />
+                <textarea name="Body" rows="3"
+                          placeholder="Comment on this scene..."
+                          class="mobile-comment-form__textarea"></textarea>
+                <div class="mobile-comment-form__actions">
+                    <label class="mobile-comment-form__private">
+                        <input type="checkbox" name="IsPrivate" /> Private
+                    </label>
+                    <button type="submit" class="comment-action-btn comment-action-btn--primary"
+                            title="Post comment" aria-label="Post comment">
+                        @Icons.Send()
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    (function () {
+        var deleteForms = document.querySelectorAll('.comment-delete-form');
+        deleteForms.forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                var mode = form.getAttribute('data-delete-mode');
+                var hasChildren = form.getAttribute('data-has-children') === 'true';
+                var message = mode === 'moderator'
+                    ? (hasChildren ? 'Moderator Delete: delete this comment and all replies?' : 'Moderator Delete: delete this comment?')
+                    : 'Delete this comment?';
+                if (!window.confirm(message)) event.preventDefault();
+            });
+        });
+    })();
+</script>
