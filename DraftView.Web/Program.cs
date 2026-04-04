@@ -38,101 +38,27 @@ builder.Services.AddPersistenceServices(builder.Configuration);
 builder.Services.AddIdentityServices();
 
 // ---------------------------------------------------------------------------
-// MVC
+// Web UI, session, parsing, Dropbox and background services
 // ---------------------------------------------------------------------------
-builder.Services.AddControllersWithViews();
-
-// ---------------------------------------------------------------------------
-// Session (required for OAuth state)
-builder.Services.AddDistributedMemoryCache();
-builder.Services.AddSession(options =>
-{
-    options.IdleTimeout = TimeSpan.FromMinutes(10);
-    options.Cookie.HttpOnly = true;
-    options.Cookie.IsEssential = true;
-});
-
-// (moved to AddPersistenceServices extension)
+builder.Services.AddWebServices(builder.Configuration);
 
 // ---------------------------------------------------------------------------
 // Application services
 // ---------------------------------------------------------------------------
 builder.Services.AddApplicationServices();
 
-// ---------------------------------------------------------------------------
-// Parsing and Dropbox
-// ---------------------------------------------------------------------------
-builder.Services.AddSingleton<IScrivenerProjectParser, ScrivenerProjectParser>();
-builder.Services.AddSingleton<IRtfConverter, RtfConverter>();
-builder.Services.AddScoped<IDropboxConnectionChecker, DropboxConnectionChecker>();
-builder.Services.AddScoped<IDropboxClientFactory, DropboxClientFactory>();
-builder.Services.AddScoped<IDropboxFileDownloader, DropboxFileDownloader>();
-
-// ---------------------------------------------------------------------------
-// Email sender
-// ---------------------------------------------------------------------------
-var emailProvider = builder.Configuration["Email:Provider"] ?? string.Empty;
-if (emailProvider == "Console")
-    builder.Services.AddScoped<IEmailSender, ConsoleEmailSender>();
-else
-    builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
-
-// ---------------------------------------------------------------------------
-// Path resolver
-// ---------------------------------------------------------------------------
-// Resolve DraftViewSettings from DI so we don't need to build a service provider here.
-builder.Services.AddScoped<ILocalPathResolver>(sp =>
-{
-    var settings = sp.GetRequiredService<DraftViewSettings>();
-    return new LocalPathResolver(settings.ResolvedLocalCachePath);
-});
-
-// ---------------------------------------------------------------------------
-// Background sync service
-// ---------------------------------------------------------------------------
-builder.Services.AddHostedService<SyncBackgroundService>();
+// (Parsing, Dropbox, email sender, path resolver and background services
+// are registered by AddWebServices above to keep Program.cs concise.)
 
 // ---------------------------------------------------------------------------
 // Build and configure pipeline
 // ---------------------------------------------------------------------------
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<DraftViewDbContext>();
-    db.Database.Migrate();
-}
-
-var seedEmail = builder.Configuration["Seed:AuthorEmail"] ?? "author@draftview.local";
-var seedPassword = builder.Configuration["Seed:AuthorPassword"] ?? "Password1!";
-var seedName = builder.Configuration["Seed:AuthorName"] ?? "Author";
-var seedPath = builder.Configuration["Seed:TestProjectPath"] ?? "/Apps/Scrivener/Test.scriv";
-var supportEmail = builder.Configuration["Seed:SupportEmail"] ?? "support@draftview.co.uk";
-var supportPassword = builder.Configuration["Seed:SupportPassword"] ?? "Password1!";
-var supportDisplayName = builder.Configuration["Seed:SupportName"] ?? "DraftView Support";
-
-await DatabaseSeeder.SeedAsync(
-    app.Services,
-    seedEmail,
-    seedPassword,
-    seedName,
-    seedPath,
-    supportEmail,
-    supportPassword,
-    supportDisplayName);
-
-// Reset any projects stuck in Syncing state from a previous crashed sync
-using (var startupScope = app.Services.CreateScope())
-{
-    var db = startupScope.ServiceProvider.GetRequiredService<DraftViewDbContext>();
-    var stuckProjects = db.Projects
-        .Where(p => p.SyncStatus == SyncStatus.Syncing)
-        .ToList();
-    foreach (var p in stuckProjects)
-        p.UpdateSyncStatus(SyncStatus.Stale, DateTime.UtcNow, null);
-    if (stuckProjects.Any())
-        await db.SaveChangesAsync();
-}
+// Run migration, seed and reset tasks via small extension helpers to keep Program.cs concise
+await app.MigrateDatabaseAsync();
+await app.SeedDatabaseAsync();
+await app.ResetStaleSyncProjectsAsync();
 
 if (!app.Environment.IsDevelopment())
 {

@@ -6,6 +6,9 @@ using DraftView.Infrastructure.Persistence;
 using DraftView.Infrastructure.Persistence.Repositories;
 using DraftView.Web.Data;
 using DraftView.Web;
+using DraftView.Infrastructure.Parsing;
+using DraftView.Infrastructure.Sync;
+using DraftView.Web.Services;
 using DraftView.Infrastructure.Dropbox;
 using DraftView.Application.Services;
 using DraftView.Domain.Interfaces.Services;
@@ -71,6 +74,48 @@ namespace DraftView.Web.Extensions
             services.AddScoped<IReadingProgressService, ReadingProgressService>();
             services.AddScoped<INotificationService, NotificationService>();
             services.AddScoped<IDashboardService, DashboardService>();
+
+            return services;
+        }
+
+        public static IServiceCollection AddWebServices(this IServiceCollection services, IConfiguration configuration)
+        {
+            // MVC / Razor Pages
+            services.AddControllersWithViews();
+            services.AddRazorPages();
+
+            // Session (required for OAuth state)
+            services.AddDistributedMemoryCache();
+            services.AddSession(options =>
+            {
+                options.IdleTimeout = TimeSpan.FromMinutes(10);
+                options.Cookie.HttpOnly = true;
+                options.Cookie.IsEssential = true;
+            });
+
+            // Parsing and Dropbox
+            services.AddSingleton<IScrivenerProjectParser, ScrivenerProjectParser>();
+            services.AddSingleton<IRtfConverter, RtfConverter>();
+            services.AddScoped<IDropboxConnectionChecker, DropboxConnectionChecker>();
+            services.AddScoped<IDropboxClientFactory, DropboxClientFactory>();
+            services.AddScoped<IDropboxFileDownloader, DropboxFileDownloader>();
+
+            // Background sync service
+            services.AddHostedService<SyncBackgroundService>();
+
+            // Email sender selection (from configuration)
+            var emailProvider = configuration["Email:Provider"] ?? string.Empty;
+            if (emailProvider == "Console")
+                services.AddScoped<IEmailSender, ConsoleEmailSender>();
+            else
+                services.AddScoped<IEmailSender, SmtpEmailSender>();
+
+            // Path resolver
+            services.AddScoped<ILocalPathResolver>(sp =>
+            {
+                var settings = sp.GetRequiredService<DraftViewSettings>();
+                return new LocalPathResolver(settings.ResolvedLocalCachePath);
+            });
 
             return services;
         }

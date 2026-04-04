@@ -71,10 +71,9 @@ public class PublicationService(
         Guid projectId, CancellationToken ct = default)
     {
         var all = await sectionRepo.GetByProjectIdAsync(projectId, ct);
-        return all
+        return [.. all
             .Where(s => s.NodeType == NodeType.Folder && s.IsPublished && !s.IsSoftDeleted)
-            .OrderBy(s => s.SortOrder)
-            .ToList();
+            .OrderBy(s => s.SortOrder)];
     }
 
     public async Task<IReadOnlyList<Section>> GetPublishableChaptersAsync(

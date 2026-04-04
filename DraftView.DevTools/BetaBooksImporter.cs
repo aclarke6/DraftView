@@ -173,7 +173,7 @@ public static class BetaBooksImporter
 public class BetaBooksExport
 {
     public string Book { get; set; } = string.Empty;
-    public List<BetaBooksComment> Comments { get; set; } = new();
+    public List<BetaBooksComment> Comments { get; set; } = [];
 }
 
 public class BetaBooksComment

@@ -38,8 +38,7 @@ public class AuthorController(
         var projects          = await projectRepo.GetAllAsync();
         var active            = await projectRepo.GetReaderActiveProjectAsync();
         var publishedChapters = active is not null
-            ? await publicationService.GetPublishedChaptersAsync(active.Id)
-            : new List<Section>();
+            ? await publicationService.GetPublishedChaptersAsync(active.Id) : [];
         var failures      = await dashboardService.GetEmailHealthSummaryAsync();
         var readers       = await userRepo.GetAllBetaReadersAsync();
         var notifications = await dashboardService.GetRecentNotificationsAsync(author.Id, maxItems: 20);
@@ -541,8 +540,8 @@ public class AuthorController(
             DisplayName         = reader.DisplayName,
             Email               = reader.Email,
             Status              = status,
-            ProjectsWithAccess    = activeProjects.Where(p => accessProjectIds.Contains(p.Id)).ToList(),
-            ProjectsWithoutAccess = activeProjects.Where(p => !accessProjectIds.Contains(p.Id)).ToList()
+            ProjectsWithAccess = [.. activeProjects.Where(p => accessProjectIds.Contains(p.Id))],
+            ProjectsWithoutAccess = [.. activeProjects.Where(p => !accessProjectIds.Contains(p.Id))]
         });
     }
 
@@ -636,12 +635,12 @@ public class AuthorController(
         foreach (var s in sections)
         {
             var key = s.ParentId ?? root;
-            if (!lookup.ContainsKey(key)) lookup[key] = new List<Section>();
+            if (!lookup.ContainsKey(key)) lookup[key] = [];
             lookup[key].Add(s);
         }
 
         foreach (var key in lookup.Keys.ToList())
-            lookup[key] = lookup[key].OrderBy(s => s.SortOrder).ToList();
+            lookup[key] = [.. lookup[key].OrderBy(s => s.SortOrder)];
 
         var result = new List<(Section, int)>();
 
