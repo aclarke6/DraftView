@@ -5,13 +5,17 @@ namespace DraftView.Web.Controllers;
 
 public class HomeController(IUserRepository userRepo) : BaseController(userRepo)
 {
-    public async Task<IActionResult> Index()
+    public IActionResult Index()
     {
         if (User.Identity?.IsAuthenticated != true)
             return RedirectToAction("Login", "Account");
 
-        return await IsAuthorAsync()
-            ? RedirectToAction("Dashboard", "Author")
-            : RedirectToAction("Dashboard", "Reader");
+        if (User.IsInRole("SystemSupport"))
+            return RedirectToAction("Dashboard", "Support");
+
+        if (User.IsInRole("Author"))
+            return RedirectToAction("Dashboard", "Author");
+
+        return RedirectToAction("Dashboard", "Reader");
     }
 }

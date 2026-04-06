@@ -61,9 +61,6 @@ public class AuthorController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Sync(Guid projectId)
     {
-        var guard = await RequireAuthorAsync();
-        if (guard is not null) return guard;
-
         var project = await projectRepo.GetByIdAsync(projectId);
         if (project is not null)
         {
@@ -109,9 +106,6 @@ public class AuthorController(
     [HttpGet]
     public async Task<IActionResult> GetSyncStatus(Guid projectId)
     {
-        var guard = await RequireAuthorAsync();
-        if (guard is not null) return guard;
-
         var project = await projectRepo.GetByIdAsync(projectId);
         if (project is null) return NotFound();
 
@@ -135,9 +129,6 @@ public class AuthorController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ActivateProject(Guid projectId)
     {
-        var guard = await RequireAuthorAsync();
-        if (guard is not null) return guard;
-
         var project = await projectRepo.GetByIdAsync(projectId);
         if (project is null) return NotFound();
 
@@ -152,9 +143,6 @@ public class AuthorController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeactivateProject(Guid projectId)
     {
-        var guard = await RequireAuthorAsync();
-        if (guard is not null) return guard;
-
         var project = await projectRepo.GetByIdAsync(projectId);
         if (project is null) return NotFound();
 
@@ -170,9 +158,6 @@ public class AuthorController(
     // ---------------------------------------------------------------------------
     public async Task<IActionResult> Sections(Guid projectId)
     {
-        var guard = await RequireAuthorAsync();
-        if (guard is not null) return guard;
-
         var project = await projectRepo.GetByIdAsync(projectId);
         if (project is null) return NotFound();
 
@@ -236,9 +221,6 @@ public class AuthorController(
     // ---------------------------------------------------------------------------
     public async Task<IActionResult> Readers()
     {
-        var guard = await RequireAuthorAsync();
-        if (guard is not null) return guard;
-
         var readers = await userRepo.GetAllBetaReadersAsync();
 
         var rows = new List<ReaderRowViewModel>();

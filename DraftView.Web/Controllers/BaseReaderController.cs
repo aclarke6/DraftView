@@ -13,7 +13,7 @@ namespace DraftView.Web.Controllers;
 /// Contains all dependencies, helper methods, and POST actions.
 /// GET actions are implemented in the derived controllers.
 /// </summary>
-[Authorize]
+[Authorize(Roles = "BetaReader,Author")]
 #pragma warning disable CS9107
 public abstract class BaseReaderController(
     IScrivenerProjectRepository projectRepo,
