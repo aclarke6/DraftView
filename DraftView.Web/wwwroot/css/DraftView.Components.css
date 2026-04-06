@@ -446,7 +446,7 @@
 .access-denied-hero {
     position: relative;
     min-height: calc(100vh - 56px - 72px);
-    background-image: url('/images/DraftView.AccessDenied.png');
+    background-image: url('/images/DraftView.403AccessDenied.png');
     background-size: cover;
     background-position: center center;
     display: flex;
