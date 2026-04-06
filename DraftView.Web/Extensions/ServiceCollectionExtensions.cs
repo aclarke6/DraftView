@@ -17,7 +17,7 @@ using System;
 
 namespace DraftView.Web.Extensions
 {
-    internal static class ServiceCollectionExtensions
+    public static class ServiceCollectionExtensions
     {
         public static IServiceCollection AddPersistenceServices(this IServiceCollection services, IConfiguration configuration)
         {
@@ -141,6 +141,13 @@ namespace DraftView.Web.Extensions
                 options.AccessDeniedPath = "/Account/AccessDenied";
                 options.SlidingExpiration = true;
                 options.ExpireTimeSpan = TimeSpan.FromDays(14);
+            });
+
+            // Register simple role-based authorization policies for stage-1 migration
+            services.AddAuthorization(options =>
+            {
+                options.AddPolicy("RequireAuthorPolicy", p => p.RequireRole(DraftView.Domain.Enumerations.Role.Author.ToString()));
+                options.AddPolicy("RequireBetaReaderPolicy", p => p.RequireRole(DraftView.Domain.Enumerations.Role.BetaReader.ToString()));
             });
 
             return services;

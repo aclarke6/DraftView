@@ -48,6 +48,17 @@ public static class DatabaseSeeder
             }
         }
 
+        // Ensure BetaReader role exists for backfill/membership sync
+        if (!await roleManager.RoleExistsAsync(Role.BetaReader.ToString()))
+        {
+            var result = await roleManager.CreateAsync(new IdentityRole(Role.BetaReader.ToString()));
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                throw new InvalidOperationException($"Failed to create role {Role.BetaReader}: {errors}");
+            }
+        }
+
         // ---------------------------------------------------------------------------
         // Seed Author IdentityUser (for login)
         // ---------------------------------------------------------------------------
@@ -144,6 +155,36 @@ public static class DatabaseSeeder
 
             await db.SaveChangesAsync();
             logger.LogInformation("Support domain user created: {Email}", supportEmail);
+        }
+
+        // ---------------------------------------------------------------------------
+        // Backfill Identity role membership for existing domain users (map by email)
+        // This ensures Identity roles reflect the domain `AppUsers.Role` values.
+        // Safe to run repeatedly — userManager.AddToRoleAsync is idempotent for existing membership.
+        // ---------------------------------------------------------------------------
+        var allDomainUsers = db.AppUsers.ToList();
+        foreach (var du in allDomainUsers)
+        {
+            try
+            {
+                var idUser = await userManager.FindByEmailAsync(du.Email);
+                if (idUser is null) continue;
+
+                var roleName = du.Role.ToString();
+                if (!await roleManager.RoleExistsAsync(roleName))
+                {
+                    await roleManager.CreateAsync(new IdentityRole(roleName));
+                }
+
+                if (!await userManager.IsInRoleAsync(idUser, roleName))
+                {
+                    await userManager.AddToRoleAsync(idUser, roleName);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to backfill identity role for {Email}", du.Email);
+            }
         }
 
         // ---------------------------------------------------------------------------

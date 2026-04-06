@@ -10,7 +10,7 @@ using DraftView.Web.Models;
 namespace DraftView.Web.Controllers;
 
 #pragma warning disable CS9107, CS9113
-[Authorize]
+[Authorize(Policy = "RequireAuthorPolicy")]
 public class AuthorController(
     IScrivenerProjectRepository projectRepo,
     ISectionRepository sectionRepo,

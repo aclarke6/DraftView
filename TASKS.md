@@ -74,6 +74,44 @@ For complex files, prefer full rewrites delivered as `.ps1` files over inline re
 
 ---
 
+## ROLE MIGRATION - ASP.NET Identity rollout (3-stage)
+
+Goal: migrate authorization to use ASP.NET Identity roles as single source of truth and implement SystemSupport-managed System State Messaging.
+
+Stage 1 — Web surface (Author / BetaReader)
+- [ ] Inventory controllers/views/helpers that check `AppUsers.Role` (test checklist)
+- [Done] Add `RequireAuthorPolicy` and `RequireBetaReaderPolicy` in identity setup
+- [Done] Update `DatabaseSeeder` to ensure Identity role membership and add backfill script
+- [In progress] Replace manual domain-role guards with `[Authorize(Roles = "Author")]` / policies
+  - [Done] `AuthorController` decorated with `[Authorize(Policy = "RequireAuthorPolicy")]`
+- [ ] Update views to use `User.IsInRole("Author")` or ViewBag populated from claims
+- [ ] Add xUnit + Moq controller tests asserting role-based access
+- [Done] Create `DraftView.Web.Tests` project and add policy registration unit test
+
+Stage 2 — Application layer enforcement
+- [ ] Design and add `IAuthorizationFacade` (testable wrapper around `IAuthorizationService`)
+- [ ] Audit application services for methods requiring role checks
+- [ ] Inject and enforce role policies inside critical service methods
+- [ ] Add service-level unit tests (xUnit + Moq) for authorized/unauthorized callers
+- [ ] Define background service identity model (service account / impersonation)
+
+Stage 3 — SystemSupport & System State Messaging
+- [ ] Seed `SystemSupport` Identity role and backfill support user
+- [ ] Implement `SystemStateMessage` domain entity + repository + migration
+- [ ] Implement `ISystemStateMessageService` with policy enforcement
+- [ ] Create `SupportController` protected by `[Authorize(Roles = "SystemSupport")]`
+- [ ] Footer integration: read-only active message render (safe-to-fail)
+- [ ] Add domain, application and infra tests (xUnit + Moq)
+
+Cross-stage
+- [ ] Documentation: dev guide on roles as canonical source
+- [ ] Logging: failed authorization attempts
+- [ ] Backfill/migration scripts and rollback notes
+
+Exit criteria: Identity roles are canonical; web and app services enforce roles; SystemSupport implemented and tested.
+
+---
+
 ## IMMEDIATE - Current Sprint
 
 ### ReaderAccess (In Progress)

@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace DraftView.Web.Controllers;
 
-[Authorize]
+[Authorize(Policy = "RequireAuthorPolicy")]
 public class DropboxController(
     IUserRepository userRepo,
     IDropboxConnectionRepository connectionRepo,

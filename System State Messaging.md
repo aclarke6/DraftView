@@ -1,355 +1,170 @@
-# Sprint Scope
+# Sprint: System State Messaging — three-stage role migration plan
 
-Implement a single global system state message that is:
+This document describes a three-stage approach to (A) migrate the codebase to use ASP.NET Identity role handling as the canonical authority for role membership and (B) use that role model consistently across Web, Application and Domain layers.
 
-- created and edited by SystemSupport
-- visible to all users
-- rendered in the footer via _Layout.cshtml
-- optionally expiring, defaulting to no expiry
-- never deleted from history
-- auto-replacing the previous active message
-- safe to fail with log + ignore
+Goals:
+- Replace scattered, domain-only role checks with ASP.NET Identity role checks and policy-based authorization.
+- Move enforcement to appropriate layers (Web for UI gating; Application for service-level authorization) while keeping Domain focused on business invariants.
+- Introduce `SystemSupport` role in Stage 3 and implement the System State Message feature with proper authorization.
 
-TDD applies to Domain, Application, and Infrastructure.
-
----
-
-# Locked Decisions
-
-- Active model: single active message  
-- New message behaviour: auto-revoke previous active message  
-- History: retain all messages  
-- History sort: latest first  
-- Expiry: optional, default “don’t expire”  
-- Visibility: all users  
-- Placement: footer in _Layout.cshtml  
-- Failure behaviour: log + ignore  
-- Editing: allowed by Support User  
+Constraints / principles:
+- Backwards compatible seeding and migration: existing domain `AppUsers` rows must remain valid during rollout.
+- Prefer ASP.NET Core authorization primitives: `[Authorize(Roles = "...")]`, named policies, and `IAuthorizationService` for service-level checks.
+- Add tests (xUnit + Moq) for each enforcement point.
+- Use incremental, reversible changes per sprint stage.
 
 ---
 
-# Recommendation on Severity
+## Stage 1 — Migrate Author and BetaReader checks to ASP.NET role handling (surface/web level)
 
-Not necessary for this sprint.
+Objective: Replace manual domain-role checks in controllers and views with standardized ASP.NET Identity roles and policies for `Author` and `BetaReader`. Keep domain `User.Role` for audit/read-only, and ensure identity/domain sync during seeding and registration.
 
-Reason:
+Tasks (implementation and tests):
 
-- you only have one active message  
-- footer space is small  
-- no escalation workflow exists yet  
+1. Inventory and tests
+   - Create a test checklist enumerating every controller, view and helper that currently checks `User.Role` or queries `AppUsers.Role` (use code search results). Add unit tests demonstrating current behaviour where needed.
 
-Adding severity now would force:
+2. Identity role canonicalisation
+   - Confirm `Role` enum names map exactly to Identity role names (`Author`, `BetaReader`).
+   - Update `DatabaseSeeder` to ensure roles exist and to ensure any new Identity users are added to the appropriate Identity role.
+   - Add a migration note / small script to backfill Identity role membership for existing users where IdentityUser exists (map by email) — create acceptance test for seeding.
 
-- enum/domain rules  
-- styling variants  
-- support UI choices  
-- display logic  
-- tests  
+3. Add authorization policies
+   - In `AddIdentityServices` or `Program.cs` register named policies: `RequireAuthorPolicy`, `RequireBetaReaderPolicy` (policy that requires role membership via `RequireRole("Author")` etc.).
+   - Unit tests: verify Policy registration and that `[Authorize(Policy = ...)]` would require role.
 
-That is cost without present need. Leave it out unless you already know you want:
+4. Controller refactor (surface level)
+   - Replace manual `GetAuthorAsync()` / `RequireAuthorAsync()` usage by applying `[Authorize(Roles = "Author")]` or `[Authorize(Policy = "RequireAuthorPolicy")]` to controllers/actions where the whole controller or action is author-only.
+   - For mixed controllers (some actions author-only), apply attribute at action level.
+   - Remove redundant `Forbid()` checks in actions that become fully protected by attributes, keeping any additional domain preconditions.
+   - Keep `BaseController.OnActionExecutionAsync` to populate `ViewBag` but read role membership from claims for performance (User.IsInRole or ClaimsPrincipal). Add unit tests for view bag population.
 
-- informational  
-- degraded service  
-- outage  
+5. Views and UI
+   - Replace checks that read `ViewBag.IsAuthor` / domain user role with `User.IsInRole("Author")` or keep `ViewBag` if it's still populated from claims. Ensure server-side hide/show logic uses Identity roles.
+   - Update layout/footer scaffolding if needed.
 
----
+6. Authentication/Registration flows
+   - Ensure any user registration flows (if present) create a domain `User` and add the IdentityUser to the matching Identity role where appropriate. Add tests.
 
-# Sprint Tasks
+7. Tests & acceptance
+   - Add controller/unit tests (xUnit + Moq) that assert unauthenticated or role-mismatched users are denied (403/redirect) for Author-only endpoints.
+   - Manual QA checklist: sign in as seeded author, non-author, and ensure behaviour matches existing app.
 
-## 1. Identity and Role
+Exit criteria for Stage 1:
+- All web surface role checks use ASP.NET Identity roles/policies.
+- Views show/hide UI using Identity role info (or a ViewBag populated from claims).
+- Seeder backs Identity roles and maps existing users. Unit tests added.
 
-- Add SystemSupport role  
-- Seed support@draftview.co.uk  
-- Ensure role claim is present in auth  
+Completed work (Stage 1 so far):
+- Policies `RequireAuthorPolicy` and `RequireBetaReaderPolicy` have been added to DI via `AddIdentityServices`.
+- A unit test project `DraftView.Web.Tests` and `AuthorizationPolicyRegistrationTests` were added to verify policy registration.
+- `TASKS.md` updated to mark policy registration and test scaffolding as Done for Stage 1.
 
----
-
-## 2. Domain
-
-Create a SystemStateMessage aggregate/entity with rules for:
-
-- create  
-- edit  
-- revoke  
-- expire  
-- determine active status  
-
-Fields:
-
-- Id  
-- Message  
-- CreatedAtUtc  
-- CreatedByUserId  
-- UpdatedAtUtc nullable  
-- UpdatedByUserId nullable  
-- Revoked bool  
-- RevokedAtUtc nullable  
-- RevokedByUserId nullable  
-- ExpiresAtUtc nullable  
+Next Stage 1 tasks (remaining):
+- Inventory and replace manual controller guards with policy attributes or policy checks.
+- Update `DatabaseSeeder` to ensure Identity role membership and provide backfill script.
+- Convert view role checks to use `User.IsInRole` or a ViewBag populated from claims.
 
 ---
 
-## 3. Domain Tests first
+## Stage 2 — Enforce roles in the Application layer (service-level authorization)
 
-Minimum behaviours:
+Objective: Move sensitive authorization logic into the Application layer so services enforce role-based constraints, preventing bypass by non-web callers. Use ASP.NET Core authorization primitives (policies, IAuthorizationService) or a small `IAuthorizationFacade` to avoid pulling HttpContext into services.
 
-- new message is active when not revoked and not expired  
-- message with no expiry stays active  
-- expired message is inactive  
-- revoked message is inactive  
-- editing changes message content and update audit fields  
-- revoking sets revoke audit fields  
+Tasks (implementation and tests):
 
----
+1. Design authorization integration for services
+   - Add `IAuthorizationFacade` (or use `IAuthorizationService`) abstraction injectable into application services that need authorization.
+   - Provide a concrete implementation that uses `IHttpContextAccessor` to resolve ClaimsPrincipal and check roles, but design the interface so it can be mocked and used by non-HTTP callers (e.g., background jobs) by passing a `ClaimsPrincipal` or `UserContext`.
 
-## 4. Application Layer
+2. Identify critical service methods
+   - Audit application services for operations requiring Author role (e.g., publish/unpublish, manage readers, project management) and BetaReader-specific operations.
+   - Create an itemised list of public methods to require service-level authorization.
 
-Add service/use cases:
+3. Implement service-level checks
+   - Inject `IAuthorizationFacade` into selected services and perform role checks at method entry. When authorization fails, throw a domain-specific `UnauthorisedOperationException` or return failure result as appropriate.
+   - Prefer policy names (e.g., `RequireAuthorPolicy`) rather than role strings to keep rules single-sourced.
 
-- CreateSystemStateMessageAsync  
-- EditSystemStateMessageAsync  
-- RevokeSystemStateMessageAsync  
-- GetActiveSystemStateMessageAsync  
-- GetSystemStateHistoryAsync  
+4. Update callers
+   - Update Web layer callers to pass CurrentUserId (and optionally a ClaimsPrincipal) into services where required. Keep Web layer attributes for UI gating, but do not rely solely on them.
 
-Rule:
+5. Tests
+   - Add unit tests (xUnit + Moq) for services asserting that unauthorized callers are rejected and authorized callers succeed; include cases where the caller provides an id that is not in the `Author` role.
+   - Add integration-style tests if feasible to validate both Web and Application enforcement together.
 
-- creating a new active message revokes the prior active message in the same transaction  
+6. Background jobs / non-web callers
+   - Define how background services obtain an identity (service account or impersonation) and ensure role checks still work (e.g., map service principal to Author where required or allow explicit privileged background operations through config).
 
----
-
-## 5. Application Tests first
-
-Minimum behaviours:
-
-- creating message revokes previous active message  
-- only support user can create/edit/revoke  
-- active message query ignores revoked  
-- active message query ignores expired  
-- history returns latest first  
+Exit criteria for Stage 2:
+- Application services enforce role checks and cannot be bypassed by directly calling service methods.
+- Tests cover authorized and unauthorized service calls.
 
 ---
 
-## 6. Infrastructure
+## Stage 3 — Implement SystemSupport role and System State Messaging with ASP.NET role enforcement
 
-- EF configuration  
-- migration  
-- repository methods for:  
-  - current active message  
-  - history latest first  
-  - by id  
-- indexes on:  
-  - Revoked  
-  - ExpiresAtUtc  
-  - CreatedAtUtc  
+Objective: Add `SystemSupport` as an ASP.NET Identity role, wire up Web UI and Application services to require that role for managing system state messages, and implement the System State Message feature per the original spec.
 
----
+Tasks (implementation and tests):
 
-## 7. Infrastructure Tests first
+1. Identity and seeding
+   - Ensure `SystemSupport` Identity role exists via seeder.
+   - Seed `support@draftview.co.uk` to Identity role and create/match a domain `User` with `Role.SystemSupport` if needed for audit. Provide a migration/backfill script.
 
-Minimum behaviours:
+2. Domain model & rules
+   - Implement `SystemStateMessage` aggregate/entity (fields and rules as previously specified), using the chosen audit model (create new row on edit, revoke old row).
+   - Add repository methods: get active, get history (latest-first), get by id.
 
-- active query returns correct message  
-- expired message excluded  
-- revoked message excluded  
-- history sorted latest first  
+3. Application services
+   - Add `ISystemStateMessageService` with methods: Create, Edit, Revoke, GetActive, GetHistory.
+   - Service implementations must enforce `SystemSupport` authorization via `IAuthorizationFacade` / policies.
+   - Ensure creating a new message revokes previous active in same transaction.
 
----
+4. Web layer
+   - Add `SupportController` protected with `[Authorize(Roles = "SystemSupport")]` and UI pages for create/edit/revoke/history.
+   - Add footer integration: layout fetches active message read-only (safe to fail: log + ignore) and renders it.
 
-## 8. Web
+5. Infrastructure
+   - EF mapping and migration for `SystemStateMessage` and indexes on `Revoked`, `ExpiresAtUtc`, `CreatedAtUtc`.
 
-- add SupportController  
-- add [Authorize(Roles = "SystemSupport")]  
-- add GetSupportAsync() helper  
-- redirect non-support users safely  
-- support page for:  
-  - current active message  
-  - create new message  
-  - edit current message  
-  - revoke current message  
-  - history list  
+6. Tests
+   - Domain, application, and infrastructure tests (xUnit + Moq) per earlier minimum behaviours.
+   - Controller tests asserting only support users can access support endpoints.
 
----
+7. Rollout and checklist
+   - Run data migration/backfill to sync Identity membership for support user.
+   - Smoke test UI and footer.
 
-## 9. Footer Integration
-
-- _Layout.cshtml displays the active message in footer  
-- if none exists, footer falls back cleanly  
-- if lookup fails, log + render without message  
+Exit criteria for Stage 3:
+- SystemSupport role exists and is enforced across Web and Application layers.
+- System State Messaging feature implemented with audit/history and protected UI.
 
 ---
 
-## 10. Caching
+## Cross-stage concerns and non-functional tasks
 
-Optional for this sprint unless you want it now.
-
-My recommendation:
-
-- skip cache this sprint  
-- add only if profiling or production load justifies it  
-
-Reason:
-
-- one footer lookup  
-- single active record  
-- premature cache invalidation logic adds risk  
+- Documentation: update developer docs indicating Identity role is canonical, how to seed roles, and how to write service-level authorization checks.
+- Monitoring / logging: log failed authorization attempts and provide a dev debug mode to visualise role mappings.
+- Migration safety: ensure seeding is idempotent and provide rollback steps.
+- Tests: use xUnit + Moq; add integration tests where services and policies are exercised together.
+- Backwards compatibility: keep domain `User.Role` readable for a transitional period, but add a TODO to remove duplicate role storage after rollout.
 
 ---
 
-# Architecturally Important Notes
+## Delivery plan & milestones
 
-## Editing allowed
+- Week 1: Stage 1 (web surface migration, seeding, and tests)
+- Week 2: Stage 2 (application-layer enforcement, facade design, service tests)
+- Week 3: Stage 3 (SystemSupport role, System State Messaging feature, infra/migrations, tests)
 
-This is fine, but it changes the audit model.
-
-You need to decide whether:
-
-- editing mutates the same row, or  
-- editing creates a new row and revokes the old one  
-
-Your decision:
-
-- editing creates a new row and revokes the old one  
-
-This provides a full audit trail.
+Note: adjust sprint length based on team capacity. Each stage contains unit and integration tests — do not merge without test coverage for enforcement points.
 
 ---
 
-## Support access
+## Acceptance criteria (overall)
 
-Right now I am assuming:
-
-- only SystemSupport may manage system state messages  
-
-That is the cleanest rule for this sprint.
-
-# Sprint Definition — System State Messaging
-
-## Goal
-
-Implement a **single global system state message** that is:
-
-- Created and managed by `SystemSupport`
-- Visible to all users
-- Rendered in the footer (`_Layout.cshtml`)
-- Optionally expiring (default: no expiry)
-- Fully auditable (no destructive edits)
-- Safe to fail (log + ignore)
-
----
-
-## Key Behaviour Decisions (Locked)
-
-- Active model: **Single active message**
-- New message: **Auto-revokes previous active message**
-- History: **All messages retained**
-- Ordering: **Latest first**
-- Expiry: **Optional, default no expiry**
-- Visibility: **Global (all users)**
-- Placement: **Footer**
-- Failure behaviour: **Log + ignore**
-- Editing model: **Create new row + auto-revoke previous**
-
----
-
-## Audit Model (Confirmed)
-
-Yes — this **does provide a proper audit trail**.
-
-Each change results in:
-- A **new record**
-- The previous active message being:
-  - Marked `Revoked = true`
-  - Given `RevokedAtUtc`
-  - Given `RevokedByUserId`
-
-This gives you:
-- Full history of all messages
-- Who created each message
-- Who revoked each message
-- When transitions occurred
-
-No data is lost. No mutation ambiguity.
-
----
-
-## Domain Model
-
-### Entity: `SystemStateMessage`
-
-Fields:
-
-- `Id`
-- `Message`
-- `CreatedAtUtc`
-- `CreatedByUserId`
-- `Revoked` (bool)
-- `RevokedAtUtc` (nullable)
-- `RevokedByUserId` (nullable)
-- `ExpiresAtUtc` (nullable)
-
----
-
-## Domain Rules
-
-- A message is **Active** if:
-  - `Revoked == false`
-  - `ExpiresAtUtc == null OR ExpiresAtUtc > now`
-
-- Only **one active message** exists at any time
-
-- Creating a new message:
-  - Revokes the current active message (if any)
-  - Inserts new message as active
-
-- Messages are **never deleted**
-
----
-
-## Application Layer (Use Cases)
-
-### CreateSystemStateMessage
-- Validate caller is `SystemSupport`
-- Revoke existing active message (if present)
-- Create new message
-- Save in single transaction
-
-### RevokeSystemStateMessage
-- Mark message as revoked
-- Set audit fields
-
-### GetActiveSystemStateMessage
-- Return single active message (or null)
-
-### GetSystemStateHistory
-- Return all messages ordered by `CreatedAtUtc DESC`
-
----
-
-## Infrastructure
-
-- EF Core configuration
-- Migration for `SystemStateMessage`
-- Indexes:
-  - `Revoked`
-  - `ExpiresAtUtc`
-  - `CreatedAtUtc`
-
----
-
-## Web Layer
-
-### SupportController
-
-- `[Authorize(Roles = "SystemSupport")]`
-
-Helper:
-```csharp
-private async Task<User?> GetSupportAsync()
-{
-    var email = User.Identity?.Name;
-    if (email is null) return null;
-
-    var user = await userRepo.GetByEmailAsync(email);
-    return user?.Role == Role.SystemSupport ? user : null;
-}
+- Identity roles are the single source of truth for authorization decisions.
+- Web controllers use `[Authorize]` attributes and/or policies for UI gating.
+- Application services validate role membership and cannot be bypassed by direct calls.
+- SystemSupport is implemented and secures System State Messaging management endpoints.
+- Tests (xUnit + Moq) cover positive and negative authorization paths.
