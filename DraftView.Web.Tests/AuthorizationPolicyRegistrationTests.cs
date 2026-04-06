@@ -8,7 +8,7 @@ namespace DraftView.Web.Tests;
 public class AuthorizationPolicyRegistrationTests
 {
     [Fact]
-    public void AddIdentityServices_RegistersPolicies()
+    public async Task AddIdentityServices_RegistersPolicies()
     {
         var services = new ServiceCollection();
         var configuration = new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build();
@@ -24,8 +24,8 @@ public class AuthorizationPolicyRegistrationTests
         var authOptions = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<Microsoft.AspNetCore.Authorization.AuthorizationOptions>>();
 
         var policyProvider = provider.GetRequiredService<Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider>();
-        var authorPolicy = policyProvider.GetPolicyAsync("RequireAuthorPolicy").GetAwaiter().GetResult();
-        var readerPolicy = policyProvider.GetPolicyAsync("RequireBetaReaderPolicy").GetAwaiter().GetResult();
+        var authorPolicy = await policyProvider.GetPolicyAsync("RequireAuthorPolicy");
+        var readerPolicy = await policyProvider.GetPolicyAsync("RequireBetaReaderPolicy");
 
         Assert.NotNull(authorPolicy);
         Assert.NotNull(readerPolicy);
