@@ -85,7 +85,7 @@ For complex files, prefer full rewrites delivered as `.ps1` files over inline re
 
 Goal: migrate authorization to use ASP.NET Identity roles as single source of truth and implement SystemSupport-managed System State Messaging.
 
-Stage 1 — Web surface (Author / BetaReader)
+### Stage 1 — Web surface (Author / BetaReader)
 - [Done] Inventory controllers/views/helpers that check `AppUsers.Role` (test checklist)
 - [Done] Add `RequireAuthorPolicy` and `RequireBetaReaderPolicy` in identity setup
 - [Done] Update `DatabaseSeeder` to ensure Identity role membership and add backfill script
@@ -104,14 +104,14 @@ Stage 1 — Web surface (Author / BetaReader)
 - [Done] Remove `RequireAuthorAsync()` / `GetAuthorAsync()` domain-role controller helpers — replace with class-level `[Authorize]` attributes
 - [Done] Fix `AccountController.cs:507` — post-login redirect uses domain role check, replace with `User.IsInRole()`- 
 
-Stage 2 — Application layer enforcement
+### Stage 2 — Application layer enforcement
 - [Done] Design and add `IAuthorizationFacade`
 - [Done] Audit application services for methods requiring role checks — UserService complete, CommentService deferred
 - [Done] Inject and enforce role policies inside critical service methods — UserService fully migrated
 - [Done] Add service-level unit tests — UserService facade tests green
 - [Deferred] Define background service identity model — SyncBackgroundService runs as trusted system actor with no HTTP context; IAuthorizationFacade not applicable. Full impersonation model tracked separately under Impersonation section.
 
-Stage 3 — SystemSupport & System State Messaging
+### Stage 3 — SystemSupport & System State Messaging
 - [Done] Seed `SystemSupport` Identity role and backfill support user
 - [Done] Implement `SystemStateMessage` domain entity + repository + migration (6 domain tests)
 - [Done] Implement `ISystemStateMessageService` with policy enforcement (7 application tests)
@@ -119,6 +119,31 @@ Stage 3 — SystemSupport & System State Messaging
 - [Done] Footer integration: read-only active message render, safe-to-fail, severity-coded colours (Info/Warning/Critical)
 - [Done] Add domain, application and infra tests — domain (6), application (14) complete
 
+### Stage 4 — System State Message Management UI
+Goal: Give the SystemSupport user a fully functional message management surface on the Support Dashboard.
+
+#### Requirements:
+- View all messages (active and historical) in a table — message text, severity, created date, status (Active/Revoked)
+- Add new message — form with message text and severity selector (Info / Warning / Critical)
+- Revoke active message — single action button, confirmation required
+- No edit in place — updating a message means revoking the current one and creating a new one (preserves audit trail)
+- History is always visible — revoked messages shown in muted style below active message
+
+#### Design decisions:
+- UI lives on the Support Dashboard as a replacement for the current placeholder panel
+- SupportController handles POST actions (protected by SystemSupport role)
+- SupportDashboardViewModel extended to carry message list and active message
+- All mutations go through ISystemStateMessageService — no direct DB access from controller
+- Add form uses severity dropdown with Info as default
+
+#### Tasks:
+- [ ] Extend SupportDashboardViewModel with ActiveMessage and MessageHistory
+- [ ] Update SupportController.Dashboard to load messages via ISystemStateMessageService
+- [ ] Add SupportController.PostMessage action (POST) — creates new message, auto-revokes existing active
+- [ ] Add SupportController.RevokeMessage action (POST) — revokes active message
+- [ ] Update Support/Dashboard.cshtml — replace placeholder panel with working message management UI
+- [ ] Add controller tests for PostMessage and RevokeMessage authorization
+- [ ] UAT — support user can post, view history, and revoke messages end to end
 
 Cross-stage
 - [ ] Documentation: dev guide on roles as canonical source
