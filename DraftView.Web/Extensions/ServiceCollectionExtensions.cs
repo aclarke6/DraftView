@@ -77,6 +77,7 @@ namespace DraftView.Web.Extensions
             services.AddScoped<IReadingProgressService, ReadingProgressService>();
             services.AddScoped<INotificationService, NotificationService>();
             services.AddScoped<IDashboardService, DashboardService>();
+            services.AddScoped<ISystemStateMessageService, SystemStateMessageService>();
 
             return services;
         }

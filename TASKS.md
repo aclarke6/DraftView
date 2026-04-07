@@ -114,10 +114,10 @@ Stage 2 — Application layer enforcement
 Stage 3 — SystemSupport & System State Messaging
 - [Done] Seed `SystemSupport` Identity role and backfill support user
 - [Done] Implement `SystemStateMessage` domain entity + repository + migration (6 domain tests)
-- [ ] Implement `ISystemStateMessageService` with policy enforcement
+- [Done] Implement `ISystemStateMessageService` with policy enforcement (7 application tests)
 - [Done] Create `SupportController` protected by `[Authorize(Roles = "SystemSupport")]`
 - [ ] Footer integration: read-only active message render (safe-to-fail)
-- [In progress] Add domain, application and infra tests — domain tests complete (6), application and infra pending
+- [In progress] Add domain, application and infra tests — domain (6) and application (7) complete, infra pending
 
 Cross-stage
 - [ ] Documentation: dev guide on roles as canonical source
@@ -465,4 +465,4 @@ Status:
 - [DONE] pg.ps1 helper script
 - [DONE] PowerShell.md scripting standards document
 - [DONE] PRINCIPLES.md scripting standards document
-- [DONE] 351 tests, all green
+- [DONE] 364 tests, all green
