@@ -116,8 +116,9 @@ Stage 3 — SystemSupport & System State Messaging
 - [Done] Implement `SystemStateMessage` domain entity + repository + migration (6 domain tests)
 - [Done] Implement `ISystemStateMessageService` with policy enforcement (7 application tests)
 - [Done] Create `SupportController` protected by `[Authorize(Roles = "SystemSupport")]`
-- [ ] Footer integration: read-only active message render (safe-to-fail)
-- [In progress] Add domain, application and infra tests — domain (6) and application (7) complete, infra pending
+- [Done] Footer integration: read-only active message render, safe-to-fail, severity-coded colours (Info/Warning/Critical)
+- [Done] Add domain, application and infra tests — domain (6), application (14) complete
+
 
 Cross-stage
 - [ ] Documentation: dev guide on roles as canonical source
@@ -252,6 +253,9 @@ Exit criteria: Identity roles are canonical; web and app services enforce roles;
 ### Add Project Discovery
 - Add The Fractured Lattice as Books 2, 3 (UUIDs known)
 - Dropbox vault scanning
+
+### System State Messaging
+- [ ] SystemStateMessage expiry — add ExpiresAt nullable DateTime, GetActiveAsync filters expired messages
 
 ---
 
