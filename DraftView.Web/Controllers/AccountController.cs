@@ -48,10 +48,7 @@ public class AccountController(
                 if (Url.IsLocalUrl(returnUrl))
                     return Redirect(returnUrl);
                 var domainUser = await userRepo.GetByEmailAsync(model.Email);
-                return domainUser?.Role switch {
-                    Domain.Enumerations.Role.Author => RedirectToAction("Dashboard", "Author"),
-                    _ => RedirectToAction("Dashboard", "Reader")
-                };
+                return RedirectToAction("Dashboard", "Reader");
 
             case { IsLockedOut: true }:
                 ModelState.AddModelError(string.Empty, "Account locked out. Please try again later.");
@@ -370,7 +367,7 @@ public class AccountController(
         {
             DisplayName = user.DisplayName,
             Email       = user.Email,
-            IsAuthor    = user.Role == Domain.Enumerations.Role.Author
+            IsAuthor    = User.IsInRole("Author")
         };
 
         if (vm.IsAuthor)
@@ -491,23 +488,6 @@ public class AccountController(
         var connectionRepo = HttpContext.RequestServices
             .GetRequiredService<DraftView.Domain.Interfaces.Repositories.IDropboxConnectionRepository>();
         return await connectionRepo.GetByUserIdAsync(userId);
-    }
-
-    // ---------------------------------------------------------------------------
-    // Helpers
-    // ---------------------------------------------------------------------------
-    private IActionResult RedirectToLocal(string? returnUrl)
-    {
-        if (Url.IsLocalUrl(returnUrl))
-            return Redirect(returnUrl);
-
-        var email = HttpContext.User.Identity?.Name ?? string.Empty;
-        var domainUser = userRepo.GetByEmailAsync(email).GetAwaiter().GetResult();
-
-        if (domainUser?.Role == DraftView.Domain.Enumerations.Role.Author)
-            return RedirectToAction("Dashboard", "Author");
-
-        return RedirectToAction("Dashboard", "Reader");
     }
 }
 
