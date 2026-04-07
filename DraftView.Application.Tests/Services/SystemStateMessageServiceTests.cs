@@ -11,11 +11,13 @@ namespace DraftView.Application.Tests.Services;
 public class SystemStateMessageServiceTests
 {
     private readonly Mock<ISystemStateMessageRepository> MessageRepo = new();
+    private readonly Mock<IUserRepository>               UserRepo    = new();
     private readonly Mock<IUnitOfWork>                   UnitOfWork  = new();
     private readonly Mock<IAuthorizationFacade>          AuthFacade  = new();
 
     private SystemStateMessageService CreateSut() => new(
         MessageRepo.Object,
+        UserRepo.Object,
         UnitOfWork.Object,
         AuthFacade.Object);
 
@@ -27,7 +29,9 @@ public class SystemStateMessageServiceTests
     public async Task CreateMessageAsync_WhenSystemSupport_CreatesAndReturnsMessage()
     {
         AuthFacade.Setup(f => f.IsSystemSupport()).Returns(true);
+        AuthFacade.Setup(f => f.GetCurrentUserEmail()).Returns("support@test.com");
         MessageRepo.Setup(r => r.GetActiveAsync(default)).ReturnsAsync((SystemStateMessage?)null);
+        UserRepo.Setup(r => r.GetByEmailAsync("support@test.com", default)).ReturnsAsync((User?)null);
 
         var sut    = CreateSut();
         var result = await sut.CreateMessageAsync("Scheduled maintenance tonight.");
@@ -54,7 +58,9 @@ public class SystemStateMessageServiceTests
     {
         var existing = SystemStateMessage.Create("Old message.", Guid.NewGuid());
         AuthFacade.Setup(f => f.IsSystemSupport()).Returns(true);
+        AuthFacade.Setup(f => f.GetCurrentUserEmail()).Returns("support@test.com");
         MessageRepo.Setup(r => r.GetActiveAsync(default)).ReturnsAsync(existing);
+        UserRepo.Setup(r => r.GetByEmailAsync("support@test.com", default)).ReturnsAsync((User?)null);
 
         var sut = CreateSut();
         await sut.CreateMessageAsync("New message.");
@@ -67,7 +73,9 @@ public class SystemStateMessageServiceTests
     public async Task CreateMessageAsync_WithWarningSeverity_PassesSeverityToEntity()
     {
         AuthFacade.Setup(f => f.IsSystemSupport()).Returns(true);
+        AuthFacade.Setup(f => f.GetCurrentUserEmail()).Returns("support@test.com");
         MessageRepo.Setup(r => r.GetActiveAsync(default)).ReturnsAsync((SystemStateMessage?)null);
+        UserRepo.Setup(r => r.GetByEmailAsync("support@test.com", default)).ReturnsAsync((User?)null);
 
         var sut    = CreateSut();
         var result = await sut.CreateMessageAsync("Maintenance.", SystemStateMessageSeverity.Warning);
@@ -79,12 +87,29 @@ public class SystemStateMessageServiceTests
     public async Task CreateMessageAsync_DefaultSeverity_IsInfo()
     {
         AuthFacade.Setup(f => f.IsSystemSupport()).Returns(true);
+        AuthFacade.Setup(f => f.GetCurrentUserEmail()).Returns("support@test.com");
         MessageRepo.Setup(r => r.GetActiveAsync(default)).ReturnsAsync((SystemStateMessage?)null);
+        UserRepo.Setup(r => r.GetByEmailAsync("support@test.com", default)).ReturnsAsync((User?)null);
 
         var sut    = CreateSut();
         var result = await sut.CreateMessageAsync("Maintenance.");
 
         Assert.Equal(SystemStateMessageSeverity.Info, result.Severity);
+    }
+
+    [Fact]
+    public async Task CreateMessageAsync_SetsCreatedByUserIdFromCurrentUser()
+    {
+        var supportUser = User.Create("support@test.com", "Support", Role.SystemSupport);
+        AuthFacade.Setup(f => f.IsSystemSupport()).Returns(true);
+        AuthFacade.Setup(f => f.GetCurrentUserEmail()).Returns("support@test.com");
+        MessageRepo.Setup(r => r.GetActiveAsync(default)).ReturnsAsync((SystemStateMessage?)null);
+        UserRepo.Setup(r => r.GetByEmailAsync("support@test.com", default)).ReturnsAsync(supportUser);
+
+        var sut    = CreateSut();
+        var result = await sut.CreateMessageAsync("Maintenance.");
+
+        Assert.Equal(supportUser.Id, result.CreatedByUserId);
     }
 
     // ---------------------------------------------------------------------------
@@ -96,8 +121,7 @@ public class SystemStateMessageServiceTests
     {
         var msg = SystemStateMessage.Create("Active message.", Guid.NewGuid());
         AuthFacade.Setup(f => f.IsSystemSupport()).Returns(true);
-        MessageRepo.Setup(r => r.GetAllAsync(default))
-            .ReturnsAsync(new List<SystemStateMessage> { msg });
+        MessageRepo.Setup(r => r.GetByIdAsync(msg.Id, default)).ReturnsAsync(msg);
 
         var sut = CreateSut();
         await sut.DeactivateMessageAsync(msg.Id);
@@ -114,6 +138,20 @@ public class SystemStateMessageServiceTests
 
         await Assert.ThrowsAsync<UnauthorisedOperationException>(
             () => sut.DeactivateMessageAsync(Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task DeactivateMessageAsync_CallsGetByIdAsync()
+    {
+        var msg = SystemStateMessage.Create("Active message.", Guid.NewGuid());
+        AuthFacade.Setup(f => f.IsSystemSupport()).Returns(true);
+        MessageRepo.Setup(r => r.GetByIdAsync(msg.Id, default)).ReturnsAsync(msg);
+
+        var sut = CreateSut();
+        await sut.DeactivateMessageAsync(msg.Id);
+
+        MessageRepo.Verify(r => r.GetByIdAsync(msg.Id, default), Times.Once);
+        MessageRepo.Verify(r => r.GetAllAsync(default), Times.Never);
     }
 
     // ---------------------------------------------------------------------------

@@ -6,6 +6,10 @@ namespace DraftView.Infrastructure.Persistence.Repositories;
 
 public class SystemStateMessageRepository(DraftViewDbContext db) : ISystemStateMessageRepository
 {
+    public Task<SystemStateMessage?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
+        db.SystemStateMessages
+            .FirstOrDefaultAsync(m => m.Id == id, ct);
+
     public Task<SystemStateMessage?> GetActiveAsync(CancellationToken ct = default) =>
         db.SystemStateMessages
             .FirstOrDefaultAsync(m => m.IsActive, ct);

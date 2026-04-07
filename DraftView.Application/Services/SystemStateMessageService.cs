@@ -8,6 +8,7 @@ namespace DraftView.Application.Services;
 
 public class SystemStateMessageService(
     ISystemStateMessageRepository messageRepo,
+    IUserRepository userRepo,
     IUnitOfWork unitOfWork,
     IAuthorizationFacade authFacade) : ISystemStateMessageService
 {
@@ -22,7 +23,11 @@ public class SystemStateMessageService(
         var active = await messageRepo.GetActiveAsync(ct);
         active?.Deactivate();
 
-        var newMessage = SystemStateMessage.Create(message, Guid.Empty, severity);
+        var email        = authFacade.GetCurrentUserEmail() ?? string.Empty;
+        var currentUser  = await userRepo.GetByEmailAsync(email, ct);
+        var createdById  = currentUser?.Id ?? Guid.Empty;
+
+        var newMessage = SystemStateMessage.Create(message, createdById, severity);
         await messageRepo.AddAsync(newMessage, ct);
         await unitOfWork.SaveChangesAsync(ct);
 
@@ -34,8 +39,7 @@ public class SystemStateMessageService(
         if (!authFacade.IsSystemSupport())
             throw new UnauthorisedOperationException("Only SystemSupport may deactivate system state messages.");
 
-        var all = await messageRepo.GetAllAsync(ct);
-        var msg = all.FirstOrDefault(m => m.Id == messageId)
+        var msg = await messageRepo.GetByIdAsync(messageId, ct)
             ?? throw new EntityNotFoundException(nameof(SystemStateMessage), messageId);
 
         msg.Deactivate();
