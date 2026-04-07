@@ -37,13 +37,23 @@ powershell
 $core = $core -replace '--css-version: "v[^"]+";', '--css-version: "v2026-04-02-1";'
 if ($core -notmatch 'v2026-04-02-1') { Write-Host "ERROR: bump failed" -ForegroundColor Red; exit 1 }
 
-
 ### Controller Action Guards — MANDATORY
-Every public action in `AuthorController` must call `RequireAuthorAsync()` or `GetAuthorAsync()` as the first statement. No exceptions. Before adding any new action, verify the guard is present. When auditing, use:
+Every controller that accesses data or performs mutations must be protected by an
+`[Authorize]` attribute at class level, using the appropriate role or policy:
 
-Select-String -Path "AuthorController.cs" -Pattern "public async Task<IActionResult>|GetAuthorAsync|RequireAuthorAsync"
+- `AuthorController`  → `[Authorize(Policy = "RequireAuthorPolicy")]`
+- `ReaderController`  → `[Authorize(Roles = "Author,BetaReader")]` (via `BaseReaderController`)
+- `SupportController` → `[Authorize(Roles = "SystemSupport")]`
+- `DropboxController` → `[Authorize(Policy = "RequireAuthorPolicy")]`
+- `AccountController` → individual actions use `[Authorize]` where needed
 
-and confirm every action has a guard on the following line.
+No per-action domain-role guards (`RequireAuthorAsync`, `GetAuthorAsync`) should be used
+in new code. Existing usages are technical debt tracked under Role Migration Stage 1.
+
+Audit pattern — verify class-level attributes are present:
+
+Get-ChildItem "C:\Users\alast\source\repos\DraftView\DraftView.Web\Controllers" -Filter "*.cs" |
+    Select-String -Pattern "^\[Authorize" | Select-Object Path, Line
 
 ### Replacement Scripts Must Verify — MANDATORY
 Every PowerShell string replacement MUST verify the change applied before proceeding to the next step or building. This is not optional. Pattern:
@@ -79,7 +89,7 @@ For complex files, prefer full rewrites delivered as `.ps1` files over inline re
 Goal: migrate authorization to use ASP.NET Identity roles as single source of truth and implement SystemSupport-managed System State Messaging.
 
 Stage 1 — Web surface (Author / BetaReader)
-- [ ] Inventory controllers/views/helpers that check `AppUsers.Role` (test checklist)
+- [Done] Inventory controllers/views/helpers that check `AppUsers.Role` (test checklist)
 - [Done] Add `RequireAuthorPolicy` and `RequireBetaReaderPolicy` in identity setup
 - [Done] Update `DatabaseSeeder` to ensure Identity role membership and add backfill script
 - [Done] Replace manual domain-role guards with ASP.NET Identity role enforcement
@@ -92,6 +102,10 @@ Stage 1 — Web surface (Author / BetaReader)
 - [In progress] Update views to use `User.IsInRole("Author")` or ViewBag populated from claims (individual view updates remain)
 - [Done] Add xUnit + Moq controller tests asserting role-related attributes (policy registration + controller attribute tests added)
 - [Done] Create `DraftView.Web.Tests` project and add policy registration unit test
+- [Done] Remove dead `RedirectToLocal` sync-over-async helper from AccountController
+- [Done] Replace domain role checks in AccountController and DropboxController with Identity claims
+- [ ] Remove `RequireAuthorAsync()` / `GetAuthorAsync()` domain-role controller helpers — replace with class-level `[Authorize]` attributes
+- [ ] Fix `AccountController.cs:507` — post-login redirect uses domain role check, replace with `User.IsInRole()`- 
 
 Stage 2 — Application layer enforcement
 - [DONE] Design and add `IAuthorizationFacade` (testable wrapper around `IAuthorizationService`)
@@ -353,6 +367,9 @@ Exit criteria: Identity roles are canonical; web and app services enforce roles;
 - [DONE] Mobile reader flow — BaseReaderController, unified ReaderController with IsMobile() view selection, MobileChapters/MobileScenes/MobileRead views, DraftView.MobileReader.css
 - [DONE] GetLastReadEventAsync on IReadingProgressService (TDD, 4 tests)
 - [DONE] Desktop reader views renamed to Desktop prefix throughout- 
+- [DONE] Role Migration Stage 1 inventory complete — domain role checks catalogued and web-layer checks replaced with Identity claims
+- [DONE] AccountController Login/Settings/RedirectToLocal cleaned up — now uses HomeController routing and User.IsInRole()
+- [DONE] DropboxController.GetAuthorAsync() simplified — class-level [Authorize] makes domain role check redundant 
 
 ### Reader Authorization Model — FINAL DECISION
 
