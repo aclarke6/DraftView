@@ -102,7 +102,7 @@ Stage 1 — Web surface (Author / BetaReader)
 - [Done] Remove dead `RedirectToLocal` sync-over-async helper from AccountController
 - [Done] Replace domain role checks in AccountController and DropboxController with Identity claims
 - [Done] Remove `RequireAuthorAsync()` / `GetAuthorAsync()` domain-role controller helpers — replace with class-level `[Authorize]` attributes
-- [Done ] Fix `AccountController.cs:507` — post-login redirect uses domain role check, replace with `User.IsInRole()`- 
+- [Done] Fix `AccountController.cs:507` — post-login redirect uses domain role check, replace with `User.IsInRole()`- 
 
 Stage 2 — Application layer enforcement
 - [Done] Design and add `IAuthorizationFacade`
@@ -113,11 +113,11 @@ Stage 2 — Application layer enforcement
 
 Stage 3 — SystemSupport & System State Messaging
 - [Done] Seed `SystemSupport` Identity role and backfill support user
-- [ ] Implement `SystemStateMessage` domain entity + repository + migration
+- [Done] Implement `SystemStateMessage` domain entity + repository + migration (6 domain tests)
 - [ ] Implement `ISystemStateMessageService` with policy enforcement
-- [ ] Create `SupportController` protected by `[Authorize(Roles = "SystemSupport")]`
+- [Done] Create `SupportController` protected by `[Authorize(Roles = "SystemSupport")]`
 - [ ] Footer integration: read-only active message render (safe-to-fail)
-- [ ] Add domain, application and infra tests (xUnit + Moq)
+- [In progress] Add domain, application and infra tests — domain tests complete (6), application and infra pending
 
 Cross-stage
 - [ ] Documentation: dev guide on roles as canonical source
