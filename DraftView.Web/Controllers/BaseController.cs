@@ -17,17 +17,17 @@ public abstract class BaseController(IUserRepository userRepo) : Controller
     // Current user - resolved once per request via lazy async init
     // ---------------------------------------------------------------------------
 
-    private User? _currentUser;
-    private bool  _userResolved;
+    private User? CurrentUser;
+    private bool  UserResolved;
 
     protected async Task<User?> GetCurrentUserAsync(CancellationToken ct = default)
     {
-        if (_userResolved) return _currentUser;
+        if (UserResolved) return CurrentUser;
 
         var email    = User.Identity?.Name;
-        _currentUser = email is null ? null : await userRepo.GetByEmailAsync(email, ct);
-        _userResolved = true;
-        return _currentUser;
+        CurrentUser = email is null ? null : await userRepo.GetByEmailAsync(email, ct);
+        UserResolved = true;
+        return CurrentUser;
     }
 
     // ---------------------------------------------------------------------------
@@ -42,5 +42,25 @@ public abstract class BaseController(IUserRepository userRepo) : Controller
 
         var user = await GetCurrentUserAsync(ct);
         return user?.Role == Role.Author;
+    }
+
+    protected async Task<bool> IsReaderAsync(CancellationToken ct = default)
+    {
+        // Prefer claim-based role checks (Identity) for performance; fallback to domain user if claims absent
+        if (User?.Identity?.IsAuthenticated == true)
+            return User.IsInRole(Role.BetaReader.ToString());
+
+        var user = await GetCurrentUserAsync(ct);
+        return user?.Role == Role.BetaReader;
+    }
+
+    protected async Task<bool> IsSupportAsync(CancellationToken ct = default)
+    {
+        // Prefer claim-based role checks (Identity) for performance; fallback to domain user if claims absent
+        if (User?.Identity?.IsAuthenticated == true)
+            return User.IsInRole(Role.SystemSupport.ToString());
+
+        var user = await GetCurrentUserAsync(ct);
+        return user?.Role == Role.SystemSupport;
     }
 }

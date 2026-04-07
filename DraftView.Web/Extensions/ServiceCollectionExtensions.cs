@@ -14,6 +14,8 @@ using DraftView.Application.Services;
 using DraftView.Domain.Interfaces.Services;
 using Microsoft.AspNetCore.Identity;
 using System;
+using DraftView.Web.Infrastructure;
+using DraftView.Domain.Enumerations;
 
 namespace DraftView.Web.Extensions
 {
@@ -82,6 +84,10 @@ namespace DraftView.Web.Extensions
         {
             // MVC / Razor Pages
             services.AddControllersWithViews();
+            services.AddHttpContextAccessor();
+            services.AddScoped<IAuthorizationFacade,
+HttpContextAuthorizationFacade>();
+
             services.AddRazorPages();
 
             // Session (required for OAuth state)
@@ -144,11 +150,9 @@ namespace DraftView.Web.Extensions
             });
 
             // Register simple role-based authorization policies for stage-1 migration
-            services.AddAuthorization(options =>
-            {
-                options.AddPolicy("RequireAuthorPolicy", p => p.RequireRole(DraftView.Domain.Enumerations.Role.Author.ToString()));
-                options.AddPolicy("RequireBetaReaderPolicy", p => p.RequireRole(DraftView.Domain.Enumerations.Role.BetaReader.ToString()));
-            });
+            services.AddAuthorizationBuilder()
+                .AddPolicy("RequireAuthorPolicy", p => p.RequireRole(Role.Author.ToString()))
+                .AddPolicy("RequireBetaReaderPolicy", p => p.RequireRole(Role.BetaReader.ToString()));
 
             return services;
         }
