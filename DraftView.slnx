@@ -107,5 +107,6 @@
   <Project Path="DraftView.DevTools/DraftView.DevTools.csproj" />
   <Project Path="DraftView.Domain/DraftView.Domain.csproj" />
   <Project Path="DraftView.Infrastructure/DraftView.Infrastructure.csproj" />
+  <Project Path="DraftView.Integration.Tests/DraftView.Integration.Tests.csproj" />
   <Project Path="DraftView.Web/DraftView.Web.csproj" />
 </Solution>
