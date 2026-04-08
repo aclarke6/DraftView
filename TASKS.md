@@ -30,7 +30,7 @@ Do not build the full `Tenancy` / `TenancyMembership` entity model until billing
 All new domain entities, application service changes, and infrastructure changes require tests before implementation. No exceptions.
 
 ### CSS Version — MANDATORY on Every CSS Change
-Every script that modifies any `.css` file must also bump `--css-version` in `DraftView.Core.css`. Format: `v{YYYY}-{MM}-{DD}-{n}` where n increments if multiple changes on the same day. Never skip this step.
+Every script that modifies any `.css` file must also bump `--css-version` in `DraftView.Core.css`. [Done] CSS versioning automated via Update-CssVersion.ps1
 
 Always use regex replace so it matches whatever version is currently there — never hardcode the expected current value:
 powershell
@@ -85,70 +85,10 @@ For complex files, prefer full rewrites delivered as `.ps1` files over inline re
 
 Goal: migrate authorization to use ASP.NET Identity roles as single source of truth and implement SystemSupport-managed System State Messaging.
 
-### Stage 1 — Web surface (Author / BetaReader)
-- [Done] Inventory controllers/views/helpers that check `AppUsers.Role` (test checklist)
-- [Done] Add `RequireAuthorPolicy` and `RequireBetaReaderPolicy` in identity setup
-- [Done] Update `DatabaseSeeder` to ensure Identity role membership and add backfill script
-- [Done] Replace manual domain-role guards with ASP.NET Identity role enforcement
-  - [Done] `ReaderController` secured via BaseReaderController `[Authorize(Roles = "Author,BetaReader")]`
-  - [Done] `SystemSupport` explicitly excluded from Reader flows
-  - [Done] `HomeController` role-based routing implemented (Support → Author → Reader)
-  - [Done] `AuthorController` decorated with `[Authorize(Policy = "RequireAuthorPolicy")]`
-  - [Done] `DropboxController` decorated with `[Authorize(Policy = "RequireAuthorPolicy")]`
-- [Done] Use claim-based ViewBag population in `BaseController` (views can now rely on `ViewBag.IsAuthor` / `ViewBag.IsReader` populated from Identity)
-- [Done] Update views to use `User.IsInRole("Author")` or ViewBag populated from claims (individual view updates remain)
-- [Done] Add xUnit + Moq controller tests asserting role-related attributes (policy registration + controller attribute tests added)
-- [Done] Create `DraftView.Web.Tests` project and add policy registration unit test
-- [Done] Remove dead `RedirectToLocal` sync-over-async helper from AccountController
-- [Done] Replace domain role checks in AccountController and DropboxController with Identity claims
-- [Done] Remove `RequireAuthorAsync()` / `GetAuthorAsync()` domain-role controller helpers — replace with class-level `[Authorize]` attributes
-- [Done] Fix `AccountController.cs:507` — post-login redirect uses domain role check, replace with `User.IsInRole()`- 
-
-### Stage 2 — Application layer enforcement
-- [Done] Design and add `IAuthorizationFacade`
-- [Done] Audit application services for methods requiring role checks — UserService complete, CommentService deferred
-- [Done] Inject and enforce role policies inside critical service methods — UserService fully migrated
-- [Done] Add service-level unit tests — UserService facade tests green
-- [Deferred] Define background service identity model — SyncBackgroundService runs as trusted system actor with no HTTP context; IAuthorizationFacade not applicable. Full impersonation model tracked separately under Impersonation section.
-
-### Stage 3 — SystemSupport & System State Messaging
-- [Done] Seed `SystemSupport` Identity role and backfill support user
-- [Done] Implement `SystemStateMessage` domain entity + repository + migration (6 domain tests)
-- [Done] Implement `ISystemStateMessageService` with policy enforcement (7 application tests)
-- [Done] Create `SupportController` protected by `[Authorize(Roles = "SystemSupport")]`
-- [Done] Footer integration: read-only active message render, safe-to-fail, severity-coded colours (Info/Warning/Critical), authenticated users only, footer sticky to viewport bottom
-- [Done] Add domain, application and infra tests — domain (6), application (14) complete
-
-### Stage 4 — System State Message Management UI
-Goal: Give the SystemSupport user a fully functional message management surface on the Support Dashboard.
-
-#### Requirements:
-- View all messages (active and historical) in a table — message text, severity, created date, status (Active/Revoked)
-- Add new message — form with message text and severity selector (Info / Warning / Critical)
-- Revoke active message — single action button, confirmation required
-- No edit in place — updating a message means revoking the current one and creating a new one (preserves audit trail)
-- History is always visible — revoked messages shown in muted style below active message
-
-#### Design decisions:
-- UI lives on the Support Dashboard as a replacement for the current placeholder panel
-- SupportController handles POST actions (protected by SystemSupport role)
-- SupportDashboardViewModel extended to carry message list and active message
-- All mutations go through ISystemStateMessageService — no direct DB access from controller
-- Add form uses severity dropdown with Info as default
-
-#### Tasks:
-- [Done] Extend SupportDashboardViewModel with ActiveMessage and MessageHistory
-- [Done] Update SupportController.Dashboard to load messages via ISystemStateMessageService
-- [Done] Add SupportController.PostMessage action (POST) — creates new message, auto-revokes existing active
-- [Done] Add SupportController.RevokeMessage action (POST) — revokes active message
-- [Done] Update Support/Dashboard.cshtml — replace placeholder panel with working message management UI
-- [Done] Add controller tests for PostMessage and RevokeMessage authorization
-- [Done] UAT — support user can post, view history, and revoke messages end to end
-
 Cross-stage
-- [ ] Documentation: dev guide on roles as canonical source
+- [Deferred] Documentation: dev guide on roles as canonical source
 - [ ] Logging: failed authorization attempts
-- [ ] Backfill/migration scripts and rollback notes
+- [Deferred] Backfill/migration scripts and rollback notes
 
 Exit criteria: Identity roles are canonical; web and app services enforce roles; SystemSupport implemented and tested.
 
@@ -156,23 +96,31 @@ Exit criteria: Identity roles are canonical; web and app services enforce roles;
 
 ## IMMEDIATE - Current Sprint
 
-### ReaderAccess (In Progress)
-- [DONE] ReaderAccess entity (TDD) — ReaderId, AuthorId, ProjectId, GrantedAt, RevokedAt
-- [DONE] IReaderAccessRepository + ReaderAccessRepository
-- [DONE] AddReaderAccess migration applied to dev
-- [DONE] Reader dashboard filters projects by ReaderAccess
-- [DONE] Author Reader View bypasses ReaderAccess — sees all active projects
-- [DONE] Multiple active projects per author (removed single-active constraint)
-- [DONE] ReaderController.Read uses chapter.ProjectId (fixes multi-project prose display)
-- [DONE] Dual-list project assignment UI (Author/ManageReaderAccess)
-- [DONE] Readers list redesign — name as link, icon buttons (NoSymbol, Restore, Delete)
-- [DONE] AuthorController access control — RequireAuthorAsync guard on all actions
-- [DONE] Fix Reader/Read LHS sidebar — position:sticky not working, parent container issue
-- [DONE] Reader mobile and desktop versions — mobile hides sidebar, desktop shows it (responsive design)
-- [DONE] Reader Dashboard layout redesign — LHS sticky book list, RHS chapter list for selected book
-- Invitation flow: existing account → skip to project assignment UI
-- Auto-assign when author adds project — prompt to assign existing readers
-- [DONE] Fix Deactivate to also revoke all ReaderAccess records for this author
+### Email & Fault Reporting Sprint
+
+#### Goal
+Wire up working email in dev and production, then build the Report Fault modal using it.
+
+#### Email Infrastructure
+- [ ] Investigate Yahoo SMTP settings for dev (smtp.mail.yahoo.com, port 587, app password required)
+- [ ] Configure SmtpEmailSender to use appsettings.json — provider-agnostic (same code, config-only swap)
+- [ ] Dev config: Yahoo SMTP via appsettings.Development.json (not user secrets — not a password, it's a config)
+- [ ] Production config: Oracle Email Delivery SMTP via appsettings.Production.json
+- [ ] Test email send end-to-end in dev (send to alastair_clarke@yahoo.com)
+- [ ] Wire up Cloudflare email routing: support@draftview.co.uk → alastair_clarke@yahoo.com
+- [ ] Send password reset emails to becca@the-dunlops.co.uk and hilaryrrb@gmail.com
+
+#### Report Fault
+- [ ] Add `ReportFault(string subject, string message)` POST action to `HomeController` — sends email to support@draftview.co.uk, returns JSON
+- [ ] Report Fault modal in `_Layout.cshtml` — triggered by footer button, pre-populated sender email, subject + message fields, Send/Cancel
+- [ ] CSS for modal overlay and dialog
+- [ ] UAT — submit fault report, verify email received at support@draftview.co.uk
+
+#### Notes
+- Yahoo SMTP requires an app password (not account password) — generate at Yahoo Account Security
+- Oracle Email Delivery credentials go in appsettings.Production.json (already on server)
+- `SmtpEmailSender` already exists but has a `From` vs `FromAddress` bug (Phase 1 item) — fix as part of this sprint
+- `noreply@draftview.co.uk` is the send-from address for production
 
 ---
 
@@ -377,7 +325,69 @@ Exit criteria: Identity roles are canonical; web and app services enforce roles;
 
 ## DONE (this project)
 
----
+## ROLE MIGRATION - ASP.NET Identity rollout (3-stage)
+
+Goal: migrate authorization to use ASP.NET Identity roles as single source of truth and implement SystemSupport-managed System State Messaging.
+
+### Stage 1 — Web surface (Author / BetaReader)
+- [Done] Inventory controllers/views/helpers that check `AppUsers.Role` (test checklist)
+- [Done] Add `RequireAuthorPolicy` and `RequireBetaReaderPolicy` in identity setup
+- [Done] Update `DatabaseSeeder` to ensure Identity role membership and add backfill script
+- [Done] Replace manual domain-role guards with ASP.NET Identity role enforcement
+  - [Done] `ReaderController` secured via BaseReaderController `[Authorize(Roles = "Author,BetaReader")]`
+  - [Done] `SystemSupport` explicitly excluded from Reader flows
+  - [Done] `HomeController` role-based routing implemented (Support → Author → Reader)
+  - [Done] `AuthorController` decorated with `[Authorize(Policy = "RequireAuthorPolicy")]`
+  - [Done] `DropboxController` decorated with `[Authorize(Policy = "RequireAuthorPolicy")]`
+- [Done] Use claim-based ViewBag population in `BaseController` (views can now rely on `ViewBag.IsAuthor` / `ViewBag.IsReader` populated from Identity)
+- [Done] Update views to use `User.IsInRole("Author")` or ViewBag populated from claims (individual view updates remain)
+- [Done] Add xUnit + Moq controller tests asserting role-related attributes (policy registration + controller attribute tests added)
+- [Done] Create `DraftView.Web.Tests` project and add policy registration unit test
+- [Done] Remove dead `RedirectToLocal` sync-over-async helper from AccountController
+- [Done] Replace domain role checks in AccountController and DropboxController with Identity claims
+- [Done] Remove `RequireAuthorAsync()` / `GetAuthorAsync()` domain-role controller helpers — replace with class-level `[Authorize]` attributes
+- [Done] Fix `AccountController.cs:507` — post-login redirect uses domain role check, replace with `User.IsInRole()`- 
+
+### Stage 2 — Application layer enforcement
+- [Done] Design and add `IAuthorizationFacade`
+- [Done] Audit application services for methods requiring role checks — UserService complete, CommentService deferred
+- [Done] Inject and enforce role policies inside critical service methods — UserService fully migrated
+- [Done] Add service-level unit tests — UserService facade tests green
+- [Deferred] Define background service identity model — SyncBackgroundService runs as trusted system actor with no HTTP context; IAuthorizationFacade not applicable. Full impersonation model tracked separately under Impersonation section.
+
+### Stage 3 — SystemSupport & System State Messaging
+- [Done] Seed `SystemSupport` Identity role and backfill support user
+- [Done] Implement `SystemStateMessage` domain entity + repository + migration (6 domain tests)
+- [Done] Implement `ISystemStateMessageService` with policy enforcement (7 application tests)
+- [Done] Create `SupportController` protected by `[Authorize(Roles = "SystemSupport")]`
+- [Done] Footer integration: read-only active message render, safe-to-fail, severity-coded colours (Info/Warning/Critical), authenticated users only, footer sticky to viewport bottom
+- [Done] Add domain, application and infra tests — domain (6), application (14) complete
+
+### Stage 4 — System State Message Management UI
+Goal: Give the SystemSupport user a fully functional message management surface on the Support Dashboard.
+
+#### Requirements:
+- View all messages (active and historical) in a table — message text, severity, created date, status (Active/Revoked)
+- Add new message — form with message text and severity selector (Info / Warning / Critical)
+- Revoke active message — single action button, confirmation required
+- No edit in place — updating a message means revoking the current one and creating a new one (preserves audit trail)
+- History is always visible — revoked messages shown in muted style below active message
+
+#### Design decisions:
+- UI lives on the Support Dashboard as a replacement for the current placeholder panel
+- SupportController handles POST actions (protected by SystemSupport role)
+- SupportDashboardViewModel extended to carry message list and active message
+- All mutations go through ISystemStateMessageService — no direct DB access from controller
+- Add form uses severity dropdown with Info as default
+
+#### Tasks:
+- [Done] Extend SupportDashboardViewModel with ActiveMessage and MessageHistory
+- [Done] Update SupportController.Dashboard to load messages via ISystemStateMessageService
+- [Done] Add SupportController.PostMessage action (POST) — creates new message, auto-revokes existing active
+- [Done] Add SupportController.RevokeMessage action (POST) — revokes active message
+- [Done] Update Support/Dashboard.cshtml — replace placeholder panel with working message management UI
+- [Done] Add controller tests for PostMessage and RevokeMessage authorization
+- [Done] UAT — support user can post, view history, and revoke messages end to end
 
 ## RECENT WORK — AUTHORIZATION & SUPPORT (2026-04-06)
 - [DONE] ReaderController secured with role-based authorization (Author,BetaReader)
@@ -446,6 +456,7 @@ Constraints:
 Status:
 - Not implemented
 - Design agreed
+
 
 - [DONE] Stage 4: System State Message Management UI complete — post/revoke/history on Support Dashboard
 - [DONE] SystemStateMessageSeverity — Info/Warning/Critical with colour-coded footer
