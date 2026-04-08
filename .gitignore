@@ -66,3 +66,5 @@ desktop.ini
 # Rider and VS Code
 *.DotSettings.user
 tmp.sql
+
+appsettings.Development.json
