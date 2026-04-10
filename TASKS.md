@@ -81,16 +81,11 @@ For complex files, prefer full rewrites delivered as `.ps1` files over inline re
 
 ## BUGS - High Priority
 
-- [DONE] Reader/Read comment box overflows page boundary on RHS — fixed via CSS column width alignment and overflow guards (v2026-04-10-1)
-- [DONE] AddComment POST redirects to top of chapter instead of returning to the commented scene — fixed in BaseReaderController.AddComment, now appends #scene-{id} anchor to redirect
-- [DONE] AddComment POST on chapter-level comment box redirects to top of page instead of #chapter-comments — fixed in BaseReaderController.AddComment: when SectionId is a Folder node, anchor is set to #chapter-comments rather than a scene anchor
-- [DONE] SetCommentStatus POST on chapter-level comment redirects to a scene anchor instead of #chapter-comments — fixed in BaseReaderController.SetCommentStatus: when sceneId == chapterId, anchor is set to #chapter-comments
-- [DONE] Reader/Read comment status dropdown missing — author sees comments but cannot update CommentStatus (only available in Author/Section view)
-- [DONE] Author/Dashboard Recent Activity — replaced on-the-fly assembly with persisted AuthorNotification entity; truncation fixed, dismiss and clear all implemented, viewport clipping fixed
+All known bugs resolved. No open items.
 
 ---
 
-## ROLE MIGRATION - ASP.NET Identity rollout (3-stage)
+## ROLE MIGRATION - ASP.NET Identity rollout
 
 Cross-stage
 - [Deferred] Documentation: dev guide on roles as canonical source
@@ -99,30 +94,15 @@ Cross-stage
 
 ---
 
-## SPRINT 1 — Pre-Beta Push (Complete)
-
-- [DONE] Fix prose font in reader view — verified rendering correctly in production
-- [DONE] Fix comment author display name — verified live lookup against AppUsers.DisplayName
-- [DONE] Reactivate reader flow — UI and controller action both present and wired correctly
-
----
-
 ## SPRINT 2 — Reader Experience (Current)
 
-- [DONE] Fix scene-level Published labels in sections view — verified working correctly
-- [DONE] Fix Published Chapters sort order on dashboard — depth-first tree order (TDD)
-- [DONE] Project switcher — sidebar in DesktopDashboard, query string selection, progress per project
-- [DONE] Remember last selected project — query string naturally persists selection
-- [DONE] Kindle-style resume on login — exact scroll position (see sub-tasks below)
-- [DONE] Persisted AuthorNotification entity — notifications written at event time (comment, reply, reader joined, sync), dismiss single, clear all, 90-day auto-prune, viewport panel fix (404 tests green)
-- [DONE] Login redirect fix — author now lands on Author/Dashboard, SystemSupport on Support/Dashboard; post-success block wrapped in try/catch
-- [ ] Implement Author Comment status as per CommentStatus Enum {New, AuthorReply, Ignore, Consider, Todo, Done, Keep}
-- [ ] Author comment response UI — any surface where author sees a comment must show CommentStatus dropdown and reply form: Reader/Read (author logged in), Author/Dashboard notifications, Author/Section (already done)
+- [DONE] CommentStatus enum implemented {New, AuthorReply, Ignore, Consider, Todo, Done, Keep}; SetStatus domain method and SetCommentStatus controller action in place
+- [DONE] Author comment response UI — CommentStatus dropdown on Reader/Read (scene and chapter level, author/moderator only) and Author/Section; dashboard notifications link through to Author/Section
 - [ ] Reader font preferences — font face and size selectable from Account/Settings page, persisted per reader, applied to reader view
 
-### Kindle-style Resume — Exact Scroll Position
+## SPRINT 2.5 — Kindle-style Resume — Exact Scroll Position
 
-Current state: resume redirects to correct scene via `#scene-{id}` anchor, but does not restore exact scroll position within the scene. `ReadEvent` has no `ScrollPosition` field.
+Current state: resume redirects to correct scene via `#scene-{id}` anchor but does not restore exact scroll position within the scene. `ReadEvent` has no `ScrollPosition` field.
 
 **Domain (TDD required)**
 - [ ] Add `ScrollPosition` (nullable int) to `ReadEvent` entity
@@ -184,40 +164,19 @@ These items are completed on the day of go-live, not before:
 
 ## SHORT TERM - Go-Live Requirements
 
-### Production SMTP
-- [DONE] Production config: Oracle Email Delivery SMTP via appsettings.Production.json
-
 ### Reader UX
-- Project switcher (→ Sprint 2 DONE)
-- Kindle-style resume on login (→ Sprint 2 in progress)
+- Kindle-style resume exact scroll position (→ Sprint 2)
+- Reader notification emails (new chapter published)
 
-### Dropbox Sync (DONE - production live)
-- [DONE] Per-author DropboxConnection entity (TDD)
-- [DONE] OAuth2 connect/callback/disconnect flow (DropboxController)
-- [DONE] IDropboxClientFactory — per-author token, auto-refresh
-- [DONE] IDropboxFileDownloader — downloads .scriv folder to per-author cache
-- [DONE] SyncService scoped to project AuthorId
-- [DONE] LocalPathResolver per-author cache path ({cachePath}/{userId}/)
-- [DONE] ScrivenerProjectDiscoveryService uses IDropboxClientFactory
-- [DONE] AddAuthorId migration (with backfill)
-- [DONE] AddReaderAccess migration
-- [DONE] UseForwardedHeaders (fixes OAuth behind Nginx)
-- [DONE] Case-insensitive .scrivx file lookup (Linux fix)
-- [DONE] AddProjects fires sync as background task (fixes 504)
-- [DONE] RtfConverter case-insensitive Files/Data path (Linux fix — Step17)
+### Dropbox Sync
 - Dropbox OAuth2 token refresh — automatic refresh using stored refresh token (medium-term)
 - Dropbox webhook controller for push-based sync (replace polling)
 - Incremental sync — only download changed files (cursor-based, post-launch)
 
-### Author Dashboard - Sync Visibility
-- [DONE] Progress bar during sync
-- [DONE] Live file download count
-- [DONE] Real progress bar driven by filesDownloaded/totalFiles percentage
-- [DONE] Show cache file count per project on dashboard
+### Author Dashboard
 - Show last download timestamp alongside last sync timestamp
 
-### Config: Move Non-Secret Settings Out of User Secrets
-- [DONE] `LocalCachePath` moved to `appsettings.json`
+### Config
 - Audit remaining user secrets — anything not a password/token/key belongs in appsettings
 
 ### Mobile Author Views
@@ -237,21 +196,7 @@ These items are completed on the day of go-live, not before:
 - "2 readers" hover showing which readers have read this scene
 
 ### Floating Footer Bar
-- [DONE] Copyright details
-- [DONE] System status / outages indicator
 - [Deferred → Sprint 3] Report Fault button → popup form
-- [DONE] Cloudflare email routing: support@draftview.co.uk → alastair_clarke@yahoo.com
-
-### Reader Flow
-- [DONE] Reactivate reader flow (Sprint 1)
-- Reader notification emails (new chapter published)
-
-### Production - Pre-Beta Push
-- [DONE] Fix prose font in reader view (Sprint 1)
-- [DONE] Reactivate reader flow (Sprint 1)
-- [DONE] Wire up SMTP email
-- Send password reset emails to Becca and Hilary (→ Go-Live Gate)
-- Fail2ban setup on production VM (→ Sprint 3)
 
 ---
 
@@ -267,10 +212,6 @@ These items are completed on the day of go-live, not before:
 - In-app Dropbox re-auth page (deferred to go-live)
 
 ### BetaBooks Comment Importer
-- [DONE] Comment.CreateForImport domain factory (TDD)
-- [DONE] BetaBooksImporter DevTools command
-- [DONE] 54 comments seeded for Becca and Hilary
-- [DONE] Reader accounts created with real emails
 - Importer scoped to project name (prevents cross-project contamination)
 
 ### Add Project Discovery (→ Sprint 3)
@@ -321,7 +262,6 @@ These items are completed on the day of go-live, not before:
 ## ARCHITECTURE - Phase 1-5 Review (stored, not started)
 
 ### Phase 1 - Stabilise single-tenancy
-- [DONE] Fix SmtpEmailSender From vs FromAddress
 - Pass CancellationToken consistently in SyncService
 - Validate section existence in ReadingProgressService.RecordOpenAsync
 - Define and enforce active/inactive/soft-deleted user rules
@@ -334,7 +274,6 @@ These items are completed on the day of go-live, not before:
 
 ### Phase 3 - Tighten application workflows
 - Publication flow: enforce authorId or remove it
-- Comment rules: authors and readers may reply (decided)
 - Dashboard queries: move UI-shaped queries out of repositories
 
 ### Phase 4 - Make sync safer
@@ -356,13 +295,35 @@ These items are completed on the day of go-live, not before:
 - Remove duplicate .comment-box__reply-form declaration in Reader.css
 - Replace hardcoded #f8f8f6 in .chapter-comment-form with var(--color-surface-alt)
 - Replace hardcoded 15px in .chapter-comment-form__textarea with var(--text-base)
-- Bump CSS version in Core.css and _Layout.cshtml on every CSS change
 
 ---
 
 ## DONE (this project)
 
-### Persisted AuthorNotifications (2026-04-10, branch: feature/persisted-notifications)
+### Bugs resolved
+- [DONE] Reader/Read comment box overflows page boundary on RHS — fixed via CSS column width alignment and overflow guards (v2026-04-10-1)
+- [DONE] AddComment POST redirects to top of chapter instead of returning to the commented scene — fixed in BaseReaderController.AddComment, now appends #scene-{id} anchor to redirect
+- [DONE] AddComment POST on chapter-level comment box redirects to top of page instead of #chapter-comments — fixed in BaseReaderController.AddComment: when SectionId is a Folder node, anchor is set to #chapter-comments
+- [DONE] SetCommentStatus POST on chapter-level comment redirects to a scene anchor instead of #chapter-comments — fixed in BaseReaderController.SetCommentStatus: when sceneId == chapterId, anchor is #chapter-comments
+- [DONE] Reader/Read comment status dropdown missing — fixed in DesktopRead.cshtml; CommentStatus dropdown added for author/moderator on both scene-level and chapter-level comments
+- [DONE] Author/Dashboard Recent Activity — replaced on-the-fly assembly with persisted AuthorNotification entity; truncation fixed, dismiss and clear all implemented, viewport clipping fixed
+- [DONE] Login always redirected to Reader/Dashboard regardless of role — fixed; author lands on Author/Dashboard, SystemSupport on Support/Dashboard; post-success block wrapped in try/catch
+
+### Sprint 1 — Pre-Beta Push (Complete)
+- [DONE] Fix prose font in reader view — verified rendering correctly in production
+- [DONE] Fix comment author display name — verified live lookup against AppUsers.DisplayName
+- [DONE] Reactivate reader flow — UI and controller action both present and wired correctly
+
+### Sprint 2 — Reader Experience (Partial, 2026-04-10)
+- [DONE] Fix scene-level Published labels in sections view — verified working correctly
+- [DONE] Fix Published Chapters sort order on dashboard — depth-first tree order (TDD)
+- [DONE] Project switcher — sidebar in DesktopDashboard, query string selection, progress per project
+- [DONE] Remember last selected project — query string naturally persists selection
+- [DONE] Kindle-style resume on login — redirects to correct scene (exact scroll position deferred)
+- [DONE] Persisted AuthorNotification entity — written at event time (comment, reply, reader joined, sync), dismiss single, clear all, 90-day auto-prune, viewport panel fix (404 tests green)
+- [DONE] Login redirect fix — author → Author/Dashboard, SystemSupport → Support/Dashboard, try/catch on post-success block
+
+### Persisted AuthorNotifications detail (2026-04-10, branch: feature/persisted-notifications)
 - [DONE] AuthorNotification domain entity (TDD, 7 tests)
 - [DONE] IAuthorNotificationRepository + EF implementation (8 tests)
 - [DONE] EF migration AddAuthorNotifications (composite index on AuthorId, OccurredAt)
@@ -370,15 +331,11 @@ These items are completed on the day of go-live, not before:
 - [DONE] CommentService writes NewComment / ReplyToAuthor notifications at event time
 - [DONE] UserService writes ReaderJoined notification on AcceptInvitation
 - [DONE] SyncService writes SyncCompleted notification on successful parse
-- [DONE] AuthorController Dashboard uses GetNotificationsAsync; DismissNotification + ClearAllNotifications POST actions added
-- [DONE] Dashboard.cshtml: count badge in card header, Clear All button, per-item dismiss button
-- [DONE] DraftView.Notifications.css: dismiss button styles (opacity on hover, red on hover)
-- [DONE] Removed GetRecentNotificationsAsync, GetRecentCommentsForDashboardAsync, GetRecentlyAcceptedAsync, GetRecentlySyncedAsync and CommentNotificationRow
-- [DONE] 404 tests GREEN (Domain 198, Application 111, Infrastructure 81, Web 14)
-
-### Sprint 2 — Partial (2026-04-10)
-- [DONE] Published chapters sort order — depth-first tree order, TDD, production verified
-- [DONE] Kindle-style resume — redirects to correct scene on login (exact scroll position deferred to sub-tasks above)
+- [DONE] AuthorController: Dashboard uses GetNotificationsAsync; DismissNotification + ClearAllNotifications POST actions added
+- [DONE] Dashboard.cshtml: count badge, Clear All button, per-item dismiss button
+- [DONE] DraftView.Notifications.css: dismiss button styles, viewport panel height fix
+- [DONE] Removed obsolete: GetRecentNotificationsAsync, GetRecentCommentsForDashboardAsync, GetRecentlyAcceptedAsync, GetRecentlySyncedAsync, CommentNotificationRow
+- [DONE] 404 tests GREEN
 
 ### Email Sprint (2026-04-08)
 - [DONE] Yahoo SMTP for dev (smtp.mail.yahoo.com, port 587, app password)
@@ -443,4 +400,10 @@ These items are completed on the day of go-live, not before:
 - [DONE] Heroicons integrated as static C# class
 - [DONE] Rebrand: DraftReader → DraftView throughout
 - [DONE] pg.ps1, PowerShell.md, PRINCIPLES.md
-- [DONE] 379 tests, all green
+- [DONE] Production SMTP live (Oracle Email Delivery)
+- [DONE] Cloudflare SSL, Nginx, systemd service on Oracle Cloud VM
+- [DONE] Per-author Dropbox sync working end to end in production
+- [DONE] Floating footer: copyright, system status indicator, Cloudflare email routing
+- [DONE] BetaBooks importer: Comment.CreateForImport, 54 comments seeded for Becca and Hilary
+- [DONE] Fix SmtpEmailSender From vs FromAddress (Phase 1 architecture)
+- [DONE] Comment rules: authors and readers may reply (Phase 3 architecture decision)
