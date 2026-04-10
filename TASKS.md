@@ -83,7 +83,9 @@ For complex files, prefer full rewrites delivered as `.ps1` files over inline re
 
 - [DONE] Reader/Read comment box overflows page boundary on RHS — fixed via CSS column width alignment and overflow guards (v2026-04-10-1)
 - [DONE] AddComment POST redirects to top of chapter instead of returning to the commented scene — fixed in BaseReaderController.AddComment, now appends #scene-{id} anchor to redirect
-- [ ] Reader/Read comment status dropdown missing — author sees comments but cannot update CommentStatus (only available in Author/Section view)
+- [DONE] AddComment POST on chapter-level comment box redirects to top of page instead of #chapter-comments — fixed in BaseReaderController.AddComment: when SectionId is a Folder node, anchor is set to #chapter-comments rather than a scene anchor
+- [DONE] SetCommentStatus POST on chapter-level comment redirects to a scene anchor instead of #chapter-comments — fixed in BaseReaderController.SetCommentStatus: when sceneId == chapterId, anchor is set to #chapter-comments
+- [DONE] Reader/Read comment status dropdown missing — author sees comments but cannot update CommentStatus (only available in Author/Section view)
 - [ ] Author/Dashboard Recent Activity — reader joined notification text truncated in UI (CSS overflow, text correct in code)
 
 ---
@@ -358,6 +360,20 @@ These items are completed on the day of go-live, not before:
 ---
 
 ## DONE (this project)
+
+### Persisted AuthorNotifications (2026-04-10, branch: feature/persisted-notifications)
+- [DONE] AuthorNotification domain entity (TDD, 7 tests)
+- [DONE] IAuthorNotificationRepository + EF implementation (8 tests)
+- [DONE] EF migration AddAuthorNotifications (composite index on AuthorId, OccurredAt)
+- [DONE] DashboardService.GetNotificationsAsync with 90-day prune, DismissNotificationAsync, DismissAllNotificationsAsync
+- [DONE] CommentService writes NewComment / ReplyToAuthor notifications at event time
+- [DONE] UserService writes ReaderJoined notification on AcceptInvitation
+- [DONE] SyncService writes SyncCompleted notification on successful parse
+- [DONE] AuthorController Dashboard uses GetNotificationsAsync; DismissNotification + ClearAllNotifications POST actions added
+- [DONE] Dashboard.cshtml: count badge in card header, Clear All button, per-item dismiss button
+- [DONE] DraftView.Notifications.css: dismiss button styles (opacity on hover, red on hover)
+- [DONE] Removed GetRecentNotificationsAsync, GetRecentCommentsForDashboardAsync, GetRecentlyAcceptedAsync, GetRecentlySyncedAsync and CommentNotificationRow
+- [DONE] 404 tests GREEN (Domain 198, Application 111, Infrastructure 81, Web 14)
 
 ### Sprint 2 — Partial (2026-04-10)
 - [DONE] Published chapters sort order — depth-first tree order, TDD, production verified
