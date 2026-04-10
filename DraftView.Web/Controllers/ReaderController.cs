@@ -194,6 +194,34 @@ public class ReaderController(
                 .Select(a => a.ProjectId)
                 .ToList();
 
+        // Kindle-style resume — redirect to last read position across all projects
+        ReadEvent? resume = null;
+        foreach (var pid in projectIds)
+        {
+            var ev = await ProgressService.GetLastReadEventAsync(user.Id, pid);
+            if (ev is not null && (resume is null || ev.LastOpenedAt > resume.LastOpenedAt))
+                resume = ev;
+        }
+        if (resume is not null)
+        {
+            var resumeSection = await SectionRepo.GetByIdAsync(resume.SectionId);
+            if (resumeSection is not null && resumeSection.IsPublished)
+            {
+                // Scene (Document) — redirect to parent chapter
+                if (resumeSection.NodeType == NodeType.Document && resumeSection.ParentId.HasValue)
+                {
+                    var parentChapter = await SectionRepo.GetByIdAsync(resumeSection.ParentId.Value);
+                    if (parentChapter is not null && parentChapter.IsPublished)
+                        return Redirect(Url.Action("Read", new { id = parentChapter.Id }) + "#scene-" + resumeSection.Id);
+                }
+                // Chapter (Folder) — redirect directly
+                else if (resumeSection.NodeType == NodeType.Folder)
+                {
+                    return RedirectToAction("Read", new { id = resumeSection.Id });
+                }
+            }
+        }
+
         var viewModel = new DesktopDashboardViewModel();
 
         foreach (var projectId in projectIds)
@@ -248,6 +276,34 @@ public class ReaderController(
             : (await ReaderAccessRepo.GetByReaderIdAsync(user.Id))
                 .Select(a => a.ProjectId)
                 .ToList();
+
+        // Kindle-style resume — redirect to last read position across all projects
+        ReadEvent? resume = null;
+        foreach (var pid in projectIds)
+        {
+            var ev = await ProgressService.GetLastReadEventAsync(user.Id, pid);
+            if (ev is not null && (resume is null || ev.LastOpenedAt > resume.LastOpenedAt))
+                resume = ev;
+        }
+        if (resume is not null)
+        {
+            var resumeSection = await SectionRepo.GetByIdAsync(resume.SectionId);
+            if (resumeSection is not null && resumeSection.IsPublished)
+            {
+                // Scene (Document) — redirect to parent chapter
+                if (resumeSection.NodeType == NodeType.Document && resumeSection.ParentId.HasValue)
+                {
+                    var parentChapter = await SectionRepo.GetByIdAsync(resumeSection.ParentId.Value);
+                    if (parentChapter is not null && parentChapter.IsPublished)
+                        return Redirect(Url.Action("Read", new { id = parentChapter.Id }) + "#scene-" + resumeSection.Id);
+                }
+                // Chapter (Folder) — redirect directly
+                else if (resumeSection.NodeType == NodeType.Folder)
+                {
+                    return RedirectToAction("Read", new { id = resumeSection.Id });
+                }
+            }
+        }
 
         var projectId = projectIds.FirstOrDefault();
         if (projectId == Guid.Empty)
