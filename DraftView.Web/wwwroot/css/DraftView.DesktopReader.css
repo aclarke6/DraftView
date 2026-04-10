@@ -99,7 +99,7 @@
 
 .scene-block {
     display: grid;
-    grid-template-columns: 1fr 260px;
+    grid-template-columns: 1fr 280px;
     gap: var(--space-6);
     margin-bottom: var(--space-12);
     align-items: start;
@@ -142,6 +142,7 @@
 .chapter-main {
     flex: 1;
     min-width: 0;
+    max-width: calc(100% - 280px - var(--space-8));
     height: 100%;
     overflow-y: auto;
     padding-top: var(--space-6);
@@ -263,6 +264,8 @@
 .scene-comments {
     width: 280px;
     flex-shrink: 0;
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .comment-box {
@@ -323,9 +326,11 @@
 
 .comment-box__reply-input {
     width: 100%;
+    max-width: 100%;
     padding: var(--space-1) var(--space-2);
     font-size: var(--text-sm);
     margin-bottom: var(--space-1);
+    box-sizing: border-box;
 }
 
 /* Inline reply form alignment */
@@ -346,6 +351,7 @@
 
     .add-comment-mini textarea {
         width: 100%;
+        max-width: 100%;
         padding: var(--space-2);
         font-size: var(--text-sm);
         font-family: var(--font-prose);

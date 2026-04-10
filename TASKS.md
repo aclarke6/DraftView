@@ -81,6 +81,11 @@ For complex files, prefer full rewrites delivered as `.ps1` files over inline re
 
 ## BUGS - High Priority
 
+- [DONE] Reader/Read comment box overflows page boundary on RHS — fixed via CSS column width alignment and overflow guards (v2026-04-10-1)
+- [DONE] AddComment POST redirects to top of chapter instead of returning to the commented scene — fixed in BaseReaderController.AddComment, now appends #scene-{id} anchor to redirect
+- [ ] Reader/Read comment status dropdown missing — author sees comments but cannot update CommentStatus (only available in Author/Section view)
+- [ ] Author/Dashboard Recent Activity — reader joined notification text truncated in UI (CSS overflow, text correct in code)
+
 ---
 
 ## ROLE MIGRATION - ASP.NET Identity rollout (3-stage)
@@ -108,6 +113,8 @@ Cross-stage
 - [DONE] Remember last selected project — query string naturally persists selection
 - [DONE] Kindle-style resume on login — exact scroll position (see sub-tasks below)
 - [ ] Author comment response UI from dashboard
+- [ ] Implement Author Comment status as per CommentStatus Enum {New, AuthorReply, Ignore, Consider, Todo, Done, Keep}
+- [ ] Author comment response UI — any surface where author sees a comment must show CommentStatus dropdown and reply form: Reader/Read (author logged in), Author/Dashboard notifications, Author/Section (already done)
 - [ ] Reader font preferences — font face and size selectable from Account/Settings page, persisted per reader, applied to reader view
 
 ### Kindle-style Resume — Exact Scroll Position

@@ -60,15 +60,21 @@ public abstract class BaseReaderController(
             TempData["Error"] = "Failed to save comment.";
         }
 
-        if (model.ReturnSceneId.HasValue)
-            return RedirectToAction("Read", new { id = model.ReturnSceneId.Value });
-
         var section   = await SectionRepo.GetByIdAsync(model.SectionId);
         var chapterId = section?.NodeType == NodeType.Folder
             ? section.Id
             : section?.ParentId ?? model.SectionId;
 
-        return RedirectToAction("Read", new { id = chapterId });
+        // Determine the scene anchor — use the section itself if it's a scene,
+        // or ReturnSceneId if supplied (for chapter-level comments)
+        var sceneAnchorId = model.ReturnSceneId
+            ?? (section?.NodeType == NodeType.Document ? section.Id : (Guid?)null);
+
+        var url = Url.Action("Read", new { id = chapterId });
+        if (sceneAnchorId.HasValue)
+            url += "#scene-" + sceneAnchorId.Value;
+
+        return Redirect(url!);
     }
 
     // -----------------------------------------------------------------------
