@@ -54,28 +54,12 @@ All css files are included here to ensure consistent styling across the site.
     <link rel="icon" type="image/png" href="~/images/DraftView.Logo.web.png" />
 
     @{
-        var showCssDebug =
-            Context.Request.Query["debug"] == "css" ||
-            Context.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment();
-    }
-
-    @if (showCssDebug)
-    {
-        <style>
-                body::after {
-                    content: "CSS " var(--css-version);
-                    position: fixed;
-                    bottom: 6px;
-                    left: 8px;
-                    font-size: 11px;
-                    color: var(--color-debug-text);
-                    background: var(--color-debug-bg);
-                    padding: 3px 8px;
-                    border-radius: 4px;
-                    pointer-events: none;
-                    z-index: 9999;
-                }
-        </style>
+        // Include debug CSS if in development environment or if debug query parameter is set as ?debug=css
+        if (Context.Request.Query["debug"] == "css" ||
+            Context.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment())
+        {
+            <link rel="stylesheet" href="/css/DraftView.Debug.css?v=v2026-04-11-1" />
+        }
     }
 </head>
 
