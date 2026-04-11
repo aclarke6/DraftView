@@ -258,6 +258,42 @@ Work captured for future sprints. Do not start until the relevant sprint is acti
 
 ## DONE (this project)
 
+### Rename UserNotificationPreferences to UserPreferences — domain, repository, service, controller, viewmodels, views, tests (2026-04-10-1)
+
+[DONE] Domain: UserPreferences entity, IUserPreferencesRepository, UserService methods  
+[DONE] Added DisplayTheme (light/dark) to UserPreferences  
+
+[DONE] Infrastructure:
+- Replaced UserNotificationPreferencesConfiguration with UserPreferencesConfiguration
+- Replaced UserNotificationPreferencesRepository with UserPreferencesRepository
+- Updated DraftViewDbContext DbSet to UserPreferences
+
+[DONE] Data migration:
+- Added EF migration: RenameNotificationPreferencesToUserPreferences
+- Renamed table NotificationPreferences → UserPreferences
+- Renamed PK, FK, and index (UserId) constraints
+- Updated DbContextModelSnapshot
+
+[DONE] Application + consumers updated:
+- DatabaseSeeder uses UserPreferences
+- BetaBooksImporter creates UserPreferences for imported users
+- ServiceCollectionExtensions DI updated to IUserPreferencesRepository → UserPreferencesRepository
+
+[DONE] UI:
+- Implemented DraftView.Light.css and DraftView.Dark.css
+- Added theme toggle in Account/Settings
+- Persisted DisplayTheme applied in _Layout.cshtml
+
+[DONE] Tests:
+- Web tests updated and passing for Account settings and theme persistence
+
+[VERIFY]
+- No remaining references to NotificationPreferences or UserNotificationPreferences (solution-wide search)
+- Migration applied locally and existing data preserved
+- Theme persists across sessions (save → logout → login)
+- Seeder and importer correctly create default UserPreferences
+- Production DB user has permission for db.Database.Migrate()
+
 ### Bugs resolved
 - [DONE] Reader/Read comment box overflows page boundary on RHS — CSS fix (v2026-04-10-1)
 - [DONE] AddComment POST on scene comment redirects to top of chapter — fixed, appends `#scene-{id}` anchor
