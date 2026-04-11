@@ -333,7 +333,8 @@ Work captured for future sprints. Do not start until the relevant sprint is acti
 - [DONE] Dashboard.cshtml: count badge, Clear All button, per-item dismiss button
 - [DONE] DraftView.Notifications.css: dismiss button styles, viewport panel height fix
 - [DONE] Removed obsolete: GetRecentNotificationsAsync, GetRecentCommentsForDashboardAsync, GetRecentlyAcceptedAsync, GetRecentlySyncedAsync, CommentNotificationRow
-- [DONE] 404 tests GREEN
+- [DONE] 412 tests GREEN
+- [DONE] 1 test skipped - it sends an email, which is now tested in SmtpEmailSenderIntegrationTests
 
 ### Email Sprint (2026-04-08)
 - [DONE] Yahoo SMTP for dev; SmtpEmailSender provider-agnostic via appsettings.json
