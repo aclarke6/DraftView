@@ -77,6 +77,83 @@ public class UserPreferencesTests
     }
 
     // ---------------------------------------------------------------------------
+    // Prose font defaults
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateForBetaReader_DefaultsToSystemSerifAndMedium()
+    {
+        var prefs = UserPreferences.CreateForBetaReader(UserId);
+
+        Assert.Equal(ProseFont.SystemSerif, prefs.ProseFont);
+        Assert.Equal(ProseFontSize.Medium, prefs.ProseFontSize);
+    }
+
+    [Fact]
+    public void CreateForAuthor_DefaultsToSystemSerifAndMedium()
+    {
+        var prefs = UserPreferences.CreateForAuthor(UserId, AuthorDigestMode.Immediate, null, "Europe/London");
+
+        Assert.Equal(ProseFont.SystemSerif, prefs.ProseFont);
+        Assert.Equal(ProseFontSize.Medium, prefs.ProseFontSize);
+    }
+
+    // ---------------------------------------------------------------------------
+    // UpdateProseFontPreferences
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void UpdateProseFontPreferences_UpdatesBothFields()
+    {
+        var prefs = UserPreferences.CreateForBetaReader(UserId);
+
+        prefs.UpdateProseFontPreferences(ProseFont.Humanist, ProseFontSize.Large);
+
+        Assert.Equal(ProseFont.Humanist, prefs.ProseFont);
+        Assert.Equal(ProseFontSize.Large, prefs.ProseFontSize);
+    }
+
+    [Theory]
+    [InlineData(ProseFont.SystemSerif)]
+    [InlineData(ProseFont.Humanist)]
+    [InlineData(ProseFont.Classic)]
+    [InlineData(ProseFont.SansSerif)]
+    public void UpdateProseFontPreferences_CanSetEveryFontValue(ProseFont font)
+    {
+        var prefs = UserPreferences.CreateForBetaReader(UserId);
+
+        prefs.UpdateProseFontPreferences(font, ProseFontSize.Medium);
+
+        Assert.Equal(font, prefs.ProseFont);
+    }
+
+    [Theory]
+    [InlineData(ProseFontSize.Small)]
+    [InlineData(ProseFontSize.Medium)]
+    [InlineData(ProseFontSize.Large)]
+    [InlineData(ProseFontSize.ExtraLarge)]
+    public void UpdateProseFontPreferences_CanSetEverySizeValue(ProseFontSize size)
+    {
+        var prefs = UserPreferences.CreateForBetaReader(UserId);
+
+        prefs.UpdateProseFontPreferences(ProseFont.SystemSerif, size);
+
+        Assert.Equal(size, prefs.ProseFontSize);
+    }
+
+    [Fact]
+    public void UpdateProseFontPreferences_CalledTwice_LastValueWins()
+    {
+        var prefs = UserPreferences.CreateForBetaReader(UserId);
+
+        prefs.UpdateProseFontPreferences(ProseFont.Classic, ProseFontSize.Small);
+        prefs.UpdateProseFontPreferences(ProseFont.SansSerif, ProseFontSize.ExtraLarge);
+
+        Assert.Equal(ProseFont.SansSerif, prefs.ProseFont);
+        Assert.Equal(ProseFontSize.ExtraLarge, prefs.ProseFontSize);
+    }
+
+    // ---------------------------------------------------------------------------
     // UpdateAuthorPreferences
     // ---------------------------------------------------------------------------
 

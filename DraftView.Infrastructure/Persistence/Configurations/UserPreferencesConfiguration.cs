@@ -1,6 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using DraftView.Domain.Entities;
+using DraftView.Domain.Enumerations;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using DraftView.Domain.Entities;
 
 namespace DraftView.Infrastructure.Persistence.Configurations;
 
@@ -28,5 +29,11 @@ public class UserPreferencesConfiguration : IEntityTypeConfiguration<UserPrefere
 
         builder.Property(p => p.AuthorTimezone)
             .HasMaxLength(100);
+
+        builder.Property(p => p.ProseFont)
+            .IsRequired();
+
+        builder.Property(p => p.ProseFontSize)
+            .IsRequired();
     }
 }

@@ -25,6 +25,10 @@ public sealed class UserPreferences
     public int? AuthorDigestIntervalHours{get; private set;}
     public string? AuthorTimezone{get; private set;}
 
+    // Reader prose preferences
+    public ProseFont ProseFont{get; private set;}
+    public ProseFontSize ProseFontSize{get; private set;}
+
 
 
     // ---------------------------------------------------------------------------
@@ -39,17 +43,18 @@ public sealed class UserPreferences
 
     public static UserPreferences CreateForBetaReader(Guid userId)
     {
-        return new UserPreferences
-        {
-            Id                      = Guid.NewGuid(),
-            UserId                  = userId,
-            NotifyOnNewSection      = true,
-            NotifyOnSectionChanged  = false,
-            NotifyOnReply           = NotifyOnReply.AuthorOnly,
-            AuthorDigestMode        = null,
+        return new UserPreferences {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            NotifyOnNewSection = true,
+            NotifyOnSectionChanged = false,
+            NotifyOnReply = NotifyOnReply.AuthorOnly,
+            AuthorDigestMode = null,
             AuthorDigestIntervalHours = null,
-            AuthorTimezone          = null,
-            DisplayTheme            = DisplayTheme.Light
+            AuthorTimezone = null,
+            DisplayTheme = DisplayTheme.Light,
+            ProseFont = ProseFont.SystemSerif,
+            ProseFontSize = ProseFontSize.Medium
         };
     }
 
@@ -61,17 +66,18 @@ public sealed class UserPreferences
     {
         ValidateDigestSettings(digestMode, digestIntervalHours);
 
-        return new UserPreferences
-        {
-            Id                        = Guid.NewGuid(),
-            UserId                    = userId,
-            NotifyOnNewSection        = false,
-            NotifyOnSectionChanged    = false,
-            NotifyOnReply             = NotifyOnReply.Never,
-            AuthorDigestMode          = digestMode,
+        return new UserPreferences {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            NotifyOnNewSection = false,
+            NotifyOnSectionChanged = false,
+            NotifyOnReply = NotifyOnReply.Never,
+            AuthorDigestMode = digestMode,
             AuthorDigestIntervalHours = digestMode == Enumerations.AuthorDigestMode.Digest ? digestIntervalHours : null,
-            AuthorTimezone            = timezone,
-            DisplayTheme              = DisplayTheme.Light
+            AuthorTimezone = timezone,
+            DisplayTheme = DisplayTheme.Light,
+            ProseFont = ProseFont.SystemSerif,
+            ProseFontSize = ProseFontSize.Medium
         };
     }
 
@@ -104,6 +110,12 @@ public sealed class UserPreferences
     public void UpdateDisplayTheme(DisplayTheme displayTheme)
     {
         DisplayTheme = displayTheme;
+    }
+
+    public void UpdateProseFontPreferences(ProseFont proseFont, ProseFontSize proseFontSize)
+    {
+        ProseFont = proseFont;
+        ProseFontSize = proseFontSize;
     }
 
     // ---------------------------------------------------------------------------
