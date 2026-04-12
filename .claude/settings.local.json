@@ -5,7 +5,8 @@
       "Bash(dotnet test:*)",
       "Bash(dotnet new xunit:*)",
       "Bash(dotnet sln:*)",
-      "Bash(dotnet ef:*)"
+      "Bash(dotnet ef:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }
