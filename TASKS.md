@@ -69,7 +69,261 @@ none currently logged — add here as discovered
 
 ---
 
-## SPRINT 4 — Kindle-style Resume — Exact Scroll Position
+## Sprint 4 — Email Privacy and Controlled Access (PHASED EXECUTION)
+
+Ensure user email addresses are protected, not exposed to other users, and only accessible through controlled, auditable mechanisms. Align system behaviour with UK GDPR principles of data minimisation, access control, and protection by design.
+
+Email handling model:
+- Email stored in encrypted form
+- Email lookup via deterministic HMAC of normalised email
+- Email never exposed in UI beyond explicitly permitted views
+- Controlled access for administrative purposes only
+- New views fail closed by default unless explicitly whitelisted
+
+---
+
+## Phase 1 — Rules and Governing Red Tests
+
+**Sprint Entry Rule**
+- [DONE] Define explicit whitelist of views permitted to render stored email addresses
+- [DONE] Confirm permitted cases:
+  - self account/settings view — `Views/Account/Settings.cshtml`
+  - invitation acceptance flow — `Views/Account/AcceptInvitation.cshtml` is **not** whitelisted to render stored email addresses. The user may enter an email address as input, but the view must not display any stored email address.
+  - authorised admin/support flow — no views currently identified. If required later, any such view must be explicitly added to the whitelist and covered by tests.
+- [DONE] Confirm all other views and MVC responses must not expose stored email addresses
+
+**Governing Red Tests (remain RED until later phases)**
+- [DONE] Task 1: Create long-running red source-level regression test `Governing_SourceLevel_NoEmailBindingsInNonWhitelistedViews_MUST_FAIL_UNTIL_PHASE2`
+  - [DONE] Summary comment added identifying this as a long-running regression test
+  - [DONE] Test scans all `.cshtml` files under `DraftView.Web\Views`
+  - [DONE] Render whitelist restricted to `Views/Account/Settings.cshtml`
+  - [DONE] Test is intentionally RED and currently identifies:
+    - `Views/Account/AcceptInvitation.cshtml`
+    - `Views/Author/ManageReaderAccess.cshtml`
+    - `Views/Author/Readers.cshtml`
+    - `Views/Shared/_Layout.cshtml`
+  - [DONE] Governing rule enforced: no non-whitelisted view source may render, depend on, or resolve user email directly
+- [ ] Task 2: Create long-running red rendered-output regression test `Governing_RenderedOutput_NoStoredEmailDisplayedInNonWhitelistedPages_MUST_FAIL_UNTIL_PHASE2`
+  - Required summary comment added identifying this as a long-running regression test
+  - Purpose: prevent any non-whitelisted rendered page from displaying a stored email address value in final HTML
+  - Render whitelist:
+    - `Account/Settings`
+  - Initial high-risk pages to test:
+    - `Author/Dashboard`
+    - `Author/Readers`
+    - `Author/ManageReaderAccess`
+    - `Reader/Dashboard`
+    - `Reader/Read`
+    - `Support/Dashboard`
+    - `Account/AcceptInvitation`
+  - Assertion rule:
+    - seeded known email address must not appear in rendered HTML for any non-whitelisted page
+  - Coverage requirement:
+    - must include layout output, partials, and controller-composed pages
+  - Expected initial state:
+    - test is created and run
+    - test remains RED until Phase 2 removes rendered email exposure from non-whitelisted pages
+- [ ] Create regression test: authentication must work via protected lookup (not plaintext email)
+- [ ] Create regression test: no plaintext email is persisted for new or updated users
+- [ ] Create regression test: email access is denied by default unless authorised
+- [ ] Confirm all governing tests are RED at sprint start
+
+---
+
+## Phase 2 — Web Surface Cleanup (Fast Feedback)
+
+**Goal:** Remove visible leaks early and reduce noise in test failures
+
+**Web — Views**
+- [ ] Remove email display from all non-whitelisted views
+- [ ] Ensure authors cannot see beta reader email after invitation
+- [ ] Remove email from:
+  - reader views
+  - dashboards
+  - comments
+  - lists and metadata
+
+**Web — Controllers**
+- [ ] Ensure no controller passes email to non-whitelisted views
+
+**Web — ViewModels**
+- [ ] Remove email fields from shared or public view models
+- [ ] Restrict email presence to:
+  - self-account view model
+  - explicitly authorised admin/support view model (if required)
+
+**Web — Tests**
+- [ ] Ensure view regression test begins to pass or reduce failures significantly
+- [ ] Add discovery-based scan of `.cshtml` files for email bindings:
+  - `Email`
+  - `asp-for="Email"`
+  - `mailto:`
+
+---
+
+## Phase 3 — Infrastructure (Data Shape First)
+
+**Goal:** Establish secure persistence model
+
+**Schema**
+- [ ] Add fields:
+  - `EmailCiphertext`
+  - `EmailLookupHmac`
+- [ ] Add unique index for `EmailLookupHmac`
+- [ ] Apply migrations immediately
+
+**Infrastructure Implementation**
+- [ ] Implement encryption using ASP.NET Core Data Protection or equivalent
+- [ ] Implement HMAC lookup using secure key
+- [ ] Store keys outside database
+- [ ] Ensure no plaintext email is persisted
+
+**Infrastructure TDD**
+- [ ] Write failing tests:
+  - encryption does not store plaintext
+  - decryption restores original value
+  - HMAC lookup is deterministic
+  - different inputs produce different lookup values
+- [ ] Implement to green
+- [ ] Refactor with tests green
+
+---
+
+## Phase 4 — Application Layer (Behaviour and Access Control)
+
+**Goal:** Control access and orchestrate protection
+
+**Services**
+- [ ] Introduce `IUserEmailProtectionService`
+- [ ] Introduce `IUserEmailAccessService`
+
+**Access Rules**
+- [ ] Self access permitted
+- [ ] Authorised admin/support access permitted
+- [ ] All other access denied (deny-by-default)
+
+**Orchestration**
+- [ ] Authorisation check occurs before decryption
+- [ ] Decrypt only after approval
+- [ ] Centralise all email access through service
+
+**Application TDD**
+- [ ] Write failing tests:
+  - self access allowed
+  - unauthorised access denied
+  - authorised access allowed
+  - decrypt not called when access denied
+- [ ] Implement to green
+- [ ] Refactor
+
+---
+
+## Phase 5 — Domain Refinement
+
+**Goal:** Enforce correct domain model without leaking concerns
+
+**Domain Changes**
+- [ ] Remove public `Email` property
+- [ ] Introduce:
+  - `EmailCiphertext`
+  - `EmailLookupHmac`
+- [ ] Add method to set protected email state:
+  - validate format
+  - normalise email
+  - accept only protected values
+
+**Domain TDD**
+- [ ] Write failing tests:
+  - valid email accepted
+  - invalid email rejected
+  - normalisation applied consistently
+  - no plaintext persistence
+- [ ] Implement to green
+- [ ] Refactor
+
+---
+
+## Phase 6 — End-to-End Integration
+
+**Goal:** Ensure system flows work with new model
+
+**Flows**
+- [ ] Registration:
+  - normalise email
+  - compute HMAC
+  - encrypt before save
+- [ ] Invitation:
+  - same protection applied
+- [ ] Login:
+  - normalise input
+  - compute HMAC
+  - lookup via `EmailLookupHmac`
+
+**Integration Tests**
+- [ ] Login works via HMAC lookup
+- [ ] Registration persists protected values only
+- [ ] No plaintext email stored
+- [ ] Governing tests move towards GREEN
+
+---
+
+## Phase 7 — Audit and Security Hardening
+
+**Audit Logging**
+- [ ] Log all privileged access attempts:
+  - requesting user ID
+  - target user ID
+  - timestamp
+  - success or failure
+  - reason if provided
+- [ ] Ensure logs do NOT include plaintext email
+
+**Access Control**
+- [ ] Enforce explicit permission for admin/support access
+- [ ] Ensure least privilege across system
+
+**Security Tests**
+- [ ] Verify:
+  - email not exposed in unauthorised views
+  - logs contain no sensitive data
+  - access rules enforced correctly
+
+---
+
+## UAT
+- [ ] User can register and login using email
+- [ ] Email not visible to other users
+- [ ] Authors cannot see beta reader email post-invite
+- [ ] User can view and update own email in settings
+- [ ] Admin/support access is restricted and logged
+- [ ] No regressions in authentication, invitation, or notification flows
+
+---
+
+## Compliance
+- [ ] Privacy notice updated and visible
+- [ ] Email usage limited to service-related communication
+- [ ] No marketing usage implemented
+- [ ] No third-party sharing for unrelated purposes
+- [ ] Data handling aligns with UK GDPR and Data Protection Act 2018
+
+---
+
+## Definition of Done
+- [ ] Governing regression tests created and verified RED at sprint start
+- [ ] Governing tests fully GREEN at sprint completion
+- [ ] All Domain, Application, and Infrastructure changes developed via TDD
+- [ ] Full test suite passing
+- [ ] Green test count reported
+- [ ] No plaintext email stored in database
+- [ ] No email exposure in UI beyond whitelist
+- [ ] Audit logging verified
+- [ ] Migrations applied and validated
+- [ ] Manual browser verification complete (desktop and mobile)
+- [ ] Changes committed with clear message
+- [ ] TASKS.md updated
+
+## SPRINT 5 — Kindle-style Resume — Exact Scroll Position
 
 Current state: resume redirects to correct scene via `#scene-{id}` anchor but does not restore exact scroll position within the scene. `ReadEvent` has no `ScrollPosition` field.
 
@@ -101,7 +355,7 @@ Current state: resume redirects to correct scene via `#scene-{id}` anchor but do
 
 ---
 
-## SPRINT 5 — Platform Hardening
+## SPRINT 6 — Platform Hardening
 
 - [ ] Fail2ban setup on production VM
 - [ ] Report Fault modal — HomeController POST + _Layout.cshtml modal + CSS
@@ -112,7 +366,7 @@ Current state: resume redirects to correct scene via `#scene-{id}` anchor but do
 
 ---
 
-## SPRINT 6 — Billing & Multi-tenancy (Post Go-Live)
+## SPRINT 7 — Billing & Multi-tenancy (Post Go-Live)
 
 - [ ] IBillingProvider abstraction (Creem preferred, Paddle alternative)
 - [ ] Subscription tiers: Free / Paid / Ultimate

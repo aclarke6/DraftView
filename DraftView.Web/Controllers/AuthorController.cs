@@ -261,7 +261,7 @@ public class AuthorController(
             {
                 Id          = r.Id,
                 DisplayName = r.DisplayName == "Pending" ? "-" : r.DisplayName,
-                Email       = r.Email,
+                Email       = string.Empty,
                 Status      = status,
                 ActivatedAt = r.ActivatedAt
             });
@@ -541,7 +541,7 @@ public class AuthorController(
         {
             ReaderId            = reader.Id,
             DisplayName         = reader.DisplayName,
-            Email               = reader.Email,
+            Email               = string.Empty,
             Status              = status,
             ProjectsWithAccess = [.. activeProjects.Where(p => accessProjectIds.Contains(p.Id))],
             ProjectsWithoutAccess = [.. activeProjects.Where(p => !accessProjectIds.Contains(p.Id))]

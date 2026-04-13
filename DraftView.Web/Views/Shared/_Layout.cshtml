@@ -16,7 +16,8 @@ All css files are included here to ensure consistent styling across the site.
 
     if (User.Identity?.IsAuthenticated == true && !string.IsNullOrWhiteSpace(User.Identity.Name))
     {
-        var currentUser = await UserRepository.GetByEmailAsync(User.Identity.Name);
+        var currentUser = await UserRepository.GetByIdAsync(
+            Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value));
         if (currentUser is not null)
         {
             var prefs = await UserPreferencesRepository.GetByUserIdAsync(currentUser.Id);
