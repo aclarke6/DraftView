@@ -56,9 +56,12 @@ builder.Services.AddApplicationServices();
 var app = builder.Build();
 
 // Run migration, seed and reset tasks via small extension helpers to keep Program.cs concise
-await app.MigrateDatabaseAsync();
-await app.SeedDatabaseAsync();
-await app.ResetStaleSyncProjectsAsync();
+if (!app.Environment.IsEnvironment("Testing"))
+{
+    await app.MigrateDatabaseAsync();
+    await app.SeedDatabaseAsync();
+    await app.ResetStaleSyncProjectsAsync();
+}
 
 app.UseExceptionHandler("/Home/Error");
 
@@ -82,6 +85,8 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run();
+
+public partial class Program;
 
 
 
