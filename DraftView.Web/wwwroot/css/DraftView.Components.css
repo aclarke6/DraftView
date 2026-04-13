@@ -254,7 +254,7 @@
 }
 
 .site-hero__title {
-    font-family: var(--font-prose);
+    font-family: var(--font-ui);
     font-size: var(--text-3xl);
     font-weight: var(--font-bold);
     margin-bottom: var(--space-2);
@@ -307,7 +307,7 @@
     }
 
     .page-header--image .page-header__title {
-        font-family: var(--font-prose);
+        font-family: var(--font-ui);
         font-size: var(--text-2xl);
         font-weight: var(--font-bold);
         margin-bottom: var(--space-1);

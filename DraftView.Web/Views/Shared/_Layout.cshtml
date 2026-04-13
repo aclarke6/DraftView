@@ -14,6 +14,7 @@ All css files are included here to ensure consistent styling across the site.
     var proseFont = "SystemSerif";
     var proseFontSize = "Medium";
     var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    var accountNavLabel = "Account settings";
 
     if (User.Identity?.IsAuthenticated == true && !string.IsNullOrWhiteSpace(currentUserId))
     {
@@ -21,6 +22,9 @@ All css files are included here to ensure consistent styling across the site.
             Guid.Parse(currentUserId));
         if (currentUser is not null)
         {
+            if (!string.IsNullOrWhiteSpace(currentUser.DisplayName))
+                accountNavLabel = currentUser.DisplayName;
+
             var prefs = await UserPreferencesRepository.GetByUserIdAsync(currentUser.Id);
             if (prefs is not null)
             {
@@ -34,6 +38,9 @@ All css files are included here to ensure consistent styling across the site.
     var themeCss = theme == "Dark"
         ? "/css/DraftView.Dark.css"
         : "/css/DraftView.Light.css";
+
+    ViewData["ProseFont"] = proseFont;
+    ViewData["ProseFontSize"] = proseFontSize;
 }
 
 <!DOCTYPE html>
@@ -46,16 +53,16 @@ All css files are included here to ensure consistent styling across the site.
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Merriweather:wght@400;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="@themeCss?v=v2026-04-12-2" />
-    <link rel="stylesheet" href="/css/DraftView.Core.css?v=v2026-04-12-2" />
-    <link rel="stylesheet" href="/css/DraftView.Settings.css?v=v2026-04-12-2" />
-    <link rel="stylesheet" href="/css/DraftView.Navigation.css?v=v2026-04-12-2" />
-    <link rel="stylesheet" href="/css/DraftView.Components.css?v=v2026-04-12-2" />
-    <link rel="stylesheet" href="/css/DraftView.DesktopReader.css?v=v2026-04-12-2" />
-    <link rel="stylesheet" href="/css/DraftView.MobileReader.css?v=v2026-04-12-2" />
-    <link rel="stylesheet" href="/css/DraftView.Dashboard.css?v=v2026-04-12-2" />
-    <link rel="stylesheet" href="/css/DraftView.Notifications.css?v=v2026-04-12-2" />
-    <link rel="stylesheet" href="/css/DraftView.Mobile.css?v=v2026-04-12-2" />
+    <link rel="stylesheet" href="@themeCss?v=v2026-04-13-1" />
+    <link rel="stylesheet" href="/css/DraftView.Core.css?v=v2026-04-13-1" />
+    <link rel="stylesheet" href="/css/DraftView.Settings.css?v=v2026-04-13-1" />
+    <link rel="stylesheet" href="/css/DraftView.Navigation.css?v=v2026-04-13-1" />
+    <link rel="stylesheet" href="/css/DraftView.Components.css?v=v2026-04-13-1" />
+    <link rel="stylesheet" href="/css/DraftView.DesktopReader.css?v=v2026-04-13-1" />
+    <link rel="stylesheet" href="/css/DraftView.MobileReader.css?v=v2026-04-13-1" />
+    <link rel="stylesheet" href="/css/DraftView.Dashboard.css?v=v2026-04-13-1" />
+    <link rel="stylesheet" href="/css/DraftView.Notifications.css?v=v2026-04-13-1" />
+    <link rel="stylesheet" href="/css/DraftView.Mobile.css?v=v2026-04-13-1" />
     
     <link rel="icon" type="image/png" href="~/images/DraftView.Logo.web.png" />
 
@@ -63,12 +70,12 @@ All css files are included here to ensure consistent styling across the site.
         if (Context.Request.Query["debug"] == "css" ||
             Context.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment())
         {
-            <link rel="stylesheet" href="/css/DraftView.Debug.css?v=v2026-04-12-2" />
+            <link rel="stylesheet" href="/css/DraftView.Debug.css?v=v2026-04-13-1" />
         }
     }
 </head>
 
-<body data-prose-font="@proseFont" data-prose-font-size="@proseFontSize">
+<body>
 
     <!-- Navigation -->
     <nav class="site-nav">
@@ -111,7 +118,12 @@ All css files are included here to ensure consistent styling across the site.
                     </div>
 
                     <div class="site-nav__user">
-                        <a asp-controller="Account" asp-action="Settings" class="site-nav__user-email">Account settings</a>
+                        <a asp-controller="Account"
+                           asp-action="Settings"
+                           class="site-nav__user-email"
+                           title="Account settings">
+                            @accountNavLabel
+                        </a>
                         <form asp-controller="Account" asp-action="Logout" method="post" class="logout-form">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="site-nav__logout">Sign out</button>

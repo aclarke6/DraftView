@@ -9,7 +9,9 @@
         editCommentId = parsedEditId;
 }
 
-<div class="mobile-read">
+<div class="mobile-read"
+     data-prose-font="@ViewData["ProseFont"]"
+     data-prose-font-size="@ViewData["ProseFontSize"]">
 
     <nav class="mobile-read__nav">
         @if (Model.HasPrev)
