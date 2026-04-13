@@ -83,104 +83,30 @@ Ensure user email addresses are protected, not exposed to other users, and only 
 Email handling model:
 - Email stored in encrypted form
 - Email lookup via deterministic HMAC of normalised email
+- Encryption and decryption are performed through application/infrastructure services, not in the domain model
 - Email never exposed in UI beyond explicitly permitted views
 - Controlled access for administrative purposes only
 - New views fail closed by default unless explicitly whitelisted
 
 ---
 
-## Phase 1 — Rules and Governing Red Tests
+## Phase 1 [DONE] — Rules and Governing Red Tests
 
-**Sprint Entry Rule**
-- [DONE] Define explicit whitelist of views permitted to render stored email addresses
-- [DONE] Confirm permitted cases:
-  - self account/settings view — `Views/Account/Settings.cshtml`
-  - invitation acceptance flow — `Views/Account/AcceptInvitation.cshtml` is **not** whitelisted to render stored email addresses. The user may enter an email address as input, but the view must not display any stored email address.
-  - authorised admin/support flow — no views currently identified. If required later, any such view must be explicitly added to the whitelist and covered by tests.
-- [DONE] Confirm all other views and MVC responses must not expose stored email addresses
-
-**Governing Red Tests (remain RED until later phases)**
-- [DONE] Task 1: Create long-running red source-level regression test `Governing_SourceLevel_NoEmailBindingsInNonWhitelistedViews_MUST_FAIL_UNTIL_PHASE2`
-  - [DONE] Summary comment added identifying this as a long-running regression test
-  - [DONE] Test scans all `.cshtml` files under `DraftView.Web\Views`
-  - [DONE] Render whitelist restricted to `Views/Account/Settings.cshtml`
-  - [DONE] Test is intentionally RED and currently identifies:
-    - `Views/Account/AcceptInvitation.cshtml`
-    - `Views/Author/ManageReaderAccess.cshtml`
-    - `Views/Author/Readers.cshtml`
-    - `Views/Shared/_Layout.cshtml`
-  - [DONE] Governing rule enforced: no non-whitelisted view source may render, depend on, or resolve user email directly
-- [DONE] Task 2: Create long-running red rendered-output regression test `Governing_RenderedOutput_NoStoredEmailDisplayedInNonWhitelistedPages_MUST_FAIL_UNTIL_PHASE2`
-  - [DONE] Required summary comment added identifying this as a long-running regression test
-  - [DONE] Purpose: prevent any non-whitelisted rendered page from displaying a stored email address value in final HTML
-  - [DONE] Render whitelist:
-    - `Account/Settings`
-  - [DONE] Initial implementation covers three high-value pages first:
-    - `Author/Dashboard`
-    - `Author/Readers`
-    - `Account/AcceptInvitation`
-  - [DONE] Assertion rule:
-    - seeded known email address must not appear in rendered HTML for any non-whitelisted page
-  - [DONE] Coverage includes full rendered page output, including shared layout composition
-  - [DONE] Expected initial state confirmed:
-    - test is created and run
-    - test remains RED until Phase 2 removes rendered email exposure from non-whitelisted pages
-  - [DONE] Current rendered-output failures identified:
-    - `Author/Dashboard` via `Views/Shared/_Layout.cshtml`
-    - `Author/Readers` via `Views/Shared/_Layout.cshtml`
-    - `Account/AcceptInvitation` via direct page render in `Views/Account/AcceptInvitation.cshtml`
-  - Known exception:
-    - `Author/Readers` is currently failing through shared layout email output rather than direct reader-table email rendering, because the controller currently supplies `ReaderRowViewModel.Email = string.Empty`
-- [DONE] Create governing end-to-end web regression test: `/Account/Login` must continue to work when protected lookup replaces plaintext email lookup
-  - Lives in Web tests using the real HTTP pipeline
-  - Purpose: preserve user-visible login behaviour while Sprint 4 changes the underlying email model
-  - Current implementation is behavioural coverage only; it is not evidence of protected lookup until the login flow is wired to the new mechanism
-  - Implemented scope:
-    - one known author user
-    - real `/Account/Login` GET plus antiforgery-protected POST
-    - successful redirect to `/Author/Dashboard`
-    - authenticated follow-up request succeeds
-- [DONE] Confirm email-exposure governing tests are RED at sprint start
-  - Source-level governing scan is RED
-  - Rendered-output governing test is RED
-  - Behavioural guard tests such as `/Account/Login` are expected to pass
+- [DONE] Defined the whitelist for stored-email rendering, restricted to `Views/Account/Settings.cshtml`
+- [DONE] Added governing source-level and rendered-output email-exposure regressions for non-whitelisted pages
+- [DONE] Seeded initial red-state evidence for `AcceptInvitation`, `ManageReaderAccess`, `Readers`, and shared layout leakage
+- [DONE] Added a behavioural `/Account/Login` web regression to preserve login flow during later email-model changes
+- [DONE] Confirmed sprint start state: email-exposure governing tests were RED and behavioural guard tests were expected GREEN
 
 ---
 
-## Phase 2 — Web Surface Cleanup (Fast Feedback)
+## Phase 2 [DONE] — Web Surface Cleanup (Fast Feedback)
 
-**Goal:** Remove the currently proven email leaks from non-whitelisted web surfaces so the governing email-exposure tests move toward green for the right reasons.
-
-**Web — Views**
-- [DONE] Step 1: Remove stored email display from `Views/Account/AcceptInvitation.cshtml`
-- [DONE] Step 2: Remove stored email display from `Views/Author/ManageReaderAccess.cshtml`
-- [DONE] Step 3: Remove stored email display from `Views/Author/Readers.cshtml`
-- [DONE] Step 4: Remove layout-driven email display from `Views/Shared/_Layout.cshtml`
-- [DONE] Step 5: Ensure non-whitelisted views do not render stored email through direct bindings or shared layout composition
-
-**Web — Controllers**
-- [DONE] Step 6: Stop `AccountController.AcceptInvitation` GET from passing stored email to a non-whitelisted rendered view
-- [DONE] Step 7: Review any other non-whitelisted controller/view paths and remove stored email from view models where still required only for display
-  - Verified current state:
-    - `AuthorController.Readers` supplies `ReaderRowViewModel.Email = string.Empty`
-    - `AuthorController.ManageReaderAccess` supplies `ReaderAccessViewModel.Email = string.Empty`
-    - `AccountController.AcceptInvitation` no longer passes stored email into the rendered view model
-
-**Web — ViewModels**
-- [ ] Step 8: Remove dead `Email` fields from author-facing reader view models once the corresponding views no longer depend on them
-- [ ] Step 9: Keep email-bearing view models only where the flow still genuinely requires email as input or explicitly whitelisted self-display
-
-**Web — Tests**
-- [DONE] Step 10: Make the source-level governing email-exposure test pass for the known Phase 2 view leaks
-- [DONE] Step 11: Make the rendered-output governing email-exposure test pass for:
-  - `/Account/AcceptInvitation`
-  - `/Author/Dashboard`
-  - `/Author/Readers`
-- [DONE] Step 12: Keep the `/Account/Login` behavioural regression green while Phase 2 cleanup is in progress
-  - Verified current state:
-    - source-level governing email-exposure test is GREEN
-    - rendered-output governing email-exposure test is GREEN
-    - `/Account/Login` behavioural regression remains GREEN
+- [DONE] Removed non-whitelisted stored-email display from `AcceptInvitation`, `ManageReaderAccess`, `Readers`, and shared layout navigation
+- [DONE] Stopped `AccountController.AcceptInvitation` GET from passing stored email into a non-whitelisted rendered view
+- [DONE] Confirmed other reviewed non-whitelisted controller/view paths no longer pass stored email for display
+- [DONE] Made the source-level and rendered-output email-exposure governing tests GREEN
+- [DONE] Kept the `/Account/Login` behavioural regression GREEN throughout cleanup
 
 ---
 
@@ -188,28 +114,95 @@ Email handling model:
 
 **Goal:** Establish secure persistence model
 
-**Schema**
-- [ ] Add fields:
-  - `EmailCiphertext`
-  - `EmailLookupHmac`
-- [ ] Add unique index for `EmailLookupHmac`
-- [ ] Apply migrations immediately
-
-**Infrastructure Implementation**
-- [ ] Implement encryption using ASP.NET Core Data Protection or equivalent
-- [ ] Implement HMAC lookup using secure key
-- [ ] Store keys outside database
-- [ ] Ensure no plaintext email is persisted
-
-**Infrastructure TDD**
-- [ ] Write failing tests:
+- [DONE] Step 1: Define the infrastructure persistence contract for protected email storage
+  - `AppUsers.Email` plaintext persistence is to be replaced by `EmailCiphertext` and `EmailLookupHmac`
+  - stored email value must be encrypted at rest; plaintext email must not be written to `AppUsers`
+  - lookup must use deterministic HMAC of normalised email for equality checks and uniqueness
+  - infrastructure must support repository lookup and existence checks without querying plaintext email
+  - encryption and decryption must be performed through application/infrastructure services, not by the domain model
+  - encryption and HMAC key material must be kept outside the database
+- [DONE] Step 2: Write failing infrastructure tests for:
   - encryption does not store plaintext
   - decryption restores original value
   - HMAC lookup is deterministic
   - different inputs produce different lookup values
-- [ ] Create regression test: no plaintext email is persisted for new or updated users
-- [ ] Implement to green
-- [ ] Refactor with tests green
+  - no plaintext email is persisted for new or updated users
+- [DONE] Step 3: Add schema fields:
+  - `EmailCiphertext`
+  - `EmailLookupHmac`
+- [DONE] Step 4: Add a unique index for `EmailLookupHmac`
+- [DONE] Step 5: Apply the migration
+- [DONE] Step 5.5 Bug Fix: Make the protected-email migration safe for populated databases
+  - current migration fails on existing data because `EmailLookupHmac` is added as `NOT NULL DEFAULT ''`
+  - the unique index then fails because multiple existing rows receive the same empty value
+  - revised the migration so existing rows are backfilled with distinct placeholder protected values before uniqueness is enforced
+  - demonstrate the fix by applying the migration successfully to a non-empty local database
+- [ ] Step 6: Introduce the email-encryption seam with correct layer ownership
+  - application owns the contract for email encryption/decryption
+  - infrastructure owns the concrete implementation
+  - domain owns none of the encryption or decryption mechanics
+- [DONE] Step 6.1: Define the application-layer contract for protected email encryption/decryption
+- [DONE] Step 6.2: Write failing tests for encryption/decryption behaviour before implementation
+  - encrypting email must not return plaintext
+  - decrypting ciphertext must restore the original normalised email
+  - invalid ciphertext must fail safely
+  - no domain type performs encryption or decryption directly
+- [DONE] Step 6.3: Add temporary `NotImplementedException` stubs if required to compile the new seam before implementation
+- [DONE] Step 6.4: Implement the infrastructure encryption service using ASP.NET Core Data Protection or equivalent
+- [DONE] Step 6.5: Register the service and get the Step 6 tests GREEN without yet changing lookup logic
+  - local/dev registration only at this step
+  - do not fold Linux/live key provisioning into this implementation step
+- [DONE] Step 6 review: Step 6 encryption seam is proven GREEN; remaining infrastructure failures belong to plaintext persistence and lookup replacement work
+- [ ] Step 7: Introduce the email-HMAC lookup seam with correct layer ownership
+  - application owns the contract for deterministic email lookup HMAC generation
+  - infrastructure owns the concrete implementation
+  - domain owns none of the HMAC mechanics
+- [DONE] Step 7.1: Define the application-layer contract for deterministic email lookup HMAC generation
+- [DONE] Step 7.2: Write failing tests for HMAC lookup behaviour before implementation
+  - same normalised email must produce the same lookup value
+  - different normalised emails must produce different lookup values
+  - lookup output must not equal plaintext email
+  - no domain type performs HMAC generation directly
+- [DONE] Step 7.2.5 Bug Fix: Tighten the domain-boundary HMAC test so it detects HMAC mechanics, not the presence of the `EmailLookupHmac` property name
+  - current test is overbroad and fails on naming alone
+  - the test must check for crypto implementation concerns in the domain model, not protected-field naming
+- [DONE] Step 7.2.5 review: the current red state now shows only the expected missing-HMAC-service failures plus the separate plaintext-persistence failures
+- [DONE] Step 7.3: Add temporary `NotImplementedException` stubs if required to compile the new seam before implementation
+- [DONE] Step 7.4: Implement the infrastructure HMAC lookup service using secure key material kept outside the database
+- [DONE] Step 7.5: Register the service and get the Step 7 tests GREEN without yet changing repository queries or persistence mapping
+- [DONE] Step 7 review: Step 7 HMAC seam is proven GREEN; remaining infrastructure failures belonged to plaintext persistence replacement work
+- [DONE] Step 8: Wire persistence so plaintext email is no longer stored
+  - Step 8.1: Stop EF from mapping plaintext `User.Email`
+  - Step 8.2: Generate `EmailCiphertext` and `EmailLookupHmac` during save
+  - Step 8.3: Rehydrate runtime `User.Email` from ciphertext on repository reads
+  - Step 8.4: Replace plaintext repository lookups with HMAC lookups
+  - Step 8.5: Patch direct `DbContext` email queries used during startup/seeding
+- [DONE] Step 9: Get the infrastructure tests green
+- [ ] Step 10: Refactor and review Phase 3 with tests still green
+  - review schema, migration, encryption, HMAC, and persistence changes as one coherent Phase 3 unit
+  - remove any low-value transitional plumbing introduced during Phase 3
+  - confirm no plaintext email persistence or plaintext infrastructure lookup path remains
+  - keep `DraftView.Infrastructure.Tests` GREEN throughout
+  - do not widen scope into Phase 4 application access-control work during this cleanup
+- [ ] Step 10.1: Freeze the behavioural baseline
+  - run `dotnet test DraftView.Infrastructure.Tests --nologo`
+  - run `dotnet test --nologo`
+  - treat this as the green baseline before any Phase 3 refactor
+- [ ] Step 10.2: Review and rename Phase 3 seams for clarity where the result is materially better
+- [ ] Step 10.3: Extract helpers from `DraftViewDbContext` where this improves cohesion and reduces long blocks
+- [ ] Step 10.4: Remove duplication in the normalize -> HMAC -> encrypt -> protect flow
+- [ ] Step 10.5: Review repository hydration code and extract shared helpers where it improves readability
+- [ ] Step 10.6: Review `DatabaseSeeder` for Phase 3 duplication and extract small local helpers where useful
+- [ ] Step 10.7: Review `DraftViewDbContext` constructor and fallback behaviour for cleaner architecture
+- [ ] Step 10.8: Remove low-value transitional plumbing introduced only to get Phase 3 green
+- [ ] Step 10.9: Re-audit Phase 3 architecture boundaries
+  - infrastructure owns persistence, encryption, HMAC, save-time protection, and protected lookup
+  - domain owns no crypto or persistence mechanics
+  - application contracts remain small and explicit
+- [ ] Step 10.10: Final Phase 3 verification
+  - run `dotnet test DraftView.Infrastructure.Tests --nologo`
+  - run `dotnet test --nologo`
+  - update task state only after refactor and verification are complete
 
 ---
 
@@ -320,6 +313,27 @@ Email handling model:
 
 ---
 
+## Phase 8 — Publish and Live Key Management
+
+**Goal:** Deploy protected email handling safely to Linux/live environments
+
+- [ ] Verify compatibility with the real `Publish-draftview.ps1` workflow
+  - publish requires a clean git state before deployment
+  - publish copies fresh output to `/var/www/draftview`
+  - publish restarts the `draftview` systemd service
+- [ ] Define how the live Linux environment provides persistent encryption key material
+- [ ] Ensure live key material is stored outside the replaced publish payload where necessary
+- [ ] Ensure key material persists across app restarts and deployments
+- [ ] Separate local/test key material from live key material
+- [ ] Document the publish-time secret/key setup process
+- [ ] Define operational guidance for key rotation and recovery
+- [ ] Verify post-publish behaviour:
+  - login still works
+  - protected email lookup still works
+  - existing encrypted data remains decryptable after `Publish-draftview.ps1` completes and the service restarts
+
+---
+
 ## UAT
 - [ ] User can register and login using email
 - [ ] Email not visible to other users
@@ -343,6 +357,7 @@ Email handling model:
 - [ ] Governing regression tests created and verified RED at sprint start
 - [ ] Governing tests fully GREEN at sprint completion
 - [ ] All Domain, Application, and Infrastructure changes developed via TDD
+- [ ] Review Sprint 4 infrastructure tests and decide which remain as permanent regression coverage versus which should be rewritten or removed as transitional implementation-lock tests
 - [ ] Full test suite passing
 - [ ] Green test count reported
 - [ ] No plaintext email stored in database

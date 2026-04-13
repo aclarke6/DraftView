@@ -1,4 +1,5 @@
-﻿using DraftView.Domain.Enumerations;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using DraftView.Domain.Enumerations;
 using DraftView.Domain.Exceptions;
 
 namespace DraftView.Domain.Entities;
@@ -6,7 +7,10 @@ namespace DraftView.Domain.Entities;
 public sealed class User
 {
     public Guid Id { get; private set; }
+    [NotMapped]
     public string Email { get; private set; } = default!;
+    public string EmailCiphertext { get; private set; } = string.Empty;
+    public string EmailLookupHmac { get; private set; } = string.Empty;
     public string DisplayName { get; private set; } = default!;
     public Role Role { get; private set; }
     public bool IsActive { get; private set; }
@@ -65,6 +69,28 @@ public sealed class User
         if (string.IsNullOrWhiteSpace(email))
             throw new InvariantViolationException("I-EMAIL",
                 "Email must not be null or whitespace.");
+        Email = email.Trim();
+    }
+
+    public void SetProtectedEmail(string emailCiphertext, string emailLookupHmac)
+    {
+        if (string.IsNullOrWhiteSpace(emailCiphertext))
+            throw new InvariantViolationException("I-EMAIL-CIPHERTEXT",
+                "Email ciphertext must not be null or whitespace.");
+        if (string.IsNullOrWhiteSpace(emailLookupHmac))
+            throw new InvariantViolationException("I-EMAIL-HMAC",
+                "Email lookup HMAC must not be null or whitespace.");
+
+        EmailCiphertext = emailCiphertext;
+        EmailLookupHmac = emailLookupHmac;
+    }
+
+    public void LoadEmailForRuntime(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            throw new InvariantViolationException("I-EMAIL",
+                "Email must not be null or whitespace.");
+
         Email = email.Trim();
     }
 

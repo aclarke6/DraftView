@@ -10,6 +10,8 @@ using DraftView.Infrastructure.Parsing;
 using DraftView.Infrastructure.Sync;
 using DraftView.Web.Services;
 using DraftView.Infrastructure.Dropbox;
+using DraftView.Infrastructure.Security;
+using DraftView.Application.Interfaces;
 using DraftView.Application.Services;
 using DraftView.Domain.Interfaces.Services;
 using Microsoft.AspNetCore.Identity;
@@ -69,6 +71,10 @@ namespace DraftView.Web.Extensions
 
         public static IServiceCollection AddApplicationServices(this IServiceCollection services)
         {
+            // Local/dev Step 6 registration: keep one in-memory key per running process.
+            services.AddSingleton<IUserEmailEncryptionService, UserEmailEncryptionService>();
+            // Local/dev Step 7 registration: keep one in-memory HMAC key per running process.
+            services.AddSingleton<IUserEmailLookupHmacService, UserEmailLookupHmacService>();
             services.AddScoped<ISyncService, SyncService>();
             services.AddScoped<IPublicationService, PublicationService>();
             services.AddSingleton<ISyncProgressTracker, SyncProgressTracker>();

@@ -1,9 +1,6 @@
 ﻿using DraftView.Domain.Entities;
-using DraftView.Domain.Interfaces.Repositories;
-using Dropbox.Api.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using static Dropbox.Api.SeenState.PlatformType;
 
 namespace DraftView.Infrastructure.Persistence.Configurations;
 
@@ -13,11 +10,15 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
     {
         builder.HasKey(u => u.Id);
 
-        builder.Property(u => u.Email)
+        builder.Property(u => u.EmailCiphertext)
             .IsRequired()
-            .HasMaxLength(320);
+            .HasMaxLength(2048);
 
-        builder.HasIndex(u => u.Email)
+        builder.Property(u => u.EmailLookupHmac)
+            .IsRequired()
+            .HasMaxLength(256);
+
+        builder.HasIndex(u => u.EmailLookupHmac)
             .IsUnique();
 
         builder.Property(u => u.DisplayName)

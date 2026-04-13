@@ -3,6 +3,7 @@ using System;
 using DraftView.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DraftView.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(DraftViewDbContext))]
-    partial class DraftViewDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260413184500_AddProtectedEmailPersistenceFields")]
+    partial class AddProtectedEmailPersistenceFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -258,11 +261,17 @@ namespace DraftView.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsUsed")
                         .HasColumnType("boolean");
 
+                    b.Property<Guid?>("RequestedByUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Token")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
 
                     b.ToTable("PasswordResetTokens");
                 });
@@ -273,25 +282,22 @@ namespace DraftView.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime>("FirstOpenedAt")
+                    b.Property<DateTime>("At")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime>("LastOpenedAt")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<string>("Device")
+                        .IsRequired()
+                        .HasColumnType("text");
 
-                    b.Property<int>("OpenCount")
+                    b.Property<int>("Percent")
                         .HasColumnType("integer");
 
                     b.Property<Guid>("SectionId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("SectionId", "UserId")
-                        .IsUnique();
+                    b.HasIndex("SectionId");
 
                     b.ToTable("ReadEvents");
                 });
@@ -305,8 +311,11 @@ namespace DraftView.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("AuthorId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime>("GrantedAt")
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsRevoked")
+                        .HasColumnType("boolean");
 
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid");
@@ -319,12 +328,12 @@ namespace DraftView.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AuthorId");
+                    b.HasIndex("AuthorId", "ReaderId", "ProjectId")
+                        .IsUnique();
 
                     b.HasIndex("ProjectId");
 
-                    b.HasIndex("ReaderId", "ProjectId")
-                        .IsUnique();
+                    b.HasIndex("ReaderId");
 
                     b.ToTable("ReaderAccess");
                 });
@@ -338,40 +347,24 @@ namespace DraftView.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("AuthorId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("DropboxPath")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<bool>("IsReaderActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsSoftDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime?>("LastSyncedAt")
+                    b.Property<DateTime?>("DropboxSyncCompletedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Name")
+                    b.Property<DateTime?>("DropboxSyncStartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FolderName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
-
-                    b.Property<DateTime?>("ReaderActivatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ScrivenerRootUuid")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("SoftDeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("SyncErrorMessage")
-                        .HasColumnType("text");
-
-                    b.Property<string>("SyncStatus")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -386,25 +379,8 @@ namespace DraftView.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<bool>("ContentChangedSincePublish")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("ContentHash")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("HtmlContent")
+                    b.Property<string>("Content")
                         .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsPublished")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsSoftDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("NodeType")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<Guid?>("ParentId")
                         .HasColumnType("uuid");
@@ -412,38 +388,15 @@ namespace DraftView.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime?>("PublishedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ScrivenerStatus")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("ScrivenerUuid")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<DateTime?>("SoftDeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("integer");
-
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<DateTime?>("UnpublishedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ParentId");
 
-                    b.HasIndex("ProjectId", "ScrivenerUuid")
-                        .IsUnique();
+                    b.HasIndex("ProjectId");
 
                     b.ToTable("Sections");
                 });
@@ -456,9 +409,6 @@ namespace DraftView.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("CreatedByUserId")
-                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("DeactivatedAt")
                         .HasColumnType("timestamp with time zone");

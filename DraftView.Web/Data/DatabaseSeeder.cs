@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
+using DraftView.Application.Interfaces;
 using DraftView.Infrastructure.Dropbox;
 using DraftView.Infrastructure.Persistence;
 
@@ -24,6 +25,8 @@ public static class DatabaseSeeder
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<DraftViewDbContext>>();
         var dropboxSettings = scope.ServiceProvider.GetRequiredService<DropboxClientSettings>();
+        var emailEncryptionService = scope.ServiceProvider.GetRequiredService<IUserEmailEncryptionService>();
+        var emailLookupHmacService = scope.ServiceProvider.GetRequiredService<IUserEmailLookupHmacService>();
 
         // ---------------------------------------------------------------------------
         // Seed Identity roles
@@ -128,7 +131,8 @@ public static class DatabaseSeeder
         // ---------------------------------------------------------------------------
         // Seed Author domain User
         // ---------------------------------------------------------------------------
-        var existingDomainUser = db.AppUsers.FirstOrDefault(u => u.Email == authorEmail);
+        var authorLookup = emailLookupHmacService.Compute(DraftViewDbContext.NormalizeEmail(authorEmail));
+        var existingDomainUser = db.AppUsers.FirstOrDefault(u => u.EmailLookupHmac == authorLookup);
         if (existingDomainUser is null)
         {
             var author = User.Create(authorEmail, authorDisplayName, Role.Author);
@@ -146,7 +150,8 @@ public static class DatabaseSeeder
         // ---------------------------------------------------------------------------
         // Seed Support domain User
         // ---------------------------------------------------------------------------
-        var existingSupportDomainUser = db.AppUsers.FirstOrDefault(u => u.Email == supportEmail);
+        var supportLookup = emailLookupHmacService.Compute(DraftViewDbContext.NormalizeEmail(supportEmail));
+        var existingSupportDomainUser = db.AppUsers.FirstOrDefault(u => u.EmailLookupHmac == supportLookup);
         if (existingSupportDomainUser is null)
         {
             var support = User.Create(supportEmail, supportDisplayName, Role.SystemSupport);
@@ -167,7 +172,10 @@ public static class DatabaseSeeder
         {
             try
             {
-                var idUser = await userManager.FindByEmailAsync(du.Email);
+                var decryptedEmail = emailEncryptionService.Decrypt(du.EmailCiphertext);
+                du.LoadEmailForRuntime(decryptedEmail);
+
+                var idUser = await userManager.FindByEmailAsync(decryptedEmail);
                 if (idUser is null) continue;
 
                 var roleName = du.Role.ToString();
@@ -192,7 +200,8 @@ public static class DatabaseSeeder
         // If a legacy access token exists in config, seed it as connected.
         // The author should reconnect via OAuth to get a proper refresh token.
         // ---------------------------------------------------------------------------
-        var authorUser = db.AppUsers.First(u => u.Email == authorEmail);
+        var authorUser = db.AppUsers.First(u => u.EmailLookupHmac == authorLookup);
+        authorUser.LoadEmailForRuntime(emailEncryptionService.Decrypt(authorUser.EmailCiphertext));
         var existingConnection = db.DropboxConnections.FirstOrDefault(d => d.UserId == authorUser.Id);
         if (existingConnection is null)
         {
