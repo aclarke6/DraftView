@@ -7,9 +7,15 @@ Purpose
 
   Each argument may be:
     - A bare filename:        Reader.css
+    - A bare filename stem:   Reader
+    - A filename wildcard:    *Reader*.cs
     - A repo-relative path:   DraftView.Web\wwwroot\css\Reader.css
 
   Bare filenames are located by recursive search under RootPath.
+  Bare filename stems are resolved by searching a designated list of standard
+  C# solution file extensions.
+  Wildcards are allowed at filename level only and are matched against file names
+  during recursive search under RootPath.
   Relative paths are resolved directly against RootPath - no search needed.
 
 Usage
@@ -52,7 +58,8 @@ Copy-SourceFiles.ps1
 Copies the contents of source files into the clipboard, preceded by a header
 containing the file name, repo-relative path, and full path.
 
-Each argument may be a bare filename (Reader.css) or a repo-relative path
+Each argument may be a bare filename (Reader.css), a bare filename stem (Reader),
+a filename wildcard (*Reader*.cs), or a repo-relative path
 (DraftView.Web\wwwroot\css\Reader.css).
 
 USAGE
@@ -86,6 +93,25 @@ NOTES
 $ErrorActionPreference = "Stop"
 
 $excludeDirs = @("bin", "obj", ".git", ".vs", ".idea", "TestResults", "node_modules")
+$defaultExtensions = @(
+    ".cs",
+    ".cshtml",
+    ".razor",
+    ".css",
+    ".js",
+    ".ts",
+    ".json",
+    ".config",
+    ".xml",
+    ".xaml",
+    ".sql",
+    ".ps1",
+    ".props",
+    ".targets",
+    ".sln",
+    ".slnx",
+    ".csproj"
+)
 
 if (-not (Test-Path -LiteralPath $RootPath -PathType Container)) {
     throw "RootPath '$RootPath' is not a directory. Pass -RootPath explicitly."
@@ -114,19 +140,110 @@ function Is-UnderExcludedDir {
     return $false
 }
 
-function Find-FileByName {
-    param([Parameter(Mandatory = $true)][string]$FileName)
+function Get-SearchableFiles {
     Get-ChildItem -Path $root -Recurse -File -Force -ErrorAction SilentlyContinue |
         Where-Object {
-            $_.Name -ieq $FileName -and
             -not (Is-UnderExcludedDir -FullPath $_.FullName)
+        }
+}
+
+function Find-FileByName {
+    param([Parameter(Mandatory = $true)][string]$FileName)
+
+    Get-SearchableFiles |
+        Where-Object {
+            $_.Name -ieq $FileName
         } |
         Sort-Object FullName
 }
 
-# Resolve an argument to an array of FileInfo objects.
+function Find-FilesByWildcard {
+    param([Parameter(Mandatory = $true)][string]$Pattern)
+
+    Get-SearchableFiles |
+        Where-Object {
+            $_.Name -like $Pattern
+        } |
+        Sort-Object FullName
+}
+
+function Find-FilesByStem {
+    param([Parameter(Mandatory = $true)][string]$Stem)
+
+    Get-SearchableFiles |
+        Where-Object {
+            $baseName = [IO.Path]::GetFileNameWithoutExtension($_.Name)
+            $extension = [IO.Path]::GetExtension($_.Name)
+
+            $baseName -ieq $Stem -and
+            $defaultExtensions -icontains $extension
+        } |
+        Sort-Object FullName
+}
+
+function Resolve-AmbiguousMatch {
+    param(
+        [Parameter(Mandatory = $true)][string]$OriginalArgument,
+        [AllowEmptyCollection()][System.IO.FileInfo[]]$CandidateFiles = @()
+    )
+
+    if ($CandidateFiles.Count -eq 0) {
+        return [pscustomobject]@{
+            Status  = "Missing"
+            Matches = @()
+        }
+    }
+
+    if ($CandidateFiles.Count -eq 1) {
+        return [pscustomobject]@{
+            Status  = "Found"
+            Matches = @($CandidateFiles[0])
+        }
+    }
+
+    Write-Host ""
+    Write-Host "AMBIGUOUS MATCHES for '$OriginalArgument'" -ForegroundColor Magenta
+    Write-Host "Select a file number, or 0 to skip:" -ForegroundColor Yellow
+
+    for ($i = 0; $i -lt $CandidateFiles.Count; $i++) {
+        $relative = Get-RepoRelativePath -FullPath $CandidateFiles[$i].FullName -RootPathResolved $root
+        Write-Host ("  {0}) {1}" -f ($i + 1), $relative) -ForegroundColor Yellow
+    }
+
+    while ($true) {
+        $response = Read-Host "Selection"
+
+        if ($response -match '^\d+$') {
+            $selection = [int]$response
+
+            if ($selection -eq 0) {
+                return [pscustomobject]@{
+                    Status  = "Skipped"
+                    Matches = @()
+                }
+            }
+
+            if ($selection -ge 1 -and $selection -le $CandidateFiles.Count) {
+                return [pscustomobject]@{
+                    Status  = "Found"
+                    Matches = @($CandidateFiles[$selection - 1])
+                }
+            }
+        }
+
+        Write-Host "Enter a number from 0 to $($CandidateFiles.Count)." -ForegroundColor Red
+    }
+}
+
+# Resolve an argument to a structured result with:
+#   - Status  = Found | Missing | Skipped
+#   - Matches = array of FileInfo
 # If the argument contains a path separator it is treated as a repo-relative path
-# and resolved directly. Otherwise it is searched for by filename under $root.
+# and resolved directly.
+# Otherwise:
+#   - wildcard patterns are matched against file names under $root
+#   - names with extensions are matched as exact file names
+#   - names without extensions are matched as stems against $defaultExtensions
 function Resolve-Argument {
     param([Parameter(Mandatory = $true)][string]$Arg)
 
@@ -136,13 +253,43 @@ function Resolve-Argument {
         $normalised = $Arg.Replace('/', '\')
         $candidate  = Join-Path $root $normalised
         if (Test-Path -LiteralPath $candidate -PathType Leaf) {
-            return @(Get-Item -LiteralPath $candidate)
+            return [pscustomobject]@{
+                Status  = "Found"
+                Matches = @(Get-Item -LiteralPath $candidate)
+            }
         }
-        return @()
+
+        return [pscustomobject]@{
+            Status  = "Missing"
+            Matches = @()
+        }
     }
-    else {
-        return @(Find-FileByName -FileName $Arg)
+
+    $hasWildcard = $Arg.Contains('*') -or $Arg.Contains('?')
+    if ($hasWildcard) {
+        $wildcardMatches = @(Find-FilesByWildcard -Pattern $Arg)
+
+        if ($wildcardMatches.Count -eq 0) {
+            return [pscustomobject]@{
+                Status  = "Missing"
+                Matches = @()
+            }
+        }
+
+        return [pscustomobject]@{
+            Status  = "Found"
+            Matches = @($wildcardMatches)
+        }
     }
+
+    $hasExtension = [IO.Path]::HasExtension($Arg)
+    if ($hasExtension) {
+        $fileCandidates = @(Find-FileByName -FileName $Arg)
+        return (Resolve-AmbiguousMatch -OriginalArgument $Arg -CandidateFiles $fileCandidates)
+    }
+
+    $stemCandidates = @(Find-FilesByStem -Stem $Arg)
+    return (Resolve-AmbiguousMatch -OriginalArgument $Arg -CandidateFiles $stemCandidates)
 }
 
 $currentChunk        = New-Object System.Text.StringBuilder
@@ -222,10 +369,11 @@ function Emit-Chunk {
 
 foreach ($name in $FileNames) {
 
-    $fileBlock   = New-Object System.Text.StringBuilder
-    $fileMatches = @(Resolve-Argument -Arg $name)
+    $fileBlock  = New-Object System.Text.StringBuilder
+    $resolution = Resolve-Argument -Arg $name
+    $fileMatches = @($resolution.Matches)
 
-    if (-not $fileMatches -or $fileMatches.Count -eq 0) {
+    if ($resolution.Status -eq "Missing") {
         Write-Host "  NOT FOUND : $name" -ForegroundColor Red
         [void]$fileBlock.AppendLine("")
         [void]$fileBlock.AppendLine("============================================================")
@@ -234,12 +382,20 @@ foreach ($name in $FileNames) {
         [void]$fileBlock.AppendLine("============================================================")
         [void]$fileBlock.AppendLine("")
     }
-    elseif ($fileMatches.Count -gt 1) {
-        Write-Host "  AMBIGUOUS : $name ($($fileMatches.Count) matches)" -ForegroundColor Magenta
+    elseif ($resolution.Status -eq "Skipped") {
+        Write-Host "  SKIPPED : $name" -ForegroundColor DarkYellow
         [void]$fileBlock.AppendLine("")
         [void]$fileBlock.AppendLine("============================================================")
         [void]$fileBlock.AppendLine("FILE: $name")
-        [void]$fileBlock.AppendLine("STATUS: AMBIGUOUS (multiple matches found)")
+        [void]$fileBlock.AppendLine("STATUS: SKIPPED")
+        [void]$fileBlock.AppendLine("============================================================")
+        [void]$fileBlock.AppendLine("")
+    }
+    elseif ($fileMatches.Count -gt 1) {
+        [void]$fileBlock.AppendLine("")
+        [void]$fileBlock.AppendLine("============================================================")
+        [void]$fileBlock.AppendLine("FILE: $name")
+        [void]$fileBlock.AppendLine("STATUS: MULTIPLE FILES")
         [void]$fileBlock.AppendLine("MATCHES:")
         foreach ($m in $fileMatches) {
             $rel = Get-RepoRelativePath -FullPath $m.FullName -RootPathResolved $root
