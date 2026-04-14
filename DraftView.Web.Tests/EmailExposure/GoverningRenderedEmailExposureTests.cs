@@ -19,6 +19,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using Npgsql;
 using Xunit;
 
 namespace DraftView.Web.Tests.EmailExposure;
@@ -78,6 +79,7 @@ public class GoverningRenderedEmailExposureTests :
 
     public sealed class RenderedPrivacyFactory : WebApplicationFactory<Program>
     {
+        private const string DatabaseName = "draftview_tests";
         private readonly User authorUser = User.Create(KnownEmail, "Governing Author", Role.Author);
         private readonly User invitedReader = User.Create(KnownEmail, "Pending", Role.BetaReader);
         private readonly UserPreferences authorPrefs;
@@ -98,9 +100,12 @@ public class GoverningRenderedEmailExposureTests :
 
             builder.ConfigureAppConfiguration((_, config) =>
             {
+                var baseConnectionString = LoadBaseConnectionString();
+                var testConnectionString = BuildTestConnectionString(baseConnectionString, DatabaseName);
+
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=draftview_tests;Username=test;Password=test",
+                    ["ConnectionStrings:DefaultConnection"] = testConnectionString,
                     ["Seed:AuthorEmail"] = KnownEmail,
                     ["Seed:AuthorPassword"] = "Password1!",
                     ["Seed:AuthorName"] = "Governing Author",
@@ -204,6 +209,49 @@ public class GoverningRenderedEmailExposureTests :
                 services.AddSingleton(Mock.Of<ISyncProgressTracker>());
                 services.AddSingleton(Mock.Of<IEmailSender>());
             });
+        }
+
+        private static string BuildTestConnectionString(string baseConnectionString, string databaseName)
+        {
+            var builder = new NpgsqlConnectionStringBuilder(baseConnectionString)
+            {
+                Database = databaseName
+            };
+
+            return builder.ConnectionString;
+        }
+
+        private static string LoadBaseConnectionString()
+        {
+            var webProjectRoot = FindWebProjectRoot();
+
+            var configuration = new ConfigurationBuilder()
+                .SetBasePath(webProjectRoot)
+                .AddJsonFile("appsettings.json", optional: false)
+                .AddUserSecrets<Program>(optional: true)
+                .AddEnvironmentVariables()
+                .Build();
+
+            return configuration.GetConnectionString("DefaultConnection")
+                ?? throw new InvalidOperationException(
+                    "A PostgreSQL DefaultConnection is required for governing rendered email exposure tests.");
+        }
+
+        private static string FindWebProjectRoot()
+        {
+            var dir = Directory.GetCurrentDirectory();
+
+            while (dir != null &&
+                   !Directory.GetFiles(dir, "*.sln").Any() &&
+                   !Directory.GetFiles(dir, "*.slnx").Any())
+            {
+                dir = Directory.GetParent(dir)?.FullName;
+            }
+
+            if (dir is null)
+                throw new InvalidOperationException("Solution root not found for rendered privacy tests.");
+
+            return Path.Combine(dir, "DraftView.Web");
         }
     }
 

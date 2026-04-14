@@ -21,9 +21,11 @@ public class AccountControllerTests
     private readonly Mock<UserManager<IdentityUser>> userManager;
     private readonly Mock<SignInManager<IdentityUser>> signInManager;
     private readonly Mock<IUserService> userService = new();
+    private readonly Mock<IAuthenticationUserLookupService> authenticationUserLookupService = new();
     private readonly Mock<IInvitationRepository> invitationRepo = new();
     private readonly Mock<IUserRepository> userRepo = new();
     private readonly Mock<IUserPreferencesRepository> prefsRepo = new();
+    private readonly Mock<IControlledUserEmailService> controlledUserEmailService = new();
     private readonly Mock<IEmailSender> emailSender = new();
     private readonly Mock<ILogger<AccountController>> logger = new();
     private readonly Mock<IUserEmailEncryptionService> emailEncryptionService = new();
@@ -71,9 +73,11 @@ public class AccountControllerTests
             signInManager.Object,
             userManager.Object,
             userService.Object,
+            authenticationUserLookupService.Object,
             invitationRepo.Object,
             userRepo.Object,
             prefsRepo.Object,
+            controlledUserEmailService.Object,
             emailSender.Object,
             logger.Object
         );
@@ -85,6 +89,9 @@ public class AccountControllerTests
             }
         };
 
+        var urlHelper = new Mock<Microsoft.AspNetCore.Mvc.IUrlHelper>();
+        urlHelper.Setup(u => u.IsLocalUrl(It.IsAny<string?>())).Returns(false);
+        controller.Url = urlHelper.Object;
         controller.TempData = new Mock<ITempDataDictionary>().Object;
 
         return controller;
@@ -96,6 +103,38 @@ public class AccountControllerTests
             new System.Security.Claims.ClaimsIdentity(
                 [new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, email)],
                 "TestAuth"));
+    }
+
+    // ---------------------------------------------------------------------------
+    // Login
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Login_ValidAuthorCredentials_UsesAuthenticationLookupSeamForRoleRedirect()
+    {
+        var author = Domain.Entities.User.Create("author@example.test", "Author", Domain.Enumerations.Role.Author);
+        var sut = CreateSut();
+
+        signInManager.Setup(m => m.PasswordSignInAsync("author@example.test", "Password1!", false, true))
+            .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.Success);
+        authenticationUserLookupService
+            .Setup(s => s.FindByLoginEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(author);
+
+        var result = await sut.Login(new LoginViewModel
+        {
+            Email = "author@example.test",
+            Password = "Password1!",
+            RememberMe = false
+        });
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Dashboard", redirect.ActionName);
+        Assert.Equal("Author", redirect.ControllerName);
+        authenticationUserLookupService.Verify(
+            s => s.FindByLoginEmailAsync("author@example.test", It.IsAny<CancellationToken>()),
+            Times.Once);
+        userRepo.Verify(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // ---------------------------------------------------------------------------
@@ -195,6 +234,127 @@ public class AccountControllerTests
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal("Login", redirect.ActionName);
+    }
+
+    [Fact]
+    public async Task Settings_AuthenticatedUser_UsesControlledEmailServiceForViewModelEmail()
+    {
+        var user = Domain.Entities.User.Create("test@test.com", "Test", Domain.Enumerations.Role.BetaReader);
+        var sut = CreateSut(AuthenticatedUser("test@test.com"));
+
+        userRepo.Setup(r => r.GetByEmailAsync("test@test.com"))
+            .ReturnsAsync(user);
+        controlledUserEmailService
+            .Setup(s => s.GetEmailAsync(
+                It.Is<DraftView.Application.Contracts.UserEmailAccessRequest>(r =>
+                    r.RequestingUserId == user.Id &&
+                    r.TargetUserId == user.Id &&
+                    r.RequestingUserRole == Domain.Enumerations.Role.BetaReader &&
+                    r.Purpose == DraftView.Application.Contracts.UserEmailAccessPurpose.SelfServiceSettings),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync("resolved@example.test");
+
+        var result = await sut.Settings();
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<SettingsViewModel>(view.Model);
+        Assert.Equal("resolved@example.test", model.Email);
+    }
+
+    [Fact]
+    public async Task Settings_AuthenticatedUser_DoesNotFallbackToDirectUserEmail()
+    {
+        var user = Domain.Entities.User.Create("direct@example.test", "Test", Domain.Enumerations.Role.BetaReader);
+        var sut = CreateSut(AuthenticatedUser("direct@example.test"));
+
+        userRepo.Setup(r => r.GetByEmailAsync("direct@example.test"))
+            .ReturnsAsync(user);
+        controlledUserEmailService
+            .Setup(s => s.GetEmailAsync(It.IsAny<DraftView.Application.Contracts.UserEmailAccessRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("resolved@example.test");
+
+        var result = await sut.Settings();
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<SettingsViewModel>(view.Model);
+        Assert.Equal("resolved@example.test", model.Email);
+        Assert.NotEqual(user.Email, model.Email);
+    }
+
+    [Fact]
+    public async Task ChangeEmail_AuthenticatedUser_UsesControlledEmailServiceForCurrentStoredEmail()
+    {
+        var user = Domain.Entities.User.Create("claim@example.test", "Test", Domain.Enumerations.Role.BetaReader);
+        var identityUser = new IdentityUser { Email = "stored@example.test", UserName = "stored@example.test" };
+        var sut = CreateSut(AuthenticatedUser("claim@example.test"));
+
+        userRepo.Setup(r => r.GetByEmailAsync("claim@example.test"))
+            .ReturnsAsync(user);
+        controlledUserEmailService
+            .Setup(s => s.GetEmailAsync(
+                It.Is<DraftView.Application.Contracts.UserEmailAccessRequest>(r =>
+                    r.RequestingUserId == user.Id &&
+                    r.TargetUserId == user.Id &&
+                    r.RequestingUserRole == Domain.Enumerations.Role.BetaReader &&
+                    r.Purpose == DraftView.Application.Contracts.UserEmailAccessPurpose.SelfServiceSettings),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync("stored@example.test");
+        userManager.Setup(m => m.FindByEmailAsync("stored@example.test"))
+            .ReturnsAsync(identityUser);
+        signInManager.Setup(m => m.CheckPasswordSignInAsync(identityUser, "CurrentPassword1!", false))
+            .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.Success);
+        userManager.Setup(m => m.SetEmailAsync(identityUser, "new@example.test"))
+            .ReturnsAsync(IdentityResult.Success);
+        userManager.Setup(m => m.SetUserNameAsync(identityUser, "new@example.test"))
+            .ReturnsAsync(IdentityResult.Success);
+
+        var result = await sut.ChangeEmail(new ChangeEmailViewModel
+        {
+            Email = "new@example.test",
+            CurrentPassword = "CurrentPassword1!"
+        });
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Login", redirect.ActionName);
+        userManager.Verify(m => m.FindByEmailAsync("stored@example.test"), Times.Exactly(2));
+        userManager.Verify(m => m.FindByEmailAsync("claim@example.test"), Times.Never);
+    }
+
+    [Fact]
+    public async Task ChangePassword_AuthenticatedUser_UsesControlledEmailServiceForCurrentStoredEmail()
+    {
+        var user = Domain.Entities.User.Create("claim@example.test", "Test", Domain.Enumerations.Role.BetaReader);
+        var identityUser = new IdentityUser { Email = "stored@example.test", UserName = "stored@example.test" };
+        var sut = CreateSut(AuthenticatedUser("claim@example.test"));
+
+        userRepo.Setup(r => r.GetByEmailAsync("claim@example.test"))
+            .ReturnsAsync(user);
+        controlledUserEmailService
+            .Setup(s => s.GetEmailAsync(
+                It.Is<DraftView.Application.Contracts.UserEmailAccessRequest>(r =>
+                    r.RequestingUserId == user.Id &&
+                    r.TargetUserId == user.Id &&
+                    r.RequestingUserRole == Domain.Enumerations.Role.BetaReader &&
+                    r.Purpose == DraftView.Application.Contracts.UserEmailAccessPurpose.SelfServiceSettings),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync("stored@example.test");
+        userManager.Setup(m => m.FindByEmailAsync("stored@example.test"))
+            .ReturnsAsync(identityUser);
+        userManager.Setup(m => m.ChangePasswordAsync(identityUser, "CurrentPassword1!", "NewPassword1!"))
+            .ReturnsAsync(IdentityResult.Success);
+
+        var result = await sut.ChangePassword(new ChangePasswordViewModel
+        {
+            CurrentPassword = "CurrentPassword1!",
+            NewPassword = "NewPassword1!",
+            ConfirmPassword = "NewPassword1!"
+        });
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Settings", redirect.ActionName);
+        userManager.Verify(m => m.FindByEmailAsync("stored@example.test"), Times.Once);
+        userManager.Verify(m => m.FindByEmailAsync("claim@example.test"), Times.Never);
+        signInManager.Verify(m => m.RefreshSignInAsync(identityUser), Times.Once);
     }
 
     [Fact]

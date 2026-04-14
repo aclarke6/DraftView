@@ -14,9 +14,11 @@ public class AccountController(
     SignInManager<IdentityUser> signInManager,
     UserManager<IdentityUser> userManager,
     IUserService userService,
+    DraftView.Application.Interfaces.IAuthenticationUserLookupService authenticationUserLookupService,
     IInvitationRepository invitationRepo,
     IUserRepository userRepo,
     IUserPreferencesRepository prefsRepo,
+    DraftView.Application.Interfaces.IControlledUserEmailService controlledUserEmailService,
     IEmailSender emailSender,
     ILogger<AccountController> logger) : Controller
 {
@@ -50,7 +52,7 @@ public class AccountController(
                     return Redirect(returnUrl);
                 try
                 {
-                    var domainUser = await userRepo.GetByEmailAsync(model.Email);
+                    var domainUser = await authenticationUserLookupService.FindByLoginEmailAsync(model.Email);
                     if (domainUser?.Role == Domain.Enumerations.Role.Author)
                         return RedirectToAction("Dashboard", "Author");
                     if (domainUser?.Role == Domain.Enumerations.Role.SystemSupport)
@@ -397,18 +399,22 @@ public class AccountController(
     [HttpGet]
     public async Task<IActionResult> Settings()
     {
-        var email = User.Identity?.Name;
-        if (email is null)
-            return RedirectToAction("Login");
-        var user = await userRepo.GetByEmailAsync(email);
-        if (user is null)
-            return RedirectToAction("Login");
+        var currentUser = await GetCurrentUserOrLoginRedirectAsync();
+        if (currentUser.RedirectResult is not null)
+            return currentUser.RedirectResult;
+
+        var user = currentUser.User!;
 
         var prefs = await prefsRepo.GetByUserIdAsync(user.Id);
+        var resolvedEmail = await controlledUserEmailService.GetEmailAsync(new DraftView.Application.Contracts.UserEmailAccessRequest(
+            user.Id,
+            user.Role,
+            user.Id,
+            DraftView.Application.Contracts.UserEmailAccessPurpose.SelfServiceSettings));
 
         var vm = new SettingsViewModel {
             DisplayName = user.DisplayName,
-            Email = user.Email,
+            Email = resolvedEmail,
             IsAuthor = User.IsInRole("Author"),
             IsReader = User.IsInRole("Reader"),
             DisplayTheme = prefs?.DisplayTheme.ToString() ?? "Light",
@@ -430,12 +436,11 @@ public class AccountController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ChangeDisplayTheme(ChangeDisplayThemeViewModel model)
     {
-        var email = User.Identity?.Name;
-        if (email is null)
-            return RedirectToAction("Login");
-        var user = await userRepo.GetByEmailAsync(email);
-        if (user is null)
-            return RedirectToAction("Login");
+        var currentUser = await GetCurrentUserOrLoginRedirectAsync();
+        if (currentUser.RedirectResult is not null)
+            return currentUser.RedirectResult;
+
+        var user = currentUser.User!;
 
         if (!ModelState.IsValid)
         {
@@ -466,13 +471,11 @@ public class AccountController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ChangeProseFontPreferences(ChangeProseFontPreferencesViewModel model)
     {
-        var email = User.Identity?.Name;
-        if (email is null)
-            return RedirectToAction("Login");
+        var currentUser = await GetCurrentUserOrLoginRedirectAsync();
+        if (currentUser.RedirectResult is not null)
+            return currentUser.RedirectResult;
 
-        var user = await userRepo.GetByEmailAsync(email);
-        if (user is null)
-            return RedirectToAction("Login");
+        var user = currentUser.User!;
 
         if (!ModelState.IsValid)
         {
@@ -504,10 +507,11 @@ public class AccountController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ChangeDisplayName(ChangeDisplayNameViewModel model)
     {
-        var email = User.Identity?.Name;
-        if (email is null) return RedirectToAction("Login");
-        var user = await userRepo.GetByEmailAsync(email);
-        if (user is null) return RedirectToAction("Login");
+        var currentUser = await GetCurrentUserOrLoginRedirectAsync();
+        if (currentUser.RedirectResult is not null)
+            return currentUser.RedirectResult;
+
+        var user = currentUser.User!;
 
         if (!ModelState.IsValid)
         {
@@ -532,10 +536,16 @@ public class AccountController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ChangeEmail(ChangeEmailViewModel model)
     {
-        var email = User.Identity?.Name;
-        if (email is null) return RedirectToAction("Login");
-        var user = await userRepo.GetByEmailAsync(email);
-        if (user is null) return RedirectToAction("Login");
+        var currentUser = await GetCurrentUserOrLoginRedirectAsync();
+        if (currentUser.RedirectResult is not null)
+            return currentUser.RedirectResult;
+
+        var user = currentUser.User!;
+        var currentStoredEmail = await controlledUserEmailService.GetEmailAsync(new DraftView.Application.Contracts.UserEmailAccessRequest(
+            user.Id,
+            user.Role,
+            user.Id,
+            DraftView.Application.Contracts.UserEmailAccessPurpose.SelfServiceSettings));
 
         if (!ModelState.IsValid)
         {
@@ -544,7 +554,7 @@ public class AccountController(
         }
 
         var signInResult = await signInManager.CheckPasswordSignInAsync(
-            await userManager.FindByEmailAsync(email) ?? new IdentityUser(),
+            await userManager.FindByEmailAsync(currentStoredEmail) ?? new IdentityUser(),
             model.CurrentPassword, false);
 
         if (!signInResult.Succeeded)
@@ -556,7 +566,7 @@ public class AccountController(
         try
         {
             await userService.UpdateEmailAsync(user.Id, model.Email);
-            var identityUser = await userManager.FindByEmailAsync(email);
+            var identityUser = await userManager.FindByEmailAsync(currentStoredEmail);
             if (identityUser is not null)
             {
                 await userManager.SetEmailAsync(identityUser, model.Email);
@@ -577,8 +587,16 @@ public class AccountController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ChangePassword(ChangePasswordViewModel model)
     {
-        var email = User.Identity?.Name;
-        if (email is null) return RedirectToAction("Login");
+        var currentUser = await GetCurrentUserOrLoginRedirectAsync();
+        if (currentUser.RedirectResult is not null)
+            return currentUser.RedirectResult;
+
+        var user = currentUser.User!;
+        var currentStoredEmail = await controlledUserEmailService.GetEmailAsync(new DraftView.Application.Contracts.UserEmailAccessRequest(
+            user.Id,
+            user.Role,
+            user.Id,
+            DraftView.Application.Contracts.UserEmailAccessPurpose.SelfServiceSettings));
 
         if (!ModelState.IsValid)
         {
@@ -586,7 +604,7 @@ public class AccountController(
             return RedirectToAction("Settings");
         }
 
-        var identityUser = await userManager.FindByEmailAsync(email);
+        var identityUser = await userManager.FindByEmailAsync(currentStoredEmail);
         if (identityUser is null) return RedirectToAction("Login");
 
         var result = await userManager.ChangePasswordAsync(
@@ -608,6 +626,19 @@ public class AccountController(
         var connectionRepo = HttpContext.RequestServices
             .GetRequiredService<DraftView.Domain.Interfaces.Repositories.IDropboxConnectionRepository>();
         return await connectionRepo.GetByUserIdAsync(userId);
+    }
+
+    private async Task<(DraftView.Domain.Entities.User? User, IActionResult? RedirectResult)> GetCurrentUserOrLoginRedirectAsync()
+    {
+        var email = User.Identity?.Name;
+        if (string.IsNullOrWhiteSpace(email))
+            return (null, RedirectToAction("Login"));
+
+        var user = await userRepo.GetByEmailAsync(email);
+        if (user is null)
+            return (null, RedirectToAction("Login"));
+
+        return (user, null);
     }
 }
 
