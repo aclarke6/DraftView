@@ -277,5 +277,75 @@ public class UserTests
         var ex = Assert.Throws<InvariantViolationException>(() => user.UpdateEmail(email));
         Assert.Equal("I-EMAIL", ex.InvariantCode);
     }
+
+    // ---------------------------------------------------------------------------
+    // Protected Email State
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void SetProtectedEmail_WithValidProtectedValues_SetsCiphertextAndLookupHmac()
+    {
+        var user = User.Create("user@example.com", "Test User", Role.BetaReader);
+
+        user.SetProtectedEmail("ciphertext-value", "lookup-hmac-value");
+
+        Assert.Equal("ciphertext-value", user.EmailCiphertext);
+        Assert.Equal("lookup-hmac-value", user.EmailLookupHmac);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void SetProtectedEmail_WithInvalidCiphertext_ThrowsInvariantViolationException(string? ciphertext)
+    {
+#pragma warning disable CS8604
+        var user = User.Create("user@example.com", "Test User", Role.BetaReader);
+        var ex = Assert.Throws<InvariantViolationException>(() => user.SetProtectedEmail(ciphertext, "lookup-hmac-value"));
+#pragma warning restore CS8604
+
+        Assert.Equal("I-EMAIL-CIPHERTEXT", ex.InvariantCode);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void SetProtectedEmail_WithInvalidLookupHmac_ThrowsInvariantViolationException(string? lookupHmac)
+    {
+#pragma warning disable CS8604
+        var user = User.Create("user@example.com", "Test User", Role.BetaReader);
+        var ex = Assert.Throws<InvariantViolationException>(() => user.SetProtectedEmail("ciphertext-value", lookupHmac));
+#pragma warning restore CS8604
+
+        Assert.Equal("I-EMAIL-HMAC", ex.InvariantCode);
+    }
+
+    [Fact]
+    public void LoadEmailForRuntime_WithValidEmail_SetsRuntimeEmailOnly()
+    {
+        var user = User.Create("original@example.com", "Test User", Role.BetaReader);
+        user.SetProtectedEmail("ciphertext-value", "lookup-hmac-value");
+
+        user.LoadEmailForRuntime("runtime@example.com");
+
+        Assert.Equal("runtime@example.com", user.Email);
+        Assert.Equal("ciphertext-value", user.EmailCiphertext);
+        Assert.Equal("lookup-hmac-value", user.EmailLookupHmac);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void LoadEmailForRuntime_WithInvalidEmail_ThrowsInvariantViolationException(string? email)
+    {
+#pragma warning disable CS8604
+        var user = User.Create("original@example.com", "Test User", Role.BetaReader);
+        var ex = Assert.Throws<InvariantViolationException>(() => user.LoadEmailForRuntime(email));
+#pragma warning restore CS8604
+
+        Assert.Equal("I-EMAIL", ex.InvariantCode);
+    }
 }
 
