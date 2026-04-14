@@ -80,6 +80,8 @@ none currently logged — add here as discovered
 
 - 449 Tests total
 - One skipped test is `SmtpEmailSenderIntegrationTests` which sends a real email, so is not suitable for regular test runs but is included in the solution for manual execution when needed.
+- Latest full passing count: 449 total, 448 passed, 1 skipped, 0 failed
+- Latest targeted application count: 128 total, 128 passed, 0 skipped, 0 failed
 
 ---
 
@@ -185,9 +187,9 @@ Email handling model:
 **Goal:** Control access and orchestrate protection
 
 **Services**
-- [ ] Introduce `IUserEmailProtectionService`
-- [ ] Introduce `IUserEmailAccessService`
-- [ ] Introduce explicit authentication lookup seam for resolving a user from login email input via protected lookup
+- [DONE] Introduce `IUserEmailProtectionService`
+- [DONE] Introduce `IUserEmailAccessService`
+- [DONE] Introduce explicit authentication lookup seam for resolving a user from login email input via protected lookup
 
 **Access Rules**
 - [ ] Self access permitted
@@ -211,7 +213,7 @@ Email handling model:
   - authorised access allowed
   - decrypt not called when access denied
 - [ ] Create regression test: email access is denied by default unless authorised
-- [ ] Write failing lower-level integration/authentication regression test:
+- [DONE] Write failing lower-level integration/authentication regression test:
   - authentication lookup resolves the correct user from login email input via protected lookup
   - do not bind this test to `IUserRepository.GetByEmailAsync`
 - [ ] Implement to green
@@ -221,8 +223,16 @@ Email handling model:
 - [DONE] Stage 1: Define the application seams for protected login lookup and controlled email access
 - [ ] Stage 2: Add governing application tests for deny-by-default access and no-decrypt-before-authorisation
 - [ ] Stage 3: Route self-service and current-user email access through the application layer
+    - [ ] Stage 3 should include:
+        - `AccountController.Settings` self-access email display
+  - broader current-user application access patterns that currently depend on controller-level identity email lookup
 - [ ] Stage 4: Route privileged admin/support email access through the application layer with explicit authorisation
+    - [ ] Stage 4 should include:
+        - any explicit support/admin email access consumer that is required (avoid building this if no consumer is needed)
 - [ ] Stage 5: Route authentication identity resolution through the protected lookup seam instead of direct email lookup assumptions
+    - [ ] Stage 5 should include:
+        - new authentication lookup seam for resolving a user from login email input
+        - migration of the login flow to use the new seam rather than direct repository lookup by email
 - [ ] Stage 6: Refactor Phase 4 as one unit and verify the full suite remains green
 
 **Stage 1 breakdown**
@@ -316,16 +326,47 @@ Email handling model:
   - compile verification GREEN: `dotnet build --nologo`
   - full-suite verification GREEN: 449 total, 448 passed, 1 skipped, 0 failed
 
-**Future phase notes**
-- [ ] Stage 3 should include:
-  - `AccountController.Settings` self-access email display
-  - broader current-user application access patterns that currently depend on controller-level identity email lookup
-- [ ] Stage 4 should include:
-  - a `SystemSupport`-only privileged access path if an explicit support consumer is required
-  - no author access to reader stored email after invitation
-- [ ] Stage 5 should include:
-  - `AccountController.Login` domain-user resolution for role-based redirect
-  - migration away from direct controller dependence on generic repository email lookup for authentication-oriented resolution
+**Stage 2 breakdown**
+- [DONE] Stage 2.1: Add failing tests for `IUserEmailAccessService`
+  - self access allowed
+  - `SystemSupport` access allowed for explicit support/admin purpose
+  - author access to reader stored email denied
+  - all other cross-user access denied by default
+- [DONE] Stage 2.1 implementation to green
+  - `dotnet test DraftView.Application.Tests --nologo` returned GREEN: 121 passed, 0 failed
+- [DONE] Stage 2.2: Add failing tests for `IUserEmailProtectionService`
+  - authorised access can resolve stored email
+  - denied access does not attempt decryption
+  - missing target user fails safely
+  - invalid or missing ciphertext fails safely
+- [DONE] Stage 2.2 implementation to green
+  - `dotnet test DraftView.Application.Tests --nologo` returned GREEN: 124 passed, 0 failed
+- [DONE] Stage 2.3: Add failing tests for the composition boundary between access and decryption
+  - access decision occurs before decryption
+  - decryption service is not called when access is denied
+  - plaintext email is not surfaced through fallback behaviour
+- [DONE] Stage 2.3 implementation to green
+  - `dotnet test DraftView.Application.Tests --nologo` returned GREEN: 126 passed, 0 failed
+- [DONE] Stage 2.4: Add failing tests for the authentication lookup seam
+  - login email input resolves the correct domain user
+  - login lookup uses the protected path conceptually
+  - tests are not written against `IUserRepository.GetByEmailAsync` as the contract under test
+- [DONE] Stage 2.4 implementation to green
+  - `dotnet test DraftView.Application.Tests --nologo` returned GREEN: 121 passed, 0 failed
+- [DONE] Stage 2.5: Add a deny-by-default regression test
+  - if a case is not explicitly allowed, access is denied
+  - protects against later accidental widening of privileged access
+- [DONE] Stage 2.5 verification
+  - `dotnet test DraftView.Application.Tests --nologo` returned GREEN: 128 passed, 0 failed
+- [DONE] Stage 2.6: Add compile/test scaffolding only where needed
+  - mocks and fixtures for requester, target user, repository, and encryption service
+  - no controller migration yet
+  - no implementation beyond what tests require
+- [DONE] Stage 2.6 review
+  - required scaffolding was added incrementally across the Stage `2.1` to `2.5` application tests
+- [ ] Stage 2.7: Run targeted application tests and keep `TASKS.md` current
+  - red first
+  - then implement in later Stage 2/3 work until green
 
 ---
 
