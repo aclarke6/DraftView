@@ -5,6 +5,7 @@ using DraftView.Domain.Interfaces.Services;
 using DraftView.Infrastructure.Persistence;
 using DraftView.Web.Controllers;
 using DraftView.Web.Models;
+using DraftView.Application.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -25,13 +26,18 @@ public class AccountControllerTests
     private readonly Mock<IUserPreferencesRepository> prefsRepo = new();
     private readonly Mock<IEmailSender> emailSender = new();
     private readonly Mock<ILogger<AccountController>> logger = new();
+    private readonly Mock<IUserEmailEncryptionService> emailEncryptionService = new();
+    private readonly Mock<IUserEmailLookupHmacService> emailLookupHmacService = new();
 
     public AccountControllerTests()
     {
         var dbOptions = new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<DraftViewDbContext>()
             .Options;
 
-        db = new Mock<DraftViewDbContext>(dbOptions);
+        db = new Mock<DraftViewDbContext>(
+            dbOptions,
+            emailEncryptionService.Object,
+            emailLookupHmacService.Object);
 
         var userStore = new Mock<IUserStore<IdentityUser>>();
         userManager = new Mock<UserManager<IdentityUser>>(

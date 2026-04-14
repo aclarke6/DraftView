@@ -14,6 +14,7 @@
     <File Path="Principles.md" />
     <File Path="Project Forweard Plan.Txt" />
     <File Path="publish-draftview.ps1" />
+    <File Path="Publishing And versioning Architecture.md" />
     <File Path="Show-ProjectTree.ps1" />
     <File Path="start-codex.ps1" />
     <File Path="System State Messaging.md" />

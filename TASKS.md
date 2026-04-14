@@ -178,6 +178,11 @@ Email handling model:
   - Step 8.4: Replace plaintext repository lookups with HMAC lookups
   - Step 8.5: Patch direct `DbContext` email queries used during startup/seeding
 - [DONE] Step 9: Get the infrastructure tests green
+- [DONE] Step 9.5 Bug Fix: Restore full-suite compatibility after the `DraftViewDbContext` constructor change
+  - current regression breaks `DraftView.Web.Tests.Controllers.AccountControllerTests`
+  - Moq can no longer proxy `DraftViewDbContext` with the constructor shape those tests expect
+  - fix the regression without undoing the protected-email persistence behaviour
+  - `dotnet test --nologo` returned GREEN: 449 total, 448 passed, 1 skipped, 0 failed
 - [ ] Step 10: Refactor and review Phase 3 with tests still green
   - review schema, migration, encryption, HMAC, and persistence changes as one coherent Phase 3 unit
   - remove any low-value transitional plumbing introduced during Phase 3
@@ -428,6 +433,14 @@ Current state: resume redirects to correct scene via `#scene-{id}` anchor but do
 Completed on the day of go-live, not before:
 - [ ] Send password reset emails to Becca (becca@the-dunlops.co.uk) and Hilary (hilaryrrb@gmail.com)
 - [ ] Confirm Becca and Hilary can log in and access The Fractured Lattice
+
+# DraftView Publishing and Versioning Architecture (v3.0)
+See Publishing And versioning Architecture.md for the full architecture document including Sprints 1-7
+- Build versioning in stages, starting with a simple Republish → Version → Reader flow
+- Add paragraph diff highlighting early to deliver core user value
+- Layer in reader UX, then author-side change indicators and AI summaries
+- Introduce advanced features later: scene publishing, scheduling, locking, and sync
+- Keep each sprint small, complete, and testable—no mixing scope or partial features
 
 ---
 
