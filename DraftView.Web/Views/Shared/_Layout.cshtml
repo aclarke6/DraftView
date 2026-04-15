@@ -14,24 +14,34 @@ All css files are included here to ensure consistent styling across the site.
     var proseFont = "SystemSerif";
     var proseFontSize = "Medium";
     var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    var currentUserEmail = User.Identity?.Name;
     var accountNavLabel = "Account settings";
+    DraftView.Domain.Entities.User? currentUser = null;
 
     if (User.Identity?.IsAuthenticated == true && !string.IsNullOrWhiteSpace(currentUserId))
     {
-        var currentUser = await UserRepository.GetByIdAsync(
+        currentUser = await UserRepository.GetByIdAsync(
             Guid.Parse(currentUserId));
-        if (currentUser is not null)
-        {
-            if (!string.IsNullOrWhiteSpace(currentUser.DisplayName))
-                accountNavLabel = currentUser.DisplayName;
+    }
 
-            var prefs = await UserPreferencesRepository.GetByUserIdAsync(currentUser.Id);
-            if (prefs is not null)
-            {
-                theme = prefs.DisplayTheme.ToString();
-                proseFont = prefs.ProseFont.ToString();
-                proseFontSize = prefs.ProseFontSize.ToString();
-            }
+    if (currentUser is null &&
+        User.Identity?.IsAuthenticated == true &&
+        !string.IsNullOrWhiteSpace(currentUserEmail))
+    {
+        currentUser = await UserRepository.GetByEmailAsync(currentUserEmail);
+    }
+
+    if (currentUser is not null)
+    {
+        if (!string.IsNullOrWhiteSpace(currentUser.DisplayName))
+            accountNavLabel = currentUser.DisplayName;
+
+        var prefs = await UserPreferencesRepository.GetByUserIdAsync(currentUser.Id);
+        if (prefs is not null)
+        {
+            theme = prefs.DisplayTheme.ToString();
+            proseFont = prefs.ProseFont.ToString();
+            proseFontSize = prefs.ProseFontSize.ToString();
         }
     }
 
