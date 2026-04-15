@@ -47,7 +47,7 @@ public class AccountController(
         switch (result)
         {
             case { Succeeded: true }:
-                logger.LogInformation("User logged in: {Email}", model.Email);
+                logger.LogInformation("User login succeeded.");
                 if (Url.IsLocalUrl(returnUrl))
                     return Redirect(returnUrl);
                 try
@@ -61,7 +61,7 @@ public class AccountController(
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "Failed to resolve role redirect for {Email}", model.Email);
+                    logger.LogError(ex, "Failed to resolve role redirect after successful login.");
                     return RedirectToAction("Index", "Home");
                 }
 
@@ -180,7 +180,7 @@ public class AccountController(
             await signInManager.PasswordSignInAsync(
                 inviteeEmail, model.Password, isPersistent: false, lockoutOnFailure: false);
 
-            logger.LogInformation("Invitation accepted and user signed in: {Email}", inviteeEmail);
+            logger.LogInformation("Invitation accepted and user signed in for user {UserId}", user.Id);
 
             return RedirectToAction("Dashboard", "Reader");
         }

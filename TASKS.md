@@ -109,18 +109,18 @@ Email handling model:
   - timestamp
   - success or failure
   - reason if provided
-- [ ] Audit the controlled email access seam itself
+- [DONE] Audit the controlled email access seam itself
   - `ControlledUserEmailService` / `UserEmailAccessService` must emit an audit record for every allow or deny decision
   - audit coverage must include `SystemSupport` email-access requests, not just UI-layer actions
-- [ ] Ensure logs do NOT include plaintext email
+- [DONE] Ensure logs do NOT include plaintext email
   - remove plaintext email from `AccountController` login / invitation logs
   - remove plaintext email from `DatabaseSeeder` logs
   - `DatabaseSeeder` should not carry true email addresses in executable logging paths
   - replace any remaining email-based log placeholders with user IDs, role names, or other non-sensitive identifiers
 
 **Access Control**
-- [ ] Enforce explicit permission for admin/support access
-- [ ] Ensure least privilege across system
+- [DONE] Enforce explicit permission for admin/support access
+- [DONE] Ensure least privilege across system
   - review the current `SystemSupport` allow rule and tighten it from broad role-only access to an explicit privileged access policy if needed
 
 **Security Tests**
@@ -128,9 +128,9 @@ Email handling model:
   - email not exposed in unauthorised views
   - logs contain no sensitive data
   - access rules enforced correctly
- - [ ] Add regression coverage for plaintext-email log prevention
+ - [DONE] Add regression coverage for plaintext-email log prevention
   - source-level or focused behavioural tests should fail if `{Email}` logging reappears in protected flows
- - [ ] Add regression coverage for privileged email-access audit logging
+- [DONE] Add regression coverage for privileged email-access audit logging
   - tests should prove both allowed and denied access attempts are recorded
 
 **Password reset clarification**

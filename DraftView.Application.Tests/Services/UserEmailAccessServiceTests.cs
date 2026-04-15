@@ -24,7 +24,7 @@ public class UserEmailAccessServiceTests
     }
 
     [Fact]
-    public async Task EvaluateAccessAsync_SystemSupportSupportOperation_AllowsAccess()
+    public async Task EvaluateAccessAsync_SystemSupportSupportOperation_DeniesAccessWithoutExplicitPrivilege()
     {
         var sut = CreateSut();
 
@@ -34,7 +34,7 @@ public class UserEmailAccessServiceTests
             Guid.NewGuid(),
             UserEmailAccessPurpose.SupportOperation));
 
-        Assert.True(result.IsAllowed);
+        Assert.False(result.IsAllowed);
     }
 
     [Fact]

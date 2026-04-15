@@ -137,6 +137,35 @@ public class AccountControllerTests
         userRepo.Verify(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Fact]
+    public async Task Login_WhenRoleRedirectResolutionFails_LogsWithoutPlaintextEmail()
+    {
+        var sut = CreateSut();
+        var exception = new InvalidOperationException("lookup failed");
+
+        signInManager.Setup(m => m.PasswordSignInAsync("author@example.test", "Password1!", false, true))
+            .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.Success);
+        authenticationUserLookupService
+            .Setup(s => s.FindByLoginEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(exception);
+
+        var result = await sut.Login(new LoginViewModel
+        {
+            Email = "author@example.test",
+            Password = "Password1!",
+            RememberMe = false
+        });
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Index", redirect.ActionName);
+        Assert.Equal("Home", redirect.ControllerName);
+
+        VerifyLoggedWithoutPlaintextEmail(
+            LogLevel.Error,
+            "Failed to resolve role redirect after successful login.",
+            "author@example.test");
+    }
+
     // ---------------------------------------------------------------------------
     // Settings
     // ---------------------------------------------------------------------------
@@ -415,4 +444,20 @@ public class AccountControllerTests
     }
 
 
+    private void VerifyLoggedWithoutPlaintextEmail(
+        LogLevel expectedLevel,
+        string expectedMessage,
+        string forbiddenEmail)
+    {
+        logger.Verify(
+            x => x.Log(
+                expectedLevel,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((state, _) =>
+                    state.ToString()!.Contains(expectedMessage) &&
+                    !state.ToString()!.Contains(forbiddenEmail)),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.AtLeastOnce);
+    }
 }

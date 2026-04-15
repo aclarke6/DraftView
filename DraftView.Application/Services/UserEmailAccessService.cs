@@ -13,10 +13,6 @@ public sealed class UserEmailAccessService : IUserEmailAccessService
         if (request.RequestingUserId == request.TargetUserId)
             return Task.FromResult(new UserEmailAccessResult(true));
 
-        if (request.RequestingUserRole == Role.SystemSupport &&
-            request.Purpose == UserEmailAccessPurpose.SupportOperation)
-            return Task.FromResult(new UserEmailAccessResult(true));
-
         return Task.FromResult(new UserEmailAccessResult(false, "Email access denied."));
     }
 }

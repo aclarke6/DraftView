@@ -82,7 +82,7 @@ public static class DatabaseSeeder
             }
 
             existingIdentityUser = identityUser;
-            logger.LogInformation("Author Identity user created: {Email}", authorEmail);
+            logger.LogInformation("Author Identity user created.");
         }
 
         if (!await userManager.IsInRoleAsync(existingIdentityUser, Role.Author.ToString()))
@@ -115,7 +115,7 @@ public static class DatabaseSeeder
             }
 
             existingSupportIdentityUser = identityUser;
-            logger.LogInformation("Support Identity user created: {Email}", supportEmail);
+            logger.LogInformation("Support Identity user created.");
         }
 
         if (!await userManager.IsInRoleAsync(existingSupportIdentityUser, Role.SystemSupport.ToString()))
@@ -144,7 +144,7 @@ public static class DatabaseSeeder
             db.UserPreferences.Add(prefs);
 
             await db.SaveChangesAsync();
-            logger.LogInformation("Author domain user created: {Email}", authorEmail);
+            logger.LogInformation("Author domain user created with user ID {UserId}", author.Id);
         }
 
         // ---------------------------------------------------------------------------
@@ -159,7 +159,7 @@ public static class DatabaseSeeder
             db.AppUsers.Add(support);
 
             await db.SaveChangesAsync();
-            logger.LogInformation("Support domain user created: {Email}", supportEmail);
+            logger.LogInformation("Support domain user created with user ID {UserId}", support.Id);
         }
 
         // ---------------------------------------------------------------------------
@@ -189,7 +189,7 @@ public static class DatabaseSeeder
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Failed to backfill identity role for {Email}", du.Email);
+                logger.LogWarning(ex, "Failed to backfill identity role for user {UserId} with role {Role}", du.Id, du.Role);
             }
         }
 
@@ -213,14 +213,14 @@ public static class DatabaseSeeder
                     "legacy-no-refresh-token",
                     DateTime.UtcNow.AddDays(1)); // conservative expiry â€” prompt reconnect soon
                 logger.LogWarning(
-                    "Seeded legacy Dropbox access token for {Email}. " +
+                    "Seeded legacy Dropbox access token for user {UserId}. " +
                     "Please reconnect via /dropbox/settings to get a proper refresh token.",
-                    authorEmail);
+                    authorUser.Id);
             }
 
             db.DropboxConnections.Add(connection);
             await db.SaveChangesAsync();
-            logger.LogInformation("DropboxConnection created for author {Email}", authorEmail);
+            logger.LogInformation("DropboxConnection created for author {UserId}", authorUser.Id);
         }
 
         // ---------------------------------------------------------------------------
