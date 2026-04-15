@@ -440,6 +440,117 @@ Work captured for future sprints. Execute in order; each phase should be complet
 - [ ] Replace hardcoded `15px` in `.chapter-comment-form__textarea` with `var(--text-base)`
 
 ---
+# DraftView Task List
+
+## Incremental Refactor Roadmap (Staged, Codebase-Specific)
+
+This roadmap replaces the previous high-level Phase 1–5 architecture bullets.  
+Each phase is independently executable, low-risk, and grounded in current DraftView hotspots: controller guard duplication, procedural controller workflows, startup/seeding complexity, and sync kickoff patterns.
+
+---
+
+## Phase 1 — Centralise controller user/role resolution (low-risk, no behaviour change)
+
+**Targets:**
+
+- Consolidate repeated author guard logic currently duplicated in:
+  - `AuthorController.GetAuthorAsync`
+  - `DropboxController.GetAuthorAsync`
+  - direct `User.Identity?.Name` reads in controller actions
+- Introduce shared helpers in `BaseController`:
+  - `TryGetCurrentAuthorAsync`
+  - `RequireCurrentAuthorAsync`
+- Replace per-controller guard copies with the shared pattern.
+
+**Outcome:**
+
+- Single authoritative path for resolving the current author.
+- Removal of repeated guard logic across controllers.
+- No functional changes; pure consolidation.
+
+---
+
+## Phase 2 — Extract procedural controller workflows
+
+**Targets:**
+
+- Extract orchestration logic from:
+  - `AuthorController.AddProjects`
+  - `AuthorController.Section` (query assembly)
+  - reader access update flow
+- Move orchestration into dedicated services.
+- Leave controllers as thin request/response surfaces.
+
+**Outcome:**
+
+- Controllers stop acting as procedural workflow containers.
+- Workflows become testable, composable services.
+
+---
+
+## Phase 3 — Decompose startup/seeding
+
+**Targets:**
+
+- Break down `DatabaseSeeder.SeedAsync` into smaller, isolated steps.
+- Move orchestration out of `WebApplicationExtensions`.
+- Introduce clear boundaries between:
+  - seeding
+  - runtime configuration
+  - environment-specific initialisation
+
+**Outcome:**
+
+- Startup becomes predictable and minimal.
+- Seeding logic becomes explicit and testable.
+
+---
+
+## Phase 4 — Standardise inheritance and shared utilities
+
+**Targets:**
+
+- Reduce repeated query/DTO loops across:
+  - `ReaderController`
+  - `BaseReaderController`
+- Consolidate shared reader-side patterns into a single abstraction.
+
+**Outcome:**
+
+- Less duplication.
+- Clearer inheritance boundaries.
+- Consistent reader-side behaviour.
+
+---
+
+## Phase 5 — Extract remaining procedural workflows
+
+**Targets:**
+
+- Identify remaining controller-heavy procedural flows.
+- Extract into services following the Phase 2 pattern.
+- Ensure controllers become orchestration surfaces only.
+
+**Outcome:**
+
+- Controllers become uniformly thin.
+- All business logic moves to services.
+
+---
+
+## Phase 6 — Standardise sync kickoff (remove inline Task.Run)
+
+**Targets:**
+
+- Replace inline `Task.Run` sync kickoff patterns with:
+  - background queue
+  - or dedicated sync service
+- Standardise sync initiation across controllers.
+
+**Outcome:**
+
+- Predictable, testable sync initiation.
+- No more inline fire-and-forget patterns.
 
 
 
