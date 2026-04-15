@@ -38,7 +38,7 @@ else
                 <div id="availableList" style="min-height:120px; padding:var(--space-2);">
                     @foreach (var p in available)
                     {
-                        <div class="project-item" data-uuid="@p.ScrivenerRootUuid" data-name="@p.Name" data-vault="@System.IO.Path.GetFileName(p.DropboxPath)"
+                        <div class="project-item" data-uuid="@p.SyncRootId" data-name="@p.Name" data-vault="@System.IO.Path.GetFileName(p.DropboxPath)"
                              style="display:flex; justify-content:space-between; align-items:center; padding:var(--space-3) var(--space-4); border-radius:6px; margin-bottom:var(--space-2); background:var(--color-surface); border:1px solid var(--color-border); cursor:pointer;"
                              onclick="moveToSelected(this)">
                             <div>

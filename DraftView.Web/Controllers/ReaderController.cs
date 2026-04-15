@@ -9,7 +9,7 @@ namespace DraftView.Web.Controllers;
 
 #pragma warning disable CS9107
 public class ReaderController(
-    IScrivenerProjectRepository projectRepo,
+    IProjectRepository projectRepo,
     ISectionRepository sectionRepo,
     ICommentService commentService,
     IReadingProgressService progressService,

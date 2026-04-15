@@ -32,7 +32,7 @@ namespace DraftView.Web.Extensions
                 sp.GetRequiredService<DraftViewDbContext>());
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IInvitationRepository, InvitationRepository>();
-            services.AddScoped<IScrivenerProjectRepository, ScrivenerProjectRepository>();
+            services.AddScoped<IProjectRepository, ProjectRepository>();
             services.AddScoped<ISectionRepository, SectionRepository>();
             services.AddScoped<ICommentRepository, CommentRepository>();
             services.AddScoped<IReadEventRepository, ReadEventRepository>();
@@ -82,10 +82,10 @@ namespace DraftView.Web.Extensions
                 _ => new UserEmailEncryptionService(encryptionKey));
             services.AddSingleton<IUserEmailLookupHmacService>(
                 _ => new UserEmailLookupHmacService(lookupHmacKey));
-            services.AddScoped<ISyncService, SyncService>();
+            services.AddScoped<ISyncService, ScrivenerSyncService>();
             services.AddScoped<IPublicationService, PublicationService>();
             services.AddSingleton<ISyncProgressTracker, SyncProgressTracker>();
-            services.AddScoped<IScrivenerProjectDiscoveryService, ScrivenerProjectDiscoveryService>();
+            services.AddScoped<IProjectDiscoveryService, ScrivenerProjectDiscoveryService>();
             services.AddScoped<ICommentService, CommentService>();
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<IUserEmailAccessService, UserEmailAccessService>();

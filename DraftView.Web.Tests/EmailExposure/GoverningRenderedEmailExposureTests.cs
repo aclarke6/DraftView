@@ -169,11 +169,11 @@ public class GoverningRenderedEmailExposureTests :
                 publicationService.Setup(s => s.GetPublishedChaptersAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                     .ReturnsAsync(Array.Empty<Section>());
 
-                var projectRepo = new Mock<IScrivenerProjectRepository>();
+                var projectRepo = new Mock<IProjectRepository>();
                 projectRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(Array.Empty<ScrivenerProject>());
+                    .ReturnsAsync(Array.Empty<Project>());
                 projectRepo.Setup(r => r.GetReaderActiveProjectAsync(It.IsAny<CancellationToken>()))
-                    .ReturnsAsync((ScrivenerProject?)null);
+                    .ReturnsAsync((Project?)null);
 
                 var systemStateMessageService = new Mock<ISystemStateMessageService>();
                 systemStateMessageService.Setup(s => s.GetActiveMessageAsync(It.IsAny<CancellationToken>()))
@@ -184,12 +184,12 @@ public class GoverningRenderedEmailExposureTests :
                 services.RemoveAll<IUserPreferencesRepository>();
                 services.RemoveAll<IDashboardService>();
                 services.RemoveAll<IPublicationService>();
-                services.RemoveAll<IScrivenerProjectRepository>();
+                services.RemoveAll<IProjectRepository>();
                 services.RemoveAll<ISystemStateMessageService>();
                 services.RemoveAll<ISectionRepository>();
                 services.RemoveAll<IUserService>();
                 services.RemoveAll<ISyncService>();
-                services.RemoveAll<IScrivenerProjectDiscoveryService>();
+                services.RemoveAll<IProjectDiscoveryService>();
                 services.RemoveAll<IReaderAccessRepository>();
                 services.RemoveAll<ISyncProgressTracker>();
                 services.RemoveAll<IEmailSender>();
@@ -204,7 +204,7 @@ public class GoverningRenderedEmailExposureTests :
                 services.AddSingleton(Mock.Of<ISectionRepository>());
                 services.AddSingleton(Mock.Of<IUserService>());
                 services.AddSingleton(Mock.Of<ISyncService>());
-                services.AddSingleton(Mock.Of<IScrivenerProjectDiscoveryService>());
+                services.AddSingleton(Mock.Of<IProjectDiscoveryService>());
                 services.AddSingleton(Mock.Of<IReaderAccessRepository>());
                 services.AddSingleton(Mock.Of<ISyncProgressTracker>());
                 services.AddSingleton(Mock.Of<IEmailSender>());

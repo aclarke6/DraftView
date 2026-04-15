@@ -9,7 +9,7 @@ public interface IDropboxFileDownloader
     /// per-author cache path. Returns the local path to the downloaded folder.
     /// </summary>
     Task<string> DownloadProjectAsync(
-        ScrivenerProject project,
+        Project project,
         Guid userId,
         CancellationToken ct = default);
 }

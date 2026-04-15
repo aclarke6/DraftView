@@ -9,7 +9,7 @@ public class DropboxFileDownloader(
     ILogger<DropboxFileDownloader> logger) : IDropboxFileDownloader
 {
     public async Task<string> DownloadProjectAsync(
-        ScrivenerProject project,
+        Project project,
         Guid userId,
         CancellationToken ct = default)
     {

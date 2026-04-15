@@ -109,17 +109,29 @@ Email handling model:
   - timestamp
   - success or failure
   - reason if provided
+- [ ] Audit the controlled email access seam itself
+  - `ControlledUserEmailService` / `UserEmailAccessService` must emit an audit record for every allow or deny decision
+  - audit coverage must include `SystemSupport` email-access requests, not just UI-layer actions
 - [ ] Ensure logs do NOT include plaintext email
+  - remove plaintext email from `AccountController` login / invitation logs
+  - remove plaintext email from `DatabaseSeeder` logs
+  - `DatabaseSeeder` should not carry true email addresses in executable logging paths
+  - replace any remaining email-based log placeholders with user IDs, role names, or other non-sensitive identifiers
 
 **Access Control**
 - [ ] Enforce explicit permission for admin/support access
 - [ ] Ensure least privilege across system
+  - review the current `SystemSupport` allow rule and tighten it from broad role-only access to an explicit privileged access policy if needed
 
 **Security Tests**
 - [ ] Verify:
   - email not exposed in unauthorised views
   - logs contain no sensitive data
   - access rules enforced correctly
+ - [ ] Add regression coverage for plaintext-email log prevention
+  - source-level or focused behavioural tests should fail if `{Email}` logging reappears in protected flows
+ - [ ] Add regression coverage for privileged email-access audit logging
+  - tests should prove both allowed and denied access attempts are recorded
 
 **Password reset clarification**
 - [DONE] Password reset flow does not require email visibility after the user submits the address
@@ -333,6 +345,162 @@ Work captured for future sprints. Do not start until the relevant sprint is acti
 - [ ] Remove duplicate `.comment-box__reply-form` declaration in Reader.css
 - [ ] Replace hardcoded `#f8f8f6` in `.chapter-comment-form` with `var(--color-surface-alt)`
 - [ ] Replace hardcoded `15px` in `.chapter-comment-form__textarea` with `var(--text-base)`
+
+---
+
+# Extracting Scrivener Project naming and refactoring it
+# ScrivenerProject → Project Rename — Run List
+
+Run the full test suite after every item. Do not proceed if tests are red.
+
+---
+
+## Stage 1 — Domain Entity
+
+- [Done] Rename class `ScrivenerProject` → `Project` (entity file rename + class name)
+- [Done] Rename file `ScrivenerProject.cs` → `Project.cs`
+- [Done] Rename property `Project.ScrivenerRootUuid` → `Project.SyncRootId`
+- [None Located] Rename invariant code string `"I-PROJ-"` references if they mention Scrivener — none found, codes are generic
+- [Passed] **Run tests** ✓
+
+---
+
+## Stage 2 — Domain Repository Interface
+
+- [Done] Rename interface `IScrivenerProjectRepository` → `IProjectRepository`
+- [Done] Rename file `IScrivenerProjectRepository.cs` → `IProjectRepository.cs`
+- [Done] Rename method `GetSoftDeletedByScrivenerRootUuidAsync()` → `GetSoftDeletedBySyncRootIdAsync()`
+- [Passed] **Run tests** ✓
+
+---
+
+## Stage 3 — Domain Service Interfaces
+
+- [Done] Rename interface `IScrivenerProjectDiscoveryService` → `IProjectDiscoveryService`
+- [Done] Rename file `IScrivenerProjectDiscoveryService.cs` → `IProjectDiscoveryService.cs`
+- [Done] Rename property `DiscoveredProject.ScrivenerRootUuid` → `DiscoveredProject.SyncRootId`
+- [Passed] **Run tests** ✓
+
+---
+
+## Stage 4 — Infrastructure Configuration
+
+- [Done] Rename class `ScrivenerProjectConfiguration` → `ProjectConfiguration`
+- [Done] Rename file `ScrivenerProjectConfiguration.cs` → `ProjectConfiguration.cs`
+- [Passed] **Run tests** ✓
+
+---
+
+## Stage 5 — Infrastructure Repository
+
+- [Done] Rename class `ScrivenerProjectRepository` → `ProjectRepository`
+- [Done] Rename file `ScrivenerProjectRepository.cs` → `ProjectRepository.cs`
+- [Done] Rename method `GetByScrivenerRootUuidAsync()` → `GetBySyncRootIdAsync()`
+- [redundant] Rename method `GetSoftDeletedByScrivenerRootUuidAsync()` → `GetSoftDeletedBySyncRootIdAsync()`
+- [ ] Update all internal `p.ScrivenerRootUuid` → `p.SyncRootId` in query lambdas
+- [ ] **Run tests** ✓
+
+---
+
+## Stage 6 — Application Discovery Service
+
+> `ScrivenerProjectDiscoveryService` discovers projects by scanning for `.scrivx` files
+> and parsing Scrivener vault structure. It is Scrivener-specific. The class name is
+> correct and stays. Only the repository parameter type needs updating.
+
+- [Done] Confirm class name remains `ScrivenerProjectDiscoveryService` — do NOT rename
+- [Done] Confirm file name remains `ScrivenerProjectDiscoveryService.cs` — do NOT rename
+- [Done] Update constructor parameter type `IScrivenerProjectRepository` → `IProjectRepository` (if not already cascaded from Stage 2)
+- [Done] Confirm all `SyncRootId` references correct (were `ScrivenerRootUuid`, updated in Stage 3)
+- [passed] **Run tests** ✓
+
+---
+
+## Stage 7 — Application SyncService
+
+- [Done] Update constructor parameter type `IScrivenerProjectRepository` → `IProjectRepository`
+- [Done] Update `nameof(ScrivenerProject)` → `nameof(Project)` in exception throw
+- [Done] Confirm all `project.SyncRootId` references correct (were `ScrivenerRootUuid`, cascaded from Stage 1)
+- [Passed] **Run tests** ✓
+
+---
+
+## Stage 8 — Web ViewModels
+
+- [Done] Update `DashboardViewModel.ActiveProject` type: `ScrivenerProject?` → `Project?`
+- [Done] Update `DashboardViewModel.AllProjects` type: `IReadOnlyList<ScrivenerProject>` → `IReadOnlyList<Project>`
+- [Done] Update `ReaderAccessViewModel.ProjectsWithAccess` type: `IReadOnlyList<ScrivenerProject>` → `IReadOnlyList<Project>`
+- [Done] Update `ReaderAccessViewModel.ProjectsWithoutAccess` type: `IReadOnlyList<ScrivenerProject>` → `IReadOnlyList<Project>`
+- [Passed] **Run tests** ✓
+
+---
+
+## Stage 9 — Web AuthorController
+
+- [Done] Update constructor parameter type `IScrivenerProjectRepository` → `IProjectRepository`
+- [Done] Update constructor parameter type `IScrivenerProjectDiscoveryService` → `IProjectDiscoveryService`
+- [Done] Update background task variable type `IScrivenerProjectRepository` → `IProjectRepository`
+- [Done] Update `ScrivenerProject.Create()` → `Project.Create()`
+- [Done] Confirm all `p.SyncRootId` and `d.SyncRootId` references correct (were `ScrivenerRootUuid`)
+- [Done] Update `GetSoftDeletedByScrivenerRootUuidAsync()` call → `GetSoftDeletedBySyncRootIdAsync()`
+- [Passed] **Run tests** ✓
+
+---
+
+## Stage 10 — Web DI Registration
+
+- [Done] Update registration: `ScrivenerProjectRepository` → `ProjectRepository`
+- [Done] Update registration: `IScrivenerProjectRepository` → `IProjectRepository`
+- [Done] Update registration: `IScrivenerProjectDiscoveryService` → `IProjectDiscoveryService`
+- [Done] Confirm `ScrivenerProjectDiscoveryService` registration stays — it is the correct Scrivener-specific implementation of `IProjectDiscoveryService`
+- [Passed] **Run tests** ✓
+
+---
+
+## Stage 11 — Test Files
+
+- [Done] Rename file `ScrivenerProjectTests.cs` → `ProjectTests.cs`
+- [Done] Rename class `ScrivenerProjectTests` → `ProjectTests`
+- [Done] Update all `ScrivenerProject.Create()` → `Project.Create()`
+- [Done] Update all `ScrivenerProject` type references
+- [Done] Rename file `ScrivenerProjectRepositoryTests.cs` → `ProjectRepositoryTests.cs`
+- [Done] Rename class `ScrivenerProjectRepositoryTests` → `ProjectRepositoryTests`
+- [Done] Update field `ScrivenerProjectRepository _sut` → `ProjectRepository _sut`
+- [Done] Update helper `MakeProject()` — `ScrivenerProject.Create()` → `Project.Create()`
+- [Done] Update `SyncServiceTests` field type `Mock<IScrivenerProjectRepository>` → `Mock<IProjectRepository>`
+- [Passed] **Run tests** ✓
+---
+
+## Stage 12 — EF Migration
+
+- [Done] Run: `dotnet ef migrations add RenameScrivenerProjectToProject --project DraftView.Infrastructure --startup-project DraftView.Web`
+- [Done] Review generated migration — if EF generates DropTable/CreateTable, rewrite as `migrationBuilder.RenameTable()` to preserve data
+- [Done] Run: `dotnet ef database update --project DraftView.Infrastructure --startup-project DraftView.Web`
+- [Passed] **Run tests** ✓
+
+---
+
+## Stage 13 — Solution-Wide Verification
+
+- [Done] Solution-wide search for `ScrivenerProject` — only permitted hits: `ScrivenerProjectDiscoveryService`, `IScrivenerProjectParser`, and migration history
+- [Done] Solution-wide search for `ScrivenerRootUuid` — zero hits outside migration history
+- [Done] Solution-wide search for `IScrivenerProjectRepository` — zero hits
+- [Done] Solution-wide search for `IScrivenerProjectDiscoveryService` — zero hits
+- [Done] **Run full test suite** ✓
+- [Done] Commit: `refactor: rename ScrivenerProject to Project, IProjectRepository replaces IScrivenerProjectRepository, SyncRootId replaces ScrivenerRootUuid`
+
+---
+
+## Known Debt — Not in This Sprint
+
+Deliberately left for the sync extraction sprint:
+
+- `Section.ScrivenerUuid` — moving off `Section` entirely into `ScrivenerSyncMapping`
+- `Section.ScrivenerStatus` + `UpdateScrivenerStatus()` — Scrivener display metadata, name is honest
+- `IScrivenerProjectParser` — parses `.scrivx`, genuinely Scrivener-specific
+- `ParsedBinderNode.ScrivenerStatus` — Scrivener binder metadata
+- `ScrivenerProjectDiscoveryService` — Scrivener-specific implementation of `IProjectDiscoveryService`, name is correct
+
 
 ---
 

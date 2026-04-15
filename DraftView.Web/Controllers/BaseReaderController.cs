@@ -16,7 +16,7 @@ namespace DraftView.Web.Controllers;
 [Authorize(Roles = "BetaReader,Author")]
 #pragma warning disable CS9107
 public abstract class BaseReaderController(
-    IScrivenerProjectRepository projectRepo,
+    IProjectRepository projectRepo,
     ISectionRepository sectionRepo,
     ICommentService commentService,
     IReadingProgressService progressService,
@@ -24,7 +24,7 @@ public abstract class BaseReaderController(
     IReaderAccessRepository readerAccessRepo,
     ILogger logger) : BaseController(userRepository)
 {
-    protected readonly IScrivenerProjectRepository ProjectRepo      = projectRepo;
+    protected readonly IProjectRepository ProjectRepo      = projectRepo;
     protected readonly ISectionRepository          SectionRepo      = sectionRepo;
     protected readonly ICommentService             CommentService   = commentService;
     protected readonly IReadingProgressService     ProgressService  = progressService;

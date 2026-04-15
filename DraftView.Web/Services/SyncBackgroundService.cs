@@ -35,7 +35,7 @@ public class SyncBackgroundService(
         try
         {
             using var scope = serviceProvider.CreateScope();
-            var projectRepo = scope.ServiceProvider.GetRequiredService<IScrivenerProjectRepository>();
+            var projectRepo = scope.ServiceProvider.GetRequiredService<IProjectRepository>();
             var syncService = scope.ServiceProvider.GetRequiredService<ISyncService>();
 
             var projects = await projectRepo.GetAllAsync(ct);

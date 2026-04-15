@@ -9,8 +9,8 @@ using DraftView.Domain.Notifications;
 namespace DraftView.Application.Services;
 
 #pragma warning disable CS9113 // clientFactory used internally by DropboxFileDownloader
-public class SyncService(
-    IScrivenerProjectRepository projectRepo,
+public class ScrivenerSyncService(
+    IProjectRepository projectRepo,
     ISectionRepository sectionRepo,
     IUnitOfWork unitOfWork,
     IScrivenerProjectParser parser,
@@ -20,14 +20,14 @@ public class SyncService(
     IDropboxConnectionChecker connectionChecker,
     IDropboxClientFactory clientFactory,
     IDropboxFileDownloader fileDownloader,
-    ILogger<SyncService> logger,
+    ILogger<ScrivenerSyncService> logger,
     IAuthorNotificationRepository notificationRepo,
     IUserRepository userRepo) : ISyncService
 {
     public async Task ParseProjectAsync(Guid projectId, CancellationToken ct = default)
     {
         var project = await projectRepo.GetByIdAsync(projectId, ct)
-            ?? throw new EntityNotFoundException(nameof(ScrivenerProject), projectId);
+            ?? throw new EntityNotFoundException(nameof(Project), projectId);
 
         // Scope all per-author services to this project's author
         connectionChecker.SetUserId(project.AuthorId);
@@ -65,9 +65,9 @@ public class SyncService(
             var seenUuids        = new HashSet<string>();
 
             var rootNode = parsed.ManuscriptRoot;
-            if (!string.IsNullOrWhiteSpace(project.ScrivenerRootUuid))
+            if (!string.IsNullOrWhiteSpace(project.SyncRootId))
             {
-                var found = FindNodeByUuid(parsed.ManuscriptRoot, project.ScrivenerRootUuid);
+                var found = FindNodeByUuid(parsed.ManuscriptRoot, project.SyncRootId);
                 if (found is not null)
                     rootNode = found;
             }
@@ -114,7 +114,7 @@ public class SyncService(
     public async Task DetectContentChangesAsync(Guid projectId, CancellationToken ct = default)
     {
         var project = await projectRepo.GetByIdAsync(projectId, ct)
-            ?? throw new EntityNotFoundException(nameof(ScrivenerProject), projectId);
+            ?? throw new EntityNotFoundException(nameof(Project), projectId);
 
         connectionChecker.SetUserId(project.AuthorId);
         pathResolver.SetUserId(project.AuthorId);

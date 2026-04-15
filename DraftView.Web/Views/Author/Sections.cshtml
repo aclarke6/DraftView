@@ -1,7 +1,7 @@
 ﻿@model IReadOnlyList<(DraftView.Domain.Entities.Section Section, int Depth)>
 @{
     ViewData["Title"] = "Sections";
-    var project     = ViewBag.Project as DraftView.Domain.Entities.ScrivenerProject;
+    var project     = ViewBag.Project as DraftView.Domain.Entities.Project;
     var publishable = ViewBag.Publishable as HashSet<Guid> ?? new HashSet<Guid>();
 
     // Build a set of folder IDs that contain at least one sub-folder child.

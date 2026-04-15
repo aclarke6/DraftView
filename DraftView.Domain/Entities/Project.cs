@@ -3,7 +3,7 @@ using DraftView.Domain.Exceptions;
 
 namespace DraftView.Domain.Entities;
 
-public sealed class ScrivenerProject
+public sealed class Project
 {
     // ---------------------------------------------------------------------------
     // Properties
@@ -19,7 +19,7 @@ public sealed class ScrivenerProject
     /// For Book-split vaults this is the Book folder UUID.
     /// For single-project vaults this is the Manuscript (DraftFolder) UUID.
     /// </summary>
-    public string? ScrivenerRootUuid { get; private set; } = default!;
+    public string? SyncRootId { get; private set; } = default!;
     public bool IsReaderActive { get; private set; }
     public DateTime? ReaderActivatedAt { get; private set; }
     public DateTime? LastSyncedAt { get; private set; }
@@ -32,13 +32,13 @@ public sealed class ScrivenerProject
     // Constructor
     // ---------------------------------------------------------------------------
 
-    private ScrivenerProject() { }
+    private Project() { }
 
     // ---------------------------------------------------------------------------
     // Factory
     // ---------------------------------------------------------------------------
 
-    public static ScrivenerProject Create(
+    public static Project Create(
         string name,
         string dropboxPath,
         Guid authorId,
@@ -56,12 +56,12 @@ public sealed class ScrivenerProject
             throw new InvariantViolationException("I-PROJ-AUTHOR",
                 "Project must be associated with a valid author.");
 
-        return new ScrivenerProject {
+        return new Project {
             Id                = Guid.NewGuid(),
             AuthorId          = authorId,
             Name              = name.Trim(),
             DropboxPath       = dropboxPath.Trim(),
-            ScrivenerRootUuid = scrivenerRootUuid?.Trim(),
+            SyncRootId = scrivenerRootUuid?.Trim(),
             IsReaderActive    = false,
             SyncStatus        = SyncStatus.Stale,
             IsSoftDeleted     = false

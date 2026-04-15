@@ -5,8 +5,8 @@ namespace DraftView.Web.Models;
 
 public class DashboardViewModel
 {
-    public ScrivenerProject? ActiveProject { get; set; }
-    public IReadOnlyList<ScrivenerProject> AllProjects { get; set; } = [];
+    public Project? ActiveProject { get; set; }
+    public IReadOnlyList<Project> AllProjects { get; set; } = [];
     public IReadOnlyList<Section> PublishedSections { get; set; } = [];
     public IReadOnlyList<EmailDeliveryLog> EmailFailures { get; set; } = [];
     public int ActiveReaderCount { get; set; }
@@ -46,6 +46,6 @@ public class ReaderAccessViewModel
     public string DisplayName { get; init; } = string.Empty;
     public string Email { get; init; } = string.Empty;
     public ReaderStatus Status { get; init; }
-    public IReadOnlyList<ScrivenerProject> ProjectsWithAccess { get; init; } = [];
-    public IReadOnlyList<ScrivenerProject> ProjectsWithoutAccess { get; init; } = [];
+    public IReadOnlyList<Project> ProjectsWithAccess { get; init; } = [];
+    public IReadOnlyList<Project> ProjectsWithoutAccess { get; init; } = [];
 }

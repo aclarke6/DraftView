@@ -1,0 +1,863 @@
+﻿# DraftView Task List
+Last updated: 2026-04-14
+
+---
+
+## ARCHITECTURE RULES
+
+These rules govern all new development and must be applied consistently.
+
+### Tenancy Stance: Tenancy-Agnostic
+Build everything tenancy-agnostic — not tenancy-unaware, not tenancy-enabled.
+
+**The rule:** If a table relates to a reader, project, or author-scoped resource, it must carry an `AuthorId`. When full multi-tenancy arrives, `AuthorId` becomes `TenancyId` and the queries stay the same shape. The refactor is then mechanical (migration + rename), not architectural.
+
+**Checklist for every new entity:**
+- Does it relate to a reader, project, or author-specific resource? → Add `AuthorId`
+- Does the repository method return scoped data? → It must accept or imply an `AuthorId`
+- Is there a global query with no author scope? → That is a bug, not a feature
+
+**What this means in practice:**
+- `ReaderTenant` gets `AuthorId` now, renamed to `TenancyId` later
+- Invitation flow must carry `AuthorId` explicitly
+- Every Readers list query must be scoped to the current author
+- Never use `GetAllBetaReadersAsync()` without an author scope (current usage is a known debt)
+
+### No Tenancy-Enabled Premature Build
+Do not build the full `Tenancy` / `TenancyMembership` entity model until billing is in place and the product is live with a single author. Reader Marketplace is explicitly deferred until then.
+
+### TDD Required for Domain, Application and Infrastructure Changes
+All new domain entities, application service changes, and infrastructure changes require tests before implementation. No exceptions.
+
+### CSS Version — MANDATORY on Every CSS Change
+Every script that modifies any `.css` file must also bump `--css-version` in `DraftView.Core.css`. Automated via `Update-CssVersion.ps1`.
+
+Always use regex replace — never hardcode the expected current value:
+    $core = $core -replace '--css-version: "v[^"]+"', '--css-version: "vNEW_VERSION"'
+
+### Controller Action Guards — MANDATORY
+Every controller that accesses data or performs mutations must be protected by an `[Authorize]` attribute at class level:
+
+- `AuthorController`  → `[Authorize(Policy = "RequireAuthorPolicy")]`
+- `ReaderController`  → `[Authorize(Roles = "Author,BetaReader")]` (via `BaseReaderController`)
+- `SupportController` → `[Authorize(Roles = "SystemSupport")]`
+- `DropboxController` → `[Authorize(Policy = "RequireAuthorPolicy")]`
+- `AccountController` → individual actions use `[Authorize]` where needed
+
+### Replacement Scripts Must Verify — MANDATORY
+Every PowerShell string replacement MUST verify the change applied before proceeding:
+1. Detect line endings: `$le = if ($content -match "\`r\`n") { "\`r\`n" } else { "\`n" }`
+2. Apply replacement using `$le` in match strings
+3. Compare old and new — if equal, write ERROR and exit 1
+4. Only then proceed
+
+### Script Standards
+- Name format: `Step{N}-{DayAbbrev}-{Description}.ps1`
+- Start with `cls`; end with the next required command
+- Unicode characters built via `[char]0xNNNN` — never embed in here-strings
+- Scripts 50+ lines → deliver as `.ps1` files via `present_files`
+- Short blocks (<50 lines) pasted directly — must still include `cls`, `$le`, and verification
+
+### Full File Rewrites Over Regex Patching
+For complex files, prefer full rewrites over inline regex patching.
+
+### View Style Leakage Audit — MANDATORY
+Any modification of a view must include an audit of that view for style leakage.
+
+- Any style leakage must be reported
+- If appropriate, leaked inline or view-local styling must be replaced with CSS
+- A `[DONE]` update reporting the style fix must be added under `## DONE (this project)` in `### Additional Completed Tasks`
+
+---
+
+## BUGS
+
+none currently logged — add here as discovered
+
+---
+
+## Test state
+
+- 482 Tests total
+- One skipped test is `SmtpEmailSenderIntegrationTests` which sends a real email, so is not suitable for regular test runs but is included in the solution for manual execution when needed.
+- Latest full passing count: 481 total, 480 passed, 1 skipped, 0 failed
+- Latest targeted application count: 129 total, 129 passed, 0 skipped, 0 failed
+- Latest targeted web count: 32 total, 32 passed, 0 skipped, 0 failed
+- Test summary: total: 482, failed: 0, succeeded: 481, skipped: 1: End of Sprint 4, Phase 6
+
+---
+
+# Sprint 4 — Email Privacy and Controlled Access (PHASED EXECUTION)
+
+Ensure user email addresses are protected, not exposed to other users, and only accessible through controlled, auditable mechanisms. Align system behaviour with UK GDPR principles of data minimisation, access control, and protection by design.
+
+Email handling model:
+- Email stored in encrypted form
+- Email lookup via deterministic HMAC of normalised email
+- Encryption and decryption are performed through application/infrastructure services, not in the domain model
+- Email never exposed in UI beyond explicitly permitted views
+- Controlled access for administrative purposes only
+- New views fail closed by default unless explicitly whitelisted
+
+---
+
+## Phase 7 — Audit and Security Hardening
+
+**Audit Logging**
+- [ ] Log all privileged access attempts:
+  - requesting user ID
+  - target user ID
+  - timestamp
+  - success or failure
+  - reason if provided
+- [ ] Ensure logs do NOT include plaintext email
+
+**Access Control**
+- [ ] Enforce explicit permission for admin/support access
+- [ ] Ensure least privilege across system
+
+**Security Tests**
+- [ ] Verify:
+  - email not exposed in unauthorised views
+  - logs contain no sensitive data
+  - access rules enforced correctly
+
+**Password reset clarification**
+- [DONE] Password reset flow does not require email visibility after the user submits the address
+  - user enters email on `ForgotPassword`
+  - system verifies and sends the reset email
+  - reset-link view shows only the password entry fields
+  - no subsequent UI step requires the full email address to be displayed back to the user
+  - password reset persistence should therefore avoid storing plaintext email solely for later display
+  - password reset tokens now bind to `UserId` rather than storing plaintext email
+  - one DB-backed web regression now creates an isolated user, requests a reset, completes the reset, and verifies login with the new password
+
+---
+
+## Phase 8 — Publish and Live Key Management
+
+**Goal:** Deploy protected email handling safely to Linux/live environments
+
+- [ ] Verify compatibility with the real `Publish-draftview.ps1` workflow
+  - publish requires a clean git state before deployment
+  - publish copies fresh output to `/var/www/draftview`
+  - publish restarts the `draftview` systemd service
+- [ ] Define how the live Linux environment provides persistent encryption key material
+- [ ] Ensure live key material is stored outside the replaced publish payload where necessary
+- [ ] Ensure key material persists across app restarts and deployments
+- [ ] Separate local/test key material from live key material
+- [ ] Document the publish-time secret/key setup process
+- [ ] Define operational guidance for key rotation and recovery
+- [ ] Verify post-publish behaviour:
+  - login still works
+  - protected email lookup still works
+  - existing encrypted data remains decryptable after `Publish-draftview.ps1` completes and the service restarts
+
+---
+
+## UAT
+- [ ] User can register and login using email
+- [ ] Email not visible to other users
+- [ ] Authors cannot see beta reader email post-invite
+- [ ] User can view and update own email in settings
+- [ ] Admin/support access is restricted and logged
+- [ ] No regressions in authentication, invitation, or notification flows
+
+---
+
+## Compliance
+- [ ] Privacy notice updated and visible
+- [ ] Email usage limited to service-related communication
+- [ ] No marketing usage implemented
+- [ ] No third-party sharing for unrelated purposes
+- [ ] Data handling aligns with UK GDPR and Data Protection Act 2018
+
+---
+
+## Definition of Done
+- [ ] Governing regression tests created and verified RED at sprint start
+- [ ] Governing tests fully GREEN at sprint completion
+- [ ] All Domain, Application, and Infrastructure changes developed via TDD
+- [ ] Review Sprint 4 infrastructure tests and decide which remain as permanent regression coverage versus which should be rewritten or removed as transitional implementation-lock tests
+- [DONE] Full test suite passing
+- [DONE] Green test count reported
+- [ ] No plaintext email stored in database
+- [ ] No email exposure in UI beyond whitelist
+- [ ] Audit logging verified
+- [ ] Migrations applied and validated
+- [ ] Manual browser verification complete (desktop and mobile)
+- [ ] Changes committed with clear message
+- [ ] TASKS.md updated
+
+## SPRINT 5 — Kindle-style Resume — Exact Scroll Position
+
+Current state: resume redirects to correct scene via `#scene-{id}` anchor but does not restore exact scroll position within the scene. `ReadEvent` has no `ScrollPosition` field.
+
+**Domain (TDD required)**
+- [ ] Add `ScrollPosition` (nullable int) to `ReadEvent` entity
+- [ ] Add `UpdateScrollPosition(int pixels)` domain method to `ReadEvent`
+- [ ] Domain tests: `UpdateScrollPosition_SetsScrollPosition`, `UpdateScrollPosition_OverwritesPreviousValue`
+
+**Infrastructure**
+- [ ] EF Core migration: add `ScrollPosition` column to `ReadEvents` (nullable int)
+
+**Application (TDD required)**
+- [ ] Add `UpdateScrollPositionAsync(Guid sectionId, Guid userId, int scrollPosition)` to `IReadingProgressService`
+- [ ] Failing tests → implement: find existing `ReadEvent`, call `UpdateScrollPosition`, save
+- [ ] Update `GetLastReadEventAsync` tests to cover `ScrollPosition` being returned
+
+**Web — Controller**
+- [ ] `[HttpPost] RecordScrollPosition(Guid sectionId, int scrollPosition)` on `ReaderController` — returns `Ok()`
+- [ ] Resume redirect in `DesktopDashboard` / `MobileDashboard` — use `?scrollTo={ScrollPosition}` if stored, fall back to `#scene-` anchor if null
+
+**Web — JavaScript (DesktopRead.cshtml)**
+- [ ] On scroll (debounced 500ms), POST `window.scrollY` to `RecordScrollPosition` for the currently visible scene
+- [ ] On page load, if `?scrollTo=` query param present, `window.scrollTo(0, scrollTo)` after short delay
+
+**UAT**
+- [ ] Read scene partway through, sign out, sign in — confirm returned to exact scroll position
+- [ ] Works across multiple projects (most recent across all)
+- [ ] Graceful fallback if section no longer published
+
+---
+
+## SPRINT 6 — Platform Hardening
+
+- [ ] Fail2ban setup on production VM
+- [ ] Report Fault modal — HomeController POST + _Layout.cshtml modal + CSS
+- [ ] SystemStateMessage expiry — add `ExpiresAt` nullable DateTime, `GetActiveAsync` filters expired
+- [ ] Add Project discovery flow (`IScrivenerProjectDiscoveryService` + Projects page UI)
+- [ ] Logging: failed authorization attempts (Role Migration carry-over)
+- [ ] Impersonation — read-only, explicit enter/exit mode (design agreed, not yet built)
+
+---
+
+## SPRINT 7 — Billing & Multi-tenancy (Post Go-Live)
+
+- [ ] IBillingProvider abstraction (Creem preferred, Paddle alternative)
+- [ ] Subscription tiers: Free / Paid / Ultimate
+- [ ] ReaderTenant model (AuthorId, IsActive, IsDeleted, KnownAs)
+- [ ] Account / TenancyMembership model (per v3 business model doc)
+- [ ] Mark intentional single-tenancy seams for future refactor
+- [ ] Reader Marketplace — reader discoverable to other authors (ReaderProfile, GenreList)
+- [ ] Standalone Sync Worker — extract SyncBackgroundService into separate worker project
+
+---
+
+## GO-LIVE GATE
+
+Completed on the day of go-live, not before:
+- [ ] Send password reset emails to Becca (becca@the-dunlops.co.uk) and Hilary (hilaryrrb@gmail.com)
+- [ ] Confirm Becca and Hilary can log in and access The Fractured Lattice
+
+# DraftView Publishing and Versioning Architecture (v3.0)
+See Publishing And versioning Architecture.md for the full architecture document including Sprints 1-7
+- Build versioning in stages, starting with a simple Republish → Version → Reader flow
+- Add paragraph diff highlighting early to deliver core user value
+- Layer in reader UX, then author-side change indicators and AI summaries
+- Introduce advanced features later: scene publishing, scheduling, locking, and sync
+- Keep each sprint small, complete, and testable—no mixing scope or partial features
+
+---
+
+## BACKLOG — Go-Live Requirements
+
+### Reader UX
+- Reader notification emails (new chapter published)
+
+### Author Dashboard
+- Show last download timestamp alongside last sync timestamp
+
+### Dropbox
+- Dropbox OAuth2 token refresh — automatic refresh using stored refresh token
+- Dropbox webhook controller for push-based sync (replace polling)
+- Incremental sync — only download changed files (cursor-based)
+- In-app Dropbox re-auth page
+
+### Author Views — Mobile
+- Readers page mobile: name, status, Deactivate only
+- Author/Comments view: per chapter, all scene comments, reply/delete inline
+- Recent Activity: tap to open Author/Comments for that scene
+
+### Author Chapter Page (Author/Chapter/{id})
+- Full chapter view with all scenes
+- Scene comments on RHS sidebar
+- Chapter level comments in floating bar at bottom
+- Reader progress: who has read it, date last visited
+- Link from Sections list
+
+### Author Scene Page
+- Link back to parent chapter page
+- Reader count hover showing which readers have read this scene
+
+### Publishing Cascades
+- Part-level publish cascades all chapters + scenes below
+- Book-level publish cascades everything below
+
+### Config
+- Audit remaining user secrets — anything not a password/token/key belongs in appsettings
+
+---
+
+## BACKLOG — Architecture (Phase 1-5, pre-tenancy)
+
+Work captured for future sprints. Do not start until the relevant sprint is active.
+
+### Phase 1 — Stabilise single-tenancy
+- Pass CancellationToken consistently in SyncService
+- Validate section existence in ReadingProgressService.RecordOpenAsync
+- Define and enforce active/inactive/soft-deleted user rules
+
+### Phase 2 — Move mutations out of controllers
+- ActivateProject, DeactivateProject, RemoveProject, AddProjects → application services
+- Remove GetUnitOfWork(), GetCommentService(), GetReadEventRepo() service location
+- Replace with constructor injection
+
+### Phase 3 — Tighten application workflows
+- Publication flow: enforce authorId or remove it
+- Dashboard queries: move UI-shaped queries out of repositories
+
+### Phase 4 — Make sync safer
+- Replace controller Task.Run sync kickoff
+- Check moved/reappearing soft-deleted section handling in reconciliation
+- Add operational visibility: log discovery/parse failures
+
+### Phase 5 — Prepare tenancy move
+- Document single-tenancy seams: User.Role, GetAuthorAsync, GetAllBetaReadersAsync,
+  GetReaderActiveProjectAsync, user preferences scoping, comment visibility model
+
+---
+
+## BACKLOG — CSS / Frontend
+
+- [ ] CSS naming conventions refactor (BEM consistency)
+- [ ] Remove duplicate `.comment-box__reply-form` declaration in Reader.css
+- [ ] Replace hardcoded `#f8f8f6` in `.chapter-comment-form` with `var(--color-surface-alt)`
+- [ ] Replace hardcoded `15px` in `.chapter-comment-form__textarea` with `var(--text-base)`
+
+---
+
+# Extracting Scrivener Project naming and refactoring it
+# ScrivenerProject → Project Rename — Run List
+
+Run the full test suite after every item. Do not proceed if tests are red.
+
+---
+
+## Stage 1 — Domain Entity
+
+- [Done] Rename class `ScrivenerProject` → `Project` (entity file rename + class name)
+- [Done] Rename file `ScrivenerProject.cs` → `Project.cs`
+- [Done] Rename property `Project.ScrivenerRootUuid` → `Project.SyncRootId`
+- [None Located] Rename invariant code string `"I-PROJ-"` references if they mention Scrivener (check error messages in Create/factory)
+- [ ] **Run tests** ✓
+
+---
+
+## Stage 2 — Domain Repository Interface
+
+- [ ] Rename interface `IScrivenerProjectRepository` → `IProjectRepository`
+- [ ] Rename file `IScrivenerProjectRepository.cs` → `IProjectRepository.cs`
+- [ ] Rename method `GetSoftDeletedByScrivenerRootUuidAsync()` → `GetSoftDeletedBySyncRootIdAsync()`
+- [ ] **Run tests** ✓
+
+---
+
+## Stage 3 — Domain Service Interfaces
+
+- [ ] Rename interface `IScrivenerProjectDiscoveryService` → `IProjectDiscoveryService`
+- [ ] Rename file `IScrivenerProjectDiscoveryService.cs` → `IProjectDiscoveryService.cs`
+- [ ] Rename property `DiscoveredProject.ScrivenerRootUuid` → `DiscoveredProject.SyncRootId`
+- [ ] **Run tests** ✓
+
+---
+
+## Stage 4 — Infrastructure Configuration
+
+- [ ] Rename class `ScrivenerProjectConfiguration` → `ProjectConfiguration`
+- [ ] Rename file `ScrivenerProjectConfiguration.cs` → `ProjectConfiguration.cs`
+- [ ] **Run tests** ✓
+
+---
+
+## Stage 5 — Infrastructure Repository
+
+- [ ] Rename class `ScrivenerProjectRepository` → `ProjectRepository`
+- [ ] Rename file `ScrivenerProjectRepository.cs` → `ProjectRepository.cs`
+- [ ] Rename method `GetByScrivenerRootUuidAsync()` → `GetBySyncRootIdAsync()`
+- [ ] Rename method `GetSoftDeletedByScrivenerRootUuidAsync()` → `GetSoftDeletedBySyncRootIdAsync()`
+- [ ] Update all internal references to `SyncRootId` (was `ScrivenerRootUuid`) in query lambdas
+- [ ] **Run tests** ✓
+
+---
+
+## Stage 6 — Application Discovery Service
+
+- [ ] Rename class `ScrivenerProjectDiscoveryService` → `DropboxProjectDiscoveryService`
+- [ ] Rename file `ScrivenerProjectDiscoveryService.cs` → `DropboxProjectDiscoveryService.cs`
+- [ ] Update all `ScrivenerRootUuid` → `SyncRootId` references within the class
+- [ ] Update constructor parameter `IScrivenerProjectRepository projectRepo` → `IProjectRepository projectRepo`
+- [ ] **Run tests** ✓
+
+---
+
+## Stage 7 — Application SyncService
+
+- [ ] Update constructor parameter `IScrivenerProjectRepository projectRepo` → `IProjectRepository projectRepo`
+- [ ] Update `nameof(ScrivenerProject)` → `nameof(Project)` in exception throw
+- [ ] Update all `project.ScrivenerRootUuid` → `project.SyncRootId` references
+- [ ] **Run tests** ✓
+
+---
+
+## Stage 8 — Web ViewModels
+
+- [ ] Update `DashboardViewModel.ActiveProject` type: `ScrivenerProject?` → `Project?`
+- [ ] Update `DashboardViewModel.AllProjects` type: `IReadOnlyList<ScrivenerProject>` → `IReadOnlyList<Project>`
+- [ ] Update `ReaderAccessViewModel.ProjectsWithAccess` type: `IReadOnlyList<ScrivenerProject>` → `IReadOnlyList<Project>`
+- [ ] Update `ReaderAccessViewModel.ProjectsWithoutAccess` type: `IReadOnlyList<ScrivenerProject>` → `IReadOnlyList<Project>`
+- [ ] **Run tests** ✓
+
+---
+
+## Stage 9 — Web AuthorController
+
+- [ ] Update constructor parameter `IScrivenerProjectRepository projectRepo` → `IProjectRepository projectRepo`
+- [ ] Update constructor parameter `IScrivenerProjectDiscoveryService discoveryService` → `IProjectDiscoveryService discoveryService`
+- [ ] Update background task variable `IScrivenerProjectRepository bgProjectRepo` → `IProjectRepository bgProjectRepo`
+- [ ] Update `ScrivenerProject.Create()` → `Project.Create()`
+- [ ] Update all `p.ScrivenerRootUuid` → `p.SyncRootId` references
+- [ ] Update all `d.ScrivenerRootUuid` → `d.SyncRootId` references
+- [ ] Update `GetSoftDeletedByScrivenerRootUuidAsync()` call → `GetSoftDeletedBySyncRootIdAsync()`
+- [ ] **Run tests** ✓
+
+---
+
+## Stage 10 — Web DI Registration
+
+- [ ] Find DI registration in `Program.cs` or `ServiceCollectionExtensions` for `ScrivenerProjectRepository` → update to `ProjectRepository`
+- [ ] Find DI registration for `ScrivenerProjectDiscoveryService` → update to `DropboxProjectDiscoveryService`
+- [ ] Find DI registration for `IScrivenerProjectRepository` → update to `IProjectRepository`
+- [ ] Find DI registration for `IScrivenerProjectDiscoveryService` → update to `IProjectDiscoveryService`
+- [ ] **Run tests** ✓
+
+---
+
+## Stage 11 — Test Files
+
+- [ ] Rename file `ScrivenerProjectTests.cs` → `ProjectTests.cs`
+- [ ] Rename class `ScrivenerProjectTests` → `ProjectTests`
+- [ ] Update all `ScrivenerProject.Create()` → `Project.Create()` in test
+- [ ] Update all `ScrivenerProject` type references in test
+- [ ] Rename file `ScrivenerProjectRepositoryTests.cs` → `ProjectRepositoryTests.cs`
+- [ ] Rename class `ScrivenerProjectRepositoryTests` → `ProjectRepositoryTests`
+- [ ] Update field `ScrivenerProjectRepository _sut` → `ProjectRepository _sut`
+- [ ] Update helper `MakeProject()` — `ScrivenerProject.Create()` → `Project.Create()`
+- [ ] Update `SyncServiceTests` field `Mock<IScrivenerProjectRepository> _projectRepo` → `Mock<IProjectRepository> _projectRepo`
+- [ ] **Run tests** ✓
+
+---
+
+## Stage 12 — EF Migration
+
+- [ ] Run `dotnet ef migrations add RenameScrivenerProjectToProject --project DraftView.Infrastructure --startup-project DraftView.Web`
+- [ ] Review generated migration — confirm table rename or explicit `RenameTable` if desired
+- [ ] Run `dotnet ef database update --project DraftView.Infrastructure --startup-project DraftView.Web`
+- [ ] **Run tests** ✓
+
+---
+
+## Stage 13 — Solution-Wide Verification
+
+- [ ] Solution-wide search for `ScrivenerProject` — zero hits outside migration history
+- [ ] Solution-wide search for `ScrivenerRootUuid` — zero hits outside migration history
+- [ ] Solution-wide search for `IScrivenerProjectRepository` — zero hits
+- [ ] Solution-wide search for `IScrivenerProjectDiscoveryService` — zero hits
+- [ ] Solution-wide search for `ScrivenerProjectDiscoveryService` — zero hits
+- [ ] **Run full test suite** ✓
+- [ ] Commit with message: `refactor: rename ScrivenerProject to Project, IScrivenerProjectRepository to IProjectRepository, SyncRootId replaces ScrivenerRootUuid`
+
+---
+
+## Known Debt — Not in This Sprint
+
+These identifiers are deliberately left for the sync extraction sprint:
+
+- `Section.ScrivenerUuid` — moving off `Section` entirely into `ScrivenerSyncMapping`
+- `Section.ScrivenerStatus` + `UpdateScrivenerStatus()` — Scrivener display metadata, kept honest
+- `IScrivenerProjectParser` — parses `.scrivx`, genuinely Scrivener-specific
+- `ParsedBinderNode.ScrivenerStatus` — Scrivener binder metadata
+
+
+## DONE (this project)
+
+### Additional Completed Tasks
+
+- [DONE] Layout top bar now shows the current user display name instead of email; falls back to `Account settings` when display name is missing, with hover text `Account settings`
+- [DONE] Fixed style leakage by scoping prose font preferences to reader surfaces only so system UI remains on standard typography
+- [DONE] Sprint 4 Phase 6 end-to-end integration is complete
+  - fixed configuration-backed protected-email keys are in place for dev and testing
+  - DB-backed real-host regression coverage now exists for login, password reset, and invitation provisioning
+  - issuing the same invite twice now supersedes the older pending invite with a fresh token
+  - invitation and password-reset flows now prove protected persistence rather than plaintext persistence
+  - DB-backed web regressions override `IEmailSender` to use `ConsoleEmailSender`, so tests do not depend on live SMTP
+  - latest targeted web verification GREEN: 34 passed, 0 failed
+  - latest full-suite verification GREEN: 481 total, 480 passed, 1 skipped, 0 failed
+
+## Sprint 4 — Email Privacy and Controlled Access (PHASED EXECUTION)
+
+Ensure user email addresses are protected, not exposed to other users, and only accessible through controlled, auditable mechanisms. Align system behaviour with UK GDPR principles of data minimisation, access control, and protection by design.
+
+Email handling model:
+- Email stored in encrypted form
+- Email lookup via deterministic HMAC of normalised email
+- Encryption and decryption are performed through application/infrastructure services, not in the domain model
+- Email never exposed in UI beyond explicitly permitted views
+- Controlled access for administrative purposes only
+- New views fail closed by default unless explicitly whitelisted
+
+## Phase 1 [DONE] — Rules and Governing Red Tests
+
+- [DONE] Defined the whitelist for stored-email rendering, restricted to `Views/Account/Settings.cshtml`
+- [DONE] Added governing source-level and rendered-output email-exposure regressions for non-whitelisted pages
+- [DONE] Seeded initial red-state evidence for `AcceptInvitation`, `ManageReaderAccess`, `Readers`, and shared layout leakage
+- [DONE] Added a behavioural `/Account/Login` web regression to preserve login flow during later email-model changes
+- [DONE] Confirmed sprint start state: email-exposure governing tests were RED and behavioural guard tests were expected GREEN
+
+## Phase 2 [DONE] — Web Surface Cleanup (Fast Feedback)
+
+- [DONE] Removed non-whitelisted stored-email display from `AcceptInvitation`, `ManageReaderAccess`, `Readers`, and shared layout navigation
+- [DONE] Stopped `AccountController.AcceptInvitation` GET from passing stored email into a non-whitelisted rendered view
+- [DONE] Confirmed other reviewed non-whitelisted controller/view paths no longer pass stored email for display
+- [DONE] Made the source-level and rendered-output email-exposure governing tests GREEN
+- [DONE] Kept the `/Account/Login` behavioural regression GREEN throughout cleanup
+
+## Phase 3 [DONE] — Infrastructure (Data Shape First)
+
+**Goal:** Establish secure persistence model
+
+**Contract and Tests**
+- [DONE] Defined the protected email persistence contract for infrastructure
+  - `AppUsers.Email` plaintext persistence was replaced by `EmailCiphertext` and `EmailLookupHmac`
+  - plaintext email is not written to `AppUsers`
+  - lookup uses deterministic HMAC of normalised email for equality checks and uniqueness
+  - encryption and decryption remain outside the domain model
+- [DONE] Added the governing infrastructure tests for protected email persistence
+  - encryption does not store plaintext
+  - decryption restores the original value
+  - HMAC lookup is deterministic
+  - different inputs produce different lookup values
+  - no plaintext email is persisted for new or updated users
+
+**Schema and Migration**
+- [DONE] Added the protected email schema fields
+  - `EmailCiphertext`
+  - `EmailLookupHmac`
+- [DONE] Added and validated the unique index on `EmailLookupHmac`
+- [DONE] Applied the protected email migration
+- [DONE] Fixed the populated-database migration bug so uniqueness is enforced safely on existing data
+
+**Encryption and HMAC Seams**
+- [DONE] Introduced the application/infrastructure seam for email encryption and decryption
+  - application owns the contract
+  - infrastructure owns the implementation
+  - domain owns no encryption mechanics
+- [DONE] Introduced the application/infrastructure seam for deterministic email lookup HMAC generation
+  - application owns the contract
+  - infrastructure owns the implementation
+  - domain owns no HMAC mechanics
+- [DONE] Tightened the domain-boundary tests so they detect crypto implementation concerns rather than protected-field naming alone
+
+**Persistence and Lookup Wiring**
+- [DONE] Removed EF mapping of plaintext `User.Email`
+- [DONE] Added save-time protection to generate `EmailCiphertext` and `EmailLookupHmac`
+- [DONE] Rehydrated runtime `User.Email` from ciphertext on repository reads
+- [DONE] Replaced repository lookups and existence checks to use protected lookup rather than plaintext email queries
+- [DONE] Patched direct `DbContext` email queries in startup and seeding paths to use protected lookup and runtime rehydration
+
+**Compatibility and Refactor**
+- [DONE] Restored full-suite compatibility after the `DraftViewDbContext` constructor change
+  - `DraftView.Web.Tests.Controllers.AccountControllerTests` compatibility was restored without undoing protected-email persistence behaviour
+- [DONE] Refactored Phase 3 as one coherent unit without widening into Phase 4
+  - extracted helpers from `DraftViewDbContext`
+  - removed duplication in the normalize -> HMAC -> encrypt -> protect flow
+  - simplified repository hydration helpers
+  - extracted small local helpers from `DatabaseSeeder`
+  - removed low-value transitional constructor fallback plumbing
+- [DONE] Re-audited the Phase 3 architecture boundaries
+  - infrastructure owns persistence, encryption, HMAC, save-time protection, and protected lookup
+  - domain owns no crypto or persistence mechanics
+  - application contracts remain small and explicit
+
+**Verification**
+- [DONE] `dotnet test DraftView.Infrastructure.Tests --nologo` returned GREEN: 96 passed, 0 failed
+- [DONE] `dotnet test --nologo` returned GREEN: 449 total, 448 passed, 1 skipped, 0 failed
+
+---
+
+## Phase 4 [DONE] — Application Layer (Behaviour and Access Control)
+
+- [DONE] Added the application seams for controlled email access and protected login lookup
+  - `IUserEmailAccessService`
+  - `IUserEmailProtectionService`
+  - `IControlledUserEmailService`
+  - `IAuthenticationUserLookupService`
+- [DONE] Implemented deny-by-default application access rules
+  - self access allowed
+  - explicit `SystemSupport` administrative access allowed
+  - author access to reader stored email denied once an invitation has been sent
+  - all other access denied by default
+- [DONE] Enforced application-layer orchestration
+  - access check occurs before decryption
+  - protected email is resolved only after approval
+  - migrated self-service `AccountController` email flows onto the application seam
+  - consolidated `AccountController` current-user lookup logic behind one helper
+- [DONE] Migrated authentication role redirect lookup onto the protected login seam
+  - `AccountController.Login` now uses `IAuthenticationUserLookupService`
+  - sign-in mechanics were left unchanged
+- [DONE] Reviewed privileged support/admin email reveal needs
+  - no concrete `SystemSupport` consumer currently requires revealing another user's stored email
+  - no unused privileged reveal path was added
+- [DONE] Completed application-layer test coverage and verification
+  - targeted application tests covered access control, decryption orchestration, deny-by-default behaviour, and authentication lookup
+  - targeted controller tests covered settings, self-service email/password flows, and login redirect seam usage
+  - full-suite verification has since been restored GREEN: 466 total, 465 passed, 1 skipped, 0 failed
+
+---
+
+## Phase 5 [DONE] — Domain Refinement
+
+- [DONE] Confirmed the intended domain boundary for protected email state without moving crypto or persistence concerns into the domain
+- [DONE] Tightened `User` invariants around protected email state while keeping runtime email loading explicit and non-persistent
+- [DONE] Added focused domain tests to prove valid protected state is accepted and invalid protected state is rejected
+- [DONE] Re-audited the boundary and confirmed no wider domain refactor was required for Sprint 4
+- [DONE] Targeted verification GREEN: `dotnet test DraftView.Domain.Tests --nologo --filter "FullyQualifiedName~DraftView.Domain.Tests.Entities.UserTests"` returned 42 passed, 0 failed
+
+---
+
+## Phase 6 [DONE] — End-to-End Integration
+
+**Goal:** Ensure system flows work with new model
+
+**Prerequisite: Stabilise dev key material**
+- [DONE] Step 0.1: Replace transient dev protected-email keys with fixed configuration-backed keys
+  - add one fixed dev encryption key
+  - add one fixed dev lookup-HMAC key
+  - store both in `.NET` user secrets for `DraftView.Web`
+  - fail fast if either key is missing or invalid
+- [DONE] Step 0.2: Repair local dev user email state under the fixed keys without dropping project data
+  - existing dev protected email generated with transient keys must be replaced
+  - selectively rebuild `AppUsers` protected email state under the fixed keys
+  - update matching Identity email/login values where required
+  - confirm dev `Author` and `SystemSupport` users can still log in
+
+**High-level steps**
+- [DONE] Step 1: Confirm which end-to-end outcomes are already covered by Phases 3–5
+  - avoid duplicating infrastructure contract coverage at integration level
+  - limit Phase 6 to real remaining flow gaps
+- [DONE] Step 2: Add one DB-backed login integration proof
+  - real web host boots in `Testing`
+  - login still succeeds under the protected lookup wiring
+- [DONE] Step 3: Add one invitation/provisioning integration proof
+  - author invite flow now runs through the real web host in `Testing`
+  - issuing the same invite twice proves older pending invites are superseded by a fresh token
+  - invitation-related user provisioning persists protected email fields through the real stack
+  - do not invent a standalone registration flow if the product does not actually expose one
+  - before Sprint 4 is complete, sending a fresh invitation must supersede any older pending invite for the same target user
+  - keep the author workflow simple: if an invite is not received, the author just issues a new invite
+  - implement this in the existing invitation send path rather than adding resend/cancel/reissue UI
+- [DONE] Step 4: Add one flow-level no-plaintext-persistence assertion
+  - verify the relevant persisted user row stores protected values rather than plaintext email
+  - keep this compact and complementary to infrastructure contract tests
+- [DONE] Step 5: Re-run governing and full-suite verification
+  - confirmed no end-to-end regression in the protected login path
+  - latest full-suite verification GREEN: 480 total, 479 passed, 1 skipped, 0 failed
+
+  ---
+
+## Sprint 3 — Reader Font Preferences (IMPLEMENTED)
+
+Allow users (Authors + Beta Readers) to choose their preferred reading font and size, persisted per user, applied globally via layout and CSS variables.
+
+Font faces:
+- SystemSerif (default)
+- Humanist (Merriweather)
+- Classic (Times)
+- SansSerif (Lato)
+
+Font sizes:
+- Small
+- Medium (default)
+- Large
+- ExtraLarge
+
+**Domain**
+- [DONE] Added `ProseFont` and `ProseFontSize` to `UserPreferences`
+
+**Application**
+- [DONE] Preferences loaded via `UserPreferencesRepository`
+- [DONE] Preferences applied in `_Layout.cshtml`
+
+**Web — Layout**
+- [DONE] Injected `data-prose-font` and `data-prose-font-size` onto `<body>`
+- [DONE] Fonts loaded via Google Fonts (Merriweather, Lato)
+- [DONE] No inline styling — CSS driven
+
+**Web — CSS (Core)**
+- [DONE] `--font-prose` controlled via `data-prose-font`
+- [DONE] `--text-prose-base` controlled via `data-prose-font-size`
+- [DONE] Explicit mappings for all font options (including SystemSerif)
+- [DONE] Size scale adjusted for meaningful visual separation
+
+**Web — Reader Views**
+- [DONE] DesktopReader uses `var(--font-prose)` and `var(--text-prose-base)`
+- [DONE] MobileReader uses same variables
+- [DONE] No duplication of logic between views
+
+**Web — Settings UI**
+- [DONE] Reading Preferences card visible for:
+  - Authors
+  - Beta Readers
+- [DONE] Form posts to update preferences
+- [DONE] Values persist and reload correctly
+
+**UAT**
+- [DONE] Preferences saved and persisted across sessions
+- [DONE] Applied correctly in Desktop Reader
+- [DONE] Applied correctly in Mobile Reader
+- [DONE] Font families visibly distinct
+- [DONE] Font sizes visibly distinct
+- [DONE] Works for both Author and Beta Reader roles
+
+[DONE] Bug: https://draftview.co.uk/Reader/Read mobile view now goes 404
+
+### Rename UserNotificationPreferences to UserPreferences — domain, repository, service, controller, viewmodels, views, tests (2026-04-10-1)
+
+[DONE] Domain: UserPreferences entity, IUserPreferencesRepository, UserService methods  
+[DONE] Added DisplayTheme (light/dark) to UserPreferences  
+
+[DONE] Infrastructure:
+- Replaced UserNotificationPreferencesConfiguration with UserPreferencesConfiguration
+- Replaced UserNotificationPreferencesRepository with UserPreferencesRepository
+- Updated DraftViewDbContext DbSet to UserPreferences
+
+[DONE] Data migration:
+- Added EF migration: RenameNotificationPreferencesToUserPreferences
+- Renamed table NotificationPreferences → UserPreferences
+- Renamed PK, FK, and index (UserId) constraints
+- Updated DbContextModelSnapshot
+
+[DONE] Application + consumers updated:
+- DatabaseSeeder uses UserPreferences
+- BetaBooksImporter creates UserPreferences for imported users
+- ServiceCollectionExtensions DI updated to IUserPreferencesRepository → UserPreferencesRepository
+
+[DONE] UI:
+- Implemented DraftView.Light.css and DraftView.Dark.css
+- Added theme toggle in Account/Settings
+- Persisted DisplayTheme applied in _Layout.cshtml
+
+[DONE] Tests:
+- Web tests updated and passing for Account settings and theme persistence
+
+[VERIFY]
+- No remaining references to NotificationPreferences or UserNotificationPreferences (solution-wide search)
+- Migration applied locally and existing data preserved
+- Theme persists across sessions (save → logout → login)
+- Seeder and importer correctly create default UserPreferences
+- Production DB user has permission for db.Database.Migrate()
+
+### Bugs resolved
+- [DONE] Reader/Read comment box overflows page boundary on RHS — CSS fix (v2026-04-10-1)
+- [DONE] AddComment POST on scene comment redirects to top of chapter — fixed, appends `#scene-{id}` anchor
+- [DONE] AddComment POST on chapter-level comment redirects to top of page — fixed, appends `#chapter-comments` anchor
+- [DONE] SetCommentStatus POST on chapter-level comment redirects to scene anchor — fixed, uses `#chapter-comments` when sceneId == chapterId
+- [DONE] Reader/Read comment status dropdown missing — CommentStatus dropdown added for author/moderator on scene and chapter level
+- [DONE] Author/Dashboard Recent Activity truncation — replaced on-the-fly assembly with persisted AuthorNotification; dismiss, clear all, viewport fix
+- [DONE] Login always redirected to Reader/Dashboard regardless of role — author → Author/Dashboard, SystemSupport → Support/Dashboard
+
+### Sprint 1 — Pre-Beta Push (Complete)
+- [DONE] Fix prose font in reader view
+- [DONE] Fix comment author display name — live lookup against AppUsers.DisplayName
+- [DONE] Reactivate reader flow
+
+### Sprint 2 — Reader Experience (Partial, 2026-04-10)
+- [DONE] Fix scene-level Published labels in sections view
+- [DONE] Fix Published Chapters sort order on dashboard — depth-first tree order (TDD)
+- [DONE] Project switcher — sidebar in DesktopDashboard, query string selection, progress per project
+- [DONE] Remember last selected project — query string naturally persists selection
+- [DONE] Kindle-style resume on login — redirects to correct scene (exact scroll position → Sprint 2.5)
+- [DONE] Persisted AuthorNotification entity — written at event time, dismiss single, clear all, 90-day prune, viewport fix (404 tests green)
+- [DONE] Login redirect fix — author → Author/Dashboard, SystemSupport → Support/Dashboard
+- [DONE] CommentStatus enum {New, AuthorReply, Ignore, Consider, Todo, Done, Keep}; SetStatus domain method and controller action in place
+- [DONE] Author comment response UI — CommentStatus dropdown on Reader/Read (scene and chapter, author/moderator) and Author/Section
+
+### Persisted AuthorNotifications detail (2026-04-10)
+- [DONE] AuthorNotification domain entity (TDD, 7 tests)
+- [DONE] IAuthorNotificationRepository + EF implementation (8 tests)
+- [DONE] EF migration AddAuthorNotifications (composite index on AuthorId, OccurredAt)
+- [DONE] DashboardService: GetNotificationsAsync (90-day prune), DismissNotificationAsync, DismissAllNotificationsAsync
+- [DONE] CommentService writes NewComment / ReplyToAuthor notifications at event time
+- [DONE] UserService writes ReaderJoined notification on AcceptInvitation
+- [DONE] SyncService writes SyncCompleted notification on successful parse
+- [DONE] AuthorController: DismissNotification + ClearAllNotifications POST actions
+- [DONE] Dashboard.cshtml: count badge, Clear All button, per-item dismiss button
+- [DONE] DraftView.Notifications.css: dismiss button styles, viewport panel height fix
+- [DONE] Removed obsolete: GetRecentNotificationsAsync, GetRecentCommentsForDashboardAsync, GetRecentlyAcceptedAsync, GetRecentlySyncedAsync, CommentNotificationRow
+- [DONE] 427 tests GREEN
+- [DONE] 1 test skipped - it sends an email, which is now tested in SmtpEmailSenderIntegrationTests
+
+### Email Sprint (2026-04-08)
+- [DONE] Yahoo SMTP for dev; SmtpEmailSender provider-agnostic via appsettings.json
+- [DONE] Production config: Oracle Email Delivery SMTP
+- [DONE] Oracle Email Delivery: DKIM, SPF, approved senders; Cloudflare DKIM CNAME
+- [DONE] Cloudflare email routing: support@draftview.co.uk → alastair_clarke@yahoo.com
+- [DONE] SmtpEmailSender migrated to MailKit 4.15.1 (fixes Oracle STARTTLS auth)
+- [DONE] MimeKit CVE-2026-30227 patched (4.7.1 → 4.15.1)
+- [DONE] SQLite packages removed from solution
+- [DONE] DraftView.Integration.Tests added; SmtpEmailSenderIntegrationTests green
+- [DONE] ForgotPassword SMTP failure caught and logged
+- [DONE] Dev-safe email addresses for Becca and Hilary
+
+### Role Migration — Stages 1-4 (2026-04-06)
+- [DONE] Stage 1: Identity roles as canonical source, web surface migrated
+- [DONE] Stage 2: IAuthorizationFacade injected into UserService
+- [DONE] Stage 3: SystemSupport role, SystemStateMessage entity + service + footer
+- [DONE] Stage 4: System State Message Management UI on Support Dashboard
+- [DONE] ReaderController secured (Author, BetaReader); SystemSupport isolated
+- [DONE] HomeController role-based routing (Support → Author → Reader)
+- [DONE] CSS versioning automation (Update-CssVersion.ps1)
+- [DONE] UserService.DeactivateUserAsync revokes all ReaderAccess records (TDD)
+- [DONE] Mobile reader flow — IsMobile(), MobileChapters/MobileScenes/MobileRead
+- [DONE] Desktop reader views renamed to Desktop prefix
+
+### Reader Authorization Model — FINAL DECISION
+- Reader surface: Author + BetaReader only
+- SystemSupport excluded from ReaderController; must use impersonation when needed
+- No dual-role model; Author treated as elevated reader at runtime
+- BaseReaderController: `[Authorize(Roles = "Author,BetaReader")]`
+
+### Earlier Work
+- [DONE] RtfConverter case-insensitive path fix; chapter ordering fix; email-as-nav-link
+- [DONE] Account/Settings page; Dropbox panel for authors
+- [DONE] User.UpdateDisplayName and UpdateEmail domain methods (TDD)
+- [DONE] Sync file download progress — live file count, real percentage progress bar
+- [DONE] LocalCachePath moved from user secrets to appsettings.json
+- [DONE] Dual-list project assignment UI (ManageReaderAccess)
+- [DONE] ReaderAccess entity + repository (TDD, migration)
+- [DONE] Per-author Dropbox OAuth connection (DropboxConnection entity, IDropboxClientFactory)
+- [DONE] IDropboxFileDownloader — full Dropbox sync working end to end in production
+- [DONE] AuthorId added to ScrivenerProject (migration with backfill)
+- [DONE] UseForwardedHeaders — fixes OAuth behind Nginx
+- [DONE] Case-insensitive .scrivx lookup (Linux compatibility)
+- [DONE] AddProjects background task (fixes 504 timeout)
+- [DONE] BetaBooks importer: Comment.CreateForImport, DevTools command, 54 comments seeded
+- [DONE] Becca Dunlop and Hilary Royston-Bishop accounts created with real emails
+- [DONE] Toast notifications (fixed position, auto-dismiss, no layout shift)
+- [DONE] Reply threading, comment edit and delete (including moderator delete)
+- [DONE] PublishAsPartOfChapter domain invariant (TDD); chapter-only publishing enforced
+- [DONE] CSS split into 7 files by concern; Heroicons as static C# class
+- [DONE] Rebrand: DraftReader → DraftView throughout
+- [DONE] pg.ps1, PowerShell.md, PRINCIPLES.md
+- [DONE] Cloudflare SSL, Nginx, systemd service on Oracle Cloud VM
+- [DONE] Floating footer: copyright, system status indicator

@@ -10,11 +10,11 @@ using DraftView.Domain.Notifications;
 
 namespace DraftView.Application.Tests.Services;
 
-public class SyncServiceTests
+public class ScrivenerSyncServiceTests
 {
     private static readonly Guid ValidAuthorId = Guid.NewGuid();
 
-    private readonly Mock<IScrivenerProjectRepository>   _projectRepo       = new();
+    private readonly Mock<IProjectRepository>   _projectRepo       = new();
     private readonly Mock<ISectionRepository>            _sectionRepo       = new();
     private readonly Mock<IUnitOfWork>                   _unitOfWork        = new();
     private readonly Mock<IScrivenerProjectParser>       _parser            = new();
@@ -24,11 +24,11 @@ public class SyncServiceTests
     private readonly Mock<IDropboxConnectionChecker>     _connectionChecker = new();
     private readonly Mock<IDropboxClientFactory>         _clientFactory     = new();
     private readonly Mock<IDropboxFileDownloader>        _fileDownloader    = new();
-    private readonly Mock<ILogger<SyncService>>          _logger            = new();
+    private readonly Mock<ILogger<ScrivenerSyncService>>          _logger            = new();
     private readonly Mock<IAuthorNotificationRepository> _notificationRepo  = new();
     private readonly Mock<IUserRepository>               _userRepo          = new();
 
-    private SyncService CreateSut() => new(
+    private ScrivenerSyncService CreateSut() => new(
         _projectRepo.Object,
         _sectionRepo.Object,
         _unitOfWork.Object,
@@ -43,20 +43,20 @@ public class SyncServiceTests
         _notificationRepo.Object,
         _userRepo.Object);
 
-    public SyncServiceTests()
+    public ScrivenerSyncServiceTests()
     {
         _connectionChecker.Setup(x => x.IsConnectedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _connectionChecker.Setup(x => x.SetUserId(It.IsAny<Guid>()));
         _pathResolver.Setup(x => x.SetUserId(It.IsAny<Guid>()));
         _fileDownloader.Setup(x => x.DownloadProjectAsync(
-            It.IsAny<ScrivenerProject>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            It.IsAny<Project>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("/fake/path");
     }
 
-    private static ScrivenerProject MakeProject() =>
-        ScrivenerProject.Create("Test Novel", "/Apps/Scrivener/Test.scriv", ValidAuthorId);
+    private static Project MakeProject() =>
+        Project.Create("Test Novel", "/Apps/Scrivener/Test.scriv", ValidAuthorId);
 
-    private void SetupPathResolver(ScrivenerProject project, string localPath = "/fake/path")
+    private void SetupPathResolver(Project project, string localPath = "/fake/path")
     {
         _pathResolver.Setup(r => r.ResolveAsync(project, default))
             .ReturnsAsync(localPath);
@@ -75,7 +75,7 @@ public class SyncServiceTests
         var missingId = Guid.NewGuid();
 
         _projectRepo.Setup(r => r.GetByIdAsync(missingId, default))
-            .ReturnsAsync((ScrivenerProject?)null);
+            .ReturnsAsync((Project?)null);
 
         await Assert.ThrowsAsync<EntityNotFoundException>(
             () => sut.ParseProjectAsync(missingId));
@@ -382,7 +382,7 @@ public class SyncServiceTests
     // Helpers
     // ---------------------------------------------------------------------------
 
-    private void SetupParserWithTree(ScrivenerProject project, ParsedBinderNode root)
+    private void SetupParserWithTree(Project project, ParsedBinderNode root)
     {
         _projectRepo.Setup(r => r.GetByIdAsync(project.Id, default))
             .ReturnsAsync(project);

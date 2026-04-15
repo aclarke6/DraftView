@@ -6,27 +6,27 @@ using DraftView.Infrastructure.Persistence.Repositories;
 
 namespace DraftView.Infrastructure.Tests.Persistence;
 
-public class ScrivenerProjectRepositoryTests : IDisposable
+public class ProjectRepositoryTests : IDisposable
 {
     private static readonly Guid ValidAuthorId = Guid.NewGuid();
 
     private readonly DraftViewDbContext _db;
-    private readonly ScrivenerProjectRepository _sut;
+    private readonly ProjectRepository _sut;
 
-    public ScrivenerProjectRepositoryTests()
+    public ProjectRepositoryTests()
     {
         var options = new DbContextOptionsBuilder<DraftViewDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
         _db  = new DraftViewDbContext(options);
-        _sut = new ScrivenerProjectRepository(_db);
+        _sut = new ProjectRepository(_db);
     }
 
     public void Dispose() => _db.Dispose();
 
-    private static ScrivenerProject MakeProject(string name, string uuid) =>
-        ScrivenerProject.Create(name, "/Apps/Scrivener/Test.scriv", ValidAuthorId, uuid);
+    private static Project MakeProject(string name, string uuid) =>
+        Project.Create(name, "/Apps/Scrivener/Test.scriv", ValidAuthorId, uuid);
 
     // ---------------------------------------------------------------------------
     // AddAsync - happy path
@@ -40,7 +40,7 @@ public class ScrivenerProjectRepositoryTests : IDisposable
         await _sut.AddAsync(project);
         await _db.SaveChangesAsync();
 
-        var found = await _sut.GetByScrivenerRootUuidAsync("UUID-001");
+        var found = await _sut.GetBySyncRootIdAsync("UUID-001");
         Assert.NotNull(found);
         Assert.Equal("Book 1", found!.Name);
     }
@@ -48,7 +48,7 @@ public class ScrivenerProjectRepositoryTests : IDisposable
     [Fact]
     public async Task AddAsync_ProjectWithNullUuid_AddsSuccessfully()
     {
-        var project = ScrivenerProject.Create("No UUID", "/Apps/Scrivener/Test.scriv", ValidAuthorId);
+        var project = Project.Create("No UUID", "/Apps/Scrivener/Test.scriv", ValidAuthorId);
 
         await _sut.AddAsync(project);
         await _db.SaveChangesAsync();
@@ -60,8 +60,8 @@ public class ScrivenerProjectRepositoryTests : IDisposable
     [Fact]
     public async Task AddAsync_TwoProjectsWithNullUuid_BothAddSuccessfully()
     {
-        var p1 = ScrivenerProject.Create("No UUID 1", "/Apps/Scrivener/Test.scriv", ValidAuthorId);
-        var p2 = ScrivenerProject.Create("No UUID 2", "/Apps/Scrivener/Test2.scriv", ValidAuthorId);
+        var p1 = Project.Create("No UUID 1", "/Apps/Scrivener/Test.scriv", ValidAuthorId);
+        var p2 = Project.Create("No UUID 2", "/Apps/Scrivener/Test2.scriv", ValidAuthorId);
 
         await _sut.AddAsync(p1);
         await _db.SaveChangesAsync();
@@ -101,7 +101,7 @@ public class ScrivenerProjectRepositoryTests : IDisposable
         var ex = await Assert.ThrowsAsync<DuplicateProjectException>(
             () => _sut.AddAsync(p2));
 
-        Assert.Equal("UUID-CHECK", ex.ScrivenerRootUuid);
+        Assert.Equal("UUID-CHECK", ex.SyncRootId);
     }
 
     [Fact]
@@ -119,31 +119,31 @@ public class ScrivenerProjectRepositoryTests : IDisposable
     }
 
     // ---------------------------------------------------------------------------
-    // GetByScrivenerRootUuidAsync
+    // GetBySyncRootIdAsync
     // ---------------------------------------------------------------------------
 
     [Fact]
-    public async Task GetByScrivenerRootUuidAsync_ExistingUuid_ReturnsProject()
+    public async Task GetBySyncRootIdAsync_ExistingUuid_ReturnsProject()
     {
         var project = MakeProject("Book 1", "UUID-GET");
         await _sut.AddAsync(project);
         await _db.SaveChangesAsync();
 
-        var found = await _sut.GetByScrivenerRootUuidAsync("UUID-GET");
+        var found = await _sut.GetBySyncRootIdAsync("UUID-GET");
 
         Assert.NotNull(found);
         Assert.Equal("Book 1", found!.Name);
     }
 
     [Fact]
-    public async Task GetByScrivenerRootUuidAsync_UnknownUuid_ReturnsNull()
+    public async Task GetBySyncRootIdAsync_UnknownUuid_ReturnsNull()
     {
-        var found = await _sut.GetByScrivenerRootUuidAsync("UUID-MISSING");
+        var found = await _sut.GetBySyncRootIdAsync("UUID-MISSING");
         Assert.Null(found);
     }
 
     [Fact]
-    public async Task GetByScrivenerRootUuidAsync_SoftDeletedProject_ReturnsNull()
+    public async Task GetBySyncRootIdAsync_SoftDeletedProject_ReturnsNull()
     {
         var project = MakeProject("Book 1", "UUID-DELETED");
         await _sut.AddAsync(project);
@@ -152,7 +152,7 @@ public class ScrivenerProjectRepositoryTests : IDisposable
         project.SoftDelete();
         await _db.SaveChangesAsync();
 
-        var found = await _sut.GetByScrivenerRootUuidAsync("UUID-DELETED");
+        var found = await _sut.GetBySyncRootIdAsync("UUID-DELETED");
         Assert.Null(found);
     }
 }

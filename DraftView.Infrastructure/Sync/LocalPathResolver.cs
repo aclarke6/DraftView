@@ -15,7 +15,7 @@ public class LocalPathResolver : ILocalPathResolver
 
     public void SetUserId(Guid userId) => _userId = userId;
 
-    public Task<string> ResolveAsync(ScrivenerProject project, CancellationToken ct = default)
+    public Task<string> ResolveAsync(Project project, CancellationToken ct = default)
     {
         string basePath;
 
@@ -37,7 +37,7 @@ public class LocalPathResolver : ILocalPathResolver
         return Task.FromResult(basePath);
     }
 
-    public async Task<string> ResolveScrivxAsync(ScrivenerProject project, CancellationToken ct = default)
+    public async Task<string> ResolveScrivxAsync(Project project, CancellationToken ct = default)
     {
         var vaultPath = await ResolveAsync(project, ct);
 

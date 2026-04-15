@@ -11,8 +11,8 @@ public sealed class DiscoveryServiceOptions
 public class ScrivenerProjectDiscoveryService(
     IDropboxClientFactory clientFactory,
     IScrivenerProjectParser parser,
-    IScrivenerProjectRepository projectRepo,
-    DiscoveryServiceOptions options) : IScrivenerProjectDiscoveryService
+    IProjectRepository projectRepo,
+    DiscoveryServiceOptions options) : IProjectDiscoveryService
 {
     public async Task<IReadOnlyList<DiscoveredProject>> DiscoverAsync(
         Guid userId, CancellationToken ct = default)
@@ -21,8 +21,8 @@ public class ScrivenerProjectDiscoveryService(
 
         var existing     = await projectRepo.GetAllAsync(ct);
         var existingKeys = existing
-            .Where(p => p.ScrivenerRootUuid is not null && !p.IsSoftDeleted)
-            .Select(p => p.ScrivenerRootUuid!)
+            .Where(p => p.SyncRootId is not null && !p.IsSoftDeleted)
+            .Select(p => p.SyncRootId!)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var scrivFolders = await dropboxClient.ListScrivFoldersAsync(ct);
@@ -89,7 +89,7 @@ public class ScrivenerProjectDiscoveryService(
             {
                 Name              = book.Title,
                 DropboxPath       = folder.Path,
-                ScrivenerRootUuid = book.Uuid,
+                SyncRootId = book.Uuid,
                 AlreadyAdded      = existingKeys.Contains(book.Uuid)
             }).ToList();
         }
@@ -100,7 +100,7 @@ public class ScrivenerProjectDiscoveryService(
             {
                 Name              = vaultName,
                 DropboxPath       = folder.Path,
-                ScrivenerRootUuid = root.Uuid,
+                SyncRootId = root.Uuid,
                 AlreadyAdded      = existingKeys.Contains(root.Uuid)
             }
         };

@@ -37,7 +37,7 @@ public class DraftViewDbContext : IdentityDbContext<IdentityUser>, IUnitOfWork
     // Domain tables
     public DbSet<User> AppUsers { get; set; } = default!;
     public DbSet<Invitation> Invitations { get; set; } = default!;
-    public DbSet<ScrivenerProject> Projects { get; set; } = default!;
+    public DbSet<Project> Projects { get; set; } = default!;
     public DbSet<Section> Sections { get; set; } = default!;
     public DbSet<Comment> Comments { get; set; } = default!;
     public DbSet<ReadEvent> ReadEvents { get; set; } = default!;

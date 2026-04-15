@@ -229,7 +229,7 @@ public static class DatabaseSeeder
         var existingProject = db.Projects.FirstOrDefault(p => p.Name == "Test - Book 1");
         if (existingProject is null)
         {
-            var project = ScrivenerProject.Create(
+            var project = Project.Create(
                 "Test - Book 1",
                 scrivTestProjectDropboxPath,
                 authorUser.Id,

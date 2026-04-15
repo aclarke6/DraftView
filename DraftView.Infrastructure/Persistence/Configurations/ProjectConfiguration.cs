@@ -4,9 +4,9 @@ using DraftView.Domain.Entities;
 
 namespace DraftView.Infrastructure.Persistence.Configurations;
 
-public class ScrivenerProjectConfiguration : IEntityTypeConfiguration<ScrivenerProject>
+public class ProjectConfiguration : IEntityTypeConfiguration<Project>
 {
-    public void Configure(EntityTypeBuilder<ScrivenerProject> builder)
+    public void Configure(EntityTypeBuilder<Project> builder)
     {
         builder.HasKey(p => p.Id);
 

@@ -28,7 +28,7 @@ public class ReaderAccessConfiguration : IEntityTypeConfiguration<ReaderAccess>
             .HasForeignKey(r => r.AuthorId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne<ScrivenerProject>()
+        builder.HasOne<Project>()
             .WithMany()
             .HasForeignKey(r => r.ProjectId)
             .OnDelete(DeleteBehavior.Restrict);

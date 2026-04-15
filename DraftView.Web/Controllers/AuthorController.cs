@@ -12,14 +12,14 @@ namespace DraftView.Web.Controllers;
 #pragma warning disable CS9107, CS9113
 [Authorize(Policy = "RequireAuthorPolicy")]
 public class AuthorController(
-    IScrivenerProjectRepository projectRepo,
+    IProjectRepository projectRepo,
     ISectionRepository sectionRepo,
     IPublicationService publicationService,
     IUserService userService,
     IDashboardService dashboardService,
     ISyncService syncService,
     IUserRepository userRepo,
-    IScrivenerProjectDiscoveryService discoveryService,
+    IProjectDiscoveryService discoveryService,
     IInvitationRepository invitationRepo,
     IServiceScopeFactory scopeFactory,
     ISyncProgressTracker progressTracker,
@@ -93,7 +93,7 @@ public class AuthorController(
         {
             using var scope   = scopeFactory.CreateScope();
             var bgSyncService = scope.ServiceProvider.GetRequiredService<ISyncService>();
-            var bgProjectRepo = scope.ServiceProvider.GetRequiredService<IScrivenerProjectRepository>();
+            var bgProjectRepo = scope.ServiceProvider.GetRequiredService<IProjectRepository>();
             var bgUnitOfWork  = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
             try
             {
@@ -466,7 +466,7 @@ public class AuthorController(
 
         var discovered = await discoveryService.DiscoverAsync(author.Id);
         var toAdd      = discovered
-            .Where(d => selectedUuids.Contains(d.ScrivenerRootUuid) && !d.AlreadyAdded)
+            .Where(d => selectedUuids.Contains(d.SyncRootId) && !d.AlreadyAdded)
             .ToList();
 
         var addedCount = 0;
@@ -474,7 +474,7 @@ public class AuthorController(
         {
             try
             {
-                var softDeleted = await projectRepo.GetSoftDeletedByScrivenerRootUuidAsync(d.ScrivenerRootUuid);
+                var softDeleted = await projectRepo.GetSoftDeletedBySyncRootIdAsync(d.SyncRootId);
                 if (softDeleted is not null)
                 {
                     softDeleted.Restore(d.Name);
@@ -482,7 +482,7 @@ public class AuthorController(
                 }
                 else
                 {
-                    var project = ScrivenerProject.Create(d.Name, d.DropboxPath, author.Id, d.ScrivenerRootUuid);
+                    var project = Project.Create(d.Name, d.DropboxPath, author.Id, d.SyncRootId);
                     await projectRepo.AddAsync(project);
                     addedCount++;
                 }
@@ -495,7 +495,7 @@ public class AuthorController(
         foreach (var d in toAdd)
         {
             var projects = await projectRepo.GetAllAsync();
-            var project  = projects.FirstOrDefault(p => p.ScrivenerRootUuid == d.ScrivenerRootUuid);
+            var project  = projects.FirstOrDefault(p => p.SyncRootId == d.SyncRootId);
             if (project is null) continue;
 
             try { await syncService.ParseProjectAsync(project.Id); }
@@ -577,7 +577,6 @@ public class AuthorController(
         }
 
         await GetUnitOfWork().SaveChangesAsync();
-        TempData["Success"] = "Project access updated.";
         TempData["Success"] = "Project access updated.";
         return RedirectToAction("Readers");
     }
@@ -661,22 +660,3 @@ public class AuthorController(
         return result;
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
