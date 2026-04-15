@@ -14,6 +14,15 @@ if (args.Length > 0 && args[0] == "email-test")
 }
 
 // ---------------------------------------------------------------------------
+// repair-dev-users mode
+// ---------------------------------------------------------------------------
+if (args.Length > 0 && args[0] == "repair-dev-users")
+{
+    Banner("DraftView DevTools — Repair Dev Users");
+    return await DevUserRepair.RunAsync();
+}
+
+// ---------------------------------------------------------------------------
 // --import mode
 // ---------------------------------------------------------------------------
 if (args.Length > 0 && args[0] == "--import")
@@ -321,4 +330,3 @@ void Error(string text)
     Console.WriteLine($"  ERROR: {text}");
     Console.ResetColor();
 }
-
