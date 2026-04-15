@@ -22,24 +22,31 @@ public sealed class ControlledUserEmailService(
 
     private void LogAuditRecord(UserEmailAccessRequest request, UserEmailAccessResult accessResult)
     {
+        var auditTimestampUtc = DateTimeOffset.UtcNow;
+        var accessOutcome = accessResult.IsAllowed ? "Allowed" : "Denied";
+
         if (accessResult.IsAllowed)
         {
             logger.LogInformation(
-                "Controlled email access allowed for requester {RequestingUserId} targeting {TargetUserId} with role {RequestingUserRole} for {Purpose}. Reason: {Reason}",
+                "Controlled email access {AccessOutcome} for requester {RequestingUserId} targeting {TargetUserId} with role {RequestingUserRole} for {Purpose} at {AuditTimestampUtc}. Reason: {Reason}",
+                accessOutcome,
                 request.RequestingUserId,
                 request.TargetUserId,
                 request.RequestingUserRole,
                 request.Purpose,
+                auditTimestampUtc,
                 accessResult.Reason);
             return;
         }
 
         logger.LogWarning(
-            "Controlled email access denied for requester {RequestingUserId} targeting {TargetUserId} with role {RequestingUserRole} for {Purpose}. Reason: {Reason}",
+            "Controlled email access {AccessOutcome} for requester {RequestingUserId} targeting {TargetUserId} with role {RequestingUserRole} for {Purpose} at {AuditTimestampUtc}. Reason: {Reason}",
+            accessOutcome,
             request.RequestingUserId,
             request.TargetUserId,
             request.RequestingUserRole,
             request.Purpose,
+            auditTimestampUtc,
             accessResult.Reason);
     }
 }

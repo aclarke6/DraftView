@@ -40,7 +40,7 @@ public class ControlledUserEmailServiceTests
         var result = await sut.GetEmailAsync(request);
 
         Assert.Equal("reader@example.test", result);
-        VerifyLogged(LogLevel.Information, "Controlled email access allowed", request, null);
+        VerifyLogged(LogLevel.Information, "Allowed", request, null);
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public class ControlledUserEmailServiceTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetEmailAsync(request));
 
         userEmailProtectionService.Verify(s => s.GetEmailAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
-        VerifyLogged(LogLevel.Warning, "Controlled email access denied", request, "Email access denied.");
+        VerifyLogged(LogLevel.Warning, "Denied", request, "Email access denied.");
     }
 
     [Fact]
@@ -82,7 +82,7 @@ public class ControlledUserEmailServiceTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetEmailAsync(request));
 
         userEmailProtectionService.Verify(s => s.GetEmailAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
-        VerifyLogged(LogLevel.Warning, "Controlled email access denied", request, "Email access denied.");
+        VerifyLogged(LogLevel.Warning, "Denied", request, "Email access denied.");
     }
 
     [Fact]
@@ -103,28 +103,46 @@ public class ControlledUserEmailServiceTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetEmailAsync(request));
 
         userEmailProtectionService.Verify(s => s.GetEmailAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
-        VerifyLogged(LogLevel.Warning, "Controlled email access denied", request, "Email access denied.");
+        VerifyLogged(LogLevel.Warning, "Denied", request, "Email access denied.");
     }
 
     private void VerifyLogged(
         LogLevel expectedLevel,
-        string expectedPrefix,
+        string expectedOutcome,
         UserEmailAccessRequest request,
         string? expectedReason)
     {
-        logger.Verify(
-            x => x.Log(
-                expectedLevel,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((state, _) =>
-                    state.ToString()!.Contains(expectedPrefix) &&
-                    state.ToString()!.Contains(request.RequestingUserId.ToString()) &&
-                    state.ToString()!.Contains(request.TargetUserId.ToString()) &&
-                    state.ToString()!.Contains(request.RequestingUserRole.ToString()) &&
-                    state.ToString()!.Contains(request.Purpose.ToString()) &&
-                    (expectedReason == null || state.ToString()!.Contains(expectedReason))),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+        var logInvocation = Assert.Single(logger.Invocations, i => i.Method.Name == nameof(ILogger.Log));
+        Assert.Equal(expectedLevel, (LogLevel)logInvocation.Arguments[0]);
+
+        var state = Assert.IsAssignableFrom<IReadOnlyList<KeyValuePair<string, object?>>>(logInvocation.Arguments[2]);
+        AssertLogProperty(state, "AccessOutcome", expectedOutcome);
+        AssertLogProperty(state, "RequestingUserId", request.RequestingUserId);
+        AssertLogProperty(state, "TargetUserId", request.TargetUserId);
+        AssertLogProperty(state, "RequestingUserRole", request.RequestingUserRole);
+        AssertLogProperty(state, "Purpose", request.Purpose);
+
+        var timestamp = GetLogPropertyValue(state, "AuditTimestampUtc");
+        Assert.IsType<DateTimeOffset>(timestamp);
+
+        if (expectedReason is null)
+            Assert.Null(GetLogPropertyValue(state, "Reason"));
+        else
+            Assert.Equal(expectedReason, GetLogPropertyValue(state, "Reason"));
+    }
+
+    private static void AssertLogProperty(
+        IReadOnlyList<KeyValuePair<string, object?>> state,
+        string key,
+        object expectedValue)
+    {
+        Assert.Equal(expectedValue, GetLogPropertyValue(state, key));
+    }
+
+    private static object? GetLogPropertyValue(
+        IReadOnlyList<KeyValuePair<string, object?>> state,
+        string key)
+    {
+        return state.Single(entry => entry.Key == key).Value;
     }
 }

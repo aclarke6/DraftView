@@ -103,7 +103,7 @@ Email handling model:
 ## Phase 7 — Audit and Security Hardening
 
 **Audit Logging**
-- [ ] Log all privileged access attempts:
+- [DONE] Log all privileged access attempts:
   - requesting user ID
   - target user ID
   - timestamp
@@ -124,11 +124,11 @@ Email handling model:
   - review the current `SystemSupport` allow rule and tighten it from broad role-only access to an explicit privileged access policy if needed
 
 **Security Tests**
-- [ ] Verify:
+- [DONE] Verify:
   - email not exposed in unauthorised views
   - logs contain no sensitive data
   - access rules enforced correctly
- - [DONE] Add regression coverage for plaintext-email log prevention
+- [DONE] Add regression coverage for plaintext-email log prevention
   - source-level or focused behavioural tests should fail if `{Email}` logging reappears in protected flows
 - [DONE] Add regression coverage for privileged email-access audit logging
   - tests should prove both allowed and denied access attempts are recorded
