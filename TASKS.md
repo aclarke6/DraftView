@@ -72,7 +72,10 @@ Any modification of a view must include an audit of that view for style leakage.
 
 ## BUGS
 
-none currently logged — add here as discovered
+- [OPEN] Live invitation emails generated localhost links after publish
+  - observed in Sprint 4 Phase 8 post-publish verification
+  - root cause traced to `UserService.IssueInvitationAsync` falling back to `http://localhost:5078` when `App:BaseUrl` is missing
+  - required fix: fail fast on missing/invalid `App:BaseUrl` instead of emitting broken live links
 
 ---
 
@@ -171,14 +174,14 @@ Email handling model:
   - add `EmailProtection:EncryptionKey` and `EmailProtection:LookupHmacKey` to `appsettings.Production.json`
   - do not save production keys anywhere else
   - deploy via `publish-draftview.ps1`
-- [ ] Define operational guidance for key rotation and recovery
+- [DONE] Define operational guidance for key rotation and recovery
   - key rotation requires: generate new keys, re-encrypt all existing email ciphertexts, update `appsettings.Production.json`, restart service
   - no key rotation tooling exists yet — add to backlog if required
   - recovery: if keys are lost, existing encrypted emails are unrecoverable — users must reset email via support
 - [ ] Verify post-publish behaviour:
-  - [ ] login still works
-  - [ ] protected email lookup still works
-  - [ ] existing encrypted data remains decryptable after `Publish-draftview.ps1` completes and the service restarts
+  - [DONE] login still works
+  - [ ] invitation links use the configured live base URL rather than localhost
+  - [DONE] existing encrypted data remains decryptable after `Publish-draftview.ps1` completes and the service restarts
 
 ---
 

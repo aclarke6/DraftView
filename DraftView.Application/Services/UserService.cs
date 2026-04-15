@@ -69,7 +69,7 @@ public class UserService(
         await invitationRepo.AddAsync(invitation, ct);
         await unitOfWork.SaveChangesAsync(ct);
 
-        var baseUrl = configuration["App:BaseUrl"]?.TrimEnd('/') ?? "http://localhost:5078";
+        var baseUrl = GetConfiguredAppBaseUrl();
         var inviteUrl = $"{baseUrl}/Account/AcceptInvitation?token={invitation.Token}";
 
         var expiryLine = expiryPolicy == ExpiryPolicy.AlwaysOpen
@@ -226,6 +226,22 @@ public class UserService(
     {
         if (!authFacade.IsAuthor() && !authFacade.IsSystemSupport())
             throw new UnauthorisedOperationException("Only the Author or SystemSupport may perform this action.");
+    }
+
+    private string GetConfiguredAppBaseUrl()
+    {
+        var configuredBaseUrl = configuration["App:BaseUrl"]?.TrimEnd('/');
+        if (string.IsNullOrWhiteSpace(configuredBaseUrl))
+            throw new InvalidOperationException(
+                "Missing required configuration value 'App:BaseUrl'. Invitation emails require an absolute live base URL.");
+
+        if (!Uri.TryCreate(configuredBaseUrl, UriKind.Absolute, out var uri) ||
+            string.IsNullOrWhiteSpace(uri.Scheme) ||
+            string.IsNullOrWhiteSpace(uri.Host))
+            throw new InvalidOperationException(
+                "Configuration value 'App:BaseUrl' must be a valid absolute URL.");
+
+        return configuredBaseUrl;
     }
 }
 

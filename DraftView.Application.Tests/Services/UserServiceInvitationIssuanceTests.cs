@@ -122,4 +122,56 @@ public class UserServiceInvitationIssuanceTests
             It.IsAny<string>(),
             It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task IssueInvitationAsync_UsesConfiguredAbsoluteBaseUrlInInviteLink()
+    {
+        var sut = CreateSut();
+
+        await sut.IssueInvitationAsync(
+            "reader@example.com", ExpiryPolicy.AlwaysOpen, null, Author.Id);
+
+        EmailSender.Verify(e => e.SendAsync(
+            "reader@example.com",
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.Is<string>(body => body.Contains("https://app.draftview.co.uk/Account/AcceptInvitation?token=")),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task IssueInvitationAsync_WhenAppBaseUrlMissing_ThrowsInsteadOfFallingBackToLocalhost()
+    {
+        Config.Setup(c => c["App:BaseUrl"]).Returns((string?)null);
+        var sut = CreateSut();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            sut.IssueInvitationAsync("reader@example.com", ExpiryPolicy.AlwaysOpen, null, Author.Id));
+
+        Assert.Contains("App:BaseUrl", ex.Message);
+        EmailSender.Verify(e => e.SendAsync(
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task IssueInvitationAsync_WhenAppBaseUrlInvalid_ThrowsInsteadOfSendingBrokenLink()
+    {
+        Config.Setup(c => c["App:BaseUrl"]).Returns("not-a-url");
+        var sut = CreateSut();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            sut.IssueInvitationAsync("reader@example.com", ExpiryPolicy.AlwaysOpen, null, Author.Id));
+
+        Assert.Contains("valid absolute URL", ex.Message);
+        EmailSender.Verify(e => e.SendAsync(
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
 }
