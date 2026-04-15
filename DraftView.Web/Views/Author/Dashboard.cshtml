@@ -66,7 +66,7 @@
     <div class="dashboard-main">
 
         <!-- Projects -->
-        <div class="card" style="margin-bottom:var(--space-8);">
+        <div class="card dashboard-table-card" style="margin-bottom:var(--space-8);">
             <div class="card__header">
                 <span class="card__title">Projects</span>
                 <a asp-action="Projects" class="btn btn--secondary btn--sm desktop-only">+ Add Project</a>
@@ -75,21 +75,21 @@
                 <table class="projects-table">
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th>Sync Status</th>
-                            <th>Reader Active</th>
-                            <th>Actions</th>
+                            <th class="projects-table__col-name">Name</th>
+                            <th class="projects-table__col-sync">Sync Status</th>
+                            <th class="projects-table__col-reader-active">Reader Active</th>
+                            <th class="projects-table__col-actions">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var p in Model.AllProjects)
                         {
                             <tr>
-                                <td>
+                                <td class="projects-table__col-name">
                                     <a asp-action="Sections" asp-route-projectId="@p.Id"
                                        style="font-weight:500;">@p.Name</a>
                                 </td>
-                                <td>
+                                <td class="projects-table__col-sync">
                                     @if (p.SyncStatus == SyncStatus.Healthy)
                                     {
                                         <span class="badge badge--success">Healthy</span>
@@ -111,7 +111,7 @@
                                         <span class="badge badge--neutral">@p.SyncStatus</span>
                                     }
                                 </td>
-                                <td>
+                                <td class="projects-table__col-reader-active">
                                     @if (p.IsReaderActive)
                                     {
                                         <span class="badge badge--accent">Active</span>
@@ -121,7 +121,7 @@
                                         <span style="color:var(--color-ink-subtle); font-size:var(--text-sm);">-</span>
                                     }
                                 </td>
-                                <td class="dashboard-table__actions">
+                                <td class="dashboard-table__actions projects-table__col-actions">
                                     <div class="dashboard-table__actions-list">
                                         <form asp-action="Sync" method="post" style="display:inline">
                                             @Html.AntiForgeryToken()
@@ -158,12 +158,15 @@
                     </tbody>
                 </table>
             </div>
+            <div class="dashboard-table-card__mobile-note">
+                Rotate to landscape to view additional project details.
+            </div>
         </div>
 
         <!-- Published chapters -->
         @if (Model.PublishedSections.Any())
         {
-            <div class="card">
+            <div class="card dashboard-table-card">
                 <div class="card__header">
                     <span class="card__title">Published Chapters</span>
                     @if (Model.ActiveProject is not null)
@@ -173,24 +176,24 @@
                     }
                 </div>
                 <div class="table-wrapper" style="border:none; border-radius:0; box-shadow:none;">
-                    <table>
+                    <table class="published-table">
                         <thead>
                             <tr>
-                                <th>Chapter</th>
-                                <th>Published</th>
-                                <th>Content Changed</th>
-                                <th>Actions</th>
+                                <th class="published-table__col-title">Chapter</th>
+                                <th class="published-table__col-published">Published</th>
+                                <th class="published-table__col-changed">Content Changed</th>
+                                <th class="published-table__col-actions">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var s in Model.PublishedSections)
                             {
                                 <tr>
-                                    <td style="font-weight:500;">@s.Title</td>
-                                    <td style="color:var(--color-ink-muted); font-size:var(--text-sm);">
+                                    <td class="published-table__col-title" style="font-weight:500;">@s.Title</td>
+                                    <td class="published-table__col-published" style="color:var(--color-ink-muted); font-size:var(--text-sm);">
                                         @(s.PublishedAt.HasValue ? s.PublishedAt.Value.ToString("dd MMM yyyy") : "-")
                                     </td>
-                                    <td>
+                                    <td class="published-table__col-changed">
                                         @if (s.ContentChangedSincePublish)
                                         {
                                             <span class="badge badge--warning">Updated</span>
@@ -200,7 +203,7 @@
                                             <span style="color:var(--color-ink-subtle); font-size:var(--text-sm);">-</span>
                                         }
                                     </td>
-                                    <td>
+                                    <td class="published-table__col-actions">
                                         @if (Model.ActiveProject is not null)
                                         {
                                             <form asp-action="UnpublishChapter" method="post" style="display:inline">
@@ -215,6 +218,9 @@
                             }
                         </tbody>
                     </table>
+                </div>
+                <div class="dashboard-table-card__mobile-note">
+                    Rotate to landscape to view additional chapter details.
                 </div>
             </div>
         }

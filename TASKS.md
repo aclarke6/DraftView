@@ -458,6 +458,7 @@ Work captured for future sprints. Execute in order; each phase should be complet
 - [DONE] Layout top bar now shows the current user display name instead of email; falls back to `Account settings` when display name is missing, with hover text `Account settings`
 - [DONE] Audited `Views/Shared/_Layout.cshtml` for style leakage while fixing the mobile nav toggle placeholder; no additional style leakage required CSS changes
 - [DONE] Audited `Views/Author/Dashboard.cshtml` for style leakage while fixing the mobile projects actions layout; replaced inline actions-row styling with dashboard CSS classes
+- [DONE] Improved mobile portrait dashboard table affordances by preserving card boundaries and adding rotate-to-landscape guidance on author dashboard cards
 - [DONE] Fixed style leakage by scoping prose font preferences to reader surfaces only so system UI remains on standard typography
 - [DONE] Fixed style leakage in `Views/Author/InviteReader.cshtml` by replacing inline layout styling with dashboard CSS classes while adding the invite display-name field
 - [DONE] Sprint 4 Phase 6 end-to-end integration is complete

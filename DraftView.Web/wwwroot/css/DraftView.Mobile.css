@@ -389,6 +389,59 @@
         padding: var(--space-2);
         font-size: var(--text-xs);
     }
+
+    .projects-table {
+        min-width: 0;
+        width: 100%;
+        table-layout: fixed;
+    }
+
+    .projects-table__col-sync,
+    .projects-table__col-reader-active {
+        display: none;
+    }
+
+    .projects-table__col-name {
+        width: 45%;
+    }
+
+    .projects-table__col-actions {
+        width: 55%;
+    }
+
+    .published-table {
+        min-width: 0;
+        width: 100%;
+        table-layout: fixed;
+    }
+
+    .published-table__col-published,
+    .published-table__col-changed {
+        display: none;
+    }
+
+    .published-table__col-title {
+        width: 55%;
+    }
+
+    .published-table__col-actions {
+        width: 45%;
+    }
+
+    .dashboard-table-card {
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+    }
+
+    .dashboard-table-card__mobile-note {
+        display: block;
+        padding: var(--space-3);
+        border-top: 1px solid var(--color-border);
+        background: var(--color-surface-alt);
+        color: var(--color-text-muted);
+        font-size: var(--text-xs);
+    }
 }
 
 

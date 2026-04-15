@@ -125,6 +125,20 @@
     flex-wrap: wrap;
 }
 
+.dashboard-table__actions-list {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.dashboard-table-card {
+    overflow: hidden;
+}
+
+.dashboard-table-card__mobile-note {
+    display: none;
+}
+
 .invite-reader-card {
     max-width: 520px;
 }
