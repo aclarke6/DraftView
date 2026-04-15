@@ -27,15 +27,29 @@ public class UserService(
         if (!authFacade.IsAuthor())
             throw new UnauthorisedOperationException("Only the Author may issue invitations.");
 
-        if (await userRepo.EmailExistsAsync(email, ct))
+        var user = await userRepo.GetByEmailAsync(email, ct);
+        var isExistingPendingInvitee = user is not null
+            && user.Role == Role.BetaReader
+            && !user.IsActive
+            && !user.IsSoftDeleted;
+
+        if (user is not null && !isExistingPendingInvitee)
             throw new InvariantViolationException("I-EMAIL-EXISTS",
                 $"A user with email {email} already exists.");
 
-        var user = User.Create(email, "Pending", Role.BetaReader);
+        if (user is null)
+        {
+            user = User.Create(email, "Pending", Role.BetaReader);
+        }
 
         if (expiryPolicy == ExpiryPolicy.ExpiresAt && !expiresAt.HasValue)
             throw new InvariantViolationException("I-INVITE-EXPIRY-REQUIRED",
                 "An expiry date is required when the invitation is set to expire.");
+
+        foreach (var pendingInvitation in await invitationRepo.GetPendingByUserIdAsync(user.Id, ct))
+        {
+            pendingInvitation.Cancel();
+        }
 
         var invitation = expiryPolicy == ExpiryPolicy.AlwaysOpen
             ? Invitation.CreateAlwaysOpen(user.Id)
@@ -45,11 +59,14 @@ public class UserService(
                     "I-INVITE-EXPIRY-REQUIRED",
                     "An expiry date is required when the invitation is set to expire."));
 
-        var prefs = UserPreferences.CreateForBetaReader(user.Id);
+        if (!isExistingPendingInvitee)
+        {
+            var prefs = UserPreferences.CreateForBetaReader(user.Id);
+            await userRepo.AddAsync(user, ct);
+            await prefsRepo.AddAsync(prefs, ct);
+        }
 
-        await userRepo.AddAsync(user, ct);
         await invitationRepo.AddAsync(invitation, ct);
-        await prefsRepo.AddAsync(prefs, ct);
         await unitOfWork.SaveChangesAsync(ct);
 
         var baseUrl = configuration["App:BaseUrl"]?.TrimEnd('/') ?? "http://localhost:5078";

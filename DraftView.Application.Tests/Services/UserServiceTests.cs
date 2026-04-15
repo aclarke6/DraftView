@@ -50,7 +50,8 @@ public class UserServiceTests
         var sut    = CreateSut();
 
         UserRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
-        UserRepo.Setup(r => r.EmailExistsAsync("reader@example.com", default)).ReturnsAsync(false);
+        UserRepo.Setup(r => r.GetByEmailAsync("reader@example.com", default)).ReturnsAsync((User?)null);
+        InviteRepo.Setup(r => r.GetPendingByUserIdAsync(It.IsAny<Guid>(), default)).ReturnsAsync([]);
 
         User? addedUser         = null;
         Invitation? addedInvite = null;
@@ -92,12 +93,39 @@ public class UserServiceTests
         var author = MakeAuthor();
         var sut    = CreateSut();
 
+        var existingUser = User.Create("existing@example.com", "Existing User", Role.BetaReader);
+        existingUser.Activate();
+
         UserRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
-        UserRepo.Setup(r => r.EmailExistsAsync("existing@example.com", default)).ReturnsAsync(true);
+        UserRepo.Setup(r => r.GetByEmailAsync("existing@example.com", default)).ReturnsAsync(existingUser);
         AuthFacade.Setup(f => f.IsAuthor()).Returns(true);
 
         await Assert.ThrowsAsync<InvariantViolationException>(
             () => sut.IssueInvitationAsync("existing@example.com", ExpiryPolicy.AlwaysOpen, null, author.Id));
+    }
+
+    [Fact]
+    public async Task IssueInvitationAsync_ExistingPendingInvitee_CancelsOlderPendingInvitesAndIssuesFreshToken()
+    {
+        var author = MakeAuthor();
+        var existingUser = User.Create("reader@example.com", "Pending", Role.BetaReader);
+        var olderPending = Invitation.CreateAlwaysOpen(existingUser.Id);
+        var newerPending = Invitation.CreateAlwaysOpen(existingUser.Id);
+        var sut = CreateSut();
+
+        UserRepo.Setup(r => r.GetByEmailAsync("reader@example.com", default)).ReturnsAsync(existingUser);
+        InviteRepo.Setup(r => r.GetPendingByUserIdAsync(existingUser.Id, default))
+            .ReturnsAsync([olderPending, newerPending]);
+        AuthFacade.Setup(f => f.IsAuthor()).Returns(true);
+
+        var freshInvitation = await sut.IssueInvitationAsync("reader@example.com", ExpiryPolicy.AlwaysOpen, null, author.Id);
+
+        Assert.Equal(InvitationStatus.Cancelled, olderPending.Status);
+        Assert.Equal(InvitationStatus.Cancelled, newerPending.Status);
+        Assert.Equal(existingUser.Id, freshInvitation.UserId);
+        UserRepo.Verify(r => r.AddAsync(It.IsAny<User>(), default), Times.Never);
+        PrefsRepo.Verify(r => r.AddAsync(It.IsAny<UserPreferences>(), default), Times.Never);
+        InviteRepo.Verify(r => r.AddAsync(It.Is<Invitation>(i => i.Id == freshInvitation.Id), default), Times.Once);
     }
 
     // ---------------------------------------------------------------------------
@@ -198,8 +226,8 @@ public class UserServiceTests
         UserRepo.Setup(r => r.GetByIdAsync(author.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(author);
 
-        UserRepo.Setup(r => r.EmailExistsAsync("reader@example.com", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+        UserRepo.Setup(r => r.GetByEmailAsync("reader@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
         AuthFacade.Setup(f => f.IsAuthor()).Returns(true);
 
         var ex = await Assert.ThrowsAsync<InvariantViolationException>(() =>

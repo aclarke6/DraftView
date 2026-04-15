@@ -17,8 +17,7 @@ public class InvitationConfiguration : IEntityTypeConfiguration<Invitation>
         builder.HasIndex(i => i.Token)
             .IsUnique();
 
-        builder.HasIndex(i => i.UserId)
-            .IsUnique();
+        builder.HasIndex(i => i.UserId);
 
         builder.Property(i => i.ExpiryPolicy)
             .IsRequired()

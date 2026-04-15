@@ -26,7 +26,7 @@ public class GoverningEmailExposureTests
 
         var whitelist = new[]
         {
-            "Account\\Settings.cshtml"
+            Path.Combine("Account", "Settings.cshtml")
         };
 
         var forbiddenPatterns = new[]
@@ -63,7 +63,10 @@ public class GoverningEmailExposureTests
 
     private static bool IsWhitelisted(string filePath, string[] whitelist)
     {
-        return whitelist.Any(w => filePath.EndsWith(w, StringComparison.OrdinalIgnoreCase));
+        var normalizedPath = filePath.Replace('\\', Path.DirectorySeparatorChar)
+            .Replace('/', Path.DirectorySeparatorChar);
+
+        return whitelist.Any(w => normalizedPath.EndsWith(w, StringComparison.OrdinalIgnoreCase));
     }
 
     private static string GetSolutionRoot()

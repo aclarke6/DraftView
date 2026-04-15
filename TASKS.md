@@ -80,9 +80,9 @@ none currently logged — add here as discovered
 
 - 466 Tests total
 - One skipped test is `SmtpEmailSenderIntegrationTests` which sends a real email, so is not suitable for regular test runs but is included in the solution for manual execution when needed.
-- Latest full passing count: 480 total, 479 passed, 1 skipped, 0 failed
-- Latest targeted application count: 128 total, 128 passed, 0 skipped, 0 failed
-- Latest targeted web count: 31 total, 31 passed, 0 skipped, 0 failed
+- Latest full passing count: 481 total, 480 passed, 1 skipped, 0 failed
+- Latest targeted application count: 129 total, 129 passed, 0 skipped, 0 failed
+- Latest targeted web count: 32 total, 32 passed, 0 skipped, 0 failed
 
 ---
 
@@ -98,7 +98,7 @@ Email handling model:
 - Controlled access for administrative purposes only
 - New views fail closed by default unless explicitly whitelisted
 
-## Phase 6 — End-to-End Integration
+## Phase 6 [DONE] — End-to-End Integration
 
 **Goal:** Ensure system flows work with new model
 
@@ -115,19 +115,21 @@ Email handling model:
   - confirm dev `Author` and `SystemSupport` users can still log in
 
 **High-level steps**
-- [ ] Step 1: Confirm which end-to-end outcomes are already covered by Phases 3–5
+- [DONE] Step 1: Confirm which end-to-end outcomes are already covered by Phases 3–5
   - avoid duplicating infrastructure contract coverage at integration level
   - limit Phase 6 to real remaining flow gaps
 - [DONE] Step 2: Add one DB-backed login integration proof
   - real web host boots in `Testing`
   - login still succeeds under the protected lookup wiring
-- [ ] Step 3: Add one invitation/provisioning integration proof
+- [DONE] Step 3: Add one invitation/provisioning integration proof
+  - author invite flow now runs through the real web host in `Testing`
+  - issuing the same invite twice proves older pending invites are superseded by a fresh token
   - invitation-related user provisioning persists protected email fields through the real stack
   - do not invent a standalone registration flow if the product does not actually expose one
   - before Sprint 4 is complete, sending a fresh invitation must supersede any older pending invite for the same target user
   - keep the author workflow simple: if an invite is not received, the author just issues a new invite
   - implement this in the existing invitation send path rather than adding resend/cancel/reissue UI
-- [ ] Step 4: Add one flow-level no-plaintext-persistence assertion
+- [DONE] Step 4: Add one flow-level no-plaintext-persistence assertion
   - verify the relevant persisted user row stores protected values rather than plaintext email
   - keep this compact and complementary to infrastructure contract tests
 - [DONE] Step 5: Re-run governing and full-suite verification
@@ -378,6 +380,14 @@ Work captured for future sprints. Do not start until the relevant sprint is acti
 
 - [DONE] Layout top bar now shows the current user display name instead of email; falls back to `Account settings` when display name is missing, with hover text `Account settings`
 - [DONE] Fixed style leakage by scoping prose font preferences to reader surfaces only so system UI remains on standard typography
+- [DONE] Sprint 4 Phase 6 end-to-end integration is complete
+  - fixed configuration-backed protected-email keys are in place for dev and testing
+  - DB-backed real-host regression coverage now exists for login, password reset, and invitation provisioning
+  - issuing the same invite twice now supersedes the older pending invite with a fresh token
+  - invitation and password-reset flows now prove protected persistence rather than plaintext persistence
+  - DB-backed web regressions override `IEmailSender` to use `ConsoleEmailSender`, so tests do not depend on live SMTP
+  - latest targeted web verification GREEN: 34 passed, 0 failed
+  - latest full-suite verification GREEN: 481 total, 480 passed, 1 skipped, 0 failed
 
 ## Sprint 4 — Email Privacy and Controlled Access (PHASED EXECUTION)
 

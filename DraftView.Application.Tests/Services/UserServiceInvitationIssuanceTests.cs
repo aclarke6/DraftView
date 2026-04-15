@@ -29,8 +29,10 @@ public class UserServiceInvitationIssuanceTests
 
         UserRepo.Setup(r => r.GetByIdAsync(Author.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Author);
-        UserRepo.Setup(r => r.EmailExistsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+        UserRepo.Setup(r => r.GetByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+        InviteRepo.Setup(r => r.GetPendingByUserIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
         Config.Setup(c => c["App:BaseUrl"]).Returns("https://app.draftview.co.uk");
         AuthFacade.Setup(f => f.IsAuthor()).Returns(true);
     }

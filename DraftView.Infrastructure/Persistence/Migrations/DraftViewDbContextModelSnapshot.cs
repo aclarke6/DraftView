@@ -233,8 +233,7 @@ namespace DraftView.Infrastructure.Persistence.Migrations
                     b.HasIndex("Token")
                         .IsUnique();
 
-                    b.HasIndex("UserId")
-                        .IsUnique();
+                    b.HasIndex("UserId");
 
                     b.ToTable("Invitations");
                 });

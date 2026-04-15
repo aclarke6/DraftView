@@ -14,6 +14,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Npgsql;
 using Xunit;
+using DraftView.Web.Services;
+using DraftView.Domain.Interfaces.Services;
 
 namespace DraftView.Web.Tests;
 
@@ -155,6 +157,8 @@ public sealed class PasswordResetRegressionTests :
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<IHostedService>();
+                services.RemoveAll<IEmailSender>();
+                services.AddScoped<IEmailSender, ConsoleEmailSender>();
             });
         }
 
