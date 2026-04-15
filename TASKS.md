@@ -380,32 +380,54 @@ See Publishing And versioning Architecture.md for the full architecture document
 
 ---
 
-## BACKLOG — Architecture (Phase 1-5, pre-tenancy)
+## BACKLOG — Incremental Refactor Roadmap (safe staged rollout)
 
-Work captured for future sprints. Do not start until the relevant sprint is active.
+Work captured for future sprints. Execute in order; each phase should be completed and validated before starting the next.
 
-### Phase 1 — Stabilise single-tenancy
-- Pass CancellationToken consistently in SyncService
-- Validate section existence in ReadingProgressService.RecordOpenAsync
-- Define and enforce active/inactive/soft-deleted user rules
+### Phase 1 — Centralize controller user/role resolution (low-risk, no behavior change)
+- Consolidate repeated author guard logic into `BaseController`:
+  - `AuthorController.GetAuthorAsync`
+  - `DropboxController.GetAuthorAsync`
+  - direct `User.Identity?.Name` reads in controller actions
+- Add a shared helper pattern (`TryGetCurrentAuthorAsync` / `RequireCurrentAuthorAsync`) and replace per-controller copies.
+- Keep role checks in one place so policies and domain-role fallback behavior stay consistent.
 
-### Phase 2 — Move mutations out of controllers
-- ActivateProject, DeactivateProject, RemoveProject, AddProjects → application services
-- Remove GetUnitOfWork(), GetCommentService(), GetReadEventRepo() service location
-- Replace with constructor injection
+### Phase 2 — Remove controller service-location and repeated mutation flows
+- In `AuthorController`, replace `GetUnitOfWork()`, `GetCommentService()`, and `GetReadEventRepo()` service-location helpers with constructor-injected dependencies.
+- Extract repeated mutation action patterns (load + guard + mutate + save + redirect) for:
+  - `ActivateProject`, `DeactivateProject`, `RemoveProject`
+  - reader lifecycle actions (`ReactivateReader`, `DeactivateReader`, `SoftDeleteReader`)
+- Keep extracted helpers inside the controller first; move to application layer in the next phase.
 
-### Phase 3 — Tighten application workflows
-- Publication flow: enforce authorId or remove it
-- Dashboard queries: move UI-shaped queries out of repositories
+### Phase 3 — Move procedural controller workflows into application services
+- Extract `AuthorController.AddProjects` workflow (discover/filter/restore-or-create/sync/log) to an application service orchestrator.
+- Extract `AuthorController.Section` query assembly (section + parent + comments + read events + author name map) to a dedicated query service.
+- Extract reader access update logic (`UpdateReaderAccess`) to a focused application service.
 
-### Phase 4 — Make sync safer
-- Replace controller Task.Run sync kickoff
-- Check moved/reappearing soft-deleted section handling in reconciliation
-- Add operational visibility: log discovery/parse failures
+### Phase 4 — Reduce repeated query/DTO assembly in reader flows
+- In `ReaderController` and `BaseReaderController`, extract repeated section-query/progress loops used by:
+  - `Chapters`
+  - `Scenes`
+  - `DesktopDashboard`
+- Introduce reusable query helpers for:
+  - published chapter selection/sorting
+  - chapter/scene progress row projection
+  - comment author name mapping (currently repeated lookup loops)
 
-### Phase 5 — Prepare tenancy move
-- Document single-tenancy seams: User.Role, GetAuthorAsync, GetAllBetaReadersAsync,
-  GetReaderActiveProjectAsync, user preferences scoping, comment visibility model
+### Phase 5 — Decompose startup/seeding procedural blocks
+- Split `DatabaseSeeder.SeedAsync` into focused steps/services:
+  - role provisioning
+  - identity user provisioning
+  - domain user provisioning
+  - role backfill
+  - dropbox connection seed
+  - test project seed
+- Keep `WebApplicationExtensions` as orchestration only (`MigrateDatabaseAsync`, `SeedDatabaseAsync`, `ResetStaleSyncProjectsAsync`) and push logic into dedicated services.
+
+### Phase 6 — Standardise sync kickoff and background processing
+- Replace `AuthorController.Sync` inline `Task.Run` + scoped service resolution with queued/background processing (`SyncBackgroundService` path).
+- Extract sync status update/recovery logic into a shared application-level sync coordinator.
+- Keep `ScrivenerSyncService` focused on parse/reconcile mechanics; move orchestration concerns out of controller actions.
 
 ---
 
