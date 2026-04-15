@@ -17,9 +17,9 @@ public class UserServiceInvitationIssuanceTests
     private readonly Mock<IEmailSender> EmailSender = new();
     private readonly Mock<IUnitOfWork> UnitOfWork = new();
     private readonly Mock<IConfiguration> Config = new();
-    private readonly Mock<IReaderAccessRepository>       ReaderAccessRepo = new();
-    private readonly Mock<IAuthorizationFacade>          AuthFacade       = new();
-    private readonly Mock<IAuthorNotificationRepository> NotifRepo        = new();
+    private readonly Mock<IReaderAccessRepository> ReaderAccessRepo = new();
+    private readonly Mock<IAuthorizationFacade> AuthFacade = new();
+    private readonly Mock<IAuthorNotificationRepository> NotifRepo = new();
 
     private readonly User Author;
 
@@ -37,7 +37,6 @@ public class UserServiceInvitationIssuanceTests
         AuthFacade.Setup(f => f.IsAuthor()).Returns(true);
     }
 
-    
     private UserService CreateSut() => new(
         UserRepo.Object,
         InviteRepo.Object,
@@ -49,17 +48,13 @@ public class UserServiceInvitationIssuanceTests
         AuthFacade.Object,
         NotifRepo.Object);
 
-    // -------------------------------------------------------------------------
-    // 1B - Expiry information in email body
-    // -------------------------------------------------------------------------
-
     [Fact]
     public async Task IssueInvitationAsync_AlwaysOpen_EmailBodyStatesInvitationDoesNotExpire()
     {
         var sut = CreateSut();
 
         await sut.IssueInvitationAsync(
-            "reader@example.com", ExpiryPolicy.AlwaysOpen, null, Author.Id);
+            "reader@example.com", "Reader One", ExpiryPolicy.AlwaysOpen, null, Author.Id);
 
         EmailSender.Verify(e => e.SendAsync(
             "reader@example.com",
@@ -76,7 +71,7 @@ public class UserServiceInvitationIssuanceTests
         var sut = CreateSut();
 
         await sut.IssueInvitationAsync(
-            "reader@example.com", ExpiryPolicy.ExpiresAt, expiresAt, Author.Id);
+            "reader@example.com", "Reader One", ExpiryPolicy.ExpiresAt, expiresAt, Author.Id);
 
         EmailSender.Verify(e => e.SendAsync(
             "reader@example.com",
@@ -86,38 +81,34 @@ public class UserServiceInvitationIssuanceTests
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    // -------------------------------------------------------------------------
-    // 1D - Recipient name is email local part, not generic "Invited Reader"
-    // -------------------------------------------------------------------------
-
     [Fact]
-    public async Task IssueInvitationAsync_AlwaysOpen_RecipientNameIsEmailLocalPart()
+    public async Task IssueInvitationAsync_AlwaysOpen_RecipientNameIsDisplayName()
     {
         var sut = CreateSut();
 
         await sut.IssueInvitationAsync(
-            "becca.dunlop@example.com", ExpiryPolicy.AlwaysOpen, null, Author.Id);
+            "becca.dunlop@example.com", "Becca Dunlop", ExpiryPolicy.AlwaysOpen, null, Author.Id);
 
         EmailSender.Verify(e => e.SendAsync(
             "becca.dunlop@example.com",
-            "becca.dunlop",
+            "Becca Dunlop",
             It.IsAny<string>(),
             It.IsAny<string>(),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task IssueInvitationAsync_WithExpiry_RecipientNameIsEmailLocalPart()
+    public async Task IssueInvitationAsync_WithExpiry_RecipientNameIsDisplayName()
     {
         var expiresAt = DateTime.UtcNow.AddDays(14);
         var sut = CreateSut();
 
         await sut.IssueInvitationAsync(
-            "hilary.royston@example.com", ExpiryPolicy.ExpiresAt, expiresAt, Author.Id);
+            "hilary.royston@example.com", "Hilary Royston", ExpiryPolicy.ExpiresAt, expiresAt, Author.Id);
 
         EmailSender.Verify(e => e.SendAsync(
             "hilary.royston@example.com",
-            "hilary.royston",
+            "Hilary Royston",
             It.IsAny<string>(),
             It.IsAny<string>(),
             It.IsAny<CancellationToken>()), Times.Once);
@@ -129,7 +120,7 @@ public class UserServiceInvitationIssuanceTests
         var sut = CreateSut();
 
         await sut.IssueInvitationAsync(
-            "reader@example.com", ExpiryPolicy.AlwaysOpen, null, Author.Id);
+            "reader@example.com", "Reader One", ExpiryPolicy.AlwaysOpen, null, Author.Id);
 
         EmailSender.Verify(e => e.SendAsync(
             "reader@example.com",
@@ -146,7 +137,7 @@ public class UserServiceInvitationIssuanceTests
         var sut = CreateSut();
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sut.IssueInvitationAsync("reader@example.com", ExpiryPolicy.AlwaysOpen, null, Author.Id));
+            sut.IssueInvitationAsync("reader@example.com", "Reader One", ExpiryPolicy.AlwaysOpen, null, Author.Id));
 
         Assert.Contains("App:BaseUrl", ex.Message);
         EmailSender.Verify(e => e.SendAsync(
@@ -164,7 +155,7 @@ public class UserServiceInvitationIssuanceTests
         var sut = CreateSut();
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            sut.IssueInvitationAsync("reader@example.com", ExpiryPolicy.AlwaysOpen, null, Author.Id));
+            sut.IssueInvitationAsync("reader@example.com", "Reader One", ExpiryPolicy.AlwaysOpen, null, Author.Id));
 
         Assert.Contains("valid absolute URL", ex.Message);
         EmailSender.Verify(e => e.SendAsync(

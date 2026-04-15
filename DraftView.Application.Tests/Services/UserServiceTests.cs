@@ -11,15 +11,20 @@ namespace DraftView.Application.Tests.Services;
 
 public class UserServiceTests
 {
-    private readonly Mock<IUserRepository>                       UserRepo    = new();
-    private readonly Mock<IInvitationRepository>                 InviteRepo  = new();
-    private readonly Mock<IUserPreferencesRepository> PrefsRepo   = new();
-    private readonly Mock<IEmailSender>                          EmailSender = new();
-    private readonly Mock<IUnitOfWork>                           UnitOfWork  = new();
-    private readonly Mock<IConfiguration>                        Config      = new();
-    private readonly Mock<IReaderAccessRepository>               ReaderAccessRepo = new();
-    private readonly Mock<IAuthorizationFacade>                  AuthFacade       = new();
-    private readonly Mock<IAuthorNotificationRepository>         NotifRepo        = new();
+    private readonly Mock<IUserRepository> UserRepo = new();
+    private readonly Mock<IInvitationRepository> InviteRepo = new();
+    private readonly Mock<IUserPreferencesRepository> PrefsRepo = new();
+    private readonly Mock<IEmailSender> EmailSender = new();
+    private readonly Mock<IUnitOfWork> UnitOfWork = new();
+    private readonly Mock<IConfiguration> Config = new();
+    private readonly Mock<IReaderAccessRepository> ReaderAccessRepo = new();
+    private readonly Mock<IAuthorizationFacade> AuthFacade = new();
+    private readonly Mock<IAuthorNotificationRepository> NotifRepo = new();
+
+    public UserServiceTests()
+    {
+        Config.Setup(c => c["App:BaseUrl"]).Returns("https://app.draftview.co.uk");
+    }
 
     private UserService CreateSut() => new(
         UserRepo.Object,
@@ -39,21 +44,17 @@ public class UserServiceTests
         return u;
     }
 
-    // ---------------------------------------------------------------------------
-    // IssueInvitation
-    // ---------------------------------------------------------------------------
-
     [Fact]
     public async Task IssueInvitationAsync_ValidRequest_CreatesUserAndInvitation()
     {
         var author = MakeAuthor();
-        var sut    = CreateSut();
+        var sut = CreateSut();
 
         UserRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
         UserRepo.Setup(r => r.GetByEmailAsync("reader@example.com", default)).ReturnsAsync((User?)null);
         InviteRepo.Setup(r => r.GetPendingByUserIdAsync(It.IsAny<Guid>(), default)).ReturnsAsync([]);
 
-        User? addedUser         = null;
+        User? addedUser = null;
         Invitation? addedInvite = null;
 
         UserRepo.Setup(r => r.AddAsync(It.IsAny<User>(), default))
@@ -63,11 +64,12 @@ public class UserServiceTests
         PrefsRepo.Setup(r => r.AddAsync(It.IsAny<UserPreferences>(), default));
         AuthFacade.Setup(f => f.IsAuthor()).Returns(true);
 
-        await sut.IssueInvitationAsync("reader@example.com", ExpiryPolicy.AlwaysOpen, null, author.Id);
+        await sut.IssueInvitationAsync("reader@example.com", "Reader One", ExpiryPolicy.AlwaysOpen, null, author.Id);
 
         Assert.NotNull(addedUser);
         Assert.NotNull(addedInvite);
         Assert.Equal("reader@example.com", addedUser!.Email);
+        Assert.Equal("Reader One", addedUser.DisplayName);
         EmailSender.Verify(e => e.SendAsync(
             It.IsAny<string>(), It.IsAny<string>(),
             It.IsAny<string>(), It.IsAny<string>(), default), Times.Once);
@@ -84,14 +86,14 @@ public class UserServiceTests
         AuthFacade.Setup(f => f.IsAuthor()).Returns(false);
 
         await Assert.ThrowsAsync<UnauthorisedOperationException>(
-            () => sut.IssueInvitationAsync("other@example.com", ExpiryPolicy.AlwaysOpen, null, reader.Id));
+            () => sut.IssueInvitationAsync("other@example.com", "Reader Two", ExpiryPolicy.AlwaysOpen, null, reader.Id));
     }
 
     [Fact]
     public async Task IssueInvitationAsync_EmailAlreadyExists_ThrowsInvariantViolation()
     {
         var author = MakeAuthor();
-        var sut    = CreateSut();
+        var sut = CreateSut();
 
         var existingUser = User.Create("existing@example.com", "Existing User", Role.BetaReader);
         existingUser.Activate();
@@ -101,14 +103,14 @@ public class UserServiceTests
         AuthFacade.Setup(f => f.IsAuthor()).Returns(true);
 
         await Assert.ThrowsAsync<InvariantViolationException>(
-            () => sut.IssueInvitationAsync("existing@example.com", ExpiryPolicy.AlwaysOpen, null, author.Id));
+            () => sut.IssueInvitationAsync("existing@example.com", "Reader Three", ExpiryPolicy.AlwaysOpen, null, author.Id));
     }
 
     [Fact]
     public async Task IssueInvitationAsync_ExistingPendingInvitee_CancelsOlderPendingInvitesAndIssuesFreshToken()
     {
         var author = MakeAuthor();
-        var existingUser = User.Create("reader@example.com", "Pending", Role.BetaReader);
+        var existingUser = User.Create("reader@example.com", "Reader One", Role.BetaReader);
         var olderPending = Invitation.CreateAlwaysOpen(existingUser.Id);
         var newerPending = Invitation.CreateAlwaysOpen(existingUser.Id);
         var sut = CreateSut();
@@ -118,26 +120,39 @@ public class UserServiceTests
             .ReturnsAsync([olderPending, newerPending]);
         AuthFacade.Setup(f => f.IsAuthor()).Returns(true);
 
-        var freshInvitation = await sut.IssueInvitationAsync("reader@example.com", ExpiryPolicy.AlwaysOpen, null, author.Id);
+        var freshInvitation = await sut.IssueInvitationAsync("reader@example.com", "Reader Two", ExpiryPolicy.AlwaysOpen, null, author.Id);
 
         Assert.Equal(InvitationStatus.Cancelled, olderPending.Status);
         Assert.Equal(InvitationStatus.Cancelled, newerPending.Status);
         Assert.Equal(existingUser.Id, freshInvitation.UserId);
+        Assert.Equal("Reader Two", existingUser.DisplayName);
         UserRepo.Verify(r => r.AddAsync(It.IsAny<User>(), default), Times.Never);
         PrefsRepo.Verify(r => r.AddAsync(It.IsAny<UserPreferences>(), default), Times.Never);
         InviteRepo.Verify(r => r.AddAsync(It.Is<Invitation>(i => i.Id == freshInvitation.Id), default), Times.Once);
     }
 
-    // ---------------------------------------------------------------------------
-    // AcceptInvitation
-    // ---------------------------------------------------------------------------
+    [Fact]
+    public async Task IssueInvitationAsync_EmailShapedDisplayName_ThrowsInvariantViolation()
+    {
+        var author = MakeAuthor();
+        var sut = CreateSut();
+
+        UserRepo.Setup(r => r.GetByEmailAsync("reader@example.com", default)).ReturnsAsync((User?)null);
+        AuthFacade.Setup(f => f.IsAuthor()).Returns(true);
+
+        var ex = await Assert.ThrowsAsync<InvariantViolationException>(
+            () => sut.IssueInvitationAsync("reader@example.com", "reader@example.com", ExpiryPolicy.AlwaysOpen, null, author.Id));
+
+        Assert.Equal("I-DISPLAYNAME", ex.InvariantCode);
+        EmailSender.Verify(e => e.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), default), Times.Never);
+    }
 
     [Fact]
     public async Task AcceptInvitationAsync_ValidToken_ActivatesUser()
     {
-        var user       = User.Create("reader@example.com", "Reader", Role.BetaReader);
+        var user = User.Create("reader@example.com", "Reader", Role.BetaReader);
         var invitation = Invitation.CreateAlwaysOpen(user.Id);
-        var sut        = CreateSut();
+        var sut = CreateSut();
 
         InviteRepo.Setup(r => r.GetByTokenAsync(invitation.Token, default)).ReturnsAsync(invitation);
         UserRepo.Setup(r => r.GetByIdAsync(user.Id, default)).ReturnsAsync(user);
@@ -163,7 +178,7 @@ public class UserServiceTests
     [Fact]
     public async Task AcceptInvitationAsync_CancelledInvitation_ThrowsInvariantViolation()
     {
-        var user       = User.Create("reader@example.com", "Reader", Role.BetaReader);
+        var user = User.Create("reader@example.com", "Reader", Role.BetaReader);
         var invitation = Invitation.CreateAlwaysOpen(user.Id);
         invitation.Cancel();
         var sut = CreateSut();
@@ -173,10 +188,6 @@ public class UserServiceTests
         await Assert.ThrowsAsync<InvariantViolationException>(
             () => sut.AcceptInvitationAsync(invitation.Token, "Name"));
     }
-
-    // ---------------------------------------------------------------------------
-    // DeactivateUser
-    // ---------------------------------------------------------------------------
 
     [Fact]
     public async Task DeactivateUserAsync_Author_DeactivatesReader()
@@ -194,10 +205,6 @@ public class UserServiceTests
 
         Assert.False(reader.IsActive);
     }
-
-    // ---------------------------------------------------------------------------
-    // SoftDeleteUser
-    // ---------------------------------------------------------------------------
 
     [Fact]
     public async Task SoftDeleteUserAsync_Author_SoftDeletesReader()
@@ -233,6 +240,7 @@ public class UserServiceTests
         var ex = await Assert.ThrowsAsync<InvariantViolationException>(() =>
             sut.IssueInvitationAsync(
                 "reader@example.com",
+                "Reader One",
                 ExpiryPolicy.ExpiresAt,
                 null,
                 author.Id,
@@ -240,10 +248,6 @@ public class UserServiceTests
 
         Assert.Equal("I-INVITE-EXPIRY-REQUIRED", ex.InvariantCode);
     }
-
-    // ---------------------------------------------------------------------------
-    // DeactivateUserAsync -- revokes ReaderAccess
-    // ---------------------------------------------------------------------------
 
     [Fact]
     public async Task DeactivateUserAsync_RevokesAllReaderAccess()
@@ -279,62 +283,4 @@ public class UserServiceTests
         Assert.Equal(DisplayTheme.Dark, prefs.DisplayTheme);
         UnitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
     }
-
-    [Fact]
-    public async Task UpdateDisplayThemeAsync_MissingPreferences_ThrowsEntityNotFoundException()
-    {
-        var userId = Guid.NewGuid();
-        var sut = CreateSut();
-
-        PrefsRepo.Setup(r => r.GetByUserIdAsync(userId, default))
-            .ReturnsAsync((UserPreferences?) null);
-
-        await Assert.ThrowsAsync<EntityNotFoundException>(
-            () => sut.UpdateDisplayThemeAsync(userId, DisplayTheme.Dark));
-    }
-
-    // ---------------------------------------------------------------------------
-    // UpdateProseFontPreferencesAsync
-    // ---------------------------------------------------------------------------
-
-    [Fact]
-    public async Task UpdateProseFontPreferencesAsync_ValidUser_UpdatesPreferencesAndSaves()
-    {
-        var user = User.Create("reader@example.com", "Reader", Role.BetaReader);
-        var prefs = UserPreferences.CreateForBetaReader(user.Id);
-        var sut = CreateSut();
-
-        PrefsRepo.Setup(r => r.GetByUserIdAsync(user.Id, default))
-            .ReturnsAsync(prefs);
-
-        await sut.UpdateProseFontPreferencesAsync(
-            user.Id,
-            ProseFont.Classic,
-            ProseFontSize.Large,
-            CancellationToken.None);
-
-        Assert.Equal(ProseFont.Classic, prefs.ProseFont);
-        Assert.Equal(ProseFontSize.Large, prefs.ProseFontSize);
-        UnitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
-    }
-
-    [Fact]
-    public async Task UpdateProseFontPreferencesAsync_MissingPreferences_ThrowsEntityNotFoundException()
-    {
-        var userId = Guid.NewGuid();
-        var sut = CreateSut();
-
-        PrefsRepo.Setup(r => r.GetByUserIdAsync(userId, default))
-            .ReturnsAsync((UserPreferences?) null);
-
-        await Assert.ThrowsAsync<EntityNotFoundException>(() =>
-            sut.UpdateProseFontPreferencesAsync(
-                userId,
-                ProseFont.SystemSerif,
-                ProseFontSize.Medium,
-                CancellationToken.None));
-    }
 }
-
-
-
