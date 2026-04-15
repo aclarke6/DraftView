@@ -300,24 +300,24 @@ public class AuthorController(
             var policy = model.NeverExpires ? ExpiryPolicy.AlwaysOpen : ExpiryPolicy.ExpiresAt;
             await userService.IssueInvitationAsync(model.Email, policy, expiresAtUtc, author.Id);
 
-            TempData["Success"] = $"Invitation sent to {model.Email}.";
+            TempData["Success"] = "Invitation sent.";
             return RedirectToAction("Readers");
         }
         catch (DbUpdateException ex)
         {
-            logger.LogError(ex, "InviteReader database failure for {Email} by author {AuthorId}", model.Email, author.Id);
+            logger.LogError(ex, "InviteReader database failure by author {AuthorId}", author.Id);
             ModelState.AddModelError(string.Empty, "Unable to send invitation. Please check the details and try again.");
             return View(model);
         }
         catch (InvariantViolationException ex)
         {
-            logger.LogWarning(ex, "InviteReader validation failure for {Email} by author {AuthorId}", model.Email, author.Id);
+            logger.LogWarning(ex, "InviteReader validation failure by author {AuthorId}", author.Id);
             ModelState.AddModelError(string.Empty, ex.Message);
             return View(model);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "InviteReader unexpected failure for {Email} by author {AuthorId}", model.Email, author.Id);
+            logger.LogError(ex, "InviteReader unexpected failure by author {AuthorId}", author.Id);
             ModelState.AddModelError(string.Empty, "Unable to send invitation due to an unexpected error.");
             return View(model);
         }

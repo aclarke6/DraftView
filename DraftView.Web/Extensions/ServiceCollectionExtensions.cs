@@ -69,12 +69,19 @@ namespace DraftView.Web.Extensions
             return services;
         }
 
-        public static IServiceCollection AddApplicationServices(this IServiceCollection services)
+        public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
         {
-            // Local/dev Step 6 registration: keep one in-memory key per running process.
-            services.AddSingleton<IUserEmailEncryptionService, UserEmailEncryptionService>();
-            // Local/dev Step 7 registration: keep one in-memory HMAC key per running process.
-            services.AddSingleton<IUserEmailLookupHmacService, UserEmailLookupHmacService>();
+            var encryptionKey = ReadEmailProtectionKey(
+                configuration,
+                "EmailProtection:EncryptionKey");
+            var lookupHmacKey = ReadEmailProtectionKey(
+                configuration,
+                "EmailProtection:LookupHmacKey");
+
+            services.AddSingleton<IUserEmailEncryptionService>(
+                _ => new UserEmailEncryptionService(encryptionKey));
+            services.AddSingleton<IUserEmailLookupHmacService>(
+                _ => new UserEmailLookupHmacService(lookupHmacKey));
             services.AddScoped<ISyncService, SyncService>();
             services.AddScoped<IPublicationService, PublicationService>();
             services.AddSingleton<ISyncProgressTracker, SyncProgressTracker>();
@@ -91,6 +98,30 @@ namespace DraftView.Web.Extensions
             services.AddScoped<ISystemStateMessageService, SystemStateMessageService>();
 
             return services;
+        }
+
+        private static byte[] ReadEmailProtectionKey(IConfiguration configuration, string configPath)
+        {
+            var configuredValue = configuration[configPath];
+            if (string.IsNullOrWhiteSpace(configuredValue))
+                throw new InvalidOperationException(
+                    $"Missing required configuration value '{configPath}'. Configure it via .NET user secrets for DraftView.Web.");
+
+            try
+            {
+                var keyBytes = Convert.FromBase64String(configuredValue);
+                if (keyBytes.Length != 32)
+                    throw new InvalidOperationException(
+                        $"Configuration value '{configPath}' must decode to exactly 32 bytes.");
+
+                return keyBytes;
+            }
+            catch (FormatException ex)
+            {
+                throw new InvalidOperationException(
+                    $"Configuration value '{configPath}' must be a valid base64-encoded 32-byte key.",
+                    ex);
+            }
         }
 
         public static IServiceCollection AddWebServices(this IServiceCollection services, IConfiguration configuration)
