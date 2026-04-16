@@ -68,5 +68,6 @@ public abstract class BaseController(IUserRepository userRepo) : Controller
 
         var user = await GetCurrentUserAsync(ct);
         return user?.Role == Role.SystemSupport;
+        
     }
 }
