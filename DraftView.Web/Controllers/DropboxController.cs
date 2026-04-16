@@ -15,7 +15,7 @@ public class DropboxController(
     IDropboxConnectionRepository connectionRepo,
     IUnitOfWork unitOfWork,
     DropboxClientSettings dropboxSettings,
-    ILogger<DropboxController> logger) : Controller
+    ILogger<DropboxController> logger) : BaseController(userRepo)
 {
     private static readonly HttpClient Http = new();
 
@@ -25,8 +25,8 @@ public class DropboxController(
     [HttpGet]
     public async Task<IActionResult> Connect()
     {
-        var author = await GetAuthorAsync();
-        if (author is null) return Forbid();
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
 
         // Generate a state token to prevent CSRF
         var state = Convert.ToBase64String(Encoding.UTF8.GetBytes(
@@ -51,8 +51,8 @@ public class DropboxController(
     [HttpGet]
     public async Task<IActionResult> Callback(string? code, string? state, string? error)
     {
-        var author = await GetAuthorAsync();
-        if (author is null) return Forbid();
+        var (author, err) = await RequireCurrentAuthorAsync();
+        if (err is not null || author is null) return err ?? Forbid();
 
         if (!string.IsNullOrWhiteSpace(error))
         {
@@ -113,8 +113,8 @@ public class DropboxController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Disconnect()
     {
-        var author = await GetAuthorAsync();
-        if (author is null) return Forbid();
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
 
         var connection = await connectionRepo.GetByUserIdAsync(author.Id);
         if (connection is not null)
@@ -133,8 +133,8 @@ public class DropboxController(
     [HttpGet]
     public async Task<IActionResult> Status()
     {
-        var author = await GetAuthorAsync();
-        if (author is null) return Forbid();
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
 
         var connection = await connectionRepo.GetByUserIdAsync(author.Id);
 
@@ -152,8 +152,8 @@ public class DropboxController(
     [HttpGet]
     public async Task<IActionResult> Settings()
     {
-        var author = await GetAuthorAsync();
-        if (author is null) return Forbid();
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
 
         var connection = await connectionRepo.GetByUserIdAsync(author.Id);
         ViewBag.Connection = connection;
@@ -163,14 +163,6 @@ public class DropboxController(
     // ---------------------------------------------------------------------------
     // Private helpers
     // ---------------------------------------------------------------------------
-    private async Task<User?> GetAuthorAsync()
-    {
-        var email = User.Identity?.Name;
-        if (email is null)
-            return null;
-        return await userRepo.GetByEmailAsync(email);
-    }
-
     private string BuildRedirectUri()
     {
         var request = HttpContext.Request;
