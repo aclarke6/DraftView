@@ -12,7 +12,8 @@ public class CommentService(
     ISectionRepository sectionRepo,
     IUserRepository userRepo,
     IUnitOfWork unitOfWork,
-    IAuthorNotificationRepository notificationRepo) : ICommentService
+    IAuthorNotificationRepository notificationRepo,
+    ISectionVersionRepository sectionVersionRepo) : ICommentService
 {
     public async Task<Comment> CreateRootCommentAsync(
         Guid sectionId, Guid userId, string body, Visibility visibility,
@@ -25,8 +26,10 @@ public class CommentService(
         if (user.Role == Role.BetaReader && !section.IsPublished)
             throw new UnauthorisedOperationException(
                 "Beta readers may only comment on published sections.");
+
+        var latestVersion = await sectionVersionRepo.GetLatestAsync(sectionId, ct);
         var comment = Comment.CreateRoot(sectionId, userId, body, visibility,
-            isReaderComment: user.Role == Role.BetaReader);
+            isReaderComment: user.Role == Role.BetaReader, sectionVersionId: latestVersion?.Id);
         await commentRepo.AddAsync(comment, ct);
         await unitOfWork.SaveChangesAsync(ct);
 
@@ -66,9 +69,11 @@ public class CommentService(
         if (user.Role == Role.BetaReader && !section.IsPublished)
             throw new UnauthorisedOperationException(
                 "Beta readers may only comment on published sections.");
+
+        var latestVersion = await sectionVersionRepo.GetLatestAsync(parent.SectionId, ct);
         var reply = Comment.CreateReply(
             parent.SectionId, userId, parentCommentId,
-            parent.Visibility, body, requestedVisibility);
+            parent.Visibility, body, requestedVisibility, sectionVersionId: latestVersion?.Id);
         if (user.Role == Role.Author && parent.Status != CommentStatus.AuthorReply)
             parent.MarkDoneByReply();
         await commentRepo.AddAsync(reply, ct);

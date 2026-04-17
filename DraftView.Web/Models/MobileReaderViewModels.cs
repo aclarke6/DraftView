@@ -56,4 +56,16 @@ public class MobileReadViewModel
     public bool CurrentUserIsModerator { get; set; }
     public bool HasPrev => PrevSceneId.HasValue;
     public bool HasNext => NextSceneId.HasValue;
+
+    /// <summary>
+    /// The HTML content to render. Latest SectionVersion if exists,
+    /// fallback to Scene.HtmlContent for pre-versioning sections.
+    /// </summary>
+    public string? ResolvedHtmlContent { get; set; }
+
+    /// <summary>
+    /// The VersionNumber of the SectionVersion used to resolve content.
+    /// Null if no version exists yet (pre-versioning section).
+    /// </summary>
+    public int? CurrentVersionNumber { get; set; }
 }

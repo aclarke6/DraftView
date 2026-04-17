@@ -219,4 +219,40 @@ public class ReadingProgressServiceTests
         Assert.NotNull(result);
         Assert.Equal(section2, result!.SectionId);
     }
+
+    // ---------------------------------------------------------------------------
+    // UpdateLastReadVersionAsync
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task UpdateLastReadVersionAsync_UpdatesVersionNumber_WhenReadEventExists()
+    {
+        var sectionId = Guid.NewGuid();
+        var userId    = Guid.NewGuid();
+        var sut       = CreateSut();
+
+        var readEvent = ReadEvent.Create(sectionId, userId);
+        _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default))
+            .ReturnsAsync(readEvent);
+
+        await sut.UpdateLastReadVersionAsync(sectionId, userId, 3);
+
+        Assert.Equal(3, readEvent.LastReadVersionNumber);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateLastReadVersionAsync_DoesNotThrow_WhenNoReadEventExists()
+    {
+        var sectionId = Guid.NewGuid();
+        var userId    = Guid.NewGuid();
+        var sut       = CreateSut();
+
+        _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default))
+            .ReturnsAsync((ReadEvent?)null);
+
+        await sut.UpdateLastReadVersionAsync(sectionId, userId, 3);
+
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Never);
+    }
 }

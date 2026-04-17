@@ -14,13 +14,15 @@ public class CommentServiceTests
     private readonly Mock<IUserRepository>               _userRepo         = new();
     private readonly Mock<IUnitOfWork>                   _unitOfWork       = new();
     private readonly Mock<IAuthorNotificationRepository> _notificationRepo = new();
+    private readonly Mock<ISectionVersionRepository>     _versionRepo      = new();
 
     private CommentService CreateSut() => new(
         _commentRepo.Object,
         _sectionRepo.Object,
         _userRepo.Object,
         _unitOfWork.Object,
-        _notificationRepo.Object);
+        _notificationRepo.Object,
+        _versionRepo.Object);
 
     private static Section MakePublishedSection()
     {
@@ -306,5 +308,76 @@ public class CommentServiceTests
         _notificationRepo.Verify(
             r => r.AddAsync(It.IsAny<AuthorNotification>(), default),
             Times.Never);
+    }
+
+    // ---------------------------------------------------------------------------
+    // SectionVersionId anchoring
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task CreateRootCommentAsync_SetsCurrentSectionVersionId_WhenVersionExists()
+    {
+        var section = MakePublishedSection();
+        var reader  = MakeBetaReader();
+        reader.Activate();
+        var sut = CreateSut();
+
+        var version = SectionVersion.Create(section, Guid.NewGuid(), 1);
+        var versionRepo = new Mock<ISectionVersionRepository>();
+        versionRepo.Setup(r => r.GetLatestAsync(section.Id, default))
+            .ReturnsAsync(version);
+
+        var sutWithVersion = new CommentService(
+            _commentRepo.Object,
+            _sectionRepo.Object,
+            _userRepo.Object,
+            _unitOfWork.Object,
+            _notificationRepo.Object,
+            versionRepo.Object);
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _userRepo.Setup(r => r.GetByIdAsync(reader.Id, default)).ReturnsAsync(reader);
+
+        Comment? added = null;
+        _commentRepo.Setup(r => r.AddAsync(It.IsAny<Comment>(), default))
+            .Callback<Comment, CancellationToken>((c, _) => added = c);
+
+        await sutWithVersion.CreateRootCommentAsync(section.Id, reader.Id, "Great!", Visibility.Public);
+
+        Assert.NotNull(added);
+        Assert.Equal(version.Id, added!.SectionVersionId);
+    }
+
+    [Fact]
+    public async Task CreateRootCommentAsync_SetsNullSectionVersionId_WhenNoVersionExists()
+    {
+        var section = MakePublishedSection();
+        var reader  = MakeBetaReader();
+        reader.Activate();
+        var sut = CreateSut();
+
+        var versionRepo = new Mock<ISectionVersionRepository>();
+        versionRepo.Setup(r => r.GetLatestAsync(section.Id, default))
+            .ReturnsAsync((SectionVersion?)null);
+
+        var sutWithVersion = new CommentService(
+            _commentRepo.Object,
+            _sectionRepo.Object,
+            _userRepo.Object,
+            _unitOfWork.Object,
+            _notificationRepo.Object,
+            versionRepo.Object);
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _userRepo.Setup(r => r.GetByIdAsync(reader.Id, default)).ReturnsAsync(reader);
+
+        Comment? added = null;
+        _commentRepo.Setup(r => r.AddAsync(It.IsAny<Comment>(), default))
+            .Callback<Comment, CancellationToken>((c, _) => added = c);
+
+        await sutWithVersion.CreateRootCommentAsync(section.Id, reader.Id, "Great!", Visibility.Public);
+
+        Assert.NotNull(added);
+        Assert.Null(added!.SectionVersionId);
     }
 }

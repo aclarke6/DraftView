@@ -48,7 +48,7 @@
     <h1 class="mobile-read__title">@Model.Scene.Title</h1>
 
     <div class="mobile-read__prose">
-        @Html.Raw(Model.Scene.HtmlContent ?? "<p><em>The author has not added content to this scene yet.</em></p>")
+        @Html.Raw(Model.ResolvedHtmlContent ?? "<p><em>The author has not added content to this scene yet.</em></p>")
     </div>
 
     <div class="mobile-comments" id="comments">

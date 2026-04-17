@@ -40,6 +40,13 @@ public class SceneWithComments
 {
     public Section Scene { get; set; } = default!;
     public IReadOnlyList<CommentDisplayViewModel> Comments { get; set; } = new List<CommentDisplayViewModel>();
+
+    /// <summary>
+    /// The HTML content to render for this scene. Resolved from the latest
+    /// SectionVersion if one exists, falling back to Section.HtmlContent
+    /// for pre-versioning published sections.
+    /// </summary>
+    public string? ResolvedHtmlContent { get; set; }
 }
 
 public class CommentDisplayViewModel

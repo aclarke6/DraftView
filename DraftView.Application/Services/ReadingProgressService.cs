@@ -60,4 +60,18 @@ public class ReadingProgressService(
             .OrderByDescending(e => e.LastOpenedAt)
             .FirstOrDefault();
     }
+
+    public async Task UpdateLastReadVersionAsync(
+        Guid sectionId,
+        Guid userId,
+        int versionNumber,
+        CancellationToken ct = default)
+    {
+        var readEvent = await readEventRepo.GetAsync(sectionId, userId, ct);
+        if (readEvent is not null)
+        {
+            readEvent.UpdateLastReadVersion(versionNumber);
+            await unitOfWork.SaveChangesAsync(ct);
+        }
+    }
 }

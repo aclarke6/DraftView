@@ -15,6 +15,7 @@ public class ReaderController(
     IReadingProgressService progressService,
     IUserRepository userRepository,
     IReaderAccessRepository readerAccessRepo,
+    ISectionVersionRepository sectionVersionRepo,
     ILogger<ReaderController> logger)
     : BaseReaderController(projectRepo, sectionRepo, commentService, progressService,
                            userRepository, readerAccessRepo, logger)
@@ -347,9 +348,25 @@ public class ReaderController(
         foreach (var scene in scenes)
         {
             await ProgressService.RecordOpenAsync(scene.Id, user.Id);
+
+            // Resolve content from latest version or fallback to scene content
+            var latestVersion = await sectionVersionRepo.GetLatestAsync(scene.Id);
+            var resolvedHtml = latestVersion?.HtmlContent ?? scene.HtmlContent;
+
+            // Update last read version if version exists
+            if (latestVersion is not null)
+            {
+                await ProgressService.UpdateLastReadVersionAsync(scene.Id, user.Id, latestVersion.VersionNumber);
+            }
+
             var comments        = await CommentService.GetThreadsForSectionAsync(scene.Id, user.Id);
             var displayComments = await BuildCommentDisplayModelsAsync(comments, user.Id, isModerator);
-            scenesWithComments.Add(new SceneWithComments { Scene = scene, Comments = displayComments });
+            scenesWithComments.Add(new SceneWithComments
+            {
+                Scene = scene,
+                Comments = displayComments,
+                ResolvedHtmlContent = resolvedHtml
+            });
         }
 
         var chapterCommentsRaw = await CommentService.GetThreadsForSectionAsync(id, user.Id);
@@ -399,6 +416,17 @@ public class ReaderController(
 
         await ProgressService.RecordOpenAsync(id, user.Id);
 
+        // Resolve content from latest version or fallback to scene content
+        var latestVersion = await sectionVersionRepo.GetLatestAsync(scene.Id);
+        var resolvedHtml = latestVersion?.HtmlContent ?? scene.HtmlContent;
+        var currentVersionNumber = latestVersion?.VersionNumber;
+
+        // Update last read version if version exists
+        if (latestVersion is not null)
+        {
+            await ProgressService.UpdateLastReadVersionAsync(scene.Id, user.Id, latestVersion.VersionNumber);
+        }
+
         var allSections = await SectionRepo.GetByProjectIdAsync(project.Id);
 
         var siblingScenes = allSections
@@ -427,7 +455,9 @@ public class ReaderController(
             PrevSceneId            = prevSceneId,
             NextSceneId            = nextSceneId,
             CurrentUserId          = user.Id,
-            CurrentUserIsModerator = isModerator
+            CurrentUserIsModerator = isModerator,
+            ResolvedHtmlContent    = resolvedHtml,
+            CurrentVersionNumber   = currentVersionNumber
         });
     }
 }

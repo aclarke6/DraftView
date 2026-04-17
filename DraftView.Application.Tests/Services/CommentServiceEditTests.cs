@@ -18,7 +18,9 @@ public class CommentServiceEditTests
         _commentRepo.Object,
         _sectionRepo.Object,
         _userRepo.Object,
-        _unitOfWork.Object, new Moq.Mock<DraftView.Domain.Interfaces.Repositories.IAuthorNotificationRepository>().Object);
+        _unitOfWork.Object,
+        new Mock<IAuthorNotificationRepository>().Object,
+        new Mock<ISectionVersionRepository>().Object);
 
     [Fact]
     public async Task EditCommentAsync_OwnerEditingOwnRootComment_UpdatesBody()
@@ -350,3 +352,4 @@ public class CommentServiceEditTests
     private static User MakeAuthor() =>
         User.Create("author@example.com", "Author", Role.Author);
 }
+
