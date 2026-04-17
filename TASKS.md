@@ -81,7 +81,8 @@ Any modification of a view must include an audit of that view for style leakage.
 
 ## BUGS
 
-- [DONE] Reader view does not apply saved Reading Preferences (font face and font size) — fixed 2026-04-17: added `data-prose-font` / `data-prose-font-size` to `<body>` in `_Layout.cshtml`; added CSS attribute selectors to `DraftView.Core.css`
+- [DONE] Reader view does not apply saved Reading Preferences (font face and font size) — resolved 2026-04-17: moved read-view prose preference binding to read view models (`DesktopChapterReadViewModel` / `MobileReadViewModel`), populated in `ReaderController` read actions, and bound in `DesktopRead.cshtml` / `MobileRead.cshtml` via model-backed `data-prose-font` / `data-prose-font-size`
+- [DONE] CS9107 in `AccountController` primary constructor (`IUserRepository userRepo` captured in derived type and passed to base) — resolved 2026-04-17: removed duplicate derived capture path by routing user lookups through base-owned repository helpers (`GetUserByIdAsync` / `GetUserByEmailAsync`), preserving behavior
 - [OPEN] `/Author/InviteReader` submit fails with browser "This page isn't working" on production
   - observed at `https://draftview.co.uk/Author/InviteReader` when submitting the invite form
   - current behaviour: the request crashes instead of returning a controlled application error page or successful redirect
