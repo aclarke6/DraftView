@@ -34,6 +34,7 @@ namespace DraftView.Web.Extensions
             services.AddScoped<IInvitationRepository, InvitationRepository>();
             services.AddScoped<IProjectRepository, ProjectRepository>();
             services.AddScoped<ISectionRepository, SectionRepository>();
+            services.AddScoped<ISectionVersionRepository, SectionVersionRepository>();
             services.AddScoped<ICommentRepository, CommentRepository>();
             services.AddScoped<IReadEventRepository, ReadEventRepository>();
             services.AddScoped<IUserPreferencesRepository, UserPreferencesRepository>();

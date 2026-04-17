@@ -39,6 +39,7 @@ public class DraftViewDbContext : IdentityDbContext<IdentityUser>, IUnitOfWork
     public DbSet<Invitation> Invitations { get; set; } = default!;
     public DbSet<Project> Projects { get; set; } = default!;
     public DbSet<Section> Sections { get; set; } = default!;
+    public DbSet<SectionVersion> SectionVersions { get; set; } = default!;
     public DbSet<Comment> Comments { get; set; } = default!;
     public DbSet<ReadEvent> ReadEvents { get; set; } = default!;
     public DbSet<UserPreferences> UserPreferences { get; set; } = default!;
