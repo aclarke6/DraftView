@@ -86,6 +86,9 @@ namespace DraftView.Web.Extensions
             services.AddScoped<ISyncService, ScrivenerSyncService>();
             services.AddScoped<IPublicationService, PublicationService>();
             services.AddSingleton<ISyncProgressTracker, SyncProgressTracker>();
+            services.AddScoped<ISectionTreeService, SectionTreeService>();
+            services.AddScoped<IImportService, ImportService>();
+            services.AddScoped<IImportProvider, RtfImportProvider>();
             services.AddScoped<IProjectDiscoveryService, ScrivenerProjectDiscoveryService>();
             services.AddScoped<ICommentService, CommentService>();
             services.AddScoped<IUserService, UserService>();

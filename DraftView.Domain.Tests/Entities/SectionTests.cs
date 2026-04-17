@@ -346,6 +346,64 @@ public class SectionTests
 
         Assert.False(section.ContentChangedSincePublish);
     }
+
+    // ---------------------------------------------------------------------------
+    // CreateDocumentForUpload
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateDocumentForUpload_WithValidData_ReturnsDocument()
+    {
+        var section = Section.CreateDocumentForUpload(ProjectId, ValidTitle, null, 1);
+
+        Assert.NotEqual(Guid.Empty, section.Id);
+        Assert.Equal(ProjectId, section.ProjectId);
+        Assert.Equal(ValidTitle, section.Title);
+        Assert.Equal(NodeType.Document, section.NodeType);
+        Assert.Equal(1, section.SortOrder);
+        Assert.False(section.IsPublished);
+        Assert.False(section.IsSoftDeleted);
+    }
+
+    [Fact]
+    public void CreateDocumentForUpload_HasNullScrivenerUuid()
+    {
+        var section = Section.CreateDocumentForUpload(ProjectId, ValidTitle, null, 1);
+
+        Assert.Null(section.ScrivenerUuid);
+    }
+
+    [Fact]
+    public void CreateDocumentForUpload_HasNullHtmlContent()
+    {
+        var section = Section.CreateDocumentForUpload(ProjectId, ValidTitle, null, 1);
+
+        Assert.Null(section.HtmlContent);
+    }
+
+    [Fact]
+    public void CreateDocumentForUpload_SetsParentId()
+    {
+        var parentId = Guid.NewGuid();
+
+        var section = Section.CreateDocumentForUpload(ProjectId, ValidTitle, parentId, 1);
+
+        Assert.Equal(parentId, section.ParentId);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void CreateDocumentForUpload_WithInvalidTitle_ThrowsInvariantViolation(string? title)
+    {
+#pragma warning disable CS8604
+        var ex = Assert.Throws<InvariantViolationException>(
+            () => Section.CreateDocumentForUpload(ProjectId, title, null, 1));
+#pragma warning restore CS8604
+
+        Assert.Equal("I-SEC-TITLE", ex.InvariantCode);
+    }
 }
 
 

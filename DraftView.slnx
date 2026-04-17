@@ -7,6 +7,7 @@
     <File Path=".gitignore" />
     <File Path="betabooks-export.json" />
     <File Path="Copy-SourceFiles.ps1" />
+    <File Path="DraftView Git Rules.md" />
     <File Path="Get-CodeFiles.ps1" />
     <File Path="get-dropbox-refresh-token.ps1" />
     <File Path="pg.ps1" />
@@ -15,6 +16,7 @@
     <File Path="Project Forweard Plan.Txt" />
     <File Path="publish-draftview.ps1" />
     <File Path="Publishing And versioning Architecture.md" />
+    <File Path="Refactoring.md" />
     <File Path="Show-ProjectTree.ps1" />
     <File Path="Stage13-Verify.ps1" />
     <File Path="start-codex.ps1" />
@@ -22,6 +24,17 @@
     <File Path="TASKS.md" />
     <File Path="Test-OracleSmtp.ps1" />
     <File Path="Update-CssVersion.ps1" />
+  </Folder>
+  <Folder Name="/Solution Items/.github/">
+    <File Path="copilot-instructions.md" />
+  </Folder>
+  <Folder Name="/Solution Items/.github/instructions/">
+    <File Path="refactoring.instructions.md" />
+    <File Path="versioning.instructions.md" />
+  </Folder>
+  <Folder Name="/Solution Items/.github/prompts/">
+    <File Path="vsprint1-phase1.prompt.md" />
+    <File Path="vsprint1-phase2.prompt.md" />
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="DraftView.Application.Tests/DraftView.Application.Tests.csproj" />

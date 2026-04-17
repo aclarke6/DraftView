@@ -1,4 +1,4 @@
-# DraftView Platform Architecture — Publishing and Versioning (v4.1)
+# DraftView Platform Architecture — Publishing and Versioning (v4.3)
 
 ---
 
@@ -10,6 +10,8 @@ See DraftView Git Rules.md for versioning and branching strategy.
 |---------|--------|
 | v4.0 | Core versioning backbone, sync provider abstraction, phased delivery model |
 | v4.1 | Manual upload as first-class ingestion channel. `ProjectType` enum. `IImportProvider` interface. `SectionTreeService` creation gate. `Comment.SectionVersionId` anchoring. |
+| v4.2 | V-Sprint 1 Phase 1 complete. `SectionVersion`, `ChangeClassification`, `ProjectType` in Domain. `ISectionVersionRepository` + EF implementation. `ReadEvent.LastReadVersionNumber`. `Comment.SectionVersionId`. Migration `AddVersioningAndManualUpload` applied to production 2026-04-17. 529 tests. |
+| v4.3 | V-Sprint 1 Phase 2 complete. `IImportProvider`, `IImportService`, `ISectionTreeService`, `UnsupportedFileTypeException`, `SectionTreeNode` in Domain. `RtfImportProvider`, `ImportService`, `SectionTreeService` in Application. `Section.CreateDocumentForUpload` factory + domain tests. All services registered in DI. Forensic review passed. 558 tests. |
 
 ---
 

@@ -68,6 +68,35 @@ public sealed class Section
         };
     }
 
+    /// <summary>
+    /// Creates a document section for manual upload workflows.
+    /// These sections do not have a ScrivenerUuid.
+    /// </summary>
+    public static Section CreateDocumentForUpload(
+        Guid projectId, string title, Guid? parentId, int sortOrder)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+            throw new InvariantViolationException("I-SEC-TITLE",
+                "Section title must not be null or whitespace.");
+
+        return new Section
+        {
+            Id             = Guid.NewGuid(),
+            ProjectId      = projectId,
+            ScrivenerUuid  = null!,
+            Title          = title.Trim(),
+            ParentId       = parentId,
+            SortOrder      = sortOrder,
+            NodeType       = NodeType.Document,
+            HtmlContent    = null,
+            ContentHash    = null,
+            ScrivenerStatus = null,
+            IsPublished    = false,
+            IsSoftDeleted  = false,
+            ContentChangedSincePublish = false
+        };
+    }
+
     // ---------------------------------------------------------------------------
     // Publication
     // ---------------------------------------------------------------------------
