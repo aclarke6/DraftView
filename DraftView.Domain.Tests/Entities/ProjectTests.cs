@@ -211,4 +211,67 @@ public class ProjectTests
 
         Assert.Equal(firstDeletion, project.SoftDeletedAt);
     }
+
+    // ---------------------------------------------------------------------------
+    // CreateManual
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateManual_WithValidData_ReturnsProject()
+    {
+        var project = Project.CreateManual("My Manual Novel", ValidAuthorId);
+
+        Assert.NotEqual(Guid.Empty, project.Id);
+        Assert.Equal("My Manual Novel", project.Name);
+        Assert.Equal(ValidAuthorId, project.AuthorId);
+        Assert.False(project.IsReaderActive);
+        Assert.False(project.IsSoftDeleted);
+    }
+
+    [Fact]
+    public void CreateManual_SetsProjectTypeToManual()
+    {
+        var project = Project.CreateManual("My Manual Novel", ValidAuthorId);
+
+        Assert.Equal(ProjectType.Manual, project.ProjectType);
+    }
+
+    [Fact]
+    public void CreateManual_HasNullSyncRootId()
+    {
+        var project = Project.CreateManual("My Manual Novel", ValidAuthorId);
+
+        Assert.Null(project.SyncRootId);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void CreateManual_WithNullName_ThrowsInvariantViolation(string? name)
+    {
+#pragma warning disable CS8604
+        var ex = Assert.Throws<InvariantViolationException>(
+            () => Project.CreateManual(name, ValidAuthorId));
+#pragma warning restore CS8604
+
+        Assert.Equal("I-PROJ-NAME", ex.InvariantCode);
+    }
+
+    [Fact]
+    public void CreateManual_WithEmptyGuidAuthorId_ThrowsInvariantViolation()
+    {
+        var ex = Assert.Throws<InvariantViolationException>(
+            () => Project.CreateManual("My Manual Novel", Guid.Empty));
+
+        Assert.Equal("I-PROJ-AUTHOR", ex.InvariantCode);
+    }
+
+    [Fact]
+    public void Create_ExistingFactory_SetsProjectTypeToScrivenerDropbox()
+    {
+        var project = Project.Create("My Novel", "/dropbox/MyNovel.scriv", ValidAuthorId);
+
+        Assert.Equal(ProjectType.ScrivenerDropbox, project.ProjectType);
+    }
 }

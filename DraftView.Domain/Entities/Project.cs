@@ -20,6 +20,7 @@ public sealed class Project
     /// For single-project vaults this is the Manuscript (DraftFolder) UUID.
     /// </summary>
     public string? SyncRootId { get; private set; } = default!;
+    public ProjectType ProjectType { get; private set; }
     public bool IsReaderActive { get; private set; }
     public DateTime? ReaderActivatedAt { get; private set; }
     public DateTime? LastSyncedAt { get; private set; }
@@ -62,6 +63,34 @@ public sealed class Project
             Name              = name.Trim(),
             DropboxPath       = dropboxPath.Trim(),
             SyncRootId = scrivenerRootUuid?.Trim(),
+            ProjectType       = ProjectType.ScrivenerDropbox,
+            IsReaderActive    = false,
+            SyncStatus        = SyncStatus.Stale,
+            IsSoftDeleted     = false
+        };
+    }
+
+    /// <summary>
+    /// Creates a manual project that receives content only via author-initiated file import.
+    /// Manual projects do not sync with Dropbox.
+    /// </summary>
+    public static Project CreateManual(string name, Guid authorId)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvariantViolationException("I-PROJ-NAME",
+                "Project name must not be null or whitespace.");
+
+        if (authorId == Guid.Empty)
+            throw new InvariantViolationException("I-PROJ-AUTHOR",
+                "Project must be associated with a valid author.");
+
+        return new Project {
+            Id                = Guid.NewGuid(),
+            AuthorId          = authorId,
+            Name              = name.Trim(),
+            DropboxPath       = string.Empty,
+            SyncRootId        = null,
+            ProjectType       = ProjectType.Manual,
             IsReaderActive    = false,
             SyncStatus        = SyncStatus.Stale,
             IsSoftDeleted     = false
