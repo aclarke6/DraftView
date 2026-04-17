@@ -13,7 +13,7 @@
    -------------------------------------------------------------------------- */
 :root {
     /* Update for every change */
-    --css-version: "v2026-04-15-3";
+    --css-version: "v2026-04-17-1";
     /* Colour palette now split into Light and Dark theme files */
     /* Typography */
     --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
@@ -58,6 +58,25 @@
     /* Transitions */
     --transition: 150ms ease;
 }
+
+/* --------------------------------------------------------------------------
+   1a. Prose Font Preferences — driven by data-prose-font and
+   data-prose-font-size attributes set on <body> from UserPreferences.
+   Overrides the :root defaults above.
+   Used by _Layout.cshtml / DesktopRead.cshtml / MobileRead.cshtml
+   -------------------------------------------------------------------------- */
+
+/* Font face */
+[data-prose-font="Humanist"]    { --font-prose: 'Merriweather', Georgia, serif; }
+[data-prose-font="Classic"]     { --font-prose: 'Times New Roman', Times, serif; }
+[data-prose-font="SansSerif"]   { --font-prose: 'Lato', system-ui, sans-serif; }
+[data-prose-font="SystemSerif"] { --font-prose: Palatino, Georgia, 'Times New Roman', serif; }
+
+/* Font size */
+[data-prose-font-size="Small"]      { --text-prose-base: 0.875rem; }
+[data-prose-font-size="Medium"]     { --text-prose-base: 1.0625rem; }
+[data-prose-font-size="Large"]      { --text-prose-base: 1.25rem; }
+[data-prose-font-size="ExtraLarge"] { --text-prose-base: 1.5rem; }
 
 /* --------------------------------------------------------------------------
    2. Reset and Base Elements
