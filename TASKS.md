@@ -1,1088 +1,917 @@
-﻿# DraftView Task List
-Last updated: 2026-04-15
+﻿# DraftView Platform Architecture — Publishing and Versioning (v4.1)
 
 ---
 
-## ARCHITECTURE RULES
+## Revision History
 
-These rules govern all new development and must be applied consistently.
-
-### Tenancy Stance: Tenancy-Agnostic
-Build everything tenancy-agnostic — not tenancy-unaware, not tenancy-enabled.
-
-**The rule:** If a table relates to a reader, project, or author-scoped resource, it must carry an `AuthorId`. When full multi-tenancy arrives, `AuthorId` becomes `TenancyId` and the queries stay the same shape. The refactor is then mechanical (migration + rename), not architectural.
-
-**Checklist for every new entity:**
-- Does it relate to a reader, project, or author-specific resource? → Add `AuthorId`
-- Does the repository method return scoped data? → It must accept or imply an `AuthorId`
-- Is there a global query with no author scope? → That is a bug, not a feature
-
-**What this means in practice:**
-- `ReaderTenant` gets `AuthorId` now, renamed to `TenancyId` later
-- Invitation flow must carry `AuthorId` explicitly
-- Every Readers list query must be scoped to the current author
-- Never use `GetAllBetaReadersAsync()` without an author scope (current usage is a known debt)
-
-### No Tenancy-Enabled Premature Build
-Do not build the full `Tenancy` / `TenancyMembership` entity model until billing is in place and the product is live with a single author. Reader Marketplace is explicitly deferred until then.
-
-### TDD Required for Domain, Application and Infrastructure Changes
-All new domain entities, application service changes, and infrastructure changes require tests before implementation. No exceptions.
-
-### CSS Version — MANDATORY on Every CSS Change
-Every script that modifies any `.css` file must also bump `--css-version` in `DraftView.Core.css`. Automated via `Update-CssVersion.ps1`.
-
-Always use regex replace — never hardcode the expected current value:
-    $core = $core -replace '--css-version: "v[^"]+"', '--css-version: "vNEW_VERSION"'
-
-### Controller Action Guards — MANDATORY
-Every controller that accesses data or performs mutations must be protected by an `[Authorize]` attribute at class level:
-
-- `AuthorController`  → `[Authorize(Policy = "RequireAuthorPolicy")]`
-- `ReaderController`  → `[Authorize(Roles = "Author,BetaReader")]` (via `BaseReaderController`)
-- `SupportController` → `[Authorize(Roles = "SystemSupport")]`
-- `DropboxController` → `[Authorize(Policy = "RequireAuthorPolicy")]`
-- `AccountController` → individual actions use `[Authorize]` where needed
-
-### Replacement Scripts Must Verify — MANDATORY
-Every PowerShell string replacement MUST verify the change applied before proceeding:
-1. Detect line endings: `$le = if ($content -match "\`r\`n") { "\`r\`n" } else { "\`n" }`
-2. Apply replacement using `$le` in match strings
-3. Compare old and new — if equal, write ERROR and exit 1
-4. Only then proceed
-
-### Script Standards
-- Name format: `Step{N}-{DayAbbrev}-{Description}.ps1`
-- Start with `cls`; end with the next required command
-- Unicode characters built via `[char]0xNNNN` — never embed in here-strings
-- Scripts 50+ lines → deliver as `.ps1` files via `present_files`
-- Short blocks (<50 lines) pasted directly — must still include `cls`, `$le`, and verification
-
-### Full File Rewrites Over Regex Patching
-For complex files, prefer full rewrites over inline regex patching.
-
-### View Style Leakage Audit — MANDATORY
-Any modification of a view must include an audit of that view for style leakage.
-
-- Any style leakage must be reported
-- If appropriate, leaked inline or view-local styling must be replaced with CSS
-- A `[DONE]` update reporting the style fix must be added under `## DONE (this project)` in `### Additional Completed Tasks`
-
-### Error Handling Rule — MANDATORY
-- If the user made a mistake, return a friendly error message with guidance.
-- If the system failed to execute the action, treat it as a 500-style error, log it as an operational failure, and do not convert it into a user-facing workflow success-equivalent response.
+| Version | Change |
+|---------|--------|
+| v4.0 | Core versioning backbone, sync provider abstraction, phased delivery model |
+| v4.1 | Manual upload as first-class ingestion channel. `ProjectType` enum. `IImportProvider` interface. `SectionTreeService` creation gate. `Comment.SectionVersionId` anchoring. |
 
 ---
 
-## BUGS
+## 1. Purpose
 
-- [OPEN] `/Author/InviteReader` submit fails with browser "This page isn't working" on production
-  - observed at `https://draftview.co.uk/Author/InviteReader` when submitting the invite form
-  - current behaviour: the request crashes instead of returning a controlled application error page or successful redirect
-  - likely fault area: operational failure in invitation sending, configuration, or persistence after Sprint 4 error-handling changes
-  - investigation focus: production logs for the failing request, SMTP/config state, and exception handling through the invite submission path
-- [OPEN] Removing a reader from `/Author/Readers` does not remove the reader from the list
-  - observed when using the remove action for both invited and active readers
-  - current behaviour: the action completes but the reader remains visible in `/Author/Readers`
-  - expected behaviour: the reader should be removed from the list, or the UI should clearly report why the removal was not applied
-  - investigation focus: `AuthorController.SoftDeleteReader`, whether `SoftDeleteUserAsync` is actually called, and how `/Author/Readers` filters non-soft-deleted beta readers
-- [OPEN] System Support has no readers page for Sprint 4 verification
-  - observed while attempting to verify that System Support cannot see reader email addresses
-  - current behaviour: there is no System Support page to view or inspect readers, so the negative-access check cannot be exercised through the UI
-  - expected behaviour: either provide an explicit System Support readers surface with the correct deny-by-default email behaviour, or remove this UI verification path from Sprint 4 UAT if no such surface is intended
-  - investigation focus: whether support should have a dedicated readers screen, a limited support operation flow, or no reader-list UI at all
-- [OPEN] Reader settings shows protected-email decryption exception as an on-screen form error
-  - observed when changing display name and new password in reader settings
-  - current behaviour: the page shows `Ciphertext is not in the expected format`
-  - expected behaviour: protected-email decryption failures should be treated as operational failures, logged, and shown through the controlled 500 error path rather than reflected as a user-facing settings validation message
-  - investigation focus: `AccountController` settings actions, the controlled email retrieval path, and production rows with invalid `EmailCiphertext`
+Define how DraftView:
+
+- Ingests content from multiple sources
+- Manages content as a platform-owned private store
+- Tracks changes to prose
+- Converts working state into published versions
+- Controls when versions are published
+- Communicates updates to readers
+- Maintains a stable and predictable reading experience
+
+This document defines both **platform architecture** and **publishing and versioning behaviour**.
 
 ---
 
-## Test state
+## 2. Core Principles
 
-- 498 Tests total
-- One skipped test is `SmtpEmailSenderIntegrationTests` which sends a real email, so is not suitable for regular test runs but is included in the solution for manual execution when needed.
-- Latest full passing count: 498 total, 497 passed, 1 skipped, 0 failed
-- Latest targeted application count: 129 total, 129 passed, 0 skipped, 0 failed
-- Latest targeted web count: 32 total, 32 passed, 0 skipped, 0 failed
-
----
-
-# Sprint 4 — Email Privacy and Controlled Access (PHASED EXECUTION)
-
-Ensure user email addresses are protected, not exposed to other users, and only accessible through controlled, auditable mechanisms. Align system behaviour with UK GDPR principles of data minimisation, access control, and protection by design.
-
-Email handling model:
-- Email stored in encrypted form
-- Email lookup via deterministic HMAC of normalised email
-- Encryption and decryption are performed through application/infrastructure services, not in the domain model
-- Email never exposed in UI beyond explicitly permitted views
-- Controlled access for administrative purposes only
-- New views fail closed by default unless explicitly whitelisted
+> DraftView owns the content store.
+> Ingestion channels are plugins.
+> Authors publish deliberately.
+> Readers see only stable versions.
+> DraftView works without Scrivener.
 
 ---
 
-## Phase 7 — Audit and Security Hardening
+## 3. Two-Layer Architecture
 
-**Audit Logging**
-- [DONE] Log all privileged access attempts:
-  - requesting user ID
-  - target user ID
-  - timestamp
-  - success or failure
-  - reason if provided
-- [DONE] Audit the controlled email access seam itself
-  - `ControlledUserEmailService` / `UserEmailAccessService` must emit an audit record for every allow or deny decision
-  - audit coverage must include `SystemSupport` email-access requests, not just UI-layer actions
-- [DONE] Ensure logs do NOT include plaintext email
-  - remove plaintext email from `AccountController` login / invitation logs
-  - remove plaintext email from `DatabaseSeeder` logs
-  - `DatabaseSeeder` should not carry true email addresses in executable logging paths
-  - replace any remaining email-based log placeholders with user IDs, role names, or other non-sensitive identifiers
+DraftView is structured as two distinct layers. Nothing from the ingestion layer leaks into the platform layer.
 
-**Access Control**
-- [DONE] Enforce explicit permission for admin/support access
-- [DONE] Ensure least privilege across system
-  - review the current `SystemSupport` allow rule and tighten it from broad role-only access to an explicit privileged access policy if needed
+```
+INGESTION LAYER
+┌─────────────────────────────────────────────────┐
+│  ISyncProvider implementations                  │
+│  ├── ScrivenerSyncService (current)             │
+│  └── [any future sync provider]                 │
+│                                                 │
+│  IImportProvider implementations                │
+│  ├── RtfImportProvider (V-Sprint 1)             │
+│  ├── WordImportProvider (future)                │
+│  └── GoogleDocsImportProvider (future)          │
+│                                                 │
+│  INativeEditorService (future)                  │
+│  IClientWriteService — iOS / Android (future)   │
+└─────────────────────────────────────────────────┘
+              │  all write to
+              ▼
+PLATFORM LAYER
+┌─────────────────────────────────────────────────┐
+│  Project → Section (working state)              │
+│         → SectionVersion (published state)      │
+│         → Comments, ReadEvents, Notifications   │
+│         → Reader experience                     │
+└─────────────────────────────────────────────────┘
+```
 
-**Security Tests**
-- [DONE] Verify:
-  - email not exposed in unauthorised views
-  - logs contain no sensitive data
-  - access rules enforced correctly
-- [DONE] Add regression coverage for plaintext-email log prevention
-  - source-level or focused behavioural tests should fail if `{Email}` logging reappears in protected flows
-- [DONE] Add regression coverage for privileged email-access audit logging
-  - tests should prove both allowed and denied access attempts are recorded
+### 3.1 Ingestion Layer
 
-**Password reset clarification**
-- [DONE] Password reset flow does not require email visibility after the user submits the address
-  - user enters email on `ForgotPassword`
-  - system verifies and sends the reset email
-  - reset-link view shows only the password entry fields
-  - no subsequent UI step requires the full email address to be displayed back to the user
-  - password reset persistence should therefore avoid storing plaintext email solely for later display
-  - password reset tokens now bind to `UserId` rather than storing plaintext email
-  - one DB-backed web regression now creates an isolated user, requests a reset, completes the reset, and verifies login with the new password
+The ingestion layer gets content into the platform layer. It has no influence over publishing, versioning, or the reader experience. All ingestion channels — sync or import — write to the same `Section` tree via `Section.HtmlContent`. The platform layer does not know or care which channel wrote a given section's content.
 
----
+Two categories of ingestion channel exist:
 
-## Phase 8 — Publish and Live Key Management
+**Sync providers** (`ISyncProvider`) — continuous, system-driven ingestion. The system polls or is triggered externally. The author does not initiate individual sync events. `ScrivenerSyncService` is the current implementation.
 
-**Goal:** Deploy protected email handling safely to Linux/live environments
+**Import providers** (`IImportProvider`) — one-shot, author-initiated ingestion. The author selects a file and uploads it. The provider converts the file to HTML and writes to `Section.HtmlContent`. No polling, no external connection required.
 
-- [DONE] Verify compatibility with the real `Publish-draftview.ps1` workflow
-  - publish requires a clean git state before deployment
-  - publish copies fresh output to `/var/www/draftview`
-  - publish restarts the `draftview` systemd service
-- [DONE] Define how the live Linux environment provides persistent encryption key material
-  - keys live in `appsettings.Production.json` on the server at `/var/www/draftview/`
-  - this file is not part of the publish payload — it persists across deploys
-- [DONE] Ensure live key material is stored outside the replaced publish payload where necessary
-  - `appsettings.Production.json` is written directly on the server and never overwritten by `publish-draftview.ps1`
-- [DONE] Ensure key material persists across app restarts and deployments
-  - confirmed — `appsettings.Production.json` survives publish and service restart
-- [DONE] Separate local/test key material from live key material
-  - dev keys: .NET user-secrets on dev machine only, never committed
-  - production keys: `appsettings.Production.json` on server only, never on dev machine
-  - the two key sets are independent — production was seeded fresh on first deploy
-- [DONE] Document the publish-time secret/key setup process
-  - generate two 32-byte base64 keys on dev machine:
-    `[Convert]::ToBase64String((1..32 | ForEach-Object { [byte](Get-Random -Max 256) }))`
-  - SSH to production server
-  - add `EmailProtection:EncryptionKey` and `EmailProtection:LookupHmacKey` to `appsettings.Production.json`
-  - do not save production keys anywhere else
-  - deploy via `publish-draftview.ps1`
-- [DONE] Define operational guidance for key rotation and recovery
-  - key rotation requires: generate new keys, re-encrypt all existing email ciphertexts, update `appsettings.Production.json`, restart service
-  - no key rotation tooling exists yet — add to backlog if required
-  - recovery: if keys are lost, existing encrypted emails are unrecoverable — users must reset email via support
-- [DONE] Verify post-publish behaviour:
-  - [DONE] login still works
-  - [DONE] invitation links use the configured live base URL rather than localhost
-  - [DONE] existing encrypted data remains decryptable after `Publish-draftview.ps1` completes and the service restarts
+Current ingestion channels:
+- **Scrivener via Dropbox sync** — `ScrivenerSyncService` implements `ISyncProvider`
+- **RTF manual upload** — `RtfImportProvider` implements `IImportProvider` (V-Sprint 1)
 
----
+Future ingestion channels:
+- Word / docx import — `WordImportProvider`
+- Google Docs import — `GoogleDocsImportProvider`
+- Native DraftView editor
+- iOS / Android client (post-revenue)
 
-## UAT
-- [DONE] User can register and login using email
-- [DONE] Email not visible to other users
-- [DONE] Authors cannot see beta reader email post-invite
-- [DONE] User can view and update own email in settings
-- [DONE] Admin/support access is restricted and logged
-- [DONE] No regressions in authentication, invitation, or notification flows
+### 3.2 Platform Layer
 
----
+The platform layer is DraftView's product. It is source-agnostic. It manages the `Project` and `Section` tree, `SectionVersion` records, comments, read events, notifications, reader access and experience, versioning and publishing behaviour.
 
-## Compliance
-- [DONE] Privacy notice updated and visible
-- [DONE] Email usage limited to service-related communication
-- [DONE] No marketing usage implemented
-- [DONE] No third-party sharing for unrelated purposes
-- [ ] Data handling aligns with UK GDPR and Data Protection Act 2018
+### 3.3 Sync Provider Abstraction
+
+Sync is provider-agnostic via `ISyncProvider`. The application layer coordinates sync without knowing which provider is in use. `ScrivenerSyncService` is the current concrete implementation.
+
+**Key sync invariant:**
+> Sync never creates versions. Sync only updates working state (`Section.HtmlContent`). The author creates versions. Always.
+
+**Key import invariant:**
+> Import never creates versions. Import writes to working state (`Section.HtmlContent`). The author creates versions. Always.
+
+Both invariants are identical in effect. Neither ingestion category has any publishing authority.
+
+### 3.4 Import Provider Abstraction
+
+```csharp
+// Application layer
+public interface IImportProvider
+{
+    string SupportedExtension { get; }   // e.g. ".rtf", ".docx"
+    string ProviderName { get; }         // e.g. "RTF", "Word"
+
+    Task<string> ConvertToHtmlAsync(
+        Stream fileStream,
+        CancellationToken cancellationToken = default);
+}
+```
+
+The import provider converts a file stream to HTML. It knows nothing about sections, projects, or authors. The application service (`ImportService`) owns the write to `Section.HtmlContent`.
+
+### 3.5 Section Tree Management
+
+Manual upload requires section creation without a Scrivener UUID. All manual section creation goes through `SectionTreeService.GetOrCreateForUpload`. This is the single guarded creation point for author-managed sections.
+
+When the explicit tree builder UI (Option A) is built post-launch, only `SectionTreeService` changes. Nothing above it is touched.
+
+### 3.6 Future: Razor Class Library Extraction
+
+If a second sync provider is ever built, Scrivener-specific code (`ScrivenerSyncService`, `ScrivenerProjectDiscoveryService`, `IScrivenerProjectParser`, `DropboxController`, sync views) should be extracted into `DraftView.Sync.Scrivener` as a Razor Class Library, registered via `builder.AddScrivenerSync()`. This is deferred until a second provider is genuinely needed — YAGNI applies.
 
 ---
 
-## Post-publish UI testing (production)
-- [DONE] Desktop: `/Account/Login` works with email and redirects to the correct dashboard
-- [DONE] Desktop: `/Account/Settings` shows the current user email only in the whitelisted self-service view
-- [DONE] Desktop: `/Author/Readers` does not expose beta reader email addresses
-- [DONE] Desktop: `/Author/ManageReaderAccess/{userId}` does not expose stored email addresses
-- [ ] Desktop: `/Author/InviteReader` sends an invitation whose email link uses the configured production `App:BaseUrl`
-- [ ] Desktop: invitation acceptance flow completes without exposing stored email on non-whitelisted pages
-- [ ] Desktop: forgot-password flow sends the reset email, allows password reset, and never re-displays the submitted email after request
-- [ ] Desktop: support/system admin flows do not reveal user email unless explicitly authorised and auditable
-- [DONE] Mobile: login works and redirects correctly
-- [DONE] Mobile: reader dashboard and reading views do not expose stored email in navigation or page chrome
-- [ ] Mobile: account settings remains the only self-service view showing the current user email
-- [ ] Production smoke check: no page in the above journeys shows `localhost` invitation links, plaintext email leakage, or a friendly validation-style message for real operational failures
+## 4. Domain Entity Model
+
+### 4.1 Project
+
+Represents an author's managed work. Exists independently of any sync source.
+
+| Property | Description |
+|----------|-------------|
+| `Id` | Unique identifier |
+| `AuthorId` | Tenancy-agnostic owner |
+| `Name` | Project title |
+| `ProjectType` | Enum: `ScrivenerDropbox`, `Manual`. Determines which ingestion channels are available |
+| `DropboxPath` | Scrivener-specific sync path. Null when `ProjectType = Manual`. Moves to sync config in future extraction |
+| `SyncRootId` | Stable external root identity used by sync reconciliation. Null when `ProjectType = Manual` |
+| `IsReaderActive` | Whether readers can currently access this project |
+| `SyncStatus` | `Healthy`, `Stale`, `Error`, `Syncing`. Null when `ProjectType = Manual` |
+| `LastSyncedAt` | Timestamp of most recent successful sync. Null when `ProjectType = Manual` |
+| `SyncErrorMessage` | Populated when `SyncStatus = Error`. Null when `ProjectType = Manual` |
+
+**`ProjectType` enum:**
+
+| Value | Description |
+|-------|-------------|
+| `ScrivenerDropbox` | Project synced via Dropbox / Scrivener pipeline. Dropbox fields required |
+| `Manual` | Author-managed project. No sync connection. All content via import or future native editor |
+
+### 4.2 Section
+
+Represents a node in the author's content tree. Source-agnostic.
+
+| Property | Description |
+|----------|-------------|
+| `Id` | Unique identifier |
+| `ProjectId` | FK to Project |
+| `ParentId` | FK to Section. Null for root nodes |
+| `Title` | Display title |
+| `SortOrder` | Order among siblings |
+| `NodeType` | `Folder` or `Document` |
+| `HtmlContent` | **Working state prose.** Written by any ingestion channel. Null for Folder nodes |
+| `ContentHash` | Hash of current `HtmlContent`. Used to detect change since last publish |
+| `IsPublished` | True when at least one `SectionVersion` exists and is reader-visible |
+| `PublishedAt` | Timestamp of most recent publish action |
+| `ContentChangedSincePublish` | True when `ContentHash` differs from hash at last publish. Advisory |
+| `ScrivenerUuid` | Scrivener-specific reconciliation key. Null for manually-created sections. Known debt — moves to sync mapping in future extraction sprint |
+| `ScrivenerStatus` | Display-only. Scrivener status label. Null for manually-created sections. Never used as a business rule gate |
+
+**Section creation rules:**
+- Sections created by sync: `ScrivenerUuid` populated, reconciled against existing records
+- Sections created by manual upload: `ScrivenerUuid` null, created via `SectionTreeService.GetOrCreateForUpload`
+- `ScrivenerUuid` being null is never an error — it is the expected state for manually-managed sections
+
+### 4.3 SectionVersion
+
+An immutable snapshot of a `Section`'s content at the moment of a Republish action. This is the published state. Readers always see the latest `SectionVersion`.
+
+| Property | Description |
+|----------|-------------|
+| `Id` | Unique identifier |
+| `SectionId` | FK to Section |
+| `AuthorId` | Tenancy-agnostic owner |
+| `VersionNumber` | 1-based integer. Scoped per `SectionId`. Never reused |
+| `HtmlContent` | Immutable snapshot of prose at publish time |
+| `ContentHash` | Hash of `HtmlContent` at publish time. Used for diff in later sprints |
+| `ChangeClassification` | Nullable enum: `Polish`, `Revision`, `Rewrite`. Populated from V-Sprint 4 |
+| `AiSummary` | Nullable string. One-line summary. Populated from V-Sprint 5 |
+| `CreatedAt` | Timestamp of version creation |
+
+### 4.4 Comment (updated)
+
+| Property | Description |
+|----------|-------------|
+| `Id` | Unique identifier |
+| `SectionId` | FK to Section. The stable anchor. Always present |
+| `SectionVersionId` | FK to SectionVersion. Nullable. The version the comment was made against. Set at creation; never updated |
+| `AuthorAccountId` | FK to Account |
+| `ParentCommentId` | FK to Comment. Null for root comments |
+| `Body` | Comment text |
+| `Visibility` | `Public` or `Private`. Immutable after creation |
+| `CreatedAt` | Timestamp of creation |
+| `EditedAt` | Timestamp of most recent edit. Null if never edited |
+| `IsSoftDeleted` | Soft-delete flag |
+| `SoftDeletedAt` | Timestamp of soft deletion |
+
+**Comment version anchoring rules:**
+- `SectionVersionId` is set to the current latest `SectionVersion.Id` at comment creation time
+- If no version exists yet (pre-versioning section), `SectionVersionId` is null
+- Comments are never hidden when versions change — only labelled
+- Label: "made on version N" shown when `SectionVersionId` does not match the current version
+
+### 4.5 ReadEvent (updated)
+
+One record per reader per section.
+
+| Property | Description |
+|----------|-------------|
+| `Id` | Unique identifier |
+| `SectionId` | FK to Section |
+| `UserId` | FK to User |
+| `FirstOpenedAt` | Immutable after creation |
+| `LastOpenedAt` | Updated on each open |
+| `OpenCount` | Number of times opened |
+| `LastReadVersionNumber` | `VersionNumber` of the `SectionVersion` most recently read. Nullable. Drives update messaging |
+| `ScrollPosition` | Nullable int. Pixel offset for Kindle-style resume |
 
 ---
 
-## Definition of Done
-- [DONE] Governing regression tests created and verified RED at sprint start
-- [DONE] Governing tests fully GREEN at sprint completion
-- [ ] All Domain, Application, and Infrastructure changes developed via TDD
-- [DONE] Review Sprint 4 infrastructure tests and decide which remain as permanent regression coverage versus which should be rewritten or removed as transitional implementation-lock tests
-  - retained `ProtectedEmailPersistenceContractTests` as permanent regression coverage because it asserts the protected-email storage contract rather than transient implementation details
-  - no Sprint 4 infrastructure persistence tests currently require rewrite/removal as transitional implementation-lock coverage
-- [DONE] Full test suite passing
-- [DONE] Green test count reported
-- [DONE] No plaintext email stored in database
-- [DONE] No email exposure in UI beyond whitelist
-- [DONE] Audit logging verified
-- [DONE] Migrations applied and validated
-- [ ] Manual browser verification complete (desktop and mobile)
-  - execute the production post-publish UI testing checklist above and record date/operator/result
-- [ ] Changes committed with clear message
-- [DONE] TASKS.md updated
+## 5. Data State Model
 
-## SPRINT 5 — Kindle-style Resume — Exact Scroll Position
+**Working State** — `Section.HtmlContent`
+- Written by any ingestion channel (sync or import)
+- Not visible to readers
+- The source of truth for what the author is currently writing
 
-Current state: resume redirects to correct scene via `#scene-{id}` anchor but does not restore exact scroll position within the scene. `ReadEvent` has no `ScrollPosition` field.
-
-**Domain (TDD required)**
-- [ ] Add `ScrollPosition` (nullable int) to `ReadEvent` entity
-- [ ] Add `UpdateScrollPosition(int pixels)` domain method to `ReadEvent`
-- [ ] Domain tests: `UpdateScrollPosition_SetsScrollPosition`, `UpdateScrollPosition_OverwritesPreviousValue`
-
-**Infrastructure**
-- [ ] EF Core migration: add `ScrollPosition` column to `ReadEvents` (nullable int)
-
-**Application (TDD required)**
-- [ ] Add `UpdateScrollPositionAsync(Guid sectionId, Guid userId, int scrollPosition)` to `IReadingProgressService`
-- [ ] Failing tests → implement: find existing `ReadEvent`, call `UpdateScrollPosition`, save
-- [ ] Update `GetLastReadEventAsync` tests to cover `ScrollPosition` being returned
-
-**Web — Controller**
-- [ ] `[HttpPost] RecordScrollPosition(Guid sectionId, int scrollPosition)` on `ReaderController` — returns `Ok()`
-- [ ] Resume redirect in `DesktopDashboard` / `MobileDashboard` — use `?scrollTo={ScrollPosition}` if stored, fall back to `#scene-` anchor if null
-
-**Web — JavaScript (DesktopRead.cshtml)**
-- [ ] On scroll (debounced 500ms), POST `window.scrollY` to `RecordScrollPosition` for the currently visible scene
-- [ ] On page load, if `?scrollTo=` query param present, `window.scrollTo(0, scrollTo)` after short delay
-
-**UAT**
-- [ ] Read scene partway through, sign out, sign in — confirm returned to exact scroll position
-- [ ] Works across multiple projects (most recent across all)
-- [ ] Graceful fallback if section no longer published
+**Published State** — latest `SectionVersion.HtmlContent`
+- Immutable
+- Reader-facing
+- Created only via Republish action
+- Independent of which ingestion channel last updated the working state
 
 ---
 
-## SPRINT 6 — Platform Hardening
+## 6. Version Unit
 
-- [ ] Fail2ban setup on production VM
-- [ ] Report Fault modal — HomeController POST + _Layout.cshtml modal + CSS
-- [ ] SystemStateMessage expiry — add `ExpiresAt` nullable DateTime, `GetActiveAsync` filters expired
-- [ ] Add Project discovery flow (`IScrivenerProjectDiscoveryService` + Projects page UI)
-- [ ] Logging: failed authorization attempts (Role Migration carry-over)
-- [ ] Impersonation — read-only, explicit enter/exit mode (design agreed, not yet built)
+> `NodeType.Document` is the version unit. Always.
 
----
+A `Document` may be:
+- A standalone chapter (Author A — one Document per chapter)
+- A scene within a chapter (Author B — multiple Documents inside a Folder)
+- A manually uploaded file (Author C — no Scrivener, files uploaded directly)
 
-## SPRINT 7 — Billing & Multi-tenancy (Post Go-Live)
+All three are versioned identically. The platform does not distinguish between these author types at the domain level.
 
-- [ ] IBillingProvider abstraction (Creem preferred, Paddle alternative)
-- [ ] Subscription tiers: Free / Paid / Ultimate
-- [ ] ReaderTenant model (AuthorId, IsActive, IsDeleted, KnownAs)
-- [ ] Account / TenancyMembership model (per v3 business model doc)
-- [ ] Mark intentional single-tenancy seams for future refactor
-- [ ] Reader Marketplace — reader discoverable to other authors (ReaderProfile, GenreList)
-- [ ] Standalone Sync Worker — extract SyncBackgroundService into separate worker project
+The word "scene" does not appear in DraftView's UI or domain vocabulary. DraftView uses the author's own titles.
+
+**Version Number Scope:** `VersionNumber` is 1-based, scoped per `SectionId`, never reused. Implementation uses `MAX(VersionNumber) + 1` at publish time.
 
 ---
 
-## GO-LIVE GATE
+## 7. Publishing Rules
 
-Completed on the day of go-live, not before:
-- [ ] Send password reset emails to Becca (becca@the-dunlops.co.uk) and Hilary (hilaryrrb@gmail.com)
-- [ ] Confirm Becca and Hilary can log in and access The Fractured Lattice
-
-# DraftView Publishing and Versioning Architecture (v3.0)
-See Publishing And versioning Architecture.md for the full architecture document including Sprints 1-7
-- Build versioning in stages, starting with a simple Republish → Version → Reader flow
-- Add paragraph diff highlighting early to deliver core user value
-- Layer in reader UX, then author-side change indicators and AI summaries
-- Introduce advanced features later: scene publishing, scheduling, locking, and sync
-- Keep each sprint small, complete, and testable—no mixing scope or partial features
+- Republish is the only mechanism for version creation. Never automatic.
+- Sync never creates versions.
+- Import never creates versions.
+- A `Document` section is publishable when: `NodeType = Document`, `IsSoftDeleted = false`, `HtmlContent` is not null or empty.
+- `ScrivenerStatus` is never used as a publishability gate. Null status is always publishable.
+- Chapter-level Republish is a batch operation creating one `SectionVersion` per non-soft-deleted `Document` descendant.
 
 ---
 
-## BACKLOG — Go-Live Requirements
+## 8. Revoke Behaviour
 
-### Key Management — Pre Go-Live
-
-- [ ] Copy production `EmailProtection:EncryptionKey` and `EmailProtection:LookupHmacKey` values into a secure password manager (Bitwarden, 1Password, or equivalent) — entry titled "DraftView Production Email Keys"
-- [ ] Consider moving keys from `appsettings.Production.json` to systemd environment variables in `/etc/systemd/system/draftview.service` — removes all secrets from the web root entirely
-- [ ] Confirm a second person or secure location holds the recovery keys — single point of knowledge is a single point of failure
-- [ ] Document recovery procedure: if keys are lost, existing encrypted emails are unrecoverable — users must contact support to reset email manually
-
-### Reader UX
-- Reader notification emails (new chapter published)
-
-### Author Dashboard
-- Show last download timestamp alongside last sync timestamp
-
-### Dropbox
-- Dropbox OAuth2 token refresh — automatic refresh using stored refresh token
-- Dropbox webhook controller for push-based sync (replace polling)
-- Incremental sync — only download changed files (cursor-based)
-- In-app Dropbox re-auth page
-
-### Author Views — Mobile
-- Readers page mobile: name, status, Deactivate only
-- Author/Comments view: per chapter, all scene comments, reply/delete inline
-- Recent Activity: tap to open Author/Comments for that scene
-
-### Author Chapter Page (Author/Chapter/{id})
-- Full chapter view with all scenes
-- Scene comments on RHS sidebar
-- Chapter level comments in floating bar at bottom
-- Reader progress: who has read it, date last visited
-- Link from Sections list
-
-### Author Scene Page
-- Link back to parent chapter page
-- Reader count hover showing which readers have read this scene
-
-### Publishing Cascades
-- Part-level publish cascades all chapters + scenes below
-- Book-level publish cascades everything below
-
-### Config
-- Audit remaining user secrets — anything not a password/token/key belongs in appsettings
+- Authors can revoke the latest version only.
+- Rolls back to the previous version; that version becomes reader-visible.
+- If the only remaining version is revoked: `Section.IsPublished = false`, readers can no longer access the section.
+- Revoke is not available when only one version exists and it is the current published version — the author must use Unpublish instead.
 
 ---
 
-## BACKLOG — Incremental Refactor Roadmap (safe staged rollout)
+## 9. Reader Model
 
-Work captured for future sprints. Execute in order; each phase should be completed and validated before starting the next.
+- Readers always see the latest `SectionVersion.HtmlContent`.
+- Fallback to `Section.HtmlContent` for pre-versioning published sections (temporary, removed once all sections have been republished at least once).
+- Readers cannot browse or compare versions.
+- `ReadEvent.LastReadVersionNumber` drives update messaging.
 
-### Phase 1 — Centralize controller user/role resolution (low-risk, no behavior change)
-- Consolidate repeated author guard logic into `BaseController`:
-  - `AuthorController.GetAuthorAsync`
-  - `DropboxController.GetAuthorAsync`
-  - direct `User.Identity?.Name` reads in controller actions
-- Add a shared helper pattern (`TryGetCurrentAuthorAsync` / `RequireCurrentAuthorAsync`) and replace per-controller copies.
-- Keep role checks in one place so policies and domain-role fallback behavior stay consistent.
+### 9.1 Update Messaging
 
-### Phase 2 — Remove controller service-location and repeated mutation flows
-- In `AuthorController`, replace `GetUnitOfWork()`, `GetCommentService()`, and `GetReadEventRepo()` service-location helpers with constructor-injected dependencies.
-- Extract repeated mutation action patterns (load + guard + mutate + save + redirect) for:
-  - `ActivateProject`, `DeactivateProject`, `RemoveProject`
-  - reader lifecycle actions (`ReactivateReader`, `DeactivateReader`, `SoftDeleteReader`)
-- Keep extracted helpers inside the controller first; move to application layer in the next phase.
+| State | Message |
+|-------|---------|
+| Reader has not yet opened this section | No message |
+| Reader has opened it and a newer version exists | "Updated since you last read" |
+| Reader is on the latest version | No message |
 
-### Phase 3 — Move procedural controller workflows into application services
-- Extract `AuthorController.AddProjects` workflow (discover/filter/restore-or-create/sync/log) to an application service orchestrator.
-- Extract `AuthorController.Section` query assembly (section + parent + comments + read events + author name map) to a dedicated query service.
-- Extract reader access update logic (`UpdateReaderAccess`) to a focused application service.
+### 9.2 Update Banner
 
-### Phase 4 — Reduce repeated query/DTO assembly in reader flows
-- In `ReaderController` and `BaseReaderController`, extract repeated section-query/progress loops used by:
-  - `Chapters`
-  - `Scenes`
-  - `DesktopDashboard`
-- Introduce reusable query helpers for:
-  - published chapter selection/sorting
-  - chapter/scene progress row projection
-  - comment author name mapping (currently repeated lookup loops)
-
-### Phase 5 — Decompose startup/seeding procedural blocks
-- Split `DatabaseSeeder.SeedAsync` into focused steps/services:
-  - role provisioning
-  - identity user provisioning
-  - domain user provisioning
-  - role backfill
-  - dropbox connection seed
-  - test project seed
-- Keep `WebApplicationExtensions` as orchestration only (`MigrateDatabaseAsync`, `SeedDatabaseAsync`, `ResetStaleSyncProjectsAsync`) and push logic into dedicated services.
-
-### Phase 6 — Standardise sync kickoff and background processing
-- Replace `AuthorController.Sync` inline `Task.Run` + scoped service resolution with queued/background processing (`SyncBackgroundService` path).
-- Extract sync status update/recovery logic into a shared application-level sync coordinator.
-- Keep `ScrivenerSyncService` focused on parse/reconcile mechanics; move orchestration concerns out of controller actions.
+Non-blocking top banner. Shows version number and one-line AI summary (from V-Sprint 5). Dismissible. Shown once per version per reader. Version label clickable to reopen section.
 
 ---
 
-## BACKLOG — UX / Identity
+## 10. Manual Upload Flow
 
-- [ ] Invite reader flow: require author-supplied non-email display names and prevent email-shaped display names across display-name update flows
+An author with `ProjectType = Manual` — or any author who chooses to upload a file rather than sync — uses the manual upload path.
 
----
+### 10.1 Creating a Section via Upload
 
-## BACKLOG — CSS / Frontend
+1. Author navigates to their project's Sections view
+2. Author clicks **Add Section** or **Upload Draft** against an existing section
+3. **Add Section** calls `SectionTreeService.GetOrCreateForUpload(projectId, title, parentId, sortOrder)`
+   - Finds an existing section by title + parent within the project, or creates one
+   - Created sections have `ScrivenerUuid = null`, `NodeType = Document`
+   - `SortOrder` defaults to end of sibling list
+4. File picker accepts `.rtf` (v1); `.docx` added in a subsequent task
+5. File stream passed to `IImportProvider` implementation selected by file extension
+6. Resulting HTML written to `Section.HtmlContent` by `ImportService`
+7. `ContentHash` updated; `ContentChangedSincePublish` set if a version exists
+8. UI shows **Draft updated** indicator on the section row
 
-- [ ] CSS naming conventions refactor (BEM consistency)
-- [ ] Remove duplicate `.comment-box__reply-form` declaration in Reader.css
-- [ ] Replace hardcoded `#f8f8f6` in `.chapter-comment-form` with `var(--color-surface-alt)`
-- [ ] Replace hardcoded `15px` in `.chapter-comment-form__textarea` with `var(--text-base)`
+The author then republishes in the normal way to create a version and make content visible to readers.
 
----
-# DraftView Task List
+### 10.2 Manual Project Creation
 
-## Incremental Refactor Roadmap (Staged, Codebase-Specific)
+An author creating a `Manual` project:
+- Provides project name only — no Dropbox path or sync configuration required
+- Can immediately begin adding sections and uploading content
+- Can later add sections as folders to organise their tree (using `SectionTreeService`)
+- Sync-related UI elements (sync status, Dropbox connect) are hidden for `Manual` projects
 
-This roadmap replaces the previous high-level Phase 1–5 architecture bullets.  
-Each phase is independently executable, low-risk, and grounded in current DraftView hotspots: controller guard duplication, procedural controller workflows, startup/seeding complexity, and sync kickoff patterns.
+### 10.3 Tree Management (Current — Option B)
 
----
+The section tree for manual projects is built implicitly through uploads. The author provides a title and optional parent on each upload. `SectionTreeService.GetOrCreateForUpload` is the single creation gate.
 
-## Phase 1 — Centralise controller user/role resolution (low-risk, no behaviour change)
-
-**Targets:**
-
-- [DONE] Consolidate repeated author guard logic currently duplicated in:
-  - `AuthorController.GetAuthorAsync`
-  - `DropboxController.GetAuthorAsync`
-  - direct `User.Identity?.Name` reads in controller actions
-- [DONE] Introduce shared helpers in `BaseController`:
-  - `TryGetCurrentAuthorAsync`
-  - `RequireCurrentAuthorAsync`
-- [DONE] Replace per-controller guard copies with the shared pattern.
-
-**Outcome:**
-
-- Single authoritative path for resolving the current author.
-- Removal of repeated guard logic across controllers.
-- No functional changes; pure consolidation.
+**Option A (post-launch):** An explicit drag-and-drop tree builder UI will replace the implicit creation flow. Only `SectionTreeService` changes at that point — nothing above it.
 
 ---
 
-## Phase 2 — Extract procedural controller workflows
+## 11. Services
 
-**Targets:**
+### 11.1 `SectionTreeService` (new — V-Sprint 1)
 
-- Extract orchestration logic from:
-  - `AuthorController.AddProjects`
-  - `AuthorController.Section` (query assembly)
-  - reader access update flow
-- Move orchestration into dedicated services.
-- Leave controllers as thin request/response surfaces.
+Single responsibility: managing the `Section` tree structure for author-managed projects.
 
-**Outcome:**
+```csharp
+// The only method that creates a Section without a ScrivenerUuid
+GetOrCreateForUpload(int projectId, string title, int? parentId, int? sortOrder)
+    → Section
 
-- Controllers stop acting as procedural workflow containers.
-- Workflows become testable, composable services.
+// Powers the upload parent dropdown and the future tree builder
+GetTree(int projectId)
+    → IReadOnlyList<SectionTreeNode>
+```
 
----
+`GetOrCreateForUpload` is the **only** place in the codebase where a `Section` with `ScrivenerUuid = null` is ever created. This constraint is enforced at code review and by the absence of any other creation path.
 
-## Phase 3 — Decompose startup/seeding
+### 11.2 `ImportService` (new — V-Sprint 1)
 
-**Targets:**
+Orchestrates the manual upload flow. Knows about sections and projects; delegates conversion to `IImportProvider`.
 
-- Break down `DatabaseSeeder.SeedAsync` into smaller, isolated steps.
-- Move orchestration out of `WebApplicationExtensions`.
-- Introduce clear boundaries between:
-  - seeding
-  - runtime configuration
-  - environment-specific initialisation
+```csharp
+Task ImportAsync(
+    int projectId,
+    int sectionId,
+    Stream fileStream,
+    string fileName,
+    int authorId,
+    CancellationToken cancellationToken = default)
+```
 
-**Outcome:**
+Behaviour:
+1. Resolves the correct `IImportProvider` by file extension
+2. Calls `provider.ConvertToHtmlAsync(fileStream)`
+3. Writes resulting HTML to `Section.HtmlContent`
+4. Recomputes `ContentHash`
+5. Sets `ContentChangedSincePublish = true` if a `SectionVersion` exists for this section
+6. Saves via unit of work
 
-- Startup becomes predictable and minimal.
-- Seeding logic becomes explicit and testable.
+### 11.3 `VersioningService` (new — V-Sprint 1)
 
----
+```csharp
+Task RepublishChapterAsync(int chapterId, int authorId, CancellationToken ct)
+Task RepublishSectionAsync(int sectionId, int authorId, CancellationToken ct)  // V-Sprint 6
+Task RevokeLatestVersionAsync(int sectionId, int authorId, CancellationToken ct)  // V-Sprint 1 Phase 4+
+```
 
-## Phase 4 — Standardise inheritance and shared utilities
+### 11.4 `ISyncProvider` (existing, formalised)
 
-**Targets:**
+```csharp
+public interface ISyncProvider
+{
+    Task SyncProjectAsync(int projectId, CancellationToken cancellationToken = default);
+    Task<bool> IsAvailableAsync(int projectId, CancellationToken cancellationToken = default);
+}
+```
 
-- Reduce repeated query/DTO loops across:
-  - `ReaderController`
-  - `BaseReaderController`
-- Consolidate shared reader-side patterns into a single abstraction.
-
-**Outcome:**
-
-- Less duplication.
-- Clearer inheritance boundaries.
-- Consistent reader-side behaviour.
-
----
-
-## Phase 5 — Extract remaining procedural workflows
-
-**Targets:**
-
-- Identify remaining controller-heavy procedural flows.
-- Extract into services following the Phase 2 pattern.
-- Ensure controllers become orchestration surfaces only.
-
-**Outcome:**
-
-- Controllers become uniformly thin.
-- All business logic moves to services.
+`ScrivenerSyncService` implements this interface. Sync writes to `Section.HtmlContent`. Never creates versions.
 
 ---
 
-## Phase 6 — Standardise sync kickoff (remove inline Task.Run)
+## 12. System Behaviour Summary
 
-**Targets:**
-
-- Replace inline `Task.Run` sync kickoff patterns with:
-  - background queue
-  - or dedicated sync service
-- Standardise sync initiation across controllers.
-
-**Outcome:**
-
-- Predictable, testable sync initiation.
-- No more inline fire-and-forget patterns.
-
-
-
+| Event | Action |
+|-------|--------|
+| Sync runs | `Section.HtmlContent` updated. No version created |
+| File imported | `Section.HtmlContent` updated. No version created |
+| Content changes | `ContentChangedSincePublish` set true |
+| Republish | `SectionVersion` created. Reader sees new version. `Comment.SectionVersionId` set on new comments |
+| Revoke | Latest `SectionVersion` soft-removed. Previous version becomes reader-visible |
+| Lock active | Republish blocked (V-Sprint 7) |
+| Schedule active | Republish suggestion delayed. Action always available (V-Sprint 7) |
+| Reader opens section | Latest `SectionVersion.HtmlContent` served. `ReadEvent` updated. `LastReadVersionNumber` set |
 
 ---
 
-## DONE (this project)
+## 13. Key Constraints
 
-### Additional Completed Tasks
-
-- [DONE] Layout top bar now shows the current user display name instead of email; falls back to `Account settings` when display name is missing, with hover text `Account settings`
-- [DONE] Audited `Views/Shared/_Layout.cshtml` for style leakage while fixing the mobile nav toggle placeholder; no additional style leakage required CSS changes
-- [DONE] Audited `Views/Author/Dashboard.cshtml` for style leakage while fixing the mobile projects actions layout; replaced inline actions-row styling with dashboard CSS classes
-- [DONE] Improved mobile portrait dashboard table affordances by preserving card boundaries and adding rotate-to-landscape guidance on author dashboard cards
-- [DONE] Fixed style leakage by scoping prose font preferences to reader surfaces only so system UI remains on standard typography
-- [DONE] Fixed style leakage in `Views/Author/InviteReader.cshtml` by replacing inline layout styling with dashboard CSS classes while adding the invite display-name field
-- [DONE] Sprint 4 Phase 6 end-to-end integration is complete
-  - fixed configuration-backed protected-email keys are in place for dev and testing
-  - DB-backed real-host regression coverage now exists for login, password reset, and invitation provisioning
-  - issuing the same invite twice now supersedes the older pending invite with a fresh token
-  - invitation and password-reset flows now prove protected persistence rather than plaintext persistence
-  - DB-backed web regressions override `IEmailSender` to use `ConsoleEmailSender`, so tests do not depend on live SMTP
-  - latest targeted web verification GREEN: 34 passed, 0 failed
-  - latest full-suite verification GREEN: 481 total, 480 passed, 1 skipped, 0 failed
-
-## Sprint 4 — Email Privacy and Controlled Access (PHASED EXECUTION)
-
-Ensure user email addresses are protected, not exposed to other users, and only accessible through controlled, auditable mechanisms. Align system behaviour with UK GDPR principles of data minimisation, access control, and protection by design.
-
-Email handling model:
-- Email stored in encrypted form
-- Email lookup via deterministic HMAC of normalised email
-- Encryption and decryption are performed through application/infrastructure services, not in the domain model
-- Email never exposed in UI beyond explicitly permitted views
-- Controlled access for administrative purposes only
-- New views fail closed by default unless explicitly whitelisted
-
-## Phase 1 [DONE] — Rules and Governing Red Tests
-
-- [DONE] Defined the whitelist for stored-email rendering, restricted to `Views/Account/Settings.cshtml`
-- [DONE] Added governing source-level and rendered-output email-exposure regressions for non-whitelisted pages
-- [DONE] Seeded initial red-state evidence for `AcceptInvitation`, `ManageReaderAccess`, `Readers`, and shared layout leakage
-- [DONE] Added a behavioural `/Account/Login` web regression to preserve login flow during later email-model changes
-- [DONE] Confirmed sprint start state: email-exposure governing tests were RED and behavioural guard tests were expected GREEN
-
-## Phase 2 [DONE] — Web Surface Cleanup (Fast Feedback)
-
-- [DONE] Removed non-whitelisted stored-email display from `AcceptInvitation`, `ManageReaderAccess`, `Readers`, and shared layout navigation
-- [DONE] Stopped `AccountController.AcceptInvitation` GET from passing stored email into a non-whitelisted rendered view
-- [DONE] Confirmed other reviewed non-whitelisted controller/view paths no longer pass stored email for display
-- [DONE] Made the source-level and rendered-output email-exposure governing tests GREEN
-- [DONE] Kept the `/Account/Login` behavioural regression GREEN throughout cleanup
-
-## Phase 3 [DONE] — Infrastructure (Data Shape First)
-
-**Goal:** Establish secure persistence model
-
-**Contract and Tests**
-- [DONE] Defined the protected email persistence contract for infrastructure
-  - `AppUsers.Email` plaintext persistence was replaced by `EmailCiphertext` and `EmailLookupHmac`
-  - plaintext email is not written to `AppUsers`
-  - lookup uses deterministic HMAC of normalised email for equality checks and uniqueness
-  - encryption and decryption remain outside the domain model
-- [DONE] Added the governing infrastructure tests for protected email persistence
-  - encryption does not store plaintext
-  - decryption restores the original value
-  - HMAC lookup is deterministic
-  - different inputs produce different lookup values
-  - no plaintext email is persisted for new or updated users
-
-**Schema and Migration**
-- [DONE] Added the protected email schema fields
-  - `EmailCiphertext`
-  - `EmailLookupHmac`
-- [DONE] Added and validated the unique index on `EmailLookupHmac`
-- [DONE] Applied the protected email migration
-- [DONE] Fixed the populated-database migration bug so uniqueness is enforced safely on existing data
-
-**Encryption and HMAC Seams**
-- [DONE] Introduced the application/infrastructure seam for email encryption and decryption
-  - application owns the contract
-  - infrastructure owns the implementation
-  - domain owns no encryption mechanics
-- [DONE] Introduced the application/infrastructure seam for deterministic email lookup HMAC generation
-  - application owns the contract
-  - infrastructure owns the implementation
-  - domain owns no HMAC mechanics
-- [DONE] Tightened the domain-boundary tests so they detect crypto implementation concerns rather than protected-field naming alone
-
-**Persistence and Lookup Wiring**
-- [DONE] Removed EF mapping of plaintext `User.Email`
-- [DONE] Added save-time protection to generate `EmailCiphertext` and `EmailLookupHmac`
-- [DONE] Rehydrated runtime `User.Email` from ciphertext on repository reads
-- [DONE] Replaced repository lookups and existence checks to use protected lookup rather than plaintext email queries
-- [DONE] Patched direct `DbContext` email queries in startup and seeding paths to use protected lookup and runtime rehydration
-
-**Compatibility and Refactor**
-- [DONE] Restored full-suite compatibility after the `DraftViewDbContext` constructor change
-  - `DraftView.Web.Tests.Controllers.AccountControllerTests` compatibility was restored without undoing protected-email persistence behaviour
-- [DONE] Refactored Phase 3 as one coherent unit without widening into Phase 4
-  - extracted helpers from `DraftViewDbContext`
-  - removed duplication in the normalize -> HMAC -> encrypt -> protect flow
-  - simplified repository hydration helpers
-  - extracted small local helpers from `DatabaseSeeder`
-  - removed low-value transitional constructor fallback plumbing
-- [DONE] Re-audited the Phase 3 architecture boundaries
-  - infrastructure owns persistence, encryption, HMAC, save-time protection, and protected lookup
-  - domain owns no crypto or persistence mechanics
-  - application contracts remain small and explicit
-
-**Verification**
-- [DONE] `dotnet test DraftView.Infrastructure.Tests --nologo` returned GREEN: 96 passed, 0 failed
-- [DONE] `dotnet test --nologo` returned GREEN: 449 total, 448 passed, 1 skipped, 0 failed
+- Republish is the only way to create versions
+- Sync never creates versions
+- Import never creates versions
+- `NodeType.Document` is the version unit
+- `NodeType.Folder` is a publishing container and batch tool
+- `ScrivenerStatus` is display-only — never a business rule gate
+- `ScrivenerUuid = null` is valid and expected for manually-managed sections
+- Version numbers are per-section, 1-based, never reused
+- Pending change indicator is advisory only
+- Scheduling never blocks republish
+- Locking blocks publishing only
+- No inline diff preview in AI summaries
+- `SectionTreeService.GetOrCreateForUpload` is the only path for manual section creation
+- `IImportProvider` converts only — it never writes to the database
 
 ---
 
-## Phase 4 [DONE] — Application Layer (Behaviour and Access Control)
+## 14. Known Debt
 
-- [DONE] Added the application seams for controlled email access and protected login lookup
-  - `IUserEmailAccessService`
-  - `IUserEmailProtectionService`
-  - `IControlledUserEmailService`
-  - `IAuthenticationUserLookupService`
-- [DONE] Implemented deny-by-default application access rules
-  - self access allowed
-  - explicit `SystemSupport` administrative access allowed
-  - author access to reader stored email denied once an invitation has been sent
-  - all other access denied by default
-- [DONE] Enforced application-layer orchestration
-  - access check occurs before decryption
-  - protected email is resolved only after approval
-  - migrated self-service `AccountController` email flows onto the application seam
-  - consolidated `AccountController` current-user lookup logic behind one helper
-- [DONE] Migrated authentication role redirect lookup onto the protected login seam
-  - `AccountController.Login` now uses `IAuthenticationUserLookupService`
-  - sign-in mechanics were left unchanged
-- [DONE] Reviewed privileged support/admin email reveal needs
-  - no concrete `SystemSupport` consumer currently requires revealing another user's stored email
-  - no unused privileged reveal path was added
-- [DONE] Completed application-layer test coverage and verification
-  - targeted application tests covered access control, decryption orchestration, deny-by-default behaviour, and authentication lookup
-  - targeted controller tests covered settings, self-service email/password flows, and login redirect seam usage
-  - full-suite verification has since been restored GREEN: 466 total, 465 passed, 1 skipped, 0 failed
-
----
-
-## Phase 5 [DONE] — Domain Refinement
-
-- [DONE] Confirmed the intended domain boundary for protected email state without moving crypto or persistence concerns into the domain
-- [DONE] Tightened `User` invariants around protected email state while keeping runtime email loading explicit and non-persistent
-- [DONE] Added focused domain tests to prove valid protected state is accepted and invalid protected state is rejected
-- [DONE] Re-audited the boundary and confirmed no wider domain refactor was required for Sprint 4
-- [DONE] Targeted verification GREEN: `dotnet test DraftView.Domain.Tests --nologo --filter "FullyQualifiedName~DraftView.Domain.Tests.Entities.UserTests"` returned 42 passed, 0 failed
-
----
-
-## Phase 6 [DONE] — End-to-End Integration
-
-**Goal:** Ensure system flows work with new model
-
-**Prerequisite: Stabilise dev key material**
-- [DONE] Step 0.1: Replace transient dev protected-email keys with fixed configuration-backed keys
-  - add one fixed dev encryption key
-  - add one fixed dev lookup-HMAC key
-  - store both in `.NET` user secrets for `DraftView.Web`
-  - fail fast if either key is missing or invalid
-- [DONE] Step 0.2: Repair local dev user email state under the fixed keys without dropping project data
-  - existing dev protected email generated with transient keys must be replaced
-  - selectively rebuild `AppUsers` protected email state under the fixed keys
-  - update matching Identity email/login values where required
-  - confirm dev `Author` and `SystemSupport` users can still log in
-
-**High-level steps**
-- [DONE] Step 1: Confirm which end-to-end outcomes are already covered by Phases 3–5
-  - avoid duplicating infrastructure contract coverage at integration level
-  - limit Phase 6 to real remaining flow gaps
-- [DONE] Step 2: Add one DB-backed login integration proof
-  - real web host boots in `Testing`
-  - login still succeeds under the protected lookup wiring
-- [DONE] Step 3: Add one invitation/provisioning integration proof
-  - author invite flow now runs through the real web host in `Testing`
-  - issuing the same invite twice proves older pending invites are superseded by a fresh token
-  - invitation-related user provisioning persists protected email fields through the real stack
-  - do not invent a standalone registration flow if the product does not actually expose one
-  - before Sprint 4 is complete, sending a fresh invitation must supersede any older pending invite for the same target user
-  - keep the author workflow simple: if an invite is not received, the author just issues a new invite
-  - implement this in the existing invitation send path rather than adding resend/cancel/reissue UI
-- [DONE] Step 4: Add one flow-level no-plaintext-persistence assertion
-  - verify the relevant persisted user row stores protected values rather than plaintext email
-  - keep this compact and complementary to infrastructure contract tests
-- [DONE] Step 5: Re-run governing and full-suite verification
-  - confirmed no end-to-end regression in the protected login path
-  - latest full-suite verification GREEN: 480 total, 479 passed, 1 skipped, 0 failed
-
-  ---
-
-## Sprint 3 — Reader Font Preferences (IMPLEMENTED)
-
-Allow users (Authors + Beta Readers) to choose their preferred reading font and size, persisted per user, applied globally via layout and CSS variables.
-
-Font faces:
-- SystemSerif (default)
-- Humanist (Merriweather)
-- Classic (Times)
-- SansSerif (Lato)
-
-Font sizes:
-- Small
-- Medium (default)
-- Large
-- ExtraLarge
-
-**Domain**
-- [DONE] Added `ProseFont` and `ProseFontSize` to `UserPreferences`
-
-**Application**
-- [DONE] Preferences loaded via `UserPreferencesRepository`
-- [DONE] Preferences applied in `_Layout.cshtml`
-
-**Web — Layout**
-- [DONE] Injected `data-prose-font` and `data-prose-font-size` onto `<body>`
-- [DONE] Fonts loaded via Google Fonts (Merriweather, Lato)
-- [DONE] No inline styling — CSS driven
-
-**Web — CSS (Core)**
-- [DONE] `--font-prose` controlled via `data-prose-font`
-- [DONE] `--text-prose-base` controlled via `data-prose-font-size`
-- [DONE] Explicit mappings for all font options (including SystemSerif)
-- [DONE] Size scale adjusted for meaningful visual separation
-
-**Web — Reader Views**
-- [DONE] DesktopReader uses `var(--font-prose)` and `var(--text-prose-base)`
-- [DONE] MobileReader uses same variables
-- [DONE] No duplication of logic between views
-
-**Web — Settings UI**
-- [DONE] Reading Preferences card visible for:
-  - Authors
-  - Beta Readers
-- [DONE] Form posts to update preferences
-- [DONE] Values persist and reload correctly
-
-**UAT**
-- [DONE] Preferences saved and persisted across sessions
-- [DONE] Applied correctly in Desktop Reader
-- [DONE] Applied correctly in Mobile Reader
-- [DONE] Font families visibly distinct
-- [DONE] Font sizes visibly distinct
-- [DONE] Works for both Author and Beta Reader roles
-
-[DONE] Bug: https://draftview.co.uk/Reader/Read mobile view now goes 404
-
-### Rename UserNotificationPreferences to UserPreferences — domain, repository, service, controller, viewmodels, views, tests (2026-04-10-1)
-
-[DONE] Domain: UserPreferences entity, IUserPreferencesRepository, UserService methods  
-[DONE] Added DisplayTheme (light/dark) to UserPreferences  
-
-[DONE] Infrastructure:
-- Replaced UserNotificationPreferencesConfiguration with UserPreferencesConfiguration
-- Replaced UserNotificationPreferencesRepository with UserPreferencesRepository
-- Updated DraftViewDbContext DbSet to UserPreferences
-
-[DONE] Data migration:
-- Added EF migration: RenameNotificationPreferencesToUserPreferences
-- Renamed table NotificationPreferences → UserPreferences
-- Renamed PK, FK, and index (UserId) constraints
-- Updated DbContextModelSnapshot
-
-[DONE] Application + consumers updated:
-- DatabaseSeeder uses UserPreferences
-- BetaBooksImporter creates UserPreferences for imported users
-- ServiceCollectionExtensions DI updated to IUserPreferencesRepository → UserPreferencesRepository
-
-[DONE] UI:
-- Implemented DraftView.Light.css and DraftView.Dark.css
-- Added theme toggle in Account/Settings
-- Persisted DisplayTheme applied in _Layout.cshtml
-
-[DONE] Tests:
-- Web tests updated and passing for Account settings and theme persistence
-
-[VERIFY]
-- No remaining references to NotificationPreferences or UserNotificationPreferences (solution-wide search)
-- Migration applied locally and existing data preserved
-- Theme persists across sessions (save → logout → login)
-- Seeder and importer correctly create default UserPreferences
-- Production DB user has permission for db.Database.Migrate()
-
-### Bugs resolved
-- [DONE] Reader/Read comment box overflows page boundary on RHS — CSS fix (v2026-04-10-1)
-- [DONE] AddComment POST on scene comment redirects to top of chapter — fixed, appends `#scene-{id}` anchor
-- [DONE] AddComment POST on chapter-level comment redirects to top of page — fixed, appends `#chapter-comments` anchor
-- [DONE] SetCommentStatus POST on chapter-level comment redirects to scene anchor — fixed, uses `#chapter-comments` when sceneId == chapterId
-- [DONE] Reader/Read comment status dropdown missing — CommentStatus dropdown added for author/moderator on scene and chapter level
-- [DONE] Author/Dashboard Recent Activity truncation — replaced on-the-fly assembly with persisted AuthorNotification; dismiss, clear all, 90-day prune, viewport fix
-- [DONE] Login always redirected to Reader/Dashboard regardless of role — author → Author/Dashboard, SystemSupport → Support/Dashboard
-
-### Sprint 1 — Pre-Beta Push (Complete)
-- [DONE] Fix prose font in reader view
-- [DONE] Fix comment author display name — live lookup against AppUsers.DisplayName
-- [DONE] Reactivate reader flow
-
-### Sprint 2 — Reader Experience (Partial, 2026-04-10)
-- [DONE] Fix scene-level Published labels in sections view
-- [DONE] Fix Published Chapters sort order on dashboard — depth-first tree order (TDD)
-- [DONE] Project switcher — sidebar in DesktopDashboard, query string selection, progress per project
-- [DONE] Remember last selected project — query string naturally persists selection
-- [DONE] Kindle-style resume on login — redirects to correct scene (exact scroll position → Sprint 2.5)
-- [DONE] Persisted AuthorNotification entity — written at event time, dismiss single, clear all, 90-day prune, viewport fix (404 tests green)
-- [DONE] Login redirect fix — author → Author/Dashboard, SystemSupport → Support/Dashboard
-- [DONE] CommentStatus enum {New, AuthorReply, Ignore, Consider, Todo, Done, Keep}; SetStatus domain method and controller action in place
-- [DONE] Author comment response UI — CommentStatus dropdown on Reader/Read (scene and chapter, author/moderator) and Author/Section
-
-### Persisted AuthorNotifications detail (2026-04-10)
-- [DONE] AuthorNotification domain entity (TDD, 7 tests)
-- [DONE] IAuthorNotificationRepository + EF implementation (8 tests)
-- [DONE] EF migration AddAuthorNotifications (composite index on AuthorId, OccurredAt)
-- [DONE] DashboardService: GetNotificationsAsync (90-day prune), DismissNotificationAsync, DismissAllNotificationsAsync
-- [DONE] CommentService writes NewComment / ReplyToAuthor notifications at event time
-- [DONE] UserService writes ReaderJoined notification on AcceptInvitation
-- [DONE] SyncService writes SyncCompleted notification on successful parse
-- [DONE] AuthorController: DismissNotification + ClearAllNotifications POST actions
-- [DONE] Dashboard.cshtml: count badge, Clear All button, per-item dismiss button
-- [DONE] DraftView.Notifications.css: dismiss button styles, viewport panel height fix
-- [DONE] Removed obsolete: GetRecentNotificationsAsync, GetRecentCommentsForDashboardAsync, GetRecentlyAcceptedAsync, GetRecentlySyncedAsync, CommentNotificationRow
-- [DONE] 427 tests GREEN
-- [DONE] 1 test skipped - it sends an email, which is now tested in SmtpEmailSenderIntegrationTests
-
-### Email Sprint (2026-04-08)
-- [DONE] Yahoo SMTP for dev; SmtpEmailSender provider-agnostic via appsettings.json
-- [DONE] Production config: Oracle Email Delivery SMTP
-- [DONE] Oracle Email Delivery: DKIM, SPF, approved senders; Cloudflare DKIM CNAME
-- [DONE] Cloudflare email routing: support@draftview.co.uk → alastair_clarke@yahoo.com
-- [DONE] SmtpEmailSender migrated to MailKit 4.15.1 (fixes Oracle STARTTLS auth)
-- [DONE] MimeKit CVE-2026-30227 patched (4.7.1 → 4.15.1)
-- [DONE] SQLite packages removed from solution
-- [DONE] DraftView.Integration.Tests added; SmtpEmailSenderIntegrationTests green
-- [DONE] ForgotPassword SMTP failure caught and logged
-- [DONE] Dev-safe email addresses for Becca and Hilary
-
-### Role Migration — Stages 1-4 (2026-04-06)
-- [DONE] Stage 1: Identity roles as canonical source, web surface migrated
-- [DONE] Stage 2: IAuthorizationFacade injected into UserService
-- [DONE] Stage 3: SystemSupport role, SystemStateMessage entity + service + footer
-- [DONE] Stage 4: System State Message Management UI on Support Dashboard
-- [DONE] ReaderController secured (Author, BetaReader); SystemSupport isolated
-- [DONE] HomeController role-based routing (Support → Author → Reader)
-- [DONE] CSS versioning automation (Update-CssVersion.ps1)
-- [DONE] UserService.DeactivateUserAsync revokes all ReaderAccess records (TDD)
-- [DONE] Mobile reader flow — IsMobile(), MobileChapters/MobileScenes/MobileRead
-- [DONE] Desktop reader views renamed to Desktop prefix
-
-### Reader Authorization Model — FINAL DECISION
-- Reader surface: Author + BetaReader only
-- SystemSupport excluded from ReaderController; must use impersonation when needed
-- No dual-role model; Author treated as elevated reader at runtime
-- BaseReaderController: `[Authorize(Roles = "Author,BetaReader")]`
-
-# Extracting Scrivener Project naming and refactoring it
-# ScrivenerProject → Project Rename — Run List
-
-Run the full test suite after every item. Do not proceed if tests are red.
-
----
-
-## Stage 1 — Domain Entity
-
-- [Done] Rename class `ScrivenerProject` → `Project` (entity file rename + class name)
-- [Done] Rename file `ScrivenerProject.cs` → `Project.cs`
-- [Done] Rename property `Project.ScrivenerRootUuid` → `Project.SyncRootId`
-- [None Located] Rename invariant code string `"I-PROJ-"` references if they mention Scrivener — none found, codes are generic
-- [Passed] **Run tests** ✓
-
----
-
-## Stage 2 — Domain Repository Interface
-
-- [Done] Rename interface `IScrivenerProjectRepository` → `IProjectRepository`
-- [Done] Rename file `IScrivenerProjectRepository.cs` → `IProjectRepository.cs`
-- [Done] Rename method `GetSoftDeletedByScrivenerRootUuidAsync()` → `GetSoftDeletedBySyncRootIdAsync()`
-- [Passed] **Run tests** ✓
-
----
-
-## Stage 3 — Domain Service Interfaces
-
-- [Done] Rename interface `IScrivenerProjectDiscoveryService` → `IProjectDiscoveryService`
-- [Done] Rename file `IScrivenerProjectDiscoveryService.cs` → `IProjectDiscoveryService.cs`
-- [Done] Rename property `DiscoveredProject.ScrivenerRootUuid` → `DiscoveredProject.SyncRootId`
-- [Passed] **Run tests** ✓
-
----
-
-## Stage 4 — Infrastructure Configuration
-
-- [Done] Rename class `ScrivenerProjectConfiguration` → `ProjectConfiguration`
-- [Done] Rename file `ScrivenerProjectConfiguration.cs` → `ProjectConfiguration.cs`
-- [Passed] **Run tests** ✓
-
----
-
-## Stage 5 — Infrastructure Repository
-
-- [Done] Rename class `ScrivenerProjectRepository` → `ProjectRepository`
-- [Done] Rename file `ScrivenerProjectRepository.cs` → `ProjectRepository.cs`
-- [Done] Rename method `GetByScrivenerRootUuidAsync()` → `GetBySyncRootIdAsync()`
-- [redundant] Rename method `GetSoftDeletedByScrivenerRootUuidAsync()` → `GetSoftDeletedBySyncRootIdAsync()`
-- [ ] Update all internal `p.ScrivenerRootUuid` → `p.SyncRootId` in query lambdas
-- [ ] **Run tests** ✓
-
----
-
-## Stage 6 — Application Discovery Service
-
-> `ScrivenerProjectDiscoveryService` discovers projects by scanning for `.scrivx` files
-> and parsing Scrivener vault structure. It is Scrivener-specific. The class name is
-> correct and stays. Only the repository parameter type needs updating.
-
-- [Done] Confirm class name remains `ScrivenerProjectDiscoveryService` — do NOT rename
-- [Done] Confirm file name remains `ScrivenerProjectDiscoveryService.cs` — do NOT rename
-- [Done] Update constructor parameter type `IScrivenerProjectRepository` → `IProjectRepository` (if not already cascaded from Stage 2)
-- [Done] Confirm all `SyncRootId` references correct (were `ScrivenerRootUuid`, updated in Stage 3)
-- [passed] **Run tests** ✓
-
----
-
-## Stage 7 — Application SyncService
-
-- [Done] Update constructor parameter type `IScrivenerProjectRepository` → `IProjectRepository`
-- [Done] Update `nameof(ScrivenerProject)` → `nameof(Project)` in exception throw
-- [Done] Confirm all `project.SyncRootId` references correct (were `ScrivenerRootUuid`, cascaded from Stage 1)
-- [Passed] **Run tests** ✓
-
----
-
-## Stage 8 — Web ViewModels
-
-- [Done] Update `DashboardViewModel.ActiveProject` type: `ScrivenerProject?` → `Project?`
-- [Done] Update `DashboardViewModel.AllProjects` type: `IReadOnlyList<ScrivenerProject>` → `IReadOnlyList<Project>`
-- [Done] Update `ReaderAccessViewModel.ProjectsWithAccess` type: `IReadOnlyList<ScrivenerProject>` → `IReadOnlyList<Project>`
-- [Done] Update `ReaderAccessViewModel.ProjectsWithoutAccess` type: `IReadOnlyList<ScrivenerProject>` → `IReadOnlyList<Project>`
-- [Passed] **Run tests** ✓
-
----
-
-## Stage 9 — Web AuthorController
-
-- [Done] Update constructor parameter type `IScrivenerProjectRepository` → `IProjectRepository`
-- [Done] Update constructor parameter type `IScrivenerProjectDiscoveryService` → `IProjectDiscoveryService`
-- [Done] Update background task variable type `IScrivenerProjectRepository` → `IProjectRepository`
-- [Done] Update `ScrivenerProject.Create()` → `Project.Create()`
-- [Done] Confirm all `p.SyncRootId` and `d.SyncRootId` references correct (were `ScrivenerRootUuid`)
-- [Done] Update `GetSoftDeletedByScrivenerRootUuidAsync()` call → `GetSoftDeletedBySyncRootIdAsync()`
-- [Passed] **Run tests** ✓
-
----
-
-## Stage 10 — Web DI Registration
-
-- [Done] Update registration: `ScrivenerProjectRepository` → `ProjectRepository`
-- [Done] Update registration: `IScrivenerProjectRepository` → `IProjectRepository`
-- [Done] Update registration: `IScrivenerProjectDiscoveryService` → `IProjectDiscoveryService`
-- [Done] Confirm `ScrivenerProjectDiscoveryService` registration stays — it is the correct Scrivener-specific implementation of `IProjectDiscoveryService`
-- [Passed] **Run tests** ✓
-
----
-
-## Stage 11 — Test Files
-
-- [Done] Rename file `ScrivenerProjectTests.cs` → `ProjectTests.cs`
-- [Done] Rename class `ScrivenerProjectTests` → `ProjectTests`
-- [Done] Update all `ScrivenerProject.Create()` → `Project.Create()`
-- [Done] Update all `ScrivenerProject` type references
-- [Done] Rename file `ScrivenerProjectRepositoryTests.cs` → `ProjectRepositoryTests.cs`
-- [Done] Rename class `ScrivenerProjectRepositoryTests` → `ProjectRepositoryTests`
-- [Done] Update field `ScrivenerProjectRepository _sut` → `ProjectRepository _sut`
-- [Done] Update helper `MakeProject()` — `ScrivenerProject.Create()` → `Project.Create()`
-- [Done] Update `SyncServiceTests` field type `Mock<IScrivenerProjectRepository>` → `Mock<IProjectRepository>`
-- [Passed] **Run tests** ✓
----
-
-## Stage 12 — EF Migration
-
-- [Done] Run: `dotnet ef migrations add RenameScrivenerProjectToProject --project DraftView.Infrastructure --startup-project DraftView.Web`
-- [Done] Review generated migration — if EF generates DropTable/CreateTable, rewrite as `migrationBuilder.RenameTable()` to preserve data
-- [Done] Run: `dotnet ef database update --project DraftView.Infrastructure --startup-project DraftView.Web`
-- [Passed] **Run tests** ✓
-
----
-
-## Stage 13 — Solution-Wide Verification
-
-- [Done] Solution-wide search for `ScrivenerProject` — only permitted hits: `ScrivenerProjectDiscoveryService`, `IScrivenerProjectParser`, and migration history
-- [Done] Solution-wide search for `ScrivenerRootUuid` — zero hits outside migration history
-- [Done] Solution-wide search for `IScrivenerProjectRepository` — zero hits
-- [Done] Solution-wide search for `IScrivenerProjectDiscoveryService` — zero hits
-- [Done] **Run full test suite** ✓
-- [Done] Commit: `refactor: rename ScrivenerProject to Project, IProjectRepository replaces IScrivenerProjectRepository, SyncRootId replaces ScrivenerRootUuid`
-
----
-
-## Known Debt — Not in This Sprint
-
-Deliberately left for the sync extraction sprint:
-
-- `Section.ScrivenerUuid` — moving off `Section` entirely into `ScrivenerSyncMapping`
+- `Section.ScrivenerUuid` — moves off `Section` into a sync mapping table in the sync extraction sprint
 - `Section.ScrivenerStatus` + `UpdateScrivenerStatus()` — Scrivener display metadata, name is honest
-- `IScrivenerProjectParser` — parses `.scrivx`, genuinely Scrivener-specific
-- `ParsedBinderNode.ScrivenerStatus` — Scrivener binder metadata
-- `ScrivenerProjectDiscoveryService` — Scrivener-specific implementation of `IProjectDiscoveryService`, name is correct
+- `Project.DropboxPath`, `Project.SyncRootId`, sync status fields — move to sync-specific config in the extraction sprint
+- `DraftView.Sync.Scrivener` RCL extraction — deferred until a second sync provider is built
+- `.docx` import support (`WordImportProvider`) — deferred, added as a separate task after V-Sprint 1
 
-### Earlier Work
-- [DONE] RtfConverter case-insensitive path fix; chapter ordering fix; email-as-nav-link
-- [DONE] Account/Settings page; Dropbox panel for authors
-- [DONE] User.UpdateDisplayName and UpdateEmail domain methods (TDD)
-- [DONE] Sync file download progress — live file count, real percentage progress bar
-- [DONE] LocalCachePath moved from user secrets to appsettings.json
-- [DONE] Dual-list project assignment UI (ManageReaderAccess)
-- [DONE] ReaderAccess entity + repository (TDD, migration)
-- [DONE] Per-author Dropbox OAuth connection (DropboxConnection entity, IDropboxClientFactory)
-- [DONE] IDropboxFileDownloader — full Dropbox sync working end to end in production
-- [DONE] AuthorId added to ScrivenerProject (migration with backfill)
-- [DONE] UseForwardedHeaders — fixes OAuth behind Nginx
-- [DONE] Case-insensitive .scrivx lookup (Linux compatibility)
-- [DONE] AddProjects background task (fixes 504 timeout)
-- [DONE] BetaBooks importer: Comment.CreateForImport, DevTools command, 54 comments seeded
-- [DONE] Becca Dunlop and Hilary Royston-Bishop accounts created with real emails
-- [DONE] Toast notifications (fixed position, auto-dismiss, no layout shift)
-- [DONE] Reply threading, comment edit and delete (including moderator delete)
-- [DONE] PublishAsPartOfChapter domain invariant (TDD); chapter-only publishing enforced
-- [DONE] CSS split into 7 files by concern; Heroicons as static C# class
-- [DONE] Rebrand: DraftReader → DraftView throughout
-- [DONE] pg.ps1, PowerShell.md, PRINCIPLES.md
-- [DONE] Cloudflare SSL, Nginx, systemd service on Oracle Cloud VM
-- [DONE] Floating footer: copyright, system status indicator
+---
+
+---
+
+# V-Sprint 1 — Core Versioning Backbone + Manual Upload
+
+## Goal
+
+Prove two things in parallel:
+1. Working state → Republish → Version → Reader sees latest version
+2. Author with no Scrivener → Create project → Upload file → Republish → Reader sees content
+
+Both flows share the same versioning infrastructure. Manual upload is not a separate sprint — it is a first-class delivery within V-Sprint 1.
+
+## Phased Delivery Rule
+
+> Each phase must be independently deployable to production.
+> No phase leaves the system in a broken or partially visible state.
+> Tests must be green before moving to the next phase.
+
+---
+
+## Phase 1 — Domain + Infrastructure Foundation
+
+**Goal:** Establish the versioning data model and manual upload domain model. No behaviour change visible in production.
+
+### Domain (TDD required)
+
+**`SectionVersion` entity:**
+- `Id`, `SectionId`, `AuthorId`, `VersionNumber`, `HtmlContent`, `ContentHash`, `ChangeClassification` (nullable), `AiSummary` (nullable), `CreatedAt`
+- Factory: `SectionVersion.Create(section, authorId)` — snapshots `HtmlContent` and `ContentHash`, assigns next `VersionNumber`
+- Invariants: only `NodeType.Document`; not soft-deleted; `HtmlContent` not null or empty
+
+**`ReadEvent` additions:**
+- `LastReadVersionNumber` — nullable int
+- `UpdateLastReadVersion(int versionNumber)` domain method
+
+**`Comment` addition:**
+- `SectionVersionId` — nullable FK to `SectionVersion`
+
+**`Project` addition:**
+- `ProjectType` enum property: `ScrivenerDropbox | Manual`
+
+**`Section` addition:**
+- `ScrivenerUuid = null` explicitly valid. No invariant violation. No nullable guard warnings.
+
+### Domain Tests (write failing first)
+
+`SectionVersion`:
+- `Create_WithDocumentSection_CreatesVersionWithSnapshot`
+- `Create_WithFolderSection_ThrowsInvariantViolation`
+- `Create_WithSoftDeletedSection_ThrowsInvariantViolation`
+- `Create_WithNullHtmlContent_ThrowsInvariantViolation`
+- `Create_AssignsCorrectVersionNumber`
+- `Create_AssignsVersionNumberOne_WhenFirstVersion`
+
+`ReadEvent`:
+- `UpdateLastReadVersion_SetsVersionNumber`
+- `UpdateLastReadVersion_OverwritesPreviousValue`
+
+`Project`:
+- `Create_WithManualType_HasNullDropboxPath`
+- `Create_WithScrivenerDropboxType_RequiresDropboxPath`
+
+### Infrastructure
+
+- `ISectionVersionRepository`
+  - `GetLatestAsync(int sectionId, CancellationToken ct)`
+  - `GetAllBySectionIdAsync(int sectionId, CancellationToken ct)`
+  - `AddAsync(SectionVersion version, CancellationToken ct)`
+- `SectionVersionRepository` EF implementation
+- `SectionVersionConfiguration` EF config
+- Register in `DraftViewDbContext` and DI
+- Migration: `AddVersioningAndManualUpload`
+  - `SectionVersions` table
+  - `LastReadVersionNumber` nullable int on `ReadEvents`
+  - `SectionVersionId` nullable FK on `Comments`
+  - `ProjectType` int column on `Projects` (default `0` = `ScrivenerDropbox`)
+
+### Deployable state
+- Migration runs cleanly on production
+- No existing behaviour changes
+- All existing tests remain green
+
+---
+
+## Phase 2 — Section Tree Service + Import Provider
+
+**Goal:** Manual section creation and file import are wired and testable. Still no UI.
+
+### Application (TDD required)
+
+**`SectionTreeService`:**
+- `GetOrCreateForUpload(int projectId, string title, int? parentId, int? sortOrder) → Section`
+- `GetTree(int projectId) → IReadOnlyList<SectionTreeNode>`
+
+**`IImportProvider` interface + `RtfImportProvider`:**
+- `SupportedExtension` → `".rtf"`
+- `ProviderName` → `"RTF"`
+- `ConvertToHtmlAsync(Stream, CancellationToken)` — delegates to existing `RtfConverter`
+
+**`ImportService`:**
+- `ImportAsync(projectId, sectionId, fileStream, fileName, authorId, ct)`
+- Resolves provider by extension; throws `UnsupportedFileTypeException` for unknown extensions
+- Writes to `Section.HtmlContent`; updates `ContentHash`; sets `ContentChangedSincePublish` if version exists
+
+### Application Tests (write failing first)
+
+`SectionTreeService`:
+- `GetOrCreateForUpload_CreatesSection_WhenNoneExists`
+- `GetOrCreateForUpload_ReturnsExisting_WhenTitleAndParentMatch`
+- `GetOrCreateForUpload_NeverCreatesDuplicate`
+- `GetOrCreateForUpload_CreatedSection_HasNullScrivenerUuid`
+- `GetOrCreateForUpload_CreatedSection_IsDocument`
+- `GetOrCreateForUpload_DefaultsSortOrder_ToEndOfSiblingList`
+- `GetTree_ReturnsSortedHierarchy`
+- `GetTree_ExcludesSoftDeletedSections`
+
+`ImportService`:
+- `ImportAsync_WritesHtmlToSection`
+- `ImportAsync_UpdatesContentHash`
+- `ImportAsync_SetsDirtyFlag_WhenVersionExists`
+- `ImportAsync_DoesNotSetDirtyFlag_WhenNoVersionExists`
+- `ImportAsync_Throws_ForUnsupportedExtension`
+
+### Deployable state
+- Services wired in DI but no controller calls them yet
+- All existing tests remain green
+
+---
+
+## Phase 3 — Versioning Application Layer
+
+**Goal:** `VersioningService` exists and is callable. Still no UI.
+
+### Application (TDD required)
+
+**`IVersioningService`:**
+- `RepublishChapterAsync(int chapterId, int authorId, CancellationToken ct)`
+
+**`VersioningService` implementation:**
+- Loads chapter (Folder) and validates ownership
+- Gets all non-soft-deleted Document descendants
+- For each Document: calls `SectionVersion.Create()`, sets `Comment.SectionVersionId` on future comments (not retroactively)
+- Persists via `ISectionVersionRepository`
+- Sets `Section.IsPublished = true` and `Section.PublishedAt`
+- Saves via unit of work
+
+### Application Tests (write failing first)
+
+- `RepublishChapterAsync_WithValidChapter_CreatesVersionPerDocument`
+- `RepublishChapterAsync_WithNoDocuments_ThrowsInvariantViolation`
+- `RepublishChapterAsync_WithFolderSection_ThrowsInvariantViolation`
+- `RepublishChapterAsync_IgnoresSoftDeletedDocuments`
+- `RepublishChapterAsync_VersionNumberIncrements`
+- `RepublishChapterAsync_WorksForManualProject`
+
+### Deployable state
+- Service registered and dormant
+- All existing tests remain green
+
+---
+
+## Phase 4 — Reader Content Source
+
+**Goal:** Readers see `SectionVersion.HtmlContent`. Backward-compatible fallback for pre-versioning sections.
+
+### Web
+
+- Update all reader views (Desktop and Mobile) that render `section.HtmlContent`:
+  - Resolve content via `ISectionVersionRepository.GetLatestAsync(section.Id)`
+  - If a `SectionVersion` exists: render `sectionVersion.HtmlContent`
+  - If no `SectionVersion` (pre-versioning section): fall back to `Section.HtmlContent`
+- Update `ReadEvent` recording: set `LastReadVersionNumber` when a version exists
+- Set `Comment.SectionVersionId` to current latest version Id at comment creation time (null if no version yet)
+
+### Deployable state
+- Existing readers see identical content — fallback covers all currently published sections
+- New comments are version-anchored going forward
+- All existing tests remain green
+
+---
+
+## Phase 5 — Author Republish + Manual Upload UI
+
+**Goal:** Both flows visible and functional. Full end-to-end for both sync and manual authors.
+
+### Web — Republish
+
+- Add **Republish** button to `Author/Sections` view
+  - Shown for published Folder (chapter) sections
+  - POST to `AuthorController.RepublishChapter(int chapterId, int projectId)`
+- `RepublishChapter` action calls `IVersioningService.RepublishChapterAsync`
+- Toast success + redirect. Graceful toast error on failure
+- No inline styles; CSS classes only
+
+### Web — Manual Upload
+
+- **Create Manual Project** option on project creation flow
+  - `ProjectType = Manual` projects skip Dropbox configuration entirely
+  - No sync status UI shown for manual projects
+- **Upload Draft** button on each Document row in Sections view
+  - File picker (`.rtf` accepted; other extensions rejected with clear error message)
+  - POST to `AuthorController.UploadDraft(int sectionId, int projectId, IFormFile file)`
+  - Calls `SectionTreeService` + `ImportService`
+  - Shows **Draft updated** toast on success
+- **Add Section** button on Sections view for manual projects
+  - Modal: title field + optional parent dropdown (powered by `SectionTreeService.GetTree`)
+  - POST to `AuthorController.AddSection(int projectId, string title, int? parentId)`
+  - Returns updated section row partial
+
+### Deployable state
+- Author (sync or manual) can Republish and create a version
+- Reader immediately sees new version content
+- Manual author can create a project, add sections, upload RTF, and republish
+- Full end-to-end working for both author types
+- All existing tests remain green
+- Manual browser verification complete for both flows
+
+---
+
+## Do NOT include in V-Sprint 1
+
+- AI summaries
+- Diff highlighting
+- Change classification
+- Per-document (scene-level) publishing UI
+- Scheduling or locking
+- Dedicated Publishing Page
+- Revoke action
+- Reader banner or update messaging
+- Version retention limits
+- `.docx` import
+
+---
+
+---
+
+# V-Sprint 2 — Diff and Highlighting
+
+## Goal
+
+Deliver the core differentiator: readers see what changed.
+
+## Phases
+
+**Phase 1 — Diff Engine (Domain)**
+- Paragraph-level diff between two `HtmlContent` strings
+- Output: added, removed, unchanged paragraphs
+- Works for both sync-sourced and import-sourced content (source is irrelevant)
+- TDD throughout
+
+**Phase 2 — Application Diff Service**
+- `IDiffService.ComputeDiff(string from, string to)`
+- Compare reader's `LastReadVersionNumber` version against current latest
+
+**Phase 3 — Reader Highlighting**
+- Highlight changed paragraphs in reader view
+- Always-on in this sprint
+- Update `LastReadVersionNumber` on open
+
+---
+
+# V-Sprint 3 — Reader Experience Layer
+
+## Goal
+
+Make the system usable and intentional for readers.
+
+## Phases
+
+**Phase 1 — Reader State**
+- Update `LastReadVersionNumber` on section open
+- Add `LastReadAt` to `ReadEvent`
+
+**Phase 2 — Messaging**
+- "Updated since you last read" — reader has read it but a newer version exists
+- No message on first read or when current
+
+**Phase 3 — Update Banner**
+- Non-blocking top banner
+- Dismissible
+- Shown once per version per reader
+- Version label clickable to reopen
+
+---
+
+# V-Sprint 4 — Pending Change Indicator and Classification
+
+## Goal
+
+Give authors visibility into the nature of changes before publishing.
+
+## Phases
+
+**Phase 1 — Change Classification Domain**
+- `ChangeClassification` enum: `Polish`, `Revision`, `Rewrite`
+- Diff-based heuristic classification
+
+**Phase 2 — Classification Service**
+- Evaluate `Section.HtmlContent` vs latest `SectionVersion.HtmlContent`
+- `IChangeClassificationService`
+- Works identically for sync-sourced and import-sourced working state
+
+**Phase 3 — Author UI Indicator**
+- Indicator next to Republish button on Sections view
+- Colour and label only
+
+---
+
+# V-Sprint 5 — AI Summary System
+
+## Goal
+
+Add monetisation-relevant value. AI summaries that name characters, locations, and events from the prose — not generic diffs.
+
+## Phases
+
+**Phase 1 — AI Summary Service**
+- `IAiSummaryService`
+- Compares previous `SectionVersion.HtmlContent` against current `Section.HtmlContent`
+- Prompt instructs: name characters and locations from the prose; never write generic phrases; 2–4 sentences; author's voice as a note to beta readers
+- One-line summary (always available); full summary (tier-gated)
+- For first-version sections: summarise what the section introduces, not what changed
+
+**Phase 2 — Publish Flow Integration**
+- Show AI summary in editable textarea on Republish confirmation step
+- Author edits freely before confirming
+- AI failure degrades to empty textarea — never blocks publication
+
+**Phase 3 — Reader Banner Summary**
+- Reader banner shows one-line `AiSummary` from current `SectionVersion`
+
+---
+
+# V-Sprint 6 — Per-Document Publishing
+
+## Goal
+
+Enable granular publishing for authors who compose in scenes — and for manual authors uploading individual documents.
+
+## Phases
+
+**Phase 1 — Per-Document Application**
+- `RepublishSectionAsync(int sectionId, int authorId)` on `IVersioningService`
+- Available for both sync-sourced and import-sourced Documents
+
+**Phase 2 — Publishing Page**
+- Dedicated Publishing Page replaces Republish button on Sections view
+- Chapter view: Republish and Revoke per chapter
+- Expand chapter → per-document controls shown when chapter contains multiple documents
+- Manual projects: per-document controls always shown (no chapter grouping assumed)
+
+---
+
+# V-Sprint 7 — Scheduling and Locking
+
+## Phases
+
+**Phase 1 — Chapter Locking**
+- Lock blocks all publish actions on the chapter
+- Reader sees: "Author is revising this chapter"
+
+**Phase 2 — Scheduling**
+- Per chapter (default), optional per document
+- Suppresses suggestions only — never blocks republish action
+
+---
+
+# V-Sprint 8 — Dropbox Incremental Sync
+
+## Goal
+
+Scalable and efficient ingestion. No impact on publishing or manual upload.
+
+## Phases
+
+**Phase 1 — Cursor-based sync**
+- Only download changed files
+- Update `Section.HtmlContent` only — identical to current sync behaviour
+- No version creation
+
+---
+
+# V-Sprint 9 — Version Retention and Deletion
+
+## Goal
+
+Enforce the pricing model.
+
+## Phases
+
+**Phase 1 — Retention Domain**
+- Version retention rules per tier
+- `SectionVersion` permanent deletion (the only case of physical deletion in the system)
+
+**Phase 2 — Enforcement**
+- Check limit before creating new version
+- Prompt author to delete when limit reached
+
+**Phase 3 — Version Management UI**
+- Version list on Publishing Page
+- Controlled deletion flow with confirmation
+
+---
+
+# V-Sprint 10 — Tree Builder UI (Option A)
+
+## Goal
+
+Replace implicit section creation (Option B) with an explicit drag-and-drop tree management UI. Targeted at manual-project authors and power users.
+
+## Phases
+
+**Phase 1 — Tree Service Extension**
+- `SectionTreeService.CreateSection(projectId, title, parentId, sortOrder, authorId)`
+- `SectionTreeService.MoveSection(sectionId, newParentId, newSortOrder, authorId)`
+- `SectionTreeService.DeleteSection(sectionId, authorId)` — soft delete
+
+**Phase 2 — Tree Builder UI**
+- Drag-and-drop section tree on Project view
+- Create, rename, reorder, nest sections
+- Upload Draft integrated per-section row
+
+**Phase 3 — Sync Project Tree Display**
+- For `ScrivenerDropbox` projects: tree is read-only (controlled by Scrivener)
+- Structural changes shown as incoming sync updates
+
+---
+
+# Sprint Order Summary
+
+| Sprint | Goal |
+|--------|------|
+| V-Sprint 1 | Core versioning backbone + manual upload — 5 deployable phases |
+| V-Sprint 2 | Diff and highlighting |
+| V-Sprint 3 | Reader experience layer |
+| V-Sprint 4 | Pending change indicator and classification |
+| V-Sprint 5 | AI summaries |
+| V-Sprint 6 | Per-document publishing |
+| V-Sprint 7 | Scheduling and locking |
+| V-Sprint 8 | Incremental sync |
+| V-Sprint 9 | Version retention |
+| V-Sprint 10 | Tree builder UI (Option A) |
+
+---
+
+# Phased Delivery Rules
+
+Every phase across every sprint must satisfy all of the following before deployment:
+
+1. All new tests are green
+2. No existing tests have regressed
+3. The relevant view has been manually verified in the browser
+4. Changes are committed to GitHub with a meaningful message
+5. TASKS.md is updated
+6. The system is in a complete, non-broken state — no half-built features visible to authors or readers
+
+> Build thin, complete slices.
+> Validate behaviour early.
+> Never build ahead of proof.
+> The ingestion channel is irrelevant to the reader.
+> The author decides what becomes a version. Always.
+> DraftView works without Scrivener.
