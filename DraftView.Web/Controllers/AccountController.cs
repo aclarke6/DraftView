@@ -9,6 +9,7 @@ using DraftView.Web.Models;
 
 namespace DraftView.Web.Controllers;
 
+#pragma warning disable CS9107
 public class AccountController(
     DraftViewDbContext db,
     SignInManager<IdentityUser> signInManager,
