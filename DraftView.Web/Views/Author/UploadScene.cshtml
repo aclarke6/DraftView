@@ -1,0 +1,34 @@
+@model UploadSceneViewModel
+@{
+    ViewData["Title"] = "Upload Scene";
+}
+
+<h2>Upload Scene</h2>
+<p><a asp-action="Sections" asp-route-projectId="@Model.ProjectId">&larr; Back to Sections</a></p>
+
+<form asp-action="UploadScene" method="post" enctype="multipart/form-data" class="upload-form">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="ProjectId" />
+    <input type="hidden" asp-for="ParentChapterId" />
+
+    <div class="form-group">
+        <label asp-for="SceneTitle" class="form-label">Scene title</label>
+        <input asp-for="SceneTitle" class="form-input" placeholder="e.g. Chapter 1, Scene 1" />
+        <span asp-validation-for="SceneTitle" class="field-validation-error"></span>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="File" class="form-label">RTF file</label>
+        <input asp-for="File" type="file" accept=".rtf" class="form-input" />
+        <span asp-validation-for="File" class="field-validation-error"></span>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn--primary">Upload</button>
+        <a asp-action="Sections" asp-route-projectId="@Model.ProjectId" class="btn btn--secondary">Cancel</a>
+    </div>
+</form>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

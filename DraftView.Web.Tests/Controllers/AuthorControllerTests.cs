@@ -29,6 +29,8 @@ public class AuthorControllerTests
     private readonly Mock<ISyncProgressTracker> progressTracker = new();
     private readonly Mock<IReaderAccessRepository> readerAccessRepo = new();
     private readonly Mock<IVersioningService> versioningService = new();
+    private readonly Mock<IImportService> importService = new();
+    private readonly Mock<ISectionTreeService> sectionTreeService = new();
     private readonly Mock<IUnitOfWork> unitOfWork = new();
     private readonly Mock<ILogger<AuthorController>> logger = new();
 
@@ -48,6 +50,8 @@ public class AuthorControllerTests
             progressTracker.Object,
             readerAccessRepo.Object,
             versioningService.Object,
+            importService.Object,
+            sectionTreeService.Object,
             logger.Object);
 
         controller.ControllerContext = new ControllerContext

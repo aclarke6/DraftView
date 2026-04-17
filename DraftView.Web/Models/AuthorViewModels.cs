@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Notifications;
+using Microsoft.AspNetCore.Http;
 
 namespace DraftView.Web.Models;
 
@@ -55,4 +56,20 @@ public class ReaderAccessViewModel
     public ReaderStatus Status { get; init; }
     public IReadOnlyList<Project> ProjectsWithAccess { get; init; } = [];
     public IReadOnlyList<Project> ProjectsWithoutAccess { get; init; } = [];
+}
+
+/// <summary>
+/// Form model for uploading an RTF file to a Manual project section.
+/// Used by AuthorController.UploadScene GET and POST.
+/// </summary>
+public class UploadSceneViewModel
+{
+    public Guid ProjectId { get; set; }
+    public Guid? ParentChapterId { get; set; }
+
+    [Required(ErrorMessage = "Please enter a scene title.")]
+    public string SceneTitle { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Please select a file to upload.")]
+    public IFormFile? File { get; set; }
 }

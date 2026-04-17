@@ -334,6 +334,7 @@ See `DraftView Git Rules.md` for branch strategy, gates, and commit standards.
 - [x] V-Sprint 1 Phase 3 — Versioning Application Layer — 567 tests, VersioningService with full TDD coverage, committed 2026-04-17
 - [x] V-Sprint 1 Phase 4 — Reader Content Source — 571 tests, version resolution and anchoring, committed 2026-04-17
 - [x] V-Sprint 1 Phase 5 — Author Republish UI — 575 tests, RepublishChapter action with TDD coverage, committed 2026-04-17
+- [x] V-Sprint 1 Phase 6 — Manual Upload UI — 575 tests, UploadScene GET/POST with form and button, committed 2026-04-17
 - [ ] V-Sprint 1 — Core versioning backbone + manual upload — Republish → Version → Reader flow
 - [ ] V-Sprint 2 — Paragraph diff highlighting — deliver core reader value
 - [ ] V-Sprint 3 — Reader experience layer — update messaging and banner

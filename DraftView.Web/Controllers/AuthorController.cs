@@ -25,6 +25,8 @@ public class AuthorController(
     ISyncProgressTracker progressTracker,
     IReaderAccessRepository readerAccessRepo,
     IVersioningService versioningService,
+    IImportService importService,
+    ISectionTreeService sectionTreeService,
     ILogger<AuthorController> logger) : BaseController(userRepo)
 {
     // ---------------------------------------------------------------------------
@@ -257,6 +259,65 @@ public class AuthorController(
         }
 
         return Redirect(Url.Action("Sections", new { projectId }) + "#section-" + chapterId);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Manual Upload
+    // ---------------------------------------------------------------------------
+    [HttpGet]
+    public async Task<IActionResult> UploadScene(Guid projectId, Guid? parentChapterId)
+    {
+        var project = await projectRepo.GetByIdAsync(projectId);
+        if (project is null) return NotFound();
+
+        return View(new UploadSceneViewModel
+        {
+            ProjectId       = projectId,
+            ParentChapterId = parentChapterId
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UploadScene(UploadSceneViewModel model)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        if (!ModelState.IsValid)
+            return View(model);
+
+        try
+        {
+            var section = await sectionTreeService.GetOrCreateForUploadAsync(
+                model.ProjectId,
+                model.SceneTitle,
+                model.ParentChapterId,
+                sortOrder: null);
+
+            await using var stream = model.File!.OpenReadStream();
+            await importService.ImportAsync(
+                model.ProjectId,
+                section.Id,
+                stream,
+                model.File.FileName,
+                author.Id);
+
+            TempData["Success"] = $"\"{model.SceneTitle}\" uploaded successfully.";
+        }
+        catch (UnsupportedFileTypeException ex)
+        {
+            TempData["Error"] = $"Unsupported file type: {ex.Extension}. Only RTF files are supported.";
+            return View(model);
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+            return View(model);
+        }
+
+        return Redirect(Url.Action("Sections", new { projectId = model.ProjectId })
+            + (model.ParentChapterId.HasValue ? "#section-" + model.ParentChapterId : string.Empty));
     }
 
     // ---------------------------------------------------------------------------
