@@ -3,6 +3,13 @@ Last updated: 2026-04-17
 
 ---
 
+## Test State
+
+- 558 tests passing (1 skipped — SMTP integration test)
+- Baseline after V-Sprint 1 Phase 2 complete + `Section.CreateDocumentForUpload` domain tests added
+
+---
+
 ## ARCHITECTURE RULES
 
 These rules govern all new development and must be applied consistently.
@@ -323,6 +330,8 @@ Completed on the day of go-live, not before:
 See `Publishing And Versioning Architecture.md` for the full architecture document including V-Sprints 1–10.
 See `DraftView Git Rules.md` for branch strategy, gates, and commit standards.
 - [x] V-Sprint 1 Phase 1 — Domain + Infrastructure Foundation — 529 tests, 6 commits, migration applied 2026-04-17
+- [x] V-Sprint 1 Phase 2 — Section Tree Service + Import Provider — 558 tests, forensic review passed, committed 2026-04-17
+- [ ] V-Sprint 1 Phase 3 — Versioning Application Layer
 - [ ] V-Sprint 1 — Core versioning backbone + manual upload — Republish → Version → Reader flow
 - [ ] V-Sprint 2 — Paragraph diff highlighting — deliver core reader value
 - [ ] V-Sprint 3 — Reader experience layer — update messaging and banner
