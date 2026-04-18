@@ -432,17 +432,16 @@ public class AuthorController(
             TempData["Success"] = "Invitation sent.";
             return RedirectToAction("Readers");
         }
-        catch (DbUpdateException ex)
-        {
-            logger.LogError(ex, "InviteReader database failure by author {AuthorId}", author.Id);
-            ModelState.AddModelError(string.Empty, "Unable to send invitation. Please check the details and try again.");
-            return View(model);
-        }
         catch (InvariantViolationException ex)
         {
             logger.LogWarning(ex, "InviteReader validation failure by author {AuthorId}", author.Id);
             ModelState.AddModelError(string.Empty, ex.Message);
             return View(model);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "InviteReader operational failure by author {AuthorId}", author.Id);
+            return RedirectToAction("Error", "Home");
         }
     }
 
