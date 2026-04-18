@@ -5,8 +5,8 @@ Last updated: 2026-04-18
 
 ## Test State
 
-- 615 tests passing (1 skipped — SMTP integration test)
-- Baseline after V-Sprint 1 complete + V-Sprint 2 Phase 1–3 + V-Sprint 3 Phase 3 + V-Sprint 4 Phase 1
+- 618 tests passing (1 skipped — SMTP integration test)
+- Baseline after V-Sprint 1 complete + V-Sprint 2 Phase 1–3 + V-Sprint 3 Phase 3 + V-Sprint 4 Phase 1–2
 
 ---
 
@@ -389,6 +389,7 @@ See `DraftView Git Rules.md` for branch strategy, gates, and commit standards.
     - [x] Phase 3 — Update Banner — 602 tests, dismissible per-version banner, `BannerDismissedAtVersion` on `ReadEvent`, EF migration applied, committed 2026-04-18
 - [ ] V-Sprint 4 — Pending change indicator and classification for authors
     - [x] Phase 1 — Change Classification Domain — 615 tests, `SetChangeClassification` on `SectionVersion` and `ChangeClassificationService` heuristic added, committed 2026-04-18
+    - [x] Phase 2 — Classification Service Integration — 618 tests, `VersioningService.RepublishChapterAsync` now classifies changes from previous version diff and persists advisory classification, committed 2026-04-18
     - [ ] Phase 1 — Change Classification Domain — `IChangeClassificationService`, `ChangeClassificationService`, `SetChangeClassification` on `SectionVersion`
     - [ ] Phase 2 — Classification Service Integration — wire into `VersioningService.RepublishChapterAsync`
     - [ ] Phase 3 — Author UI Indicator — colour-coded Polish/Revision/Rewrite label on Sections view
