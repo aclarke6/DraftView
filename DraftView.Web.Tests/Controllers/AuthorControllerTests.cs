@@ -5,6 +5,7 @@ using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Interfaces.Services;
 using DraftView.Web.Controllers;
 using DraftView.Web.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
@@ -111,7 +112,7 @@ public class AuthorControllerTests
     }
 
     [Fact]
-    public async Task InviteReader_WhenSystemFailureOccurs_BubblesException()
+    public async Task InviteReader_WhenSystemFailureOccurs_RedirectsToControlledErrorPage()
     {
         var author = User.Create("author@example.test", "Author", Role.Author);
         var sut = CreateSut();
@@ -127,12 +128,45 @@ public class AuthorControllerTests
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("Missing required configuration value 'App:BaseUrl'."));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.InviteReader(new InviteReaderViewModel
+        var result = await sut.InviteReader(new InviteReaderViewModel
         {
             Email = "reader@example.test",
             DisplayName = "Reader Name",
             NeverExpires = true
-        }));
+        });
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Error", redirect.ActionName);
+        Assert.Equal("Home", redirect.ControllerName);
+    }
+
+    [Fact]
+    public async Task InviteReader_WhenDatabaseFailureOccurs_RedirectsToControlledErrorPage()
+    {
+        var author = User.Create("author@example.test", "Author", Role.Author);
+        var sut = CreateSut();
+
+        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(author);
+        userService.Setup(s => s.IssueInvitationAsync(
+                "reader@example.test",
+                "Reader Name",
+                ExpiryPolicy.AlwaysOpen,
+                null,
+                author.Id,
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new DbUpdateException("Database write failed."));
+
+        var result = await sut.InviteReader(new InviteReaderViewModel
+        {
+            Email = "reader@example.test",
+            DisplayName = "Reader Name",
+            NeverExpires = true
+        });
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Error", redirect.ActionName);
+        Assert.Equal("Home", redirect.ControllerName);
     }
 
     [Fact]
