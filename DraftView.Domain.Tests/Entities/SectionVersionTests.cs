@@ -7,7 +7,7 @@ namespace DraftView.Domain.Tests.Entities;
 /// <summary>
 /// Tests for SectionVersion entity covering factory method Create,
 /// property initialization, and invariant validations.
-/// Excludes AI summary generation and change classification (V-Sprint 4+).
+/// Covers change classification and AI summary one-time assignment invariants.
 /// </summary>
 public class SectionVersionTests
 {
@@ -246,5 +246,63 @@ public class SectionVersionTests
             version.SetChangeClassification(ChangeClassification.Rewrite));
 
         Assert.Equal("I-VER-CLASS", ex.InvariantCode);
+    }
+
+    [Fact]
+    public void SetAiSummary_SetsSummary()
+    {
+        var section = CreateValidDocumentSection();
+        var version = SectionVersion.Create(section, ValidAuthorId, 1);
+
+        version.SetAiSummary("Aria and Tomas finally confront the truth in Blackmere Chapel.");
+
+        Assert.Equal("Aria and Tomas finally confront the truth in Blackmere Chapel.", version.AiSummary);
+    }
+
+    [Fact]
+    public void SetAiSummary_WhenAlreadySet_ThrowsInvariantViolation()
+    {
+        var section = CreateValidDocumentSection();
+        var version = SectionVersion.Create(section, ValidAuthorId, 1);
+        version.SetAiSummary("Initial summary.");
+
+        var ex = Assert.Throws<InvariantViolationException>(() =>
+            version.SetAiSummary("Updated summary."));
+
+        Assert.Equal("I-VER-AISUMMARY", ex.InvariantCode);
+    }
+
+    [Fact]
+    public void SetAiSummary_WithEmptySummary_ThrowsInvariantViolation()
+    {
+        var section = CreateValidDocumentSection();
+        var version = SectionVersion.Create(section, ValidAuthorId, 1);
+
+        var ex = Assert.Throws<InvariantViolationException>(() =>
+            version.SetAiSummary(string.Empty));
+
+        Assert.Equal("I-VER-AISUMMARY-EMPTY", ex.InvariantCode);
+    }
+
+    [Fact]
+    public void SetAiSummary_WithWhitespaceSummary_ThrowsInvariantViolation()
+    {
+        var section = CreateValidDocumentSection();
+        var version = SectionVersion.Create(section, ValidAuthorId, 1);
+
+        var ex = Assert.Throws<InvariantViolationException>(() =>
+            version.SetAiSummary("   "));
+
+        Assert.Equal("I-VER-AISUMMARY-EMPTY", ex.InvariantCode);
+    }
+
+    [Fact]
+    public void Create_HasNullAiSummary()
+    {
+        var section = CreateValidDocumentSection();
+
+        var version = SectionVersion.Create(section, ValidAuthorId, 1);
+
+        Assert.Null(version.AiSummary);
     }
 }

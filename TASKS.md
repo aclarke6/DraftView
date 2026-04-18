@@ -417,6 +417,9 @@ See `DraftView Git Rules.md` for branch strategy, gates, and commit standards.
     - [ ] Phase 2 — Classification Service Integration — wire into `VersioningService.RepublishChapterAsync`
     - [ ] Phase 3 — Author UI Indicator — colour-coded Polish/Revision/Rewrite label on Sections view
 - [ ] V-Sprint 5 — AI summaries — named characters and locations, editable before publish
+    - [x] Phase 1 — AI Summary Service — `SetAiSummary` on `SectionVersion`, `IAiSummaryService`, `AiSummaryService`, Anthropic typed `HttpClient` registration, tests added and green
+    - [x] Phase 2 — Publish Flow Integration — `VersioningService.RepublishChapterAsync` now generates and persists `AiSummary` per `SectionVersion` with null-safe non-blocking behavior
+    - [x] Phase 3 — Reader Banner Summary — reader update banners now show optional `AiSummary` from the latest `SectionVersion` on desktop and mobile
 - [ ] V-Sprint 6 — Per-document publishing and dedicated Publishing Page
 - [ ] V-Sprint 7 — Scheduling and locking
 - [ ] V-Sprint 8 — Dropbox incremental sync

@@ -20,6 +20,7 @@ public class VersioningServiceTests
     private readonly Mock<ISectionVersionRepository> _versionRepo;
     private readonly Mock<IHtmlDiffService> _htmlDiffService;
     private readonly Mock<IChangeClassificationService> _changeClassificationService;
+    private readonly Mock<IAiSummaryService> _aiSummaryService;
     private readonly Mock<IUnitOfWork> _unitOfWork;
     private readonly VersioningService _sut;
 
@@ -29,14 +30,18 @@ public class VersioningServiceTests
         _versionRepo = new Mock<ISectionVersionRepository>();
         _htmlDiffService = new Mock<IHtmlDiffService>();
         _changeClassificationService = new Mock<IChangeClassificationService>();
+        _aiSummaryService = new Mock<IAiSummaryService>();
         _unitOfWork = new Mock<IUnitOfWork>();
         _versionRepo.Setup(r => r.GetAllBySectionIdAsync(It.IsAny<Guid>(), default))
             .ReturnsAsync(new List<SectionVersion>());
+        _aiSummaryService.Setup(s => s.GenerateSummaryAsync(It.IsAny<string?>(), It.IsAny<string>(), default))
+            .ReturnsAsync((string?)null);
         _sut = new VersioningService(
             _sectionRepo.Object,
             _versionRepo.Object,
             _htmlDiffService.Object,
             _changeClassificationService.Object,
+            _aiSummaryService.Object,
             _unitOfWork.Object);
     }
 
@@ -327,6 +332,144 @@ public class VersioningServiceTests
 
         _versionRepo.Verify(r => r.AddAsync(It.IsAny<SectionVersion>(), default), Times.Once);
         _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task RepublishChapterAsync_SetsAiSummary_WhenServiceReturnsSummary()
+    {
+        var projectId = Guid.NewGuid();
+        var authorId = Guid.NewGuid();
+        var chapter = MakeChapter(projectId);
+        var doc = MakeDocument(projectId, chapter.Id);
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default))
+            .ReturnsAsync(chapter);
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapter.Id, default))
+            .ReturnsAsync(new List<Section> { doc });
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(doc.Id, default))
+            .ReturnsAsync(0);
+        _versionRepo.Setup(r => r.GetAllBySectionIdAsync(doc.Id, default))
+            .ReturnsAsync(new List<SectionVersion>());
+        _aiSummaryService.Setup(s => s.GenerateSummaryAsync(null, doc.HtmlContent!, default))
+            .ReturnsAsync("Kira confronts Aldric in the library.");
+
+        SectionVersion? addedVersion = null;
+        _versionRepo.Setup(r => r.AddAsync(It.IsAny<SectionVersion>(), default))
+            .Callback<SectionVersion, CancellationToken>((v, _) => addedVersion = v);
+
+        await _sut.RepublishChapterAsync(chapter.Id, authorId, default);
+
+        Assert.NotNull(addedVersion);
+        Assert.Equal("Kira confronts Aldric in the library.", addedVersion!.AiSummary);
+    }
+
+    [Fact]
+    public async Task RepublishChapterAsync_DoesNotSetAiSummary_WhenServiceReturnsNull()
+    {
+        var projectId = Guid.NewGuid();
+        var authorId = Guid.NewGuid();
+        var chapter = MakeChapter(projectId);
+        var doc = MakeDocument(projectId, chapter.Id);
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default))
+            .ReturnsAsync(chapter);
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapter.Id, default))
+            .ReturnsAsync(new List<Section> { doc });
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(doc.Id, default))
+            .ReturnsAsync(0);
+        _versionRepo.Setup(r => r.GetAllBySectionIdAsync(doc.Id, default))
+            .ReturnsAsync(new List<SectionVersion>());
+        _aiSummaryService.Setup(s => s.GenerateSummaryAsync(null, doc.HtmlContent!, default))
+            .ReturnsAsync((string?)null);
+
+        SectionVersion? addedVersion = null;
+        _versionRepo.Setup(r => r.AddAsync(It.IsAny<SectionVersion>(), default))
+            .Callback<SectionVersion, CancellationToken>((v, _) => addedVersion = v);
+
+        await _sut.RepublishChapterAsync(chapter.Id, authorId, default);
+
+        Assert.NotNull(addedVersion);
+        Assert.Null(addedVersion!.AiSummary);
+    }
+
+    [Fact]
+    public async Task RepublishChapterAsync_StillPublishes_WhenAiSummaryServiceReturnsNull()
+    {
+        var projectId = Guid.NewGuid();
+        var authorId = Guid.NewGuid();
+        var chapter = MakeChapter(projectId);
+        var doc = MakeDocument(projectId, chapter.Id);
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default))
+            .ReturnsAsync(chapter);
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapter.Id, default))
+            .ReturnsAsync(new List<Section> { doc });
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(doc.Id, default))
+            .ReturnsAsync(0);
+        _versionRepo.Setup(r => r.GetAllBySectionIdAsync(doc.Id, default))
+            .ReturnsAsync(new List<SectionVersion>());
+        _aiSummaryService.Setup(s => s.GenerateSummaryAsync(null, doc.HtmlContent!, default))
+            .ReturnsAsync((string?)null);
+
+        await _sut.RepublishChapterAsync(chapter.Id, authorId, default);
+
+        _versionRepo.Verify(r => r.AddAsync(It.IsAny<SectionVersion>(), default), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task RepublishChapterAsync_PassesPreviousHtmlToAiService_WhenPreviousVersionExists()
+    {
+        var projectId = Guid.NewGuid();
+        var authorId = Guid.NewGuid();
+        var chapter = MakeChapter(projectId);
+        var doc = MakeDocument(projectId, chapter.Id);
+        var previousVersion = SectionVersion.Create(doc, authorId, 1);
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default))
+            .ReturnsAsync(chapter);
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapter.Id, default))
+            .ReturnsAsync(new List<Section> { doc });
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(doc.Id, default))
+            .ReturnsAsync(1);
+        _versionRepo.Setup(r => r.GetAllBySectionIdAsync(doc.Id, default))
+            .ReturnsAsync(new List<SectionVersion> { previousVersion });
+        _htmlDiffService.Setup(d => d.Compute(previousVersion.HtmlContent, doc.HtmlContent))
+            .Returns(new List<DraftView.Domain.Diff.ParagraphDiffResult>());
+        _changeClassificationService.Setup(c => c.Classify(It.IsAny<IReadOnlyList<DraftView.Domain.Diff.ParagraphDiffResult>>()))
+            .Returns(ChangeClassification.Polish);
+
+        await _sut.RepublishChapterAsync(chapter.Id, authorId, default);
+
+        _aiSummaryService.Verify(s => s.GenerateSummaryAsync(
+            previousVersion.HtmlContent,
+            doc.HtmlContent!,
+            default), Times.Once);
+    }
+
+    [Fact]
+    public async Task RepublishChapterAsync_PassesNullPreviousHtml_WhenNoPreviousVersionExists()
+    {
+        var projectId = Guid.NewGuid();
+        var authorId = Guid.NewGuid();
+        var chapter = MakeChapter(projectId);
+        var doc = MakeDocument(projectId, chapter.Id);
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default))
+            .ReturnsAsync(chapter);
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapter.Id, default))
+            .ReturnsAsync(new List<Section> { doc });
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(doc.Id, default))
+            .ReturnsAsync(0);
+        _versionRepo.Setup(r => r.GetAllBySectionIdAsync(doc.Id, default))
+            .ReturnsAsync(new List<SectionVersion>());
+
+        await _sut.RepublishChapterAsync(chapter.Id, authorId, default);
+
+        _aiSummaryService.Verify(s => s.GenerateSummaryAsync(
+            null,
+            doc.HtmlContent!,
+            default), Times.Once);
     }
 
     // Test helpers

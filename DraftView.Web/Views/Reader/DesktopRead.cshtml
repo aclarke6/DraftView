@@ -196,9 +196,15 @@
                         @if (item.ShowUpdateBanner)
                         {
                             <div class="update-banner" data-section-id="@item.Scene.Id" data-version="@item.CurrentVersionNumber">
-                                <span class="update-banner__text">
-                                    This section has been updated — version @item.CurrentVersionNumber
-                                </span>
+                                <div class="update-banner__content">
+                                    <span class="update-banner__version">
+                                        Updated — version @item.CurrentVersionNumber
+                                    </span>
+                                    @if (!string.IsNullOrWhiteSpace(item.AiSummary))
+                                    {
+                                        <span class="update-banner__summary">@item.AiSummary</span>
+                                    }
+                                </div>
                                 <button type="button" class="update-banner__dismiss" aria-label="Dismiss update notice">
                                     Dismiss
                                 </button>

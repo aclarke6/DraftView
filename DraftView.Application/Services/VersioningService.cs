@@ -16,6 +16,7 @@ public class VersioningService(
     ISectionVersionRepository sectionVersionRepository,
     IHtmlDiffService htmlDiffService,
     IChangeClassificationService changeClassificationService,
+    IAiSummaryService aiSummaryService,
     IUnitOfWork unitOfWork) : IVersioningService
 {
     /// <summary>
@@ -81,6 +82,15 @@ public class VersioningService(
                     // Classification is advisory and must not block republish.
                 }
             }
+
+            var previousHtml = previousVersion?.HtmlContent;
+            var summary = await aiSummaryService.GenerateSummaryAsync(
+                previousHtml,
+                document.HtmlContent ?? string.Empty,
+                ct);
+
+            if (summary is not null)
+                version.SetAiSummary(summary);
 
             await sectionVersionRepository.AddAsync(version, ct);
 
