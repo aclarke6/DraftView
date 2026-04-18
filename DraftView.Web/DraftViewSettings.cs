@@ -12,13 +12,6 @@ public class DraftViewSettings
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 "Dropbox", "Apps", "Scrivener")
             : DropboxBasePath;
-
-    public string ResolvedLocalCachePath =>
-        string.IsNullOrWhiteSpace(LocalCachePath)
-            ? Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                "DraftView", "Cache")
-            : LocalCachePath;
 }
 
 public class EmailSettings

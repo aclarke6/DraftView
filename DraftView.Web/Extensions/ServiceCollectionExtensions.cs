@@ -168,10 +168,14 @@ HttpContextAuthorizationFacade>();
                 services.AddScoped<IEmailSender, SmtpEmailSender>();
 
             // Path resolver
+            services.AddSingleton<IPlatformPathService, PlatformPathService>();
             services.AddScoped<ILocalPathResolver>(sp =>
             {
                 var settings = sp.GetRequiredService<DraftViewSettings>();
-                return new LocalPathResolver(settings.ResolvedLocalCachePath);
+                return new LocalPathResolver(
+                    settings.LocalCachePath,
+                    sp.GetRequiredService<IPlatformPathService>(),
+                    sp.GetRequiredService<ILogger<LocalPathResolver>>());
             });
 
             return services;
