@@ -379,13 +379,18 @@ See `DraftView Git Rules.md` for branch strategy, gates, and commit standards.
     - [x] V-Sprint 1 Phase 5 — Author Republish UI — 575 tests, RepublishChapter action with TDD coverage, committed 2026-04-17
     - [x] V-Sprint 1 Phase 6 — Manual Upload UI — 575 tests, UploadScene GET/POST with form and button, committed 2026-04-17
     - [x] V-Sprint 1 — Core versioning backbone + manual upload — Republish → Version → Reader flow — COMPLETE
-- [ ] V-Sprint 2 — Paragraph diff highlighting — deliver core reader value
+- [x] V-Sprint 2 — Paragraph diff highlighting — COMPLETE
     - [x] Phase 1 — Diff Engine (Domain) — 589 tests, `HtmlDiffService` with LCS paragraph diff, committed 2026-04-17
     - [x] Phase 2 — Application Diff Service — 596 tests, `SectionDiffService` coordinating version lookup and diff, committed 2026-04-17
     - [x] Phase 3 — Reader Highlighting — 596 tests, diff paragraphs rendered in desktop and mobile views, committed 2026-04-17
-- [ ] V-Sprint 3 — Reader experience layer — update messaging and banner
-    - [x] Phase 2 — Update Messaging — 596 tests, inline `scene-updated-notice` shown per scene when previously read and newer version exists, committed 2026-04-18
+- [x] V-Sprint 3 — Reader experience layer — COMPLETE
+    - [x] Phase 1 — Reader State — 602 tests, `LastReadAt` on `ReadEvent`, `RecordReadAsync` on `IReadingProgressService`, EF migration applied, committed 2026-04-18
+    - [x] Phase 2 — Update Messaging — 602 tests, inline `scene-updated-notice` shown per scene when previously read and newer version exists, committed 2026-04-18
+    - [x] Phase 3 — Update Banner — 602 tests, dismissible per-version banner, `BannerDismissedAtVersion` on `ReadEvent`, EF migration applied, committed 2026-04-18
 - [ ] V-Sprint 4 — Pending change indicator and classification for authors
+    - [ ] Phase 1 — Change Classification Domain — `IChangeClassificationService`, `ChangeClassificationService`, `SetChangeClassification` on `SectionVersion`
+    - [ ] Phase 2 — Classification Service Integration — wire into `VersioningService.RepublishChapterAsync`
+    - [ ] Phase 3 — Author UI Indicator — colour-coded Polish/Revision/Rewrite label on Sections view
 - [ ] V-Sprint 5 — AI summaries — named characters and locations, editable before publish
 - [ ] V-Sprint 6 — Per-document publishing and dedicated Publishing Page
 - [ ] V-Sprint 7 — Scheduling and locking
