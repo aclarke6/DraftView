@@ -223,3 +223,11 @@ Boundaries:
 - HTTP concerns stay in Web
 
 A refactor that silently crosses a boundary is a behaviour change, not a refactor.
+
+## 11. Using Statements
+
+Using statements are ordered alphabetically by namespace, with `System` namespaces first.
+
+- Any unused using statements are removed as part of the refactor. The presence of an unused using is a sign that the refactor is incomplete.
+- Any new using statements introduced by the refactor are added in the same commit as the code that requires them, not deferred to a later cleanup commit.
+- Any redundant domain namespace qualifiers on variables, methods, or classes are removed where a using statement already covers the namespace. For example, if `using DraftView.Domain.Entities` is present, a variable declaration like `DraftView.Domain.Entities.Section section` is redundant and must be simplified to `Section section`.
