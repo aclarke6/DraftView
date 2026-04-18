@@ -5,7 +5,7 @@ Last updated: 2026-04-18
 
 ## Test State
 
-- 618 tests passing (1 skipped — SMTP integration test)
+- 656 tests passing (1 skipped — SMTP integration test)
 - Baseline after V-Sprint 1 complete + V-Sprint 2 Phase 1–3 + V-Sprint 3 Phase 3 + V-Sprint 4 Phase 1–3
 
 ---
@@ -130,11 +130,11 @@ Any modification of a view must include an audit of that view for style leakage.
 
 ## Test state
 
-- 498 Tests total
+- 657 Tests total
 - One skipped test is `SmtpEmailSenderIntegrationTests` which sends a real email, so is not suitable for regular test runs but is included in the solution for manual execution when needed.
-- Latest full passing count: 498 total, 497 passed, 1 skipped, 0 failed
-- Latest targeted application count: 129 total, 129 passed, 0 skipped, 0 failed
-- Latest targeted web count: 32 total, 32 passed, 0 skipped, 0 failed
+- Latest full passing count: 657 total, 656 passed, 1 skipped, 0 failed
+- Latest targeted application count: 223 total, 223 passed, 0 skipped, 0 failed
+- Latest targeted web count: 61 total, 61 passed, 0 skipped, 0 failed
 
 ---
 
@@ -417,10 +417,12 @@ See `DraftView Git Rules.md` for branch strategy, gates, and commit standards.
     - [x] Phase 1 — AI Summary Service — `SetAiSummary` on `SectionVersion`, `IAiSummaryService`, `AiSummaryService`, Anthropic typed `HttpClient` registration, tests added and green
     - [x] Phase 2 — Publish Flow Integration — `VersioningService.RepublishChapterAsync` now generates and persists `AiSummary` per `SectionVersion` with null-safe non-blocking behavior
     - [x] Phase 3 — Reader Banner Summary — reader update banners now show optional `AiSummary` from the latest `SectionVersion` on desktop and mobile
-- [ ] V-Sprint 6 — Per-document publishing and dedicated Publishing Page
+- [X] V-Sprint 6 — Per-document publishing and dedicated Publishing Page
     - [x] Phase 1 — Per-document publishing application layer (`IVersioningService` + `VersioningService` section republish/revoke)
     - [x] Phase 2 — Publishing Page UI and controller endpoints
 - [ ] V-Sprint 7 — Scheduling and locking
+    - [ ] Phase 1 — Chapter Locking — `Section.Lock()` / `Unlock()`, `IsLocked` + `LockedAt`, lock guard in `RepublishChapterAsync` and `RepublishSectionAsync`, Lock/Unlock on Publishing Page, reader lock message
+    - [ ] Phase 2 — Scheduling — `Section.SchedulePublish()` / `ClearSchedule()`, `ScheduledPublishAt`, advisory date on Publishing Page, never blocks republish
 - [ ] V-Sprint 8 — Dropbox incremental sync
 - [ ] V-Sprint 9 — Version retention and deletion
 - [ ] V-Sprint 10 — Tree builder UI (Option A, post-launch)
