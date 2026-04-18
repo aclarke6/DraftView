@@ -5,8 +5,8 @@ Last updated: 2026-04-17
 
 ## Test State
 
-- 589 tests passing (1 skipped — SMTP integration test)
-- Baseline after V-Sprint 1 complete + V-Sprint 2 Phase 1
+- 596 tests passing (1 skipped — SMTP integration test)
+- Baseline after V-Sprint 1 complete + V-Sprint 2 Phase 1–2
 
 ---
 
@@ -329,17 +329,19 @@ Completed on the day of go-live, not before:
 # DraftView Publishing and Versioning Architecture (v4.3)
 See `Publishing And Versioning Architecture.md` for the full architecture document including V-Sprints 1–10.
 See `DraftView Git Rules.md` for branch strategy, gates, and commit standards.
-- [x] V-Sprint 1 Phase 1 — Domain + Infrastructure Foundation — 529 tests, 6 commits, migration applied 2026-04-17
-- [x] V-Sprint 1 Phase 2 — Section Tree Service + Import Provider — 558 tests, forensic review passed, committed 2026-04-17
-- [x] V-Sprint 1 Phase 3 — Versioning Application Layer — 567 tests, VersioningService with full TDD coverage, committed 2026-04-17
-- [x] V-Sprint 1 Phase 4 — Reader Content Source — 571 tests, version resolution and anchoring, committed 2026-04-17
-- [x] V-Sprint 1 Phase 5 — Author Republish UI — 575 tests, RepublishChapter action with TDD coverage, committed 2026-04-17
-- [x] V-Sprint 1 Phase 6 — Manual Upload UI — 575 tests, UploadScene GET/POST with form and button, committed 2026-04-17
-- [x] V-Sprint 1 — Core versioning backbone + manual upload — Republish → Version → Reader flow — COMPLETE
+
+- [x] V-Sprint 1 
+    - [x] V-Sprint 1 Phase 1 — Domain + Infrastructure Foundation — 529 tests, 6 commits, migration applied 2026-04-17
+    - [x] V-Sprint 1 Phase 2 — Section Tree Service + Import Provider — 558 tests, forensic review passed, committed 2026-04-17
+    - [x] V-Sprint 1 Phase 3 — Versioning Application Layer — 567 tests, VersioningService with full TDD coverage, committed 2026-04-17
+    - [x] V-Sprint 1 Phase 4 — Reader Content Source — 571 tests, version resolution and anchoring, committed 2026-04-17
+    - [x] V-Sprint 1 Phase 5 — Author Republish UI — 575 tests, RepublishChapter action with TDD coverage, committed 2026-04-17
+    - [x] V-Sprint 1 Phase 6 — Manual Upload UI — 575 tests, UploadScene GET/POST with form and button, committed 2026-04-17
+    - [x] V-Sprint 1 — Core versioning backbone + manual upload — Republish → Version → Reader flow — COMPLETE
 - [ ] V-Sprint 2 — Paragraph diff highlighting — deliver core reader value
-  - [x] Phase 1 — Diff Engine (Domain) — 589 tests, `HtmlDiffService` with LCS paragraph diff, committed 2026-04-17
-  - [ ] Phase 2 — Application Diff Service
-  - [ ] Phase 3 — Reader Highlighting
+    - [x] Phase 1 — Diff Engine (Domain) — 589 tests, `HtmlDiffService` with LCS paragraph diff, committed 2026-04-17
+    - [x] Phase 2 — Application Diff Service — 596 tests, `SectionDiffService` coordinating version lookup and diff, committed 2026-04-17
+    - [ ] Phase 3 — Reader Highlighting
 - [ ] V-Sprint 3 — Reader experience layer — update messaging and banner
 - [ ] V-Sprint 4 — Pending change indicator and classification for authors
 - [ ] V-Sprint 5 — AI summaries — named characters and locations, editable before publish
