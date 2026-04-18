@@ -89,4 +89,10 @@ public class MobileReadViewModel
 
     /// <summary>True when the update banner should be shown.</summary>
     public bool ShowUpdateBanner { get; set; }
+
+    /// <summary>
+    /// The AI-generated one-line summary from the current SectionVersion.
+    /// Null when no summary exists. Shown in the update banner.
+    /// </summary>
+    public string? AiSummary { get; set; }
 }
