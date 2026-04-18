@@ -81,6 +81,25 @@ Any modification of a view must include an audit of that view for style leakage.
 
 ## BUGS
 
+- [OPEN] Cross-platform local cache path resolution and automatic cache directory creation
+  - type: Bug Fix
+  - problem: shared configuration currently carries a Windows-specific `DraftView:LocalCachePath`, which breaks macOS and Ubuntu environments and can require manual cache folder creation
+  - root cause:
+    - machine-specific path stored in shared appsettings
+    - no platform-aware fallback when `DraftView:LocalCachePath` is empty
+    - cache directory is not guaranteed to exist before use
+  - required outcome:
+    - shared config must not contain OS-specific paths
+    - cache path must resolve automatically on Windows, macOS, and Ubuntu
+    - if configured, use `DraftView:LocalCachePath`
+    - if not configured, resolve platform defaults and ensure the directory exists before use
+    - keep filesystem logic in the Infrastructure layer without OS-specific config files
+  - acceptance criteria:
+    - works on Windows, macOS, and Ubuntu without manual setup
+    - cache directory is created automatically
+    - no hardcoded Windows path remains in the repo
+    - logs show the resolved cache root
+    - Dropbox download works on a fresh machine
 - [DONE] Reader view does not apply saved Reading Preferences (font face and font size) — resolved 2026-04-17: moved read-view prose preference binding to read view models (`DesktopChapterReadViewModel` / `MobileReadViewModel`), populated in `ReaderController` read actions, and bound in `DesktopRead.cshtml` / `MobileRead.cshtml` via model-backed `data-prose-font` / `data-prose-font-size`
 - [DONE] CS9107 in `AccountController` primary constructor (`IUserRepository userRepo` captured in derived type and passed to base) — resolved 2026-04-17: removed duplicate derived capture path by routing user lookups through base-owned repository helpers (`GetUserByIdAsync` / `GetUserByEmailAsync`), preserving behavior
 - [OPEN] `/Author/InviteReader` submit fails with browser "This page isn't working" on production
