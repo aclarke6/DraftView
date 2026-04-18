@@ -15,4 +15,11 @@ public interface ISectionVersionRepository
     Task<IReadOnlyList<Domain.Entities.SectionVersion>> GetAllBySectionIdAsync(Guid sectionId, CancellationToken ct = default);
 
     Task AddAsync(Domain.Entities.SectionVersion version, CancellationToken ct = default);
+
+    /// <summary>
+    /// Permanently deletes a SectionVersion record.
+    /// This is the only case of physical deletion in the versioning system.
+    /// Used exclusively by RevokeLatestVersionAsync.
+    /// </summary>
+    Task DeleteAsync(Guid versionId, CancellationToken ct = default);
 }

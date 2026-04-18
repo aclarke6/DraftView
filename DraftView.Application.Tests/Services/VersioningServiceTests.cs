@@ -9,10 +9,10 @@ using Moq;
 namespace DraftView.Application.Tests.Services;
 
 /// <summary>
-/// Tests for VersioningService.RepublishChapterAsync.
-/// Covers: version creation, version numbering, IsPublished flag setting, validation rules.
-/// Excludes: RevokeLatestVersionAsync (V-Sprint 6), RepublishSectionAsync (V-Sprint 6),
-/// reader content resolution (Phase 4), UI integration (Phase 5).
+/// Tests for VersioningService chapter/section republish and latest-version revoke behavior.
+/// Covers: version creation, version numbering, IsPublished flag setting, validation rules,
+/// change classification, AI summary wiring, and revoke invariants.
+/// Excludes: reader content resolution and UI integration.
 /// </summary>
 public class VersioningServiceTests
 {
@@ -470,6 +470,218 @@ public class VersioningServiceTests
             null,
             doc.HtmlContent!,
             default), Times.Once);
+    }
+
+    [Fact]
+    public async Task RepublishSectionAsync_WithValidDocument_CreatesVersion()
+    {
+        var section = MakeDocument(Guid.NewGuid(), null);
+        var authorId = Guid.NewGuid();
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default))
+            .ReturnsAsync(section);
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(section.Id, default))
+            .ReturnsAsync(0);
+
+        await _sut.RepublishSectionAsync(section.Id, authorId, default);
+
+        _versionRepo.Verify(r => r.AddAsync(It.IsAny<SectionVersion>(), default), Times.Once);
+    }
+
+    [Fact]
+    public async Task RepublishSectionAsync_WithFolderSection_ThrowsInvariantViolation()
+    {
+        var section = MakeChapter(Guid.NewGuid());
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default))
+            .ReturnsAsync(section);
+
+        await Assert.ThrowsAsync<InvariantViolationException>(
+            () => _sut.RepublishSectionAsync(section.Id, Guid.NewGuid(), default));
+    }
+
+    [Fact]
+    public async Task RepublishSectionAsync_WithSoftDeletedSection_ThrowsInvariantViolation()
+    {
+        var section = MakeDocument(Guid.NewGuid(), null);
+        section.SoftDelete();
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default))
+            .ReturnsAsync(section);
+
+        await Assert.ThrowsAsync<InvariantViolationException>(
+            () => _sut.RepublishSectionAsync(section.Id, Guid.NewGuid(), default));
+    }
+
+    [Fact]
+    public async Task RepublishSectionAsync_WithNullHtmlContent_ThrowsInvariantViolation()
+    {
+        var section = Section.CreateDocumentForUpload(Guid.NewGuid(), "Scene 1", null, 0);
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default))
+            .ReturnsAsync(section);
+
+        await Assert.ThrowsAsync<InvariantViolationException>(
+            () => _sut.RepublishSectionAsync(section.Id, Guid.NewGuid(), default));
+    }
+
+    [Fact]
+    public async Task RepublishSectionAsync_IncrementsVersionNumber()
+    {
+        var section = MakeDocument(Guid.NewGuid(), null);
+        var authorId = Guid.NewGuid();
+        SectionVersion? addedVersion = null;
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default))
+            .ReturnsAsync(section);
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(section.Id, default))
+            .ReturnsAsync(2);
+        _versionRepo.Setup(r => r.AddAsync(It.IsAny<SectionVersion>(), default))
+            .Callback<SectionVersion, CancellationToken>((v, _) => addedVersion = v);
+
+        await _sut.RepublishSectionAsync(section.Id, authorId, default);
+
+        Assert.NotNull(addedVersion);
+        Assert.Equal(3, addedVersion!.VersionNumber);
+    }
+
+    [Fact]
+    public async Task RepublishSectionAsync_SetsChangeClassification_WhenPreviousVersionExists()
+    {
+        var authorId = Guid.NewGuid();
+        var section = MakeDocument(Guid.NewGuid(), null);
+        var previousVersion = SectionVersion.Create(section, authorId, 1);
+        SectionVersion? addedVersion = null;
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default))
+            .ReturnsAsync(section);
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(section.Id, default))
+            .ReturnsAsync(1);
+        _versionRepo.Setup(r => r.GetAllBySectionIdAsync(section.Id, default))
+            .ReturnsAsync(new List<SectionVersion> { previousVersion });
+        _htmlDiffService.Setup(d => d.Compute(previousVersion.HtmlContent, section.HtmlContent))
+            .Returns(new List<DraftView.Domain.Diff.ParagraphDiffResult>());
+        _changeClassificationService.Setup(c => c.Classify(It.IsAny<IReadOnlyList<DraftView.Domain.Diff.ParagraphDiffResult>>()))
+            .Returns(ChangeClassification.Revision);
+        _versionRepo.Setup(r => r.AddAsync(It.IsAny<SectionVersion>(), default))
+            .Callback<SectionVersion, CancellationToken>((v, _) => addedVersion = v);
+
+        await _sut.RepublishSectionAsync(section.Id, authorId, default);
+
+        Assert.NotNull(addedVersion);
+        Assert.Equal(ChangeClassification.Revision, addedVersion!.ChangeClassification);
+    }
+
+    [Fact]
+    public async Task RepublishSectionAsync_SetsAiSummary_WhenServiceReturnsSummary()
+    {
+        var section = MakeDocument(Guid.NewGuid(), null);
+        var authorId = Guid.NewGuid();
+        const string summaryText = "Summary text";
+        SectionVersion? addedVersion = null;
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default))
+            .ReturnsAsync(section);
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(section.Id, default))
+            .ReturnsAsync(0);
+        _aiSummaryService.Setup(s => s.GenerateSummaryAsync(null, section.HtmlContent!, default))
+            .ReturnsAsync(summaryText);
+        _versionRepo.Setup(r => r.AddAsync(It.IsAny<SectionVersion>(), default))
+            .Callback<SectionVersion, CancellationToken>((v, _) => addedVersion = v);
+
+        await _sut.RepublishSectionAsync(section.Id, authorId, default);
+
+        Assert.NotNull(addedVersion);
+        Assert.Equal(summaryText, addedVersion!.AiSummary);
+    }
+
+    [Fact]
+    public async Task RepublishSectionAsync_StillPublishes_WhenClassificationFails()
+    {
+        var authorId = Guid.NewGuid();
+        var section = MakeDocument(Guid.NewGuid(), null);
+        var previousVersion = SectionVersion.Create(section, authorId, 1);
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default))
+            .ReturnsAsync(section);
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(section.Id, default))
+            .ReturnsAsync(1);
+        _versionRepo.Setup(r => r.GetAllBySectionIdAsync(section.Id, default))
+            .ReturnsAsync(new List<SectionVersion> { previousVersion });
+        _htmlDiffService.Setup(d => d.Compute(previousVersion.HtmlContent, section.HtmlContent))
+            .Returns(new List<DraftView.Domain.Diff.ParagraphDiffResult>());
+        _changeClassificationService.Setup(c => c.Classify(It.IsAny<IReadOnlyList<DraftView.Domain.Diff.ParagraphDiffResult>>()))
+            .Throws(new Exception("classification failed"));
+
+        await _sut.RepublishSectionAsync(section.Id, authorId, default);
+
+        _versionRepo.Verify(r => r.AddAsync(It.IsAny<SectionVersion>(), default), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task RevokeLatestVersionAsync_WithMultipleVersions_DeletesLatest()
+    {
+        var authorId = Guid.NewGuid();
+        var section = MakeDocument(Guid.NewGuid(), null);
+        var version1 = SectionVersion.Create(section, authorId, 1);
+        var version2 = SectionVersion.Create(section, authorId, 2);
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default))
+            .ReturnsAsync(section);
+        _versionRepo.Setup(r => r.GetAllBySectionIdAsync(section.Id, default))
+            .ReturnsAsync(new List<SectionVersion> { version1, version2 });
+
+        await _sut.RevokeLatestVersionAsync(section.Id, authorId, default);
+
+        _versionRepo.Verify(r => r.DeleteAsync(version2.Id, default), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task RevokeLatestVersionAsync_WithNoVersions_ThrowsInvariantViolation()
+    {
+        var section = MakeDocument(Guid.NewGuid(), null);
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default))
+            .ReturnsAsync(section);
+        _versionRepo.Setup(r => r.GetAllBySectionIdAsync(section.Id, default))
+            .ReturnsAsync(new List<SectionVersion>());
+
+        var ex = await Assert.ThrowsAsync<InvariantViolationException>(
+            () => _sut.RevokeLatestVersionAsync(section.Id, Guid.NewGuid(), default));
+
+        Assert.Equal("I-VER-REVOKE-NONE", ex.InvariantCode);
+    }
+
+    [Fact]
+    public async Task RevokeLatestVersionAsync_WithSingleVersion_ThrowsInvariantViolation()
+    {
+        var authorId = Guid.NewGuid();
+        var section = MakeDocument(Guid.NewGuid(), null);
+        var version = SectionVersion.Create(section, authorId, 1);
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default))
+            .ReturnsAsync(section);
+        _versionRepo.Setup(r => r.GetAllBySectionIdAsync(section.Id, default))
+            .ReturnsAsync(new List<SectionVersion> { version });
+
+        var ex = await Assert.ThrowsAsync<InvariantViolationException>(
+            () => _sut.RevokeLatestVersionAsync(section.Id, authorId, default));
+
+        Assert.Equal("I-VER-REVOKE-LAST", ex.InvariantCode);
+    }
+
+    [Fact]
+    public async Task RevokeLatestVersionAsync_WithFolderSection_ThrowsInvariantViolation()
+    {
+        var section = MakeChapter(Guid.NewGuid());
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default))
+            .ReturnsAsync(section);
+
+        await Assert.ThrowsAsync<InvariantViolationException>(
+            () => _sut.RevokeLatestVersionAsync(section.Id, Guid.NewGuid(), default));
     }
 
     // Test helpers

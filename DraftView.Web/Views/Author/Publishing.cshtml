@@ -1,0 +1,93 @@
+@model PublishingPageViewModel
+@{
+    ViewData["Title"] = "Publishing — " + Model.Project.Name;
+}
+
+<h2>@Model.Project.Name — Publishing</h2>
+<p>
+    <a asp-action="Sections" asp-route-projectId="@Model.Project.Id">&larr; Back to Sections</a>
+</p>
+<p class="page-subtitle">
+    Republish chapters or individual documents. Revoke rolls back to the previous version.
+</p>
+
+@if (!Model.Chapters.Any())
+{
+    <p>No published chapters found. Publish a chapter from the Sections view first.</p>
+}
+else
+{
+    foreach (var chapter in Model.Chapters)
+    {
+        <div class="publishing-chapter" id="section-@chapter.Chapter.Id">
+            <div class="publishing-chapter__header">
+                <span class="publishing-chapter__title">@chapter.Chapter.Title</span>
+
+                @if (chapter.Classification.HasValue)
+                {
+                    <span class="change-indicator change-indicator--@chapter.Classification.Value.ToString().ToLower()">
+                        @chapter.Classification.Value
+                    </span>
+                }
+
+                <div class="publishing-chapter__actions">
+                    @if (chapter.HasChanges)
+                    {
+                        <form asp-action="RepublishChapter" method="post" style="display:inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="chapterId" value="@chapter.Chapter.Id" />
+                            <input type="hidden" name="projectId" value="@Model.Project.Id" />
+                            <button type="submit" class="btn btn--republish btn--sm">Republish Chapter</button>
+                        </form>
+                    }
+                </div>
+            </div>
+
+            @if (chapter.ShowDocumentControls)
+            {
+                <div class="publishing-documents">
+                    @foreach (var doc in chapter.Documents)
+                    {
+                        <div class="publishing-doc" id="section-@doc.Document.Id">
+                            <span class="publishing-doc__title">@doc.Document.Title</span>
+
+                            @if (doc.CurrentVersionNumber.HasValue)
+                            {
+                                <span class="publishing-doc__version">v@doc.CurrentVersionNumber</span>
+                            }
+
+                            @if (doc.Classification.HasValue)
+                            {
+                                <span class="change-indicator change-indicator--@doc.Classification.Value.ToString().ToLower()">
+                                    @doc.Classification.Value
+                                </span>
+                            }
+
+                            <div class="publishing-doc__actions">
+                                @if (doc.HasChanges)
+                                {
+                                    <form asp-action="RepublishDocument" method="post" style="display:inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="sectionId" value="@doc.Document.Id" />
+                                        <input type="hidden" name="projectId" value="@Model.Project.Id" />
+                                        <button type="submit" class="btn btn--republish btn--sm">Republish</button>
+                                    </form>
+                                }
+
+                                @if (doc.CanRevoke)
+                                {
+                                    <form asp-action="RevokeDocument" method="post" style="display:inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="sectionId" value="@doc.Document.Id" />
+                                        <input type="hidden" name="projectId" value="@Model.Project.Id" />
+                                        <button type="submit" class="btn btn--danger btn--sm">Revoke</button>
+                                    </form>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+}

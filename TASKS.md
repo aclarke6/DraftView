@@ -409,18 +409,17 @@ See `DraftView Git Rules.md` for branch strategy, gates, and commit standards.
     - [x] Phase 1 — Reader State — 602 tests, `LastReadAt` on `ReadEvent`, `RecordReadAsync` on `IReadingProgressService`, EF migration applied, committed 2026-04-18
     - [x] Phase 2 — Update Messaging — 602 tests, inline `scene-updated-notice` shown per scene when previously read and newer version exists, committed 2026-04-18
     - [x] Phase 3 — Update Banner — 602 tests, dismissible per-version banner, `BannerDismissedAtVersion` on `ReadEvent`, EF migration applied, committed 2026-04-18
-- [ ] V-Sprint 4 — Pending change indicator and classification for authors
+- [X] V-Sprint 4 — Pending change indicator and classification for authors
     - [x] Phase 1 — Change Classification Domain — 615 tests, `SetChangeClassification` on `SectionVersion` and `ChangeClassificationService` heuristic added, committed 2026-04-18
     - [x] Phase 2 — Classification Service Integration — 618 tests, `VersioningService.RepublishChapterAsync` now classifies changes from previous version diff and persists advisory classification, committed 2026-04-18
     - [x] Phase 3 — Author UI Indicator — 618 tests, advisory chapter-level change indicator (Polish/Revision/Rewrite) shown next to Republish when unpublished changes exist, committed 2026-04-18
-    - [ ] Phase 1 — Change Classification Domain — `IChangeClassificationService`, `ChangeClassificationService`, `SetChangeClassification` on `SectionVersion`
-    - [ ] Phase 2 — Classification Service Integration — wire into `VersioningService.RepublishChapterAsync`
-    - [ ] Phase 3 — Author UI Indicator — colour-coded Polish/Revision/Rewrite label on Sections view
-- [ ] V-Sprint 5 — AI summaries — named characters and locations, editable before publish
+- [X] V-Sprint 5 — AI summaries — named characters and locations, editable before publish
     - [x] Phase 1 — AI Summary Service — `SetAiSummary` on `SectionVersion`, `IAiSummaryService`, `AiSummaryService`, Anthropic typed `HttpClient` registration, tests added and green
     - [x] Phase 2 — Publish Flow Integration — `VersioningService.RepublishChapterAsync` now generates and persists `AiSummary` per `SectionVersion` with null-safe non-blocking behavior
     - [x] Phase 3 — Reader Banner Summary — reader update banners now show optional `AiSummary` from the latest `SectionVersion` on desktop and mobile
 - [ ] V-Sprint 6 — Per-document publishing and dedicated Publishing Page
+    - [x] Phase 1 — Per-document publishing application layer (`IVersioningService` + `VersioningService` section republish/revoke)
+    - [x] Phase 2 — Publishing Page UI and controller endpoints
 - [ ] V-Sprint 7 — Scheduling and locking
 - [ ] V-Sprint 8 — Dropbox incremental sync
 - [ ] V-Sprint 9 — Version retention and deletion
@@ -774,6 +773,7 @@ Controllers should follow this structure only:
 - [DONE] Fixed style leakage by scoping prose font preferences to reader surfaces only so system UI remains on standard typography
 - [DONE] Fixed style leakage in `Views/Author/InviteReader.cshtml` by replacing inline layout styling with dashboard CSS classes while adding the invite display-name field
 - [DONE] Fixed reader diff UX for removed paragraphs — removed paragraphs now render as thin visual markers instead of strikethrough deleted text, allowing beta readers to focus on published content rather than editorial changes (2026-04-18)
+- [DONE] Audited `Views/Author/Sections.cshtml` and new `Views/Author/Publishing.cshtml` for style leakage while implementing V-Sprint 6 Phase 2; kept inline form display usage as existing pattern and moved new page layout styling to `DraftView.Core.css`
 - [DONE] Sprint 4 Phase 6 end-to-end integration is complete
   - fixed configuration-backed protected-email keys are in place for dev and testing
   - DB-backed real-host regression coverage now exists for login, password reset, and invitation provisioning

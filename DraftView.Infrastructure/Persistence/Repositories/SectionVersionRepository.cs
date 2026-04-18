@@ -29,4 +29,13 @@ public class SectionVersionRepository(DraftViewDbContext db) : ISectionVersionRe
 
     public async Task AddAsync(SectionVersion version, CancellationToken ct = default) =>
         await db.SectionVersions.AddAsync(version, ct);
+
+    public async Task DeleteAsync(Guid versionId, CancellationToken ct = default)
+    {
+        var version = await db.SectionVersions
+            .FirstOrDefaultAsync(v => v.Id == versionId, ct);
+
+        if (version is not null)
+            db.SectionVersions.Remove(version);
+    }
 }

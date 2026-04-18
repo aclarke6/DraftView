@@ -248,6 +248,29 @@ public class AuthorController(
     }
 
     // ---------------------------------------------------------------------------
+    // Publishing Page
+    // ---------------------------------------------------------------------------
+    [HttpGet]
+    public async Task<IActionResult> Publishing(Guid projectId)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        var project = await projectRepo.GetByIdAsync(projectId);
+        if (project is null) return NotFound();
+
+        var sections = await sectionRepo.GetByProjectIdAsync(projectId);
+        var sorted = SortDepthFirst(sections);
+        var chapters = await BuildPublishingChapterViewModelsAsync(sorted, project.ProjectType);
+
+        return View(new PublishingPageViewModel
+        {
+            Project = project,
+            Chapters = chapters
+        });
+    }
+
+    // ---------------------------------------------------------------------------
     // Chapter publish / unpublish
     // ---------------------------------------------------------------------------
     [HttpPost]
@@ -305,6 +328,46 @@ public class AuthorController(
         }
 
         return Redirect(Url.Action("Sections", new { projectId }) + "#section-" + chapterId);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RepublishDocument(Guid sectionId, Guid projectId)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        try
+        {
+            await versioningService.RepublishSectionAsync(sectionId, author.Id);
+            TempData["Success"] = "Document republished.";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return Redirect(Url.Action("Publishing", new { projectId }) + "#section-" + sectionId);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RevokeDocument(Guid sectionId, Guid projectId)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        try
+        {
+            await versioningService.RevokeLatestVersionAsync(sectionId, author.Id);
+            TempData["Success"] = "Version revoked.";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return Redirect(Url.Action("Publishing", new { projectId }) + "#section-" + sectionId);
     }
 
     // ---------------------------------------------------------------------------
@@ -741,6 +804,112 @@ public class AuthorController(
 
     private IReadEventRepository GetReadEventRepo() =>
         HttpContext.RequestServices.GetRequiredService<IReadEventRepository>();
+
+    private async Task<IReadOnlyList<PublishingChapterViewModel>> BuildPublishingChapterViewModelsAsync(
+        IReadOnlyList<(Section Section, int Depth)> sorted,
+        ProjectType projectType)
+    {
+        var chapters = new List<PublishingChapterViewModel>();
+        foreach (var chapter in GetPublishedLeafChapters(sorted))
+        {
+            var chapterViewModel = await BuildPublishingChapterViewModelAsync(
+                chapter,
+                sorted,
+                projectType);
+
+            chapters.Add(chapterViewModel);
+        }
+
+        return chapters;
+    }
+
+    private async Task<PublishingChapterViewModel> BuildPublishingChapterViewModelAsync(
+        Section chapter,
+        IReadOnlyList<(Section Section, int Depth)> sorted,
+        ProjectType projectType)
+    {
+        var documents = GetPublishedDocumentsForChapter(chapter.Id, sorted);
+        var docViewModels = new List<PublishingDocumentViewModel>();
+        foreach (var doc in documents)
+            docViewModels.Add(await BuildPublishingDocumentViewModelAsync(doc));
+
+        var chapterHasChanges = documents.Any(d => d.ContentChangedSincePublish);
+        var chapterClassification = docViewModels
+            .Where(d => d.Classification.HasValue)
+            .Select(d => d.Classification)
+            .Max();
+
+        return new PublishingChapterViewModel
+        {
+            Chapter = chapter,
+            HasChanges = chapterHasChanges,
+            Classification = chapterClassification,
+            CanRevoke = docViewModels.Any(d => d.CanRevoke),
+            ShowDocumentControls = documents.Count > 1 || projectType == ProjectType.Manual,
+            Documents = docViewModels
+        };
+    }
+
+    private async Task<PublishingDocumentViewModel> BuildPublishingDocumentViewModelAsync(Section document)
+    {
+        var latestVersion = await sectionVersionRepo.GetLatestAsync(document.Id);
+        var allVersions = latestVersion is not null
+            ? await sectionVersionRepo.GetAllBySectionIdAsync(document.Id)
+            : [];
+
+        return new PublishingDocumentViewModel
+        {
+            Document = document,
+            CurrentVersionNumber = latestVersion?.VersionNumber,
+            HasChanges = document.ContentChangedSincePublish,
+            Classification = TryClassifyDocumentChanges(document, latestVersion),
+            CanRevoke = allVersions.Count > 1
+        };
+    }
+
+    private ChangeClassification? TryClassifyDocumentChanges(Section document, SectionVersion? latestVersion)
+    {
+        if (latestVersion is null || !document.ContentChangedSincePublish)
+            return null;
+
+        try
+        {
+            var diff = htmlDiffService.Compute(
+                latestVersion.HtmlContent,
+                document.HtmlContent ?? string.Empty);
+
+            return changeClassificationService.Classify(diff);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static IReadOnlyList<Section> GetPublishedLeafChapters(IReadOnlyList<(Section Section, int Depth)> sorted)
+    {
+        var folderChildIds = sorted
+            .Where(x => x.Section.NodeType == NodeType.Folder && x.Section.ParentId.HasValue)
+            .Select(x => x.Section.ParentId!.Value)
+            .ToHashSet();
+
+        return sorted
+            .Select(x => x.Section)
+            .Where(s => s.NodeType == NodeType.Folder &&
+                        s.IsPublished &&
+                        !folderChildIds.Contains(s.Id))
+            .ToList();
+    }
+
+    private static IReadOnlyList<Section> GetPublishedDocumentsForChapter(
+        Guid chapterId,
+        IReadOnlyList<(Section Section, int Depth)> sorted) =>
+        sorted
+            .Select(x => x.Section)
+            .Where(s => s.ParentId == chapterId &&
+                        s.NodeType == NodeType.Document &&
+                        !s.IsSoftDeleted)
+            .ToList();
 
     private static IReadOnlyList<(Section Section, int Depth)> SortDepthFirst(
         IReadOnlyList<Section> sections)

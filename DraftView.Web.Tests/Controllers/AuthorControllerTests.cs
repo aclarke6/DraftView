@@ -214,6 +214,44 @@ public class AuthorControllerTests
     // ---------------------------------------------------------------------------
 
     [Fact]
+    public async Task Publishing_WhenProjectExists_ReturnsPublishingPageViewModel()
+    {
+        var author = User.Create("author@example.test", "Author", Role.Author);
+        var project = Project.Create("Project One", "/Apps/Scrivener/ProjectOne", author.Id, "sync-root");
+        var chapter = Section.CreateFolder(project.Id, Guid.NewGuid().ToString(), "Chapter 1", null, 0);
+        chapter.MarkAsPublishedContainer();
+        var document = Section.CreateDocument(
+            project.Id,
+            Guid.NewGuid().ToString(),
+            "Scene 1",
+            chapter.Id,
+            0,
+            "<p>content</p>",
+            "hash",
+            null);
+
+        var sut = CreateSut();
+
+        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(author);
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(project);
+        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([chapter, document]);
+        sectionVersionRepo.Setup(r => r.GetLatestAsync(document.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((SectionVersion?)null);
+
+        var result = await sut.Publishing(project.Id);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<PublishingPageViewModel>(view.Model);
+        Assert.Equal(project.Id, model.Project.Id);
+        Assert.Single(model.Chapters);
+        Assert.Equal(chapter.Id, model.Chapters[0].Chapter.Id);
+        Assert.Single(model.Chapters[0].Documents);
+    }
+
+    [Fact]
     public async Task RepublishChapter_CallsVersioningService_WithCorrectChapterId()
     {
         var author = User.Create("author@example.test", "Author", Role.Author);
@@ -279,5 +317,39 @@ public class AuthorControllerTests
 
         var redirect = Assert.IsType<RedirectResult>(result);
         Assert.Contains($"#section-{chapterId}", redirect.Url);
+    }
+
+    [Fact]
+    public async Task RepublishDocument_CallsVersioningService_WithCorrectSectionId()
+    {
+        var author = User.Create("author@example.test", "Author", Role.Author);
+        var sectionId = Guid.NewGuid();
+        var projectId = Guid.NewGuid();
+        var sut = CreateSut();
+        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
+
+        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(author);
+
+        await sut.RepublishDocument(sectionId, projectId);
+
+        versioningService.Verify(v => v.RepublishSectionAsync(sectionId, author.Id, default), Times.Once);
+    }
+
+    [Fact]
+    public async Task RevokeDocument_CallsVersioningService_WithCorrectSectionId()
+    {
+        var author = User.Create("author@example.test", "Author", Role.Author);
+        var sectionId = Guid.NewGuid();
+        var projectId = Guid.NewGuid();
+        var sut = CreateSut();
+        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
+
+        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(author);
+
+        await sut.RevokeDocument(sectionId, projectId);
+
+        versioningService.Verify(v => v.RevokeLatestVersionAsync(sectionId, author.Id, default), Times.Once);
     }
 }

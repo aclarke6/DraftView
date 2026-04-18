@@ -112,12 +112,11 @@ else
                                             </span>
                                         }
 
-                                        <form asp-action="RepublishChapter" method="post" style="display:inline">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="chapterId" value="@s.Id" />
-                                            <input type="hidden" name="projectId" value="@project!.Id" />
-                                            <button type="submit" class="btn btn--republish btn--sm">Republish</button>
-                                        </form>
+                                        <a asp-action="Publishing"
+                                           asp-route-projectId="@project!.Id"
+                                           class="btn btn--republish btn--sm">
+                                            Publish changes
+                                        </a>
                                     }
                                 }
                                 else if (publishable.Contains(s.Id))

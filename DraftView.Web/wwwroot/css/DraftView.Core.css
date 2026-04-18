@@ -13,7 +13,7 @@
    -------------------------------------------------------------------------- */
 :root {
     /* Update for every change */
-    --css-version: "v2026-04-18-5";
+    --css-version: "v2026-04-18-6";
     /* Colour palette now split into Light and Dark theme files */
     /* Typography */
     --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
@@ -307,6 +307,62 @@ a {
     .site-footer__report-btn:hover {
         background: var(--color-surface-alt);
     }
+
+/* Publishing Page — Author/Publishing.cshtml */
+.publishing-chapter {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md, 6px);
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+}
+
+.publishing-chapter__header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+}
+
+.publishing-chapter__title {
+    font-weight: 600;
+    font-size: var(--text-base);
+    flex: 1;
+}
+
+.publishing-chapter__actions {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.publishing-documents {
+    border-top: 1px solid var(--color-border);
+    padding-top: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.publishing-doc {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+}
+
+.publishing-doc__title {
+    flex: 1;
+    font-size: var(--text-sm);
+}
+
+.publishing-doc__version {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+}
+
+.publishing-doc__actions {
+    display: flex;
+    gap: var(--space-2);
+}
 
 
 

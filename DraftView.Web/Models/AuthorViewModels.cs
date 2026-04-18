@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using DraftView.Domain.Entities;
+using DraftView.Domain.Enumerations;
 using DraftView.Domain.Notifications;
 using Microsoft.AspNetCore.Http;
 
@@ -72,4 +73,39 @@ public class UploadSceneViewModel
 
     [Required(ErrorMessage = "Please select a file to upload.")]
     public IFormFile? File { get; set; }
+}
+
+/// <summary>
+/// Top-level view model for the Publishing Page.
+/// </summary>
+public class PublishingPageViewModel
+{
+    public Project Project { get; init; } = default!;
+    public IReadOnlyList<PublishingChapterViewModel> Chapters { get; init; } = [];
+}
+
+/// <summary>
+/// Represents a chapter (Folder section) on the Publishing Page.
+/// </summary>
+public class PublishingChapterViewModel
+{
+    public Section Chapter { get; init; } = default!;
+    public bool HasChanges { get; init; }
+    public ChangeClassification? Classification { get; init; }
+    public bool CanRevoke { get; init; }
+    public bool ShowDocumentControls { get; init; }
+    public IReadOnlyList<PublishingDocumentViewModel> Documents { get; init; } = [];
+}
+
+/// <summary>
+/// Represents a Document section on the Publishing Page.
+/// Shown when a chapter has multiple documents or for Manual projects.
+/// </summary>
+public class PublishingDocumentViewModel
+{
+    public Section Document { get; init; } = default!;
+    public int? CurrentVersionNumber { get; init; }
+    public bool HasChanges { get; init; }
+    public ChangeClassification? Classification { get; init; }
+    public bool CanRevoke { get; init; }
 }
