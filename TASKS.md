@@ -698,6 +698,7 @@ Controllers should follow this structure only:
 - [DONE] Improved mobile portrait dashboard table affordances by preserving card boundaries and adding rotate-to-landscape guidance on author dashboard cards
 - [DONE] Fixed style leakage by scoping prose font preferences to reader surfaces only so system UI remains on standard typography
 - [DONE] Fixed style leakage in `Views/Author/InviteReader.cshtml` by replacing inline layout styling with dashboard CSS classes while adding the invite display-name field
+- [DONE] Fixed reader diff UX for removed paragraphs — removed paragraphs now render as thin visual markers instead of strikethrough deleted text, allowing beta readers to focus on published content rather than editorial changes (2026-04-18)
 - [DONE] Sprint 4 Phase 6 end-to-end integration is complete
   - fixed configuration-backed protected-email keys are in place for dev and testing
   - DB-backed real-host regression coverage now exists for login, password reset, and invitation provisioning

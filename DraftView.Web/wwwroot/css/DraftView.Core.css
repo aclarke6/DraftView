@@ -13,7 +13,7 @@
    -------------------------------------------------------------------------- */
 :root {
     /* Update for every change */
-    --css-version: "v2026-04-17-3";
+    --css-version: "v2026-04-18-1";
     /* Colour palette now split into Light and Dark theme files */
     /* Typography */
     --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
@@ -233,13 +233,14 @@ a {
     margin-bottom: var(--space-2);
 }
 
+/* Removed paragraph marker — DesktopRead.cshtml / MobileRead.cshtml
+   Renders as a thin red left bar only. Content is intentionally hidden —
+   beta readers focus on what is present, not what was deleted. */
 .diff-para--removed {
-    background: var(--color-diff-removed-bg, #fef2f2);
     border-left: 3px solid var(--color-diff-removed, #ef4444);
-    padding-left: var(--space-3);
+    height: var(--space-3, 12px);
     margin-bottom: var(--space-2);
-    text-decoration: line-through;
-    opacity: 0.7;
+    opacity: 0.5;
 }
 
 .site-footer__right {
