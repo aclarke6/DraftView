@@ -3,6 +3,8 @@
     ViewData["Title"] = "Sections";
     var project     = ViewBag.Project as DraftView.Domain.Entities.Project;
     var publishable = ViewBag.Publishable as HashSet<Guid> ?? new HashSet<Guid>();
+    var classificationMap = ViewBag.ClassificationMap as Dictionary<Guid, DraftView.Domain.Enumerations.ChangeClassification>
+        ?? new Dictionary<Guid, DraftView.Domain.Enumerations.ChangeClassification>();
 
     // Build a set of folder IDs that contain at least one sub-folder child.
     // These are Parts/Books - they get no Publish button.
@@ -103,6 +105,13 @@ else
 
                                     @if (s.ContentChangedSincePublish)
                                     {
+                                        if (classificationMap.TryGetValue(s.Id, out var classification))
+                                        {
+                                            <span class="change-indicator change-indicator--@classification.ToString().ToLower()">
+                                                @classification
+                                            </span>
+                                        }
+
                                         <form asp-action="RepublishChapter" method="post" style="display:inline">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="chapterId" value="@s.Id" />

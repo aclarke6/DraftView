@@ -66,4 +66,20 @@ public sealed class SectionVersion
             CreatedAt = DateTime.UtcNow
         };
     }
+
+    /// <summary>
+    /// Sets the change classification for this version.
+    /// Called by the application layer after diff-based heuristic classification.
+    /// Can only be set once — classification is immutable after first assignment.
+    /// </summary>
+    /// <param name="classification">The classification to assign.</param>
+    /// <exception cref="InvariantViolationException">Thrown when classification has already been set.</exception>
+    public void SetChangeClassification(ChangeClassification classification)
+    {
+        if (ChangeClassification.HasValue)
+            throw new InvariantViolationException("I-VER-CLASS",
+                "ChangeClassification has already been set and cannot be changed.");
+
+        ChangeClassification = classification;
+    }
 }

@@ -7,6 +7,7 @@
     <File Path=".gitignore" />
     <File Path="AGENTS.md" />
     <File Path="betabooks-export.json" />
+    <File Path="bugfix-diff-para-removed.prompt.md" />
     <File Path="CLAUDE.md" />
     <File Path="CLAUDE_TASK_Notifications.md" />
     <File Path="Copy-SourceFiles.ps1" />
@@ -44,6 +45,15 @@
     <File Path="vsprint2-phase1.prompt.md" />
     <File Path="vsprint2-phase2.prompt.md" />
     <File Path="vsprint2-phase3.prompt.md" />
+    <File Path="vsprint3-phase1.prompt.md" />
+    <File Path="vsprint3-phase2.prompt.md" />
+    <File Path="vsprint3-phase3.prompt.md" />
+    <File Path="vsprint4-phase1.prompt.md" />
+    <File Path="vsprint4-phase2.prompt.md" />
+    <File Path="vsprint4-phase3.prompt.md" />
+    <File Path="vsprint5-phase1.prompt.md" />
+    <File Path="vsprint5-phase2.prompt.md" />
+    <File Path="vsprint5-phase3.prompt.md" />
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="DraftView.Application.Tests/DraftView.Application.Tests.csproj" />
