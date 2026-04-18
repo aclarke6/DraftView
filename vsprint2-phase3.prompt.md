@@ -246,6 +246,22 @@ registered in DI. Do not add a duplicate.
 
 ---
 
+## Identify All Warnings in Tests
+
+Run `dotnet test --nologo` and identify any warnings in the test output.
+Address any warnings that are linked to code changes made in this phase before
+proceeding, as they may indicate potential issues in the code.
+
+---
+
+## Refactor Phase
+
+After implementing the above, consider if any refactor is needed to improve code
+quality, as per the refactoring guidelines. If so, perform the refactor and ensure
+all tests still pass.
+
+---
+
 ## Phase Gate — All Must Pass Before Marking Complete
 
 Run `dotnet test --nologo` and confirm:
@@ -264,6 +280,11 @@ Run `dotnet test --nologo` and confirm:
 - [ ] Style leakage audit completed on both modified views
 - [ ] TASKS.md Phase 3 checkbox updated to `[x]`
 - [ ] All changes committed to `vsprint-2--phase-3-reader-highlighting`
+- [ ] No warnings in test output linked to phase changes
+- [ ] Refactor considered and applied where appropriate, tests green after refactor
+
+---
+
 
 ## Do NOT implement in this phase
 
