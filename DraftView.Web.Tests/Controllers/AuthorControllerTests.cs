@@ -28,7 +28,10 @@ public class AuthorControllerTests
     private readonly Mock<IServiceScopeFactory> scopeFactory = new();
     private readonly Mock<ISyncProgressTracker> progressTracker = new();
     private readonly Mock<IReaderAccessRepository> readerAccessRepo = new();
+    private readonly Mock<ISectionVersionRepository> sectionVersionRepo = new();
     private readonly Mock<IVersioningService> versioningService = new();
+    private readonly Mock<IHtmlDiffService> htmlDiffService = new();
+    private readonly Mock<IChangeClassificationService> changeClassificationService = new();
     private readonly Mock<IImportService> importService = new();
     private readonly Mock<ISectionTreeService> sectionTreeService = new();
     private readonly Mock<IUnitOfWork> unitOfWork = new();
@@ -39,6 +42,7 @@ public class AuthorControllerTests
         var controller = new AuthorController(
             projectRepo.Object,
             sectionRepo.Object,
+            sectionVersionRepo.Object,
             publicationService.Object,
             userService.Object,
             dashboardService.Object,
@@ -50,6 +54,8 @@ public class AuthorControllerTests
             progressTracker.Object,
             readerAccessRepo.Object,
             versioningService.Object,
+            htmlDiffService.Object,
+            changeClassificationService.Object,
             importService.Object,
             sectionTreeService.Object,
             logger.Object);

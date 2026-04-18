@@ -13,7 +13,7 @@
    -------------------------------------------------------------------------- */
 :root {
     /* Update for every change */
-    --css-version: "v2026-04-18-3";
+    --css-version: "v2026-04-18-4";
     /* Colour palette now split into Light and Dark theme files */
     /* Typography */
     --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
@@ -241,6 +241,36 @@ a {
     height: var(--space-3, 12px);
     margin-bottom: var(--space-2);
     opacity: 0.5;
+}
+
+/* Change classification indicator — Author/Sections.cshtml */
+.change-indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-sm, 4px);
+    font-size: var(--text-xs);
+    font-family: var(--font-ui);
+    font-weight: 500;
+    margin-right: var(--space-1);
+}
+
+.change-indicator--polish {
+    background: var(--color-polish-bg, #f0fdf4);
+    color: var(--color-polish-text, #166534);
+    border: 1px solid var(--color-polish-border, #bbf7d0);
+}
+
+.change-indicator--revision {
+    background: var(--color-revision-bg, #fffbeb);
+    color: var(--color-revision-text, #92400e);
+    border: 1px solid var(--color-revision-border, #fde68a);
+}
+
+.change-indicator--rewrite {
+    background: var(--color-rewrite-bg, #fef2f2);
+    color: var(--color-rewrite-text, #991b1b);
+    border: 1px solid var(--color-rewrite-border, #fecaca);
 }
 
 .site-footer__right {
