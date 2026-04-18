@@ -105,7 +105,10 @@ Any modification of a view must include an audit of that view for style leakage.
 - [OPEN] `/Author/InviteReader` submit fails with browser "This page isn't working" on production
   - observed at `https://draftview.co.uk/Author/InviteReader` when submitting the invite form
   - current behaviour: the request crashes instead of returning a controlled application error page or successful redirect
-  - likely fault area: operational failure in invitation sending, configuration, or persistence after Sprint 4 error-handling changes
+  - confirmed root-cause seam:
+    - `AuthorController.InviteReader` treats `InvariantViolationException` as a validation outcome but does not consistently route non-validation failures through the controlled error path
+    - `UserService.IssueInvitationAsync` can throw operational exceptions during configuration resolution, email delivery, or persistence-adjacent work after the invite record is written
+    - existing controller test coverage locked in bubbling behaviour for `InvalidOperationException`, masking the mismatch with the project's controlled 500 error-handling rule
   - investigation focus: production logs for the failing request, SMTP/config state, and exception handling through the invite submission path
 - [OPEN] Removing a reader from `/Author/Readers` does not remove the reader from the list
   - observed when using the remove action for both invited and active readers
