@@ -421,6 +421,8 @@ See `DraftView Git Rules.md` for branch strategy, gates, and commit standards.
     - [x] Phase 2 — Publish Flow Integration — `VersioningService.RepublishChapterAsync` now generates and persists `AiSummary` per `SectionVersion` with null-safe non-blocking behavior
     - [x] Phase 3 — Reader Banner Summary — reader update banners now show optional `AiSummary` from the latest `SectionVersion` on desktop and mobile
 - [ ] V-Sprint 6 — Per-document publishing and dedicated Publishing Page
+    - [x] Phase 1 — Per-document publishing application layer (`IVersioningService` + `VersioningService` section republish/revoke)
+    - [ ] Phase 2 — Publishing Page UI and controller endpoints
 - [ ] V-Sprint 7 — Scheduling and locking
 - [ ] V-Sprint 8 — Dropbox incremental sync
 - [ ] V-Sprint 9 — Version retention and deletion
