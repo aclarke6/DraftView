@@ -14,6 +14,7 @@ namespace DraftView.Web.Controllers;
 public class AuthorController(
     IProjectRepository projectRepo,
     ISectionRepository sectionRepo,
+    ISectionVersionRepository sectionVersionRepo,
     IPublicationService publicationService,
     IUserService userService,
     IDashboardService dashboardService,
@@ -25,6 +26,8 @@ public class AuthorController(
     ISyncProgressTracker progressTracker,
     IReaderAccessRepository readerAccessRepo,
     IVersioningService versioningService,
+    IHtmlDiffService htmlDiffService,
+    IChangeClassificationService changeClassificationService,
     IImportService importService,
     ISectionTreeService sectionTreeService,
     ILogger<AuthorController> logger) : BaseController(userRepo)
@@ -196,8 +199,51 @@ public class AuthorController(
                 publishable.Add(s.Id);
         }
 
+        var classificationMap = new Dictionary<Guid, ChangeClassification>();
+        foreach (var (chapter, _) in sorted.Where(x =>
+                     x.Section.NodeType == NodeType.Folder &&
+                     x.Section.IsPublished &&
+                     x.Section.ContentChangedSincePublish))
+        {
+            try
+            {
+                var documents = sorted
+                    .Where(x => x.Section.ParentId == chapter.Id &&
+                                x.Section.NodeType == NodeType.Document &&
+                                !x.Section.IsSoftDeleted)
+                    .Select(x => x.Section)
+                    .ToList();
+
+                var highestClassification = ChangeClassification.Polish;
+                var hasClassifiableVersion = false;
+
+                foreach (var document in documents)
+                {
+                    var latestVersion = await sectionVersionRepo.GetLatestAsync(document.Id);
+                    if (latestVersion is null) continue;
+
+                    hasClassifiableVersion = true;
+                    var diff = htmlDiffService.Compute(
+                        latestVersion.HtmlContent,
+                        document.HtmlContent ?? string.Empty);
+
+                    var classification = changeClassificationService.Classify(diff);
+                    if (classification.HasValue && classification.Value > highestClassification)
+                        highestClassification = classification.Value;
+                }
+
+                if (hasClassifiableVersion)
+                    classificationMap[chapter.Id] = highestClassification;
+            }
+            catch
+            {
+                // Classification indicator is advisory only; skip failures silently.
+            }
+        }
+
         ViewBag.Project     = project;
         ViewBag.Publishable = publishable;
+        ViewBag.ClassificationMap = classificationMap;
         return View(sorted);
     }
 

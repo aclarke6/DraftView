@@ -14,6 +14,8 @@ namespace DraftView.Application.Services;
 public class VersioningService(
     ISectionRepository sectionRepository,
     ISectionVersionRepository sectionVersionRepository,
+    IHtmlDiffService htmlDiffService,
+    IChangeClassificationService changeClassificationService,
     IUnitOfWork unitOfWork) : IVersioningService
 {
     /// <summary>
@@ -55,6 +57,31 @@ public class VersioningService(
             var nextVersion = maxVersion + 1;
 
             var version = SectionVersion.Create(document, authorId, nextVersion);
+
+            var allVersions = await sectionVersionRepository.GetAllBySectionIdAsync(document.Id, ct);
+            var previousVersion = allVersions
+                .Where(v => v.VersionNumber < version.VersionNumber)
+                .OrderByDescending(v => v.VersionNumber)
+                .FirstOrDefault();
+
+            if (previousVersion is not null)
+            {
+                try
+                {
+                    var diffParagraphs = htmlDiffService.Compute(
+                        previousVersion.HtmlContent,
+                        version.HtmlContent);
+
+                    var classification = changeClassificationService.Classify(diffParagraphs);
+                    if (classification.HasValue)
+                        version.SetChangeClassification(classification.Value);
+                }
+                catch
+                {
+                    // Classification is advisory and must not block republish.
+                }
+            }
+
             await sectionVersionRepository.AddAsync(version, ct);
 
             document.PublishAsPartOfChapter(document.ContentHash ?? string.Empty);

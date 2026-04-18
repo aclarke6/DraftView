@@ -18,6 +18,8 @@ public class VersioningServiceTests
 {
     private readonly Mock<ISectionRepository> _sectionRepo;
     private readonly Mock<ISectionVersionRepository> _versionRepo;
+    private readonly Mock<IHtmlDiffService> _htmlDiffService;
+    private readonly Mock<IChangeClassificationService> _changeClassificationService;
     private readonly Mock<IUnitOfWork> _unitOfWork;
     private readonly VersioningService _sut;
 
@@ -25,8 +27,17 @@ public class VersioningServiceTests
     {
         _sectionRepo = new Mock<ISectionRepository>();
         _versionRepo = new Mock<ISectionVersionRepository>();
+        _htmlDiffService = new Mock<IHtmlDiffService>();
+        _changeClassificationService = new Mock<IChangeClassificationService>();
         _unitOfWork = new Mock<IUnitOfWork>();
-        _sut = new VersioningService(_sectionRepo.Object, _versionRepo.Object, _unitOfWork.Object);
+        _versionRepo.Setup(r => r.GetAllBySectionIdAsync(It.IsAny<Guid>(), default))
+            .ReturnsAsync(new List<SectionVersion>());
+        _sut = new VersioningService(
+            _sectionRepo.Object,
+            _versionRepo.Object,
+            _htmlDiffService.Object,
+            _changeClassificationService.Object,
+            _unitOfWork.Object);
     }
 
     [Fact]
@@ -230,6 +241,91 @@ public class VersioningServiceTests
         await _sut.RepublishChapterAsync(chapter.Id, Guid.NewGuid(), default);
 
         // Assert
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task RepublishChapterAsync_SetsChangeClassification_WhenPreviousVersionExists()
+    {
+        var projectId = Guid.NewGuid();
+        var authorId = Guid.NewGuid();
+        var chapter = MakeChapter(projectId);
+        var doc = MakeDocument(projectId, chapter.Id);
+        var previousVersion = SectionVersion.Create(doc, authorId, 1);
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default))
+            .ReturnsAsync(chapter);
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapter.Id, default))
+            .ReturnsAsync(new List<Section> { doc });
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(doc.Id, default))
+            .ReturnsAsync(1);
+        _versionRepo.Setup(r => r.GetAllBySectionIdAsync(doc.Id, default))
+            .ReturnsAsync(new List<SectionVersion> { previousVersion });
+
+        _htmlDiffService.Setup(d => d.Compute(previousVersion.HtmlContent, doc.HtmlContent))
+            .Returns(new List<DraftView.Domain.Diff.ParagraphDiffResult>());
+        _changeClassificationService.Setup(c => c.Classify(It.IsAny<IReadOnlyList<DraftView.Domain.Diff.ParagraphDiffResult>>()))
+            .Returns(ChangeClassification.Revision);
+
+        SectionVersion? addedVersion = null;
+        _versionRepo.Setup(r => r.AddAsync(It.IsAny<SectionVersion>(), default))
+            .Callback<SectionVersion, CancellationToken>((v, _) => addedVersion = v);
+
+        await _sut.RepublishChapterAsync(chapter.Id, authorId, default);
+
+        Assert.NotNull(addedVersion);
+        Assert.Equal(ChangeClassification.Revision, addedVersion!.ChangeClassification);
+    }
+
+    [Fact]
+    public async Task RepublishChapterAsync_DoesNotSetChangeClassification_WhenNoPreviousVersionExists()
+    {
+        var projectId = Guid.NewGuid();
+        var authorId = Guid.NewGuid();
+        var chapter = MakeChapter(projectId);
+        var doc = MakeDocument(projectId, chapter.Id);
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default))
+            .ReturnsAsync(chapter);
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapter.Id, default))
+            .ReturnsAsync(new List<Section> { doc });
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(doc.Id, default))
+            .ReturnsAsync(1);
+        _versionRepo.Setup(r => r.GetAllBySectionIdAsync(doc.Id, default))
+            .ReturnsAsync(new List<SectionVersion>());
+
+        await _sut.RepublishChapterAsync(chapter.Id, authorId, default);
+
+        _changeClassificationService.Verify(c =>
+            c.Classify(It.IsAny<IReadOnlyList<DraftView.Domain.Diff.ParagraphDiffResult>>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RepublishChapterAsync_StillPublishes_WhenClassificationFails()
+    {
+        var projectId = Guid.NewGuid();
+        var authorId = Guid.NewGuid();
+        var chapter = MakeChapter(projectId);
+        var doc = MakeDocument(projectId, chapter.Id);
+        var previousVersion = SectionVersion.Create(doc, authorId, 1);
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default))
+            .ReturnsAsync(chapter);
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapter.Id, default))
+            .ReturnsAsync(new List<Section> { doc });
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(doc.Id, default))
+            .ReturnsAsync(1);
+        _versionRepo.Setup(r => r.GetAllBySectionIdAsync(doc.Id, default))
+            .ReturnsAsync(new List<SectionVersion> { previousVersion });
+
+        _htmlDiffService.Setup(d => d.Compute(previousVersion.HtmlContent, doc.HtmlContent))
+            .Returns(new List<DraftView.Domain.Diff.ParagraphDiffResult>());
+        _changeClassificationService.Setup(c => c.Classify(It.IsAny<IReadOnlyList<DraftView.Domain.Diff.ParagraphDiffResult>>()))
+            .Throws(new Exception("classification failed"));
+
+        await _sut.RepublishChapterAsync(chapter.Id, authorId, default);
+
+        _versionRepo.Verify(r => r.AddAsync(It.IsAny<SectionVersion>(), default), Times.Once);
         _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
     }
 

@@ -107,6 +107,16 @@ public class SectionVersionTests
     }
 
     [Fact]
+    public void Create_HasNullChangeClassification()
+    {
+        var section = CreateValidDocumentSection();
+
+        var version = SectionVersion.Create(section, ValidAuthorId, 1);
+
+        Assert.Null(version.ChangeClassification);
+    }
+
+    [Fact]
     public void Create_WithDocumentSection_AiSummaryIsNull()
     {
         var section = CreateValidDocumentSection();
@@ -212,5 +222,29 @@ public class SectionVersionTests
             () => SectionVersion.Create(section, ValidAuthorId, -1));
 
         Assert.Equal("I-VER-NUMBER", ex.InvariantCode);
+    }
+
+    [Fact]
+    public void SetChangeClassification_SetsClassification()
+    {
+        var section = CreateValidDocumentSection();
+        var version = SectionVersion.Create(section, ValidAuthorId, 1);
+
+        version.SetChangeClassification(ChangeClassification.Revision);
+
+        Assert.Equal(ChangeClassification.Revision, version.ChangeClassification);
+    }
+
+    [Fact]
+    public void SetChangeClassification_WhenAlreadySet_ThrowsInvariantViolation()
+    {
+        var section = CreateValidDocumentSection();
+        var version = SectionVersion.Create(section, ValidAuthorId, 1);
+        version.SetChangeClassification(ChangeClassification.Polish);
+
+        var ex = Assert.Throws<InvariantViolationException>(() =>
+            version.SetChangeClassification(ChangeClassification.Rewrite));
+
+        Assert.Equal("I-VER-CLASS", ex.InvariantCode);
     }
 }
