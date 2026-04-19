@@ -13,6 +13,12 @@
         .Where(i => i.Section.NodeType == NodeType.Folder && i.Section.ParentId.HasValue)
         .Select(i => i.Section.ParentId!.Value)
         .ToHashSet();
+
+    var changedCount = project?.ProjectType == ProjectType.ScrivenerDropbox
+        ? Model.Count(x => !x.Section.IsSoftDeleted &&
+                           x.Section.NodeType == NodeType.Document &&
+                           x.Section.ContentChangedSincePublish)
+        : 0;
 }
 
 <h2>@project?.Name - Sections</h2>
@@ -21,6 +27,15 @@
     Publish buttons appear on chapters where all scenes are First Draft or above.
     Publishing a chapter makes all its scenes visible to readers.
 </p>
+
+@if (project?.ProjectType == ProjectType.ScrivenerDropbox)
+{
+    <p class="page-subtitle page-subtitle--info">
+        This project is managed by Scrivener. The section structure is updated
+        automatically when you sync. To add, remove, or reorder sections,
+        make the changes in Scrivener and sync again.
+    </p>
+}
 
 <script>
     (function () {
@@ -64,6 +79,13 @@
 }
 else
 {
+    @if (changedCount > 0)
+    {
+        <p class="sync-summary">
+            @changedCount section@(changedCount == 1 ? "" : "s") updated since last publish.
+        </p>
+    }
+
     <div class="table-wrapper">
         <table>
             <thead>
@@ -107,6 +129,10 @@ else
                         </td>
                         <td style="color:var(--color-text-muted); font-size:var(--text-sm)">
                             @(isChapter ? "Chapter" : isFolder ? "Part / Book" : "Scene")
+                            @if (!isFolder && s.ContentChangedSincePublish && project?.ProjectType == ProjectType.ScrivenerDropbox)
+                            {
+                                <span class="sync-change-badge">Updated</span>
+                            }
                         </td>
                         <td>@(s.ScrivenerStatus ?? "-")</td>
                         <td>
