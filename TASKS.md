@@ -62,6 +62,8 @@ Last updated: 2026-04-19
   - no UI surface to verify deny-by-default email behaviour for SystemSupport role
   - decide: dedicated support readers screen, or remove from UAT scope
 
+- [ ] **ForgotPassword returns HTTP 405 in production** — `/Account/ForgotPassword` shows raw browser 405 page instead of a controlled error. Two issues: (1) route/method mismatch on ForgotPassword action, (2) no custom 405 error page. Investigate after deploy to confirm if already fixed in latest code.
+
 - [Open] **Reader settings shows `Ciphertext is not in the expected format` on screen**
   - protected-email decryption failure surfacing as a form validation error
   - should route through controlled 500 error path
