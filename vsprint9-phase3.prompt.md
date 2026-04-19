@@ -280,7 +280,7 @@ Update the CSS version in `_Layout.cshtml` to match.
 
 ## Phase Gate — All Must Pass Before Marking Complete
 
-Run `.\test-summary.ps1` and confirm:
+Run `dotnet test -nologo` and confirm:
 
 - [ ] All new tests green
 - [ ] Total passing count equal to or greater than baseline
