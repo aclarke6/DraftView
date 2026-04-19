@@ -3,6 +3,9 @@
     <File Path="DraftView Billing Model v2.docx" />
     <File Path="DraftView Business Model v3.docx" />
   </Folder>
+  <Folder Name="/UAT/">
+    <File Path="DraftView-UAT-Plan.md" />
+  </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".gitignore" />
     <File Path="AGENTS.md" />
