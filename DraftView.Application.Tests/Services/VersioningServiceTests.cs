@@ -4,6 +4,8 @@ using DraftView.Domain.Enumerations;
 using DraftView.Domain.Exceptions;
 using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Interfaces.Services;
+using DraftView.Domain.Policies;
+using Microsoft.Extensions.Configuration;
 using Moq;
 
 namespace DraftView.Application.Tests.Services;
@@ -22,6 +24,7 @@ public class VersioningServiceTests
     private readonly Mock<IChangeClassificationService> _changeClassificationService;
     private readonly Mock<IAiSummaryService> _aiSummaryService;
     private readonly Mock<IUnitOfWork> _unitOfWork;
+    private readonly Mock<IConfiguration> _configuration;
     private readonly VersioningService _sut;
 
     public VersioningServiceTests()
@@ -32,6 +35,9 @@ public class VersioningServiceTests
         _changeClassificationService = new Mock<IChangeClassificationService>();
         _aiSummaryService = new Mock<IAiSummaryService>();
         _unitOfWork = new Mock<IUnitOfWork>();
+        _configuration = new Mock<IConfiguration>();
+        _configuration.Setup(c => c["DraftView:SubscriptionTier"])
+            .Returns((string?)null);
         _versionRepo.Setup(r => r.GetAllBySectionIdAsync(It.IsAny<Guid>(), default))
             .ReturnsAsync(new List<SectionVersion>());
         _aiSummaryService.Setup(s => s.GenerateSummaryAsync(It.IsAny<string?>(), It.IsAny<string>(), default))
@@ -42,7 +48,107 @@ public class VersioningServiceTests
             _htmlDiffService.Object,
             _changeClassificationService.Object,
             _aiSummaryService.Object,
-            _unitOfWork.Object);
+            _unitOfWork.Object,
+            _configuration.Object);
+    }
+
+    [Fact]
+    public async Task RepublishChapterAsync_WhenAtRetentionLimit_ThrowsVersionRetentionLimitException()
+    {
+        var projectId = Guid.NewGuid();
+        var chapter = MakeChapter(projectId);
+        var doc = MakeDocument(projectId, chapter.Id);
+
+        _configuration.Setup(c => c["DraftView:SubscriptionTier"]).Returns("Free");
+        _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default)).ReturnsAsync(chapter);
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapter.Id, default)).ReturnsAsync(new List<Section> { doc });
+        _versionRepo.Setup(r => r.GetVersionCountAsync(doc.Id, default)).ReturnsAsync(VersionRetentionPolicy.FreeLimit);
+
+        var ex = await Assert.ThrowsAsync<VersionRetentionLimitException>(
+            () => _sut.RepublishChapterAsync(chapter.Id, Guid.NewGuid(), default));
+
+        Assert.Equal(VersionRetentionPolicy.FreeLimit, ex.Limit);
+    }
+
+    [Fact]
+    public async Task RepublishChapterAsync_WhenBelowRetentionLimit_CreatesVersion()
+    {
+        var projectId = Guid.NewGuid();
+        var chapter = MakeChapter(projectId);
+        var doc = MakeDocument(projectId, chapter.Id);
+
+        _configuration.Setup(c => c["DraftView:SubscriptionTier"]).Returns("Free");
+        _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default)).ReturnsAsync(chapter);
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapter.Id, default)).ReturnsAsync(new List<Section> { doc });
+        _versionRepo.Setup(r => r.GetVersionCountAsync(doc.Id, default)).ReturnsAsync(VersionRetentionPolicy.FreeLimit - 1);
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(doc.Id, default)).ReturnsAsync(0);
+
+        await _sut.RepublishChapterAsync(chapter.Id, Guid.NewGuid(), default);
+
+        _versionRepo.Verify(r => r.AddAsync(It.IsAny<SectionVersion>(), default), Times.Once);
+    }
+
+    [Fact]
+    public async Task RepublishSectionAsync_WhenTierConfigIsInvalid_DefaultsToFreeLimit()
+    {
+        var section = MakeDocument(Guid.NewGuid(), null);
+
+        _configuration.Setup(c => c["DraftView:SubscriptionTier"]).Returns("UnknownTier");
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _versionRepo.Setup(r => r.GetVersionCountAsync(section.Id, default)).ReturnsAsync(VersionRetentionPolicy.FreeLimit);
+
+        var ex = await Assert.ThrowsAsync<VersionRetentionLimitException>(
+            () => _sut.RepublishSectionAsync(section.Id, Guid.NewGuid(), default));
+
+        Assert.Equal(VersionRetentionPolicy.FreeLimit, ex.Limit);
+    }
+
+    [Fact]
+    public async Task RepublishSectionAsync_WhenAtRetentionLimit_ThrowsVersionRetentionLimitException()
+    {
+        var section = MakeDocument(Guid.NewGuid(), null);
+
+        _configuration.Setup(c => c["DraftView:SubscriptionTier"]).Returns("Free");
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _versionRepo.Setup(r => r.GetVersionCountAsync(section.Id, default)).ReturnsAsync(VersionRetentionPolicy.FreeLimit);
+
+        var ex = await Assert.ThrowsAsync<VersionRetentionLimitException>(
+            () => _sut.RepublishSectionAsync(section.Id, Guid.NewGuid(), default));
+
+        Assert.Equal(VersionRetentionPolicy.FreeLimit, ex.Limit);
+    }
+
+    [Fact]
+    public async Task RepublishSectionAsync_WhenBelowRetentionLimit_CreatesVersion()
+    {
+        var section = MakeDocument(Guid.NewGuid(), null);
+
+        _configuration.Setup(c => c["DraftView:SubscriptionTier"]).Returns("Free");
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _versionRepo.Setup(r => r.GetVersionCountAsync(section.Id, default)).ReturnsAsync(VersionRetentionPolicy.FreeLimit - 1);
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(section.Id, default)).ReturnsAsync(0);
+
+        await _sut.RepublishSectionAsync(section.Id, Guid.NewGuid(), default);
+
+        _versionRepo.Verify(r => r.AddAsync(It.IsAny<SectionVersion>(), default), Times.Once);
+    }
+
+    [Fact]
+    public async Task RepublishChapterAsync_WhenTierIsUltimate_NeverThrowsRetentionException()
+    {
+        var projectId = Guid.NewGuid();
+        var chapter = MakeChapter(projectId);
+        var doc = MakeDocument(projectId, chapter.Id);
+
+        _configuration.Setup(c => c["DraftView:SubscriptionTier"]).Returns("Ultimate");
+        _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default)).ReturnsAsync(chapter);
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapter.Id, default)).ReturnsAsync(new List<Section> { doc });
+        _versionRepo.Setup(r => r.GetVersionCountAsync(doc.Id, default)).ReturnsAsync(int.MaxValue);
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(doc.Id, default)).ReturnsAsync(0);
+
+        await _sut.RepublishChapterAsync(chapter.Id, Guid.NewGuid(), default);
+
+        _versionRepo.Verify(r => r.AddAsync(It.IsAny<SectionVersion>(), default), Times.Once);
     }
 
     [Fact]

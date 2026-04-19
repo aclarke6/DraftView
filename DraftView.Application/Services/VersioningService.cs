@@ -3,6 +3,8 @@ using DraftView.Domain.Enumerations;
 using DraftView.Domain.Exceptions;
 using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Interfaces.Services;
+using DraftView.Domain.Policies;
+using Microsoft.Extensions.Configuration;
 
 namespace DraftView.Application.Services;
 
@@ -17,7 +19,8 @@ public class VersioningService(
     IHtmlDiffService htmlDiffService,
     IChangeClassificationService changeClassificationService,
     IAiSummaryService aiSummaryService,
-    IUnitOfWork unitOfWork) : IVersioningService
+    IUnitOfWork unitOfWork,
+    IConfiguration configuration) : IVersioningService
 {
     /// <summary>
     /// Creates a SectionVersion for each non-soft-deleted Document descendant
@@ -44,8 +47,10 @@ public class VersioningService(
             throw new InvariantViolationException("I-VER-NO-DOCS",
                 "Chapter has no publishable Document sections.");
 
+        var subscriptionTier = GetSubscriptionTier();
+
         foreach (var document in publishableDocuments)
-            await CreateVersionForDocumentAsync(document, authorId, ct);
+            await CreateVersionForDocumentAsync(document, authorId, subscriptionTier, ct);
 
         await unitOfWork.SaveChangesAsync(ct);
     }
@@ -61,7 +66,8 @@ public class VersioningService(
         EnsureDocumentPublishable(section);
         await AssertParentChapterNotLockedAsync(section, ct);
 
-        await CreateVersionForDocumentAsync(section, authorId, ct);
+        var subscriptionTier = GetSubscriptionTier();
+        await CreateVersionForDocumentAsync(section, authorId, subscriptionTier, ct);
         await unitOfWork.SaveChangesAsync(ct);
     }
 
@@ -151,8 +157,14 @@ public class VersioningService(
     /// <summary>
     /// Creates, classifies, summarizes, and persists a new version for one document.
     /// </summary>
-    private async Task CreateVersionForDocumentAsync(Section document, Guid authorId, CancellationToken ct)
+    private async Task CreateVersionForDocumentAsync(
+        Section document,
+        Guid authorId,
+        SubscriptionTier subscriptionTier,
+        CancellationToken ct)
     {
+        await AssertWithinRetentionLimitAsync(document.Id, subscriptionTier, ct);
+
         var maxVersion = await sectionVersionRepository.GetMaxVersionNumberAsync(document.Id, ct);
         var nextVersion = maxVersion + 1;
         var version = SectionVersion.Create(document, authorId, nextVersion);
@@ -176,6 +188,22 @@ public class VersioningService(
 
         await sectionVersionRepository.AddAsync(version, ct);
         document.PublishAsPartOfChapter(document.ContentHash ?? string.Empty);
+    }
+
+    private async Task AssertWithinRetentionLimitAsync(Guid sectionId, SubscriptionTier tier, CancellationToken ct)
+    {
+        var versionCount = await sectionVersionRepository.GetVersionCountAsync(sectionId, ct);
+
+        if (VersionRetentionPolicy.IsAtLimit(versionCount, tier))
+            throw new VersionRetentionLimitException(VersionRetentionPolicy.GetLimit(tier));
+    }
+
+    private SubscriptionTier GetSubscriptionTier()
+    {
+        var raw = configuration["DraftView:SubscriptionTier"];
+        return Enum.TryParse<SubscriptionTier>(raw, ignoreCase: true, out var tier)
+            ? tier
+            : SubscriptionTier.Free;
     }
 
     private void TryApplyClassification(SectionVersion version, SectionVersion previousVersion)
