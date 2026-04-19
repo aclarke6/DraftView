@@ -108,4 +108,32 @@ public class PublishingDocumentViewModel
     public bool HasChanges { get; init; }
     public ChangeClassification? Classification { get; init; }
     public bool CanRevoke { get; init; }
+
+    /// <summary>
+    /// Version history for this document. Empty when ShowVersionHistory is false.
+    /// </summary>
+    public IReadOnlyList<VersionHistoryItem> VersionHistory { get; init; } = [];
+
+    /// <summary>
+    /// True when the document has reached the retention limit and the version
+    /// history should be shown to prompt the author to delete an older version.
+    /// </summary>
+    public bool ShowVersionHistory { get; init; }
+
+    /// <summary>
+    /// The retention limit for the current tier. Used in the UI prompt.
+    /// </summary>
+    public int RetentionLimit { get; init; }
+}
+
+/// <summary>
+/// Represents a single version in the version history list on the Publishing Page.
+/// </summary>
+public class VersionHistoryItem
+{
+    public Guid VersionId { get; init; }
+    public int VersionNumber { get; init; }
+    public DateTime CreatedAt { get; init; }
+    public ChangeClassification? Classification { get; init; }
+    public bool CanDelete { get; init; }
 }

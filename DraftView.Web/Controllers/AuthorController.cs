@@ -6,7 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Interfaces.Services;
+using DraftView.Domain.Policies;
 using DraftView.Web.Models;
+using Microsoft.Extensions.Configuration;
 namespace DraftView.Web.Controllers;
 
 #pragma warning disable CS9107, CS9113
@@ -30,6 +32,7 @@ public class AuthorController(
     IChangeClassificationService changeClassificationService,
     IImportService importService,
     ISectionTreeService sectionTreeService,
+    IConfiguration configuration,
     ILogger<AuthorController> logger) : BaseController(userRepo)
 {
     // ---------------------------------------------------------------------------
@@ -425,6 +428,36 @@ public class AuthorController(
         catch (Exception ex)
         {
             TempData["Error"] = ex.Message;
+        }
+
+        return Redirect(Url.Action("Publishing", new { projectId }) + "#section-" + sectionId);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteVersion(Guid versionId, Guid sectionId, Guid projectId)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        try
+        {
+            var allVersions = await sectionVersionRepo.GetAllBySectionIdAsync(sectionId);
+            var latest = allVersions.OrderByDescending(v => v.VersionNumber).FirstOrDefault();
+            if (latest is not null && latest.Id == versionId)
+            {
+                TempData["Error"] = "The current version cannot be deleted. Use Revoke instead.";
+                return Redirect(Url.Action("Publishing", new { projectId }) + "#section-" + sectionId);
+            }
+
+            await sectionVersionRepo.DeleteAsync(versionId);
+            await GetUnitOfWork().SaveChangesAsync();
+            TempData["Success"] = "Version deleted.";
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "DeleteVersion failed for version {VersionId}", versionId);
+            TempData["Error"] = "Unable to delete version. Please try again.";
         }
 
         return Redirect(Url.Action("Publishing", new { projectId }) + "#section-" + sectionId);
@@ -937,14 +970,47 @@ public class AuthorController(
             ? await sectionVersionRepo.GetAllBySectionIdAsync(document.Id)
             : [];
 
+        var tier = GetSubscriptionTier();
+        var limit = VersionRetentionPolicy.GetLimit(tier);
+        var versionCount = allVersions.Count;
+        var atLimit = VersionRetentionPolicy.IsAtLimit(versionCount, tier);
+        var latestVersionNumber = allVersions.Any()
+            ? allVersions.Max(v => v.VersionNumber)
+            : 0;
+
+        var versionHistory = atLimit
+            ? allVersions
+                .OrderByDescending(v => v.VersionNumber)
+                .Select(v => new VersionHistoryItem
+                {
+                    VersionId = v.Id,
+                    VersionNumber = v.VersionNumber,
+                    CreatedAt = v.CreatedAt,
+                    Classification = v.ChangeClassification,
+                    CanDelete = v.VersionNumber != latestVersionNumber
+                })
+                .ToList()
+            : [];
+
         return new PublishingDocumentViewModel
         {
             Document = document,
             CurrentVersionNumber = latestVersion?.VersionNumber,
             HasChanges = document.ContentChangedSincePublish,
             Classification = TryClassifyDocumentChanges(document, latestVersion),
-            CanRevoke = allVersions.Count > 1
+            CanRevoke = allVersions.Count > 1,
+            VersionHistory = versionHistory,
+            ShowVersionHistory = atLimit,
+            RetentionLimit = limit
         };
+    }
+
+    private SubscriptionTier GetSubscriptionTier()
+    {
+        var raw = configuration["DraftView:SubscriptionTier"];
+        return Enum.TryParse<SubscriptionTier>(raw, ignoreCase: true, out var tier)
+            ? tier
+            : SubscriptionTier.Free;
     }
 
     private ChangeClassification? TryClassifyDocumentChanges(Section document, SectionVersion? latestVersion)

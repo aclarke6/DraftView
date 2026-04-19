@@ -14,6 +14,12 @@ public interface ISectionVersionRepository
     /// <summary>Returns all versions for a section, ordered by VersionNumber ascending.</summary>
     Task<IReadOnlyList<Domain.Entities.SectionVersion>> GetAllBySectionIdAsync(Guid sectionId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns the number of versions that exist for a given section.
+    /// Used by the retention enforcement check before creating a new version.
+    /// </summary>
+    Task<int> GetVersionCountAsync(Guid sectionId, CancellationToken ct = default);
+
     Task AddAsync(Domain.Entities.SectionVersion version, CancellationToken ct = default);
 
     /// <summary>

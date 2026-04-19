@@ -84,9 +84,9 @@ See `Publishing And Versioning Architecture.md` for full architecture, domain mo
 - [x] **V-Sprint 8 — Dropbox incremental sync** 🔄
   - [x] Phase 1 — Cursor-based incremental sync (`Project.DropboxCursor`, `ListChangedEntriesAsync`, `ListAllEntriesWithCursorAsync`, full sync on first run, cursor-expired fallback, deleted entries soft-deleted)
 - [ ] V-Sprint 9 — Version retention and deletion
-  - [ ] Phase 1 — Retention domain (rules per pricing tier, physical deletion)
-  - [ ] Phase 2 — Enforcement (limit check before version creation)
-  - [ ] Phase 3 — Version management UI (version list on Publishing Page)
+  - [x] Phase 1 — Retention domain (rules per pricing tier, physical deletion)
+  - [x] Phase 2 — Enforcement (limit check before version creation)
+  - [x] Phase 3 — Version management UI (version list on Publishing Page)
 - [ ] V-Sprint 10 — Tree builder UI (Option A, post-launch)
   - [ ] Phase 1 — Tree service extension
   - [ ] Phase 2 — Tree builder UI
@@ -191,6 +191,7 @@ See `REFACTORING.md` for full detail.
 - [DONE] **Incremental Refactor Phase 1** — `BaseController` auth helpers, controller guard consolidation
 
 ### 5c. Other Completed
+- [DONE] Audited `Views/Author/Publishing.cshtml` for style leakage during V-Sprint 9 Phase 3 version-management UI; retained existing inline form display pattern only and moved version-history styling into `DraftView.Core.css`
 - [DONE] Production infrastructure — Oracle Cloud VM, Nginx, Cloudflare SSL, systemd service
 - [DONE] `IDropboxFileDownloader` — full Dropbox sync end to end in production
 - [DONE] `publish-draftview.ps1` deploy script

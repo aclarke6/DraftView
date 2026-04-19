@@ -13,7 +13,7 @@
    -------------------------------------------------------------------------- */
 :root {
     /* Update for every change */
-    --css-version: "v2026-04-18-8";
+    --css-version: "v2026-04-19-1";
     /* Colour palette now split into Light and Dark theme files */
     /* Typography */
     --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
@@ -57,6 +57,53 @@
     --shadow-lg: 0 4px 16px rgba(0,0,0,0.10);
     /* Transitions */
     --transition: 150ms ease;
+}
+
+/* Version history — Author/Publishing.cshtml (V-Sprint 9 Phase 3) */
+.version-history {
+    margin-top: var(--space-3);
+    padding: var(--space-3);
+    background: var(--color-surface-subtle, #fafafa);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm, 4px);
+}
+
+.version-history__prompt {
+    font-size: var(--text-sm);
+    color: var(--color-danger, #b91c1c);
+    margin-bottom: var(--space-2);
+}
+
+.version-history__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.version-history__item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.version-history__number {
+    font-weight: 600;
+    font-size: var(--text-sm);
+    min-width: 2rem;
+}
+
+.version-history__date {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+}
+
+.version-history__current {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    font-style: italic;
 }
 
 /* --------------------------------------------------------------------------
