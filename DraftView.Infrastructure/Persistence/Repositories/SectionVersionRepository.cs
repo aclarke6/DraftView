@@ -27,6 +27,10 @@ public class SectionVersionRepository(DraftViewDbContext db) : ISectionVersionRe
             .OrderBy(v => v.VersionNumber)
             .ToListAsync(ct);
 
+    public async Task<int> GetVersionCountAsync(Guid sectionId, CancellationToken ct = default)
+        => await db.SectionVersions
+            .CountAsync(v => v.SectionId == sectionId, ct);
+
     public async Task AddAsync(SectionVersion version, CancellationToken ct = default) =>
         await db.SectionVersions.AddAsync(version, ct);
 
