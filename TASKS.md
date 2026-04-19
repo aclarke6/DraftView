@@ -81,7 +81,7 @@ See `Publishing And Versioning Architecture.md` for full architecture, domain mo
 - [x] V-Sprint 5 — AI summary service and reader banner — **COMPLETE**
 - [x] V-Sprint 6 — Per-document publishing and Publishing Page — **COMPLETE**
 - [x] V-Sprint 7 — Chapter locking and scheduling — **COMPLETE**
-- [ ] **V-Sprint 8 — Dropbox incremental sync** 🔄
+- [x] **V-Sprint 8 — Dropbox incremental sync** 🔄
   - [x] Phase 1 — Cursor-based incremental sync (`Project.DropboxCursor`, `ListChangedEntriesAsync`, `ListAllEntriesWithCursorAsync`, full sync on first run, cursor-expired fallback, deleted entries soft-deleted)
 - [ ] V-Sprint 9 — Version retention and deletion
   - [ ] Phase 1 — Retention domain (rules per pricing tier, physical deletion)
