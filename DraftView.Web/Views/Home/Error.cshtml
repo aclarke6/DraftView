@@ -2,10 +2,11 @@
 
 @{
     ViewData["Title"] = "Error";
+    var heroClass = Model.StatusCode == 405 ? "method-not-allowed-hero" : "error-hero";
 }
 
 <div class="error-page">
-    <div class="error-hero">
+    <div class="@heroClass">
         <div class="error">
             <div class="error__card">
                 <div class="error__header">

@@ -70,11 +70,9 @@ Last updated: 2026-04-19
   - investigate: `AccountController` settings actions, production rows with invalid `EmailCiphertext`
   - prompt: `.github/Prompts/BUG-003-settings-ciphertext-error.prompt.md`
 
-- [ ] **BUG-004 — ForgotPassword returns HTTP 405 in production**
-  - `/Account/ForgotPassword` shows raw browser 405 page instead of a controlled error
-  - two issues: (1) route/method mismatch on ForgotPassword action, (2) no custom 405 error page
-  - investigate after deploy to confirm if already fixed in latest code
-  - prompt: `.github/Prompts/BUG-004-forgotpassword-405.prompt.md`
+- [x] **BUG-004 — ForgotPassword returns HTTP 405 in production** — FIXED
+  - root cause: two missing migrations (`ReplacePasswordResetTokenEmailWithUserId`, `AllowMultipleInvitationsPerUser`) applied manually to production
+  - 405 error page fix (StatusCodeError action + UseStatusCodePagesWithReExecute) still to deploy
 
 ---
 

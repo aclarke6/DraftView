@@ -36,9 +36,54 @@ public class HomeController(IUserRepository userRepo) : BaseController(userRepo)
     }
 
     [HttpGet]
+    public IActionResult StatusCodeError(int statusCode)
+    {
+        if (statusCode == 404)
+            return NotFoundPage();
+
+        var (heading, message) = statusCode switch
+        {
+            405 => ("Action not allowed",   "That request method is not permitted here."),
+            403 => ("Access denied",         "You don't have permission to view that page."),
+            _   => ("Something went wrong",  "An unexpected error occurred. Please try again.")
+        };
+
+        var model = new ErrorPageViewModel
+        {
+            Heading              = heading,
+            Message              = message,
+            StatusCode           = statusCode,
+            ErrorReference       = HttpContext.TraceIdentifier,
+            RequestPath          = Request.Path.Value ?? string.Empty,
+            ShowTechnicalDetails = false
+        };
+
+        Response.StatusCode = statusCode;
+        return View("Error", model);
+    }
+
+    [HttpGet]
     public IActionResult TestException()
     {
         throw new NotImplementedException("This is a Support test");
+    }
+
+    // ---------------------------------------------------------------------------
+    // Test error pages (unauthenticated access permitted — for testing all states)
+    // ---------------------------------------------------------------------------
+    [HttpGet]
+    public IActionResult Test404() => NotFoundPage();
+
+    [HttpGet]
+    public IActionResult Test405() => StatusCodeError(405);
+
+    [HttpGet]
+    public IActionResult Test403() => StatusCodeError(403);
+
+    [HttpGet]
+    public IActionResult Test500()
+    {
+        throw new InvalidOperationException("Deliberate 500 test.");
     }
 
     [HttpGet]
