@@ -250,6 +250,79 @@ public class AuthorController(
         return View(sorted);
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateSection(
+        Guid projectId, string title, NodeType nodeType, Guid? parentId)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        try
+        {
+            await sectionTreeService.CreateSectionAsync(
+                projectId,
+                title,
+                nodeType,
+                parentId,
+                sortOrder: null,
+                author.Id);
+
+            TempData["Success"] = "Section created.";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction("Sections", new { projectId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MoveSection(
+        Guid sectionId, Guid projectId, Guid? newParentId, int newSortOrder)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        try
+        {
+            await sectionTreeService.MoveSectionAsync(
+                sectionId,
+                newParentId,
+                newSortOrder,
+                author.Id);
+
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteSection(Guid sectionId, Guid projectId)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        try
+        {
+            await sectionTreeService.DeleteSectionAsync(sectionId, author.Id);
+            TempData["Success"] = "Section deleted.";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction("Sections", new { projectId });
+    }
+
     // ---------------------------------------------------------------------------
     // Publishing Page
     // ---------------------------------------------------------------------------

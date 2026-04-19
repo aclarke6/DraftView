@@ -13,7 +13,7 @@
    -------------------------------------------------------------------------- */
 :root {
     /* Update for every change */
-    --css-version: "v2026-04-19-1";
+    --css-version: "v2026-04-19-2";
     /* Colour palette now split into Light and Dark theme files */
     /* Typography */
     --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
@@ -447,6 +447,24 @@ a {
     font-size: var(--text-sm);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm, 4px);
+}
+
+/* Tree builder UI — Author/Sections.cshtml (V-Sprint 10 Phase 2) */
+.tree-builder__add-form {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+    flex-wrap: wrap;
+}
+
+tr[draggable="true"] {
+    cursor: grab;
+}
+
+tr[draggable="true"]:active {
+    cursor: grabbing;
+    opacity: 0.7;
 }
 
 

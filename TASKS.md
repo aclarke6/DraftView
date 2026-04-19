@@ -88,8 +88,8 @@ See `Publishing And Versioning Architecture.md` for full architecture, domain mo
   - [x] Phase 2 — Enforcement (limit check before version creation)
   - [x] Phase 3 — Version management UI (version list on Publishing Page)
 - [ ] V-Sprint 10 — Tree builder UI (Option A, post-launch)
-  - [ ] Phase 1 — Tree service extension
-  - [ ] Phase 2 — Tree builder UI
+  - [x] Phase 1 — Tree service extension
+  - [x] Phase 2 — Tree builder UI
   - [ ] Phase 3 — Sync project tree display
 
 ### 3.2 Platform Hardening
@@ -192,6 +192,7 @@ See `REFACTORING.md` for full detail.
 
 ### 5c. Other Completed
 - [DONE] Audited `Views/Author/Publishing.cshtml` for style leakage during V-Sprint 9 Phase 3 version-management UI; retained existing inline form display pattern only and moved version-history styling into `DraftView.Core.css`
+- [DONE] Audited `Views/Author/Sections.cshtml` for style leakage during V-Sprint 10 Phase 2 tree builder UI; retained existing inline form pattern only and moved tree-builder interaction styling into `DraftView.Core.css`
 - [DONE] Production infrastructure — Oracle Cloud VM, Nginx, Cloudflare SSL, systemd service
 - [DONE] `IDropboxFileDownloader` — full Dropbox sync end to end in production
 - [DONE] `publish-draftview.ps1` deploy script
