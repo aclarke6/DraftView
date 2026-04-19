@@ -44,4 +44,18 @@ public interface IDropboxClient
     /// </summary>
     Task<(bool HasChanges, string NewCursor)> CheckForChangesAsync(
         string cursor, CancellationToken ct = default);
+
+    /// <summary>
+    /// Performs a full folder listing and returns file entries with the resulting cursor.
+    /// </summary>
+    Task<(IReadOnlyList<DropboxChangedEntry> Entries, string Cursor)> ListAllEntriesWithCursorAsync(
+        string dropboxFolderPath,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Lists changed entries since a prior cursor and returns the new cursor.
+    /// </summary>
+    Task<(IReadOnlyList<DropboxChangedEntry> Entries, string Cursor)> ListChangedEntriesAsync(
+        string cursor,
+        CancellationToken ct = default);
 }

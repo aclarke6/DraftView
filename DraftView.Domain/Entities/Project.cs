@@ -20,6 +20,7 @@ public sealed class Project
     /// For single-project vaults this is the Manuscript (DraftFolder) UUID.
     /// </summary>
     public string? SyncRootId { get; private set; } = default!;
+    public string? DropboxCursor { get; private set; }
     public ProjectType ProjectType { get; private set; }
     public bool IsReaderActive { get; private set; }
     public DateTime? ReaderActivatedAt { get; private set; }
@@ -151,4 +152,15 @@ public sealed class Project
         if (updatedName is not null)
             Name = updatedName.Trim();
     }
+
+    public void UpdateDropboxCursor(string cursor)
+    {
+        if (string.IsNullOrWhiteSpace(cursor))
+            throw new InvariantViolationException("I-SYNC-CURSOR-EMPTY",
+                "Dropbox cursor must not be empty.");
+
+        DropboxCursor = cursor;
+    }
+
+    public void ClearDropboxCursor() => DropboxCursor = null;
 }

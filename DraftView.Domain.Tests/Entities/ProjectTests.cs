@@ -274,4 +274,45 @@ public class ProjectTests
 
         Assert.Equal(ProjectType.ScrivenerDropbox, project.ProjectType);
     }
+
+    [Fact]
+    public void UpdateDropboxCursor_SetsCursor()
+    {
+        var project = Project.Create("My Novel", "/dropbox/MyNovel.scriv", ValidAuthorId);
+
+        project.UpdateDropboxCursor("cursor-001");
+
+        Assert.Equal("cursor-001", project.DropboxCursor);
+    }
+
+    [Fact]
+    public void UpdateDropboxCursor_WithEmptyString_ThrowsInvariantViolation()
+    {
+        var project = Project.Create("My Novel", "/dropbox/MyNovel.scriv", ValidAuthorId);
+
+        var ex = Assert.Throws<InvariantViolationException>(() => project.UpdateDropboxCursor(string.Empty));
+
+        Assert.Equal("I-SYNC-CURSOR-EMPTY", ex.InvariantCode);
+    }
+
+    [Fact]
+    public void UpdateDropboxCursor_WithWhitespace_ThrowsInvariantViolation()
+    {
+        var project = Project.Create("My Novel", "/dropbox/MyNovel.scriv", ValidAuthorId);
+
+        var ex = Assert.Throws<InvariantViolationException>(() => project.UpdateDropboxCursor("   "));
+
+        Assert.Equal("I-SYNC-CURSOR-EMPTY", ex.InvariantCode);
+    }
+
+    [Fact]
+    public void UpdateDropboxCursor_OverwritesPreviousCursor()
+    {
+        var project = Project.Create("My Novel", "/dropbox/MyNovel.scriv", ValidAuthorId);
+        project.UpdateDropboxCursor("cursor-001");
+
+        project.UpdateDropboxCursor("cursor-002");
+
+        Assert.Equal("cursor-002", project.DropboxCursor);
+    }
 }

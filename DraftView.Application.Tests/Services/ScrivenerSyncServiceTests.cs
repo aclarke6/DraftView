@@ -48,9 +48,15 @@ public class ScrivenerSyncServiceTests
         _connectionChecker.Setup(x => x.IsConnectedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _connectionChecker.Setup(x => x.SetUserId(It.IsAny<Guid>()));
         _pathResolver.Setup(x => x.SetUserId(It.IsAny<Guid>()));
-        _fileDownloader.Setup(x => x.DownloadProjectAsync(
-            It.IsAny<Project>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _fileDownloader.Setup(x => x.ListAllEntriesWithCursorAsync(
+                It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((new List<DropboxChangedEntry>(), "initial-cursor"));
+        _fileDownloader.Setup(x => x.DownloadChangedEntriesAsync(
+                It.IsAny<Project>(), It.IsAny<Guid>(), It.IsAny<IReadOnlyList<DropboxChangedEntry>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("/fake/path");
+        _fileDownloader.Setup(x => x.ListChangedEntriesAsync(
+                It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((new List<DropboxChangedEntry>(), "next-cursor"));
     }
 
     private static Project MakeProject() =>
@@ -251,6 +257,140 @@ public class ScrivenerSyncServiceTests
         await sut.ParseProjectAsync(project.Id);
 
         Assert.Equal(SyncStatus.Healthy, project.SyncStatus);
+    }
+
+    [Fact]
+    public async Task ParseProjectAsync_WithNullCursor_PerformsFullSyncAndStoresCursor()
+    {
+        var project = MakeProject();
+        var sut = CreateSut();
+
+        SetupPathResolver(project);
+        SetupParserWithTree(project, new ParsedBinderNode
+        {
+            Uuid = "ROOT-001",
+            Title = "Manuscript",
+            NodeType = ParsedNodeType.Folder,
+            Children = new()
+        });
+
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "ROOT-001", default))
+            .ReturnsAsync((Section?)null);
+        _sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, default))
+            .ReturnsAsync(new List<Section>());
+        _sectionRepo.Setup(r => r.AddAsync(It.IsAny<Section>(), default));
+        _fileDownloader.Setup(x => x.ListAllEntriesWithCursorAsync(project.AuthorId, project.DropboxPath, default))
+            .ReturnsAsync((new List<DropboxChangedEntry>
+            {
+                new("/apps/scrivener/test.scriv/files/data/a/content.rtf", DropboxEntryType.Added, "h1")
+            }, "cursor-full-001"));
+
+        await sut.ParseProjectAsync(project.Id);
+
+        Assert.Equal("cursor-full-001", project.DropboxCursor);
+        _fileDownloader.Verify(x => x.ListAllEntriesWithCursorAsync(project.AuthorId, project.DropboxPath, default), Times.Once);
+    }
+
+    [Fact]
+    public async Task ParseProjectAsync_WithExistingCursor_ProcessesOnlyChangedEntries()
+    {
+        var project = MakeProject();
+        project.UpdateDropboxCursor("cursor-old");
+
+        var section = Section.CreateDocument(project.Id, "SCEN-001", "Scene 1", null, 0, "<p>Old</p>", "oldhash", "First Draft");
+        var sut = CreateSut();
+
+        SetupPathResolver(project);
+        _projectRepo.Setup(r => r.GetByIdAsync(project.Id, default)).ReturnsAsync(project);
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "SCEN-001", default)).ReturnsAsync(section);
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(It.IsAny<Guid>(), default)).ReturnsAsync(new List<Section>());
+        _converter.Setup(c => c.ConvertAsync("/fake/path", "SCEN-001", default))
+            .ReturnsAsync(new RtfConversionResult { Html = "<p>New</p>", Hash = "newhash" });
+        _fileDownloader.Setup(x => x.ListChangedEntriesAsync(project.AuthorId, "cursor-old", default))
+            .ReturnsAsync((new List<DropboxChangedEntry>
+            {
+                new("/apps/scrivener/test.scriv/files/data/SCEN-001/content.rtf", DropboxEntryType.Modified, "newhash")
+            }, "cursor-new"));
+
+        await sut.ParseProjectAsync(project.Id);
+
+        Assert.Equal("cursor-new", project.DropboxCursor);
+        Assert.Equal("newhash", section.ContentHash);
+        _fileDownloader.Verify(x => x.ListAllEntriesWithCursorAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ParseProjectAsync_WhenCursorExpired_FallsBackToFullSync()
+    {
+        var project = MakeProject();
+        project.UpdateDropboxCursor("cursor-old");
+
+        var sut = CreateSut();
+        SetupPathResolver(project);
+        SetupParserWithTree(project, new ParsedBinderNode
+        {
+            Uuid = "ROOT-001",
+            Title = "Manuscript",
+            NodeType = ParsedNodeType.Folder,
+            Children = new()
+        });
+
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "ROOT-001", default))
+            .ReturnsAsync((Section?)null);
+        _sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, default))
+            .ReturnsAsync(new List<Section>());
+        _sectionRepo.Setup(r => r.AddAsync(It.IsAny<Section>(), default));
+        _fileDownloader.Setup(x => x.ListChangedEntriesAsync(project.AuthorId, "cursor-old", default))
+            .ThrowsAsync(new InvalidOperationException("reset_cursor"));
+        _fileDownloader.Setup(x => x.ListAllEntriesWithCursorAsync(project.AuthorId, project.DropboxPath, default))
+            .ReturnsAsync((new List<DropboxChangedEntry>(), "cursor-recovered"));
+
+        await sut.ParseProjectAsync(project.Id);
+
+        Assert.Equal("cursor-recovered", project.DropboxCursor);
+        _fileDownloader.Verify(x => x.ListAllEntriesWithCursorAsync(project.AuthorId, project.DropboxPath, default), Times.Once);
+    }
+
+    [Fact]
+    public async Task ParseProjectAsync_WithDeletedEntry_SoftDeletesMatchingSection()
+    {
+        var project = MakeProject();
+        project.UpdateDropboxCursor("cursor-old");
+
+        var section = Section.CreateDocument(project.Id, "SCEN-DELETE", "Scene Delete", null, 0, "<p>Old</p>", "oldhash", "Draft");
+        var sut = CreateSut();
+
+        SetupPathResolver(project);
+        _projectRepo.Setup(r => r.GetByIdAsync(project.Id, default)).ReturnsAsync(project);
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "SCEN-DELETE", default)).ReturnsAsync(section);
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(section.Id, default)).ReturnsAsync(new List<Section>());
+        _fileDownloader.Setup(x => x.ListChangedEntriesAsync(project.AuthorId, "cursor-old", default))
+            .ReturnsAsync((new List<DropboxChangedEntry>
+            {
+                new("/apps/scrivener/test.scriv/files/data/SCEN-DELETE/content.rtf", DropboxEntryType.Deleted, null)
+            }, "cursor-new"));
+
+        await sut.ParseProjectAsync(project.Id);
+
+        Assert.True(section.IsSoftDeleted);
+        Assert.Equal("cursor-new", project.DropboxCursor);
+    }
+
+    [Fact]
+    public async Task ParseProjectAsync_UpdatesDropboxCursor_AfterSuccessfulSync()
+    {
+        var project = MakeProject();
+        project.UpdateDropboxCursor("cursor-old");
+        var sut = CreateSut();
+
+        SetupPathResolver(project);
+        _projectRepo.Setup(r => r.GetByIdAsync(project.Id, default)).ReturnsAsync(project);
+        _fileDownloader.Setup(x => x.ListChangedEntriesAsync(project.AuthorId, "cursor-old", default))
+            .ReturnsAsync((new List<DropboxChangedEntry>(), "cursor-updated"));
+
+        await sut.ParseProjectAsync(project.Id);
+
+        Assert.Equal("cursor-updated", project.DropboxCursor);
     }
 
     [Fact]
