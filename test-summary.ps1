@@ -16,6 +16,16 @@ $lines | ForEach-Object {
         Write-Host $_ -ForegroundColor $colour
     }
 }
+if ($totalFailed -gt 0) {
+    Write-Host ""
+    Write-Host "--- Failed Tests ---" -ForegroundColor Red
+    $lines | Where-Object { $_ -match "\[FAIL\]" } | ForEach-Object {
+        if ($_ -match "\]\s+(.+)\s+\[FAIL\]") { Write-Host "  FAIL: $($Matches[1])" -ForegroundColor Red }
+    }
+    $lines | Where-Object { $_ -match "Error Message:" } | ForEach-Object {
+        Write-Host "  $_" -ForegroundColor Red
+    }
+}
 $total = $totalPassed + $totalFailed + $totalSkipped
 Write-Host ""
 Write-Host "Test summary: total: $total, failed: $totalFailed, succeeded: $totalPassed, skipped: $totalSkipped" -ForegroundColor $(if ($totalFailed -gt 0) { "Red" } else { "Green" })

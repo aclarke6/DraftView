@@ -2,6 +2,7 @@ using DraftView.Application.Services;
 using DraftView.Domain.Contracts;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
+using DraftView.Domain.Exceptions;
 using DraftView.Domain.Interfaces.Repositories;
 using Moq;
 
@@ -195,5 +196,215 @@ public class SectionTreeServiceTests
         var tree = await sut.GetTreeAsync(projectId);
 
         Assert.Empty(tree);
+    }
+
+    [Fact]
+    public async Task CreateSectionAsync_WithValidInput_CreatesSection()
+    {
+        var projectId = Guid.NewGuid();
+        sectionRepository.Setup(r => r.GetByProjectIdAsync(projectId, default)).ReturnsAsync(Array.Empty<Section>());
+        sectionRepository.Setup(r => r.AddAsync(It.IsAny<Section>(), default)).Returns(Task.CompletedTask);
+        unitOfWork.Setup(u => u.SaveChangesAsync(default)).ReturnsAsync(1);
+        var sut = CreateSut();
+
+        var section = await sut.CreateSectionAsync(projectId, "Scene 1", NodeType.Document, null, null, Guid.NewGuid());
+
+        Assert.Equal(projectId, section.ProjectId);
+        sectionRepository.Verify(r => r.AddAsync(It.IsAny<Section>(), default), Times.Once);
+        unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateSectionAsync_WithEmptyTitle_ThrowsInvariantViolation()
+    {
+        var sut = CreateSut();
+
+        var ex = await Assert.ThrowsAsync<InvariantViolationException>(() =>
+            sut.CreateSectionAsync(Guid.NewGuid(), "  ", NodeType.Document, null, null, Guid.NewGuid()));
+
+        Assert.Equal("I-TREE-TITLE", ex.InvariantCode);
+    }
+
+    [Fact]
+    public async Task CreateSectionAsync_DefaultsSortOrder_ToEndOfSiblingList()
+    {
+        var projectId = Guid.NewGuid();
+        var parent = Folder(projectId, "Chapter", null, 0);
+        var parentId = parent.Id;
+        var siblingA = Document(projectId, "A", parentId, 1);
+        var siblingB = Document(projectId, "B", parentId, 4);
+        sectionRepository.Setup(r => r.GetByProjectIdAsync(projectId, default))
+            .ReturnsAsync(new List<Section> { parent, siblingA, siblingB });
+        sectionRepository.Setup(r => r.GetByIdAsync(parentId, default)).ReturnsAsync(parent);
+        sectionRepository.Setup(r => r.AddAsync(It.IsAny<Section>(), default)).Returns(Task.CompletedTask);
+        unitOfWork.Setup(u => u.SaveChangesAsync(default)).ReturnsAsync(1);
+        var sut = CreateSut();
+
+        var section = await sut.CreateSectionAsync(projectId, "C", NodeType.Document, parentId, null, Guid.NewGuid());
+
+        Assert.Equal(5, section.SortOrder);
+    }
+
+    [Fact]
+    public async Task CreateSectionAsync_CreatedSection_HasNullScrivenerUuid()
+    {
+        var projectId = Guid.NewGuid();
+        sectionRepository.Setup(r => r.GetByProjectIdAsync(projectId, default)).ReturnsAsync(Array.Empty<Section>());
+        sectionRepository.Setup(r => r.AddAsync(It.IsAny<Section>(), default)).Returns(Task.CompletedTask);
+        unitOfWork.Setup(u => u.SaveChangesAsync(default)).ReturnsAsync(1);
+        var sut = CreateSut();
+
+        var section = await sut.CreateSectionAsync(projectId, "Scene 1", NodeType.Document, null, null, Guid.NewGuid());
+
+        Assert.Null(section.ScrivenerUuid);
+    }
+
+    [Fact]
+    public async Task CreateSectionAsync_CanCreateFolder()
+    {
+        var projectId = Guid.NewGuid();
+        sectionRepository.Setup(r => r.GetByProjectIdAsync(projectId, default)).ReturnsAsync(Array.Empty<Section>());
+        sectionRepository.Setup(r => r.AddAsync(It.IsAny<Section>(), default)).Returns(Task.CompletedTask);
+        unitOfWork.Setup(u => u.SaveChangesAsync(default)).ReturnsAsync(1);
+        var sut = CreateSut();
+
+        var section = await sut.CreateSectionAsync(projectId, "Part 1", NodeType.Folder, null, null, Guid.NewGuid());
+
+        Assert.Equal(NodeType.Folder, section.NodeType);
+    }
+
+    [Fact]
+    public async Task CreateSectionAsync_CanCreateDocument()
+    {
+        var projectId = Guid.NewGuid();
+        sectionRepository.Setup(r => r.GetByProjectIdAsync(projectId, default)).ReturnsAsync(Array.Empty<Section>());
+        sectionRepository.Setup(r => r.AddAsync(It.IsAny<Section>(), default)).Returns(Task.CompletedTask);
+        unitOfWork.Setup(u => u.SaveChangesAsync(default)).ReturnsAsync(1);
+        var sut = CreateSut();
+
+        var section = await sut.CreateSectionAsync(projectId, "Scene 1", NodeType.Document, null, null, Guid.NewGuid());
+
+        Assert.Equal(NodeType.Document, section.NodeType);
+    }
+
+    [Fact]
+    public async Task MoveSectionAsync_UpdatesParentAndSortOrder()
+    {
+        var projectId = Guid.NewGuid();
+        var section = Document(projectId, "Scene 1", null, 1);
+        var parent = Folder(projectId, "Chapter", null, 2);
+        sectionRepository.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        sectionRepository.Setup(r => r.GetByIdAsync(parent.Id, default)).ReturnsAsync(parent);
+        unitOfWork.Setup(u => u.SaveChangesAsync(default)).ReturnsAsync(1);
+        var sut = CreateSut();
+
+        await sut.MoveSectionAsync(section.Id, parent.Id, 7, Guid.NewGuid());
+
+        Assert.Equal(parent.Id, section.ParentId);
+        Assert.Equal(7, section.SortOrder);
+        unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task MoveSectionAsync_WhenSectionNotFound_ThrowsEntityNotFoundException()
+    {
+        sectionRepository.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), default)).ReturnsAsync((Section?)null);
+        var sut = CreateSut();
+
+        await Assert.ThrowsAsync<EntityNotFoundException>(() =>
+            sut.MoveSectionAsync(Guid.NewGuid(), null, 1, Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task MoveSectionAsync_WhenMovingToOwnDescendant_ThrowsInvariantViolation()
+    {
+        var projectId = Guid.NewGuid();
+        var root = Folder(projectId, "Root", null, 0);
+        var child = Folder(projectId, "Child", root.Id, 0);
+        var grandChild = Folder(projectId, "GrandChild", child.Id, 0);
+        sectionRepository.Setup(r => r.GetByIdAsync(root.Id, default)).ReturnsAsync(root);
+        sectionRepository.Setup(r => r.GetByIdAsync(grandChild.Id, default)).ReturnsAsync(grandChild);
+        sectionRepository.Setup(r => r.GetByIdAsync(child.Id, default)).ReturnsAsync(child);
+        var sut = CreateSut();
+
+        var ex = await Assert.ThrowsAsync<InvariantViolationException>(() =>
+            sut.MoveSectionAsync(root.Id, grandChild.Id, 1, Guid.NewGuid()));
+
+        Assert.Equal("I-TREE-CIRCULAR", ex.InvariantCode);
+    }
+
+    [Fact]
+    public async Task MoveSectionAsync_CanMoveToRoot_WithNullParent()
+    {
+        var projectId = Guid.NewGuid();
+        var parent = Folder(projectId, "Parent", null, 0);
+        var section = Document(projectId, "Scene 1", parent.Id, 1);
+        sectionRepository.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        unitOfWork.Setup(u => u.SaveChangesAsync(default)).ReturnsAsync(1);
+        var sut = CreateSut();
+
+        await sut.MoveSectionAsync(section.Id, null, 3, Guid.NewGuid());
+
+        Assert.Null(section.ParentId);
+        Assert.Equal(3, section.SortOrder);
+    }
+
+    [Fact]
+    public async Task DeleteSectionAsync_SoftDeletesSection()
+    {
+        var projectId = Guid.NewGuid();
+        var root = Folder(projectId, "Root", null, 0);
+        sectionRepository.Setup(r => r.GetByIdAsync(root.Id, default)).ReturnsAsync(root);
+        sectionRepository.Setup(r => r.GetAllDescendantsAsync(root.Id, default)).ReturnsAsync(Array.Empty<Section>());
+        unitOfWork.Setup(u => u.SaveChangesAsync(default)).ReturnsAsync(1);
+        var sut = CreateSut();
+
+        await sut.DeleteSectionAsync(root.Id, Guid.NewGuid());
+
+        Assert.True(root.IsSoftDeleted);
+    }
+
+    [Fact]
+    public async Task DeleteSectionAsync_SoftDeletesDescendants()
+    {
+        var projectId = Guid.NewGuid();
+        var root = Folder(projectId, "Root", null, 0);
+        var child = Document(projectId, "Child", root.Id, 0);
+        sectionRepository.Setup(r => r.GetByIdAsync(root.Id, default)).ReturnsAsync(root);
+        sectionRepository.Setup(r => r.GetAllDescendantsAsync(root.Id, default)).ReturnsAsync(new List<Section> { child });
+        unitOfWork.Setup(u => u.SaveChangesAsync(default)).ReturnsAsync(1);
+        var sut = CreateSut();
+
+        await sut.DeleteSectionAsync(root.Id, Guid.NewGuid());
+
+        Assert.True(root.IsSoftDeleted);
+        Assert.True(child.IsSoftDeleted);
+    }
+
+    [Fact]
+    public async Task DeleteSectionAsync_UnpublishesBeforeDeleting()
+    {
+        var projectId = Guid.NewGuid();
+        var root = Folder(projectId, "Root", null, 0);
+        root.MarkAsPublishedContainer();
+        sectionRepository.Setup(r => r.GetByIdAsync(root.Id, default)).ReturnsAsync(root);
+        sectionRepository.Setup(r => r.GetAllDescendantsAsync(root.Id, default)).ReturnsAsync(Array.Empty<Section>());
+        unitOfWork.Setup(u => u.SaveChangesAsync(default)).ReturnsAsync(1);
+        var sut = CreateSut();
+
+        await sut.DeleteSectionAsync(root.Id, Guid.NewGuid());
+
+        Assert.False(root.IsPublished);
+        Assert.True(root.IsSoftDeleted);
+    }
+
+    [Fact]
+    public async Task DeleteSectionAsync_WhenSectionNotFound_ThrowsEntityNotFoundException()
+    {
+        sectionRepository.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), default)).ReturnsAsync((Section?)null);
+        var sut = CreateSut();
+
+        await Assert.ThrowsAsync<EntityNotFoundException>(() =>
+            sut.DeleteSectionAsync(Guid.NewGuid(), Guid.NewGuid()));
     }
 }
