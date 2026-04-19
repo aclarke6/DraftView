@@ -146,5 +146,66 @@ public class DropboxClient : IDropboxClient, IDisposable
         return (hasChanges, result.Cursor);
     }
 
+    public async Task<(IReadOnlyList<DropboxChangedEntry> Entries, string Cursor)> ListAllEntriesWithCursorAsync(
+        string dropboxFolderPath,
+        CancellationToken ct = default)
+    {
+        var result = await _client.Files.ListFolderAsync(
+            new ListFolderArg(dropboxFolderPath, recursive: true));
+
+        var entries = MapEntries(result.Entries, DropboxEntryType.Added);
+
+        while (result.HasMore)
+        {
+            result = await _client.Files.ListFolderContinueAsync(result.Cursor);
+            entries.AddRange(MapEntries(result.Entries, DropboxEntryType.Added));
+        }
+
+        return (entries, result.Cursor);
+    }
+
+    public async Task<(IReadOnlyList<DropboxChangedEntry> Entries, string Cursor)> ListChangedEntriesAsync(
+        string cursor,
+        CancellationToken ct = default)
+    {
+        var result = await _client.Files.ListFolderContinueAsync(cursor);
+        var entries = MapEntries(result.Entries, DropboxEntryType.Modified);
+
+        while (result.HasMore)
+        {
+            result = await _client.Files.ListFolderContinueAsync(result.Cursor);
+            entries.AddRange(MapEntries(result.Entries, DropboxEntryType.Modified));
+        }
+
+        return (entries, result.Cursor);
+    }
+
+    private static List<DropboxChangedEntry> MapEntries(
+        IEnumerable<Metadata> entries,
+        DropboxEntryType fileEntryType)
+    {
+        var mapped = new List<DropboxChangedEntry>();
+
+        foreach (var entry in entries)
+        {
+            if (entry.IsDeleted)
+            {
+                var deleted = entry.AsDeleted;
+                var deletedPath = deleted.PathLower ?? deleted.PathDisplay;
+                mapped.Add(new DropboxChangedEntry(deletedPath, DropboxEntryType.Deleted, null));
+                continue;
+            }
+
+            if (!entry.IsFile)
+                continue;
+
+            var file = entry.AsFile;
+            var filePath = file.PathLower ?? file.PathDisplay;
+            mapped.Add(new DropboxChangedEntry(filePath, fileEntryType, file.ContentHash));
+        }
+
+        return mapped;
+    }
+
     public void Dispose() => _client.Dispose();
 }

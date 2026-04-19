@@ -46,43 +46,13 @@ public class ScrivenerSyncService(
 
         try
         {
-            // Download latest files from Dropbox into per-author cache
-            await fileDownloader.DownloadProjectAsync(project, project.AuthorId, ct);
-
-            var scrivxPath = await pathResolver.ResolveScrivxAsync(project, ct);
-            var parsed     = parser.Parse(scrivxPath);
-            var localPath  = await pathResolver.ResolveAsync(project, ct);
-
-            if (parsed.ManuscriptRoot is null)
+            if (string.IsNullOrWhiteSpace(project.DropboxCursor))
             {
-                project.UpdateSyncStatus(SyncStatus.Error, DateTime.UtcNow,
-                    "No DraftFolder found in project.scrivx.");
-                await unitOfWork.SaveChangesAsync(ct);
-                return;
+                await SyncUsingFullListingAsync(project, ct);
             }
-
-            var existingSections = await sectionRepo.GetByProjectIdAsync(projectId, ct);
-            var seenUuids        = new HashSet<string>();
-
-            var rootNode = parsed.ManuscriptRoot;
-            if (!string.IsNullOrWhiteSpace(project.SyncRootId))
+            else
             {
-                var found = FindNodeByUuid(parsed.ManuscriptRoot, project.SyncRootId);
-                if (found is not null)
-                    rootNode = found;
-            }
-
-            await ReconcileNodeAsync(rootNode, null, projectId, localPath, seenUuids, ct);
-
-            foreach (var section in existingSections)
-            {
-                if (!seenUuids.Contains(section.ScrivenerUuid) && !section.IsSoftDeleted)
-                {
-                    var descendants = await sectionRepo.GetAllDescendantsAsync(section.Id, ct);
-                    foreach (var descendant in descendants)
-                        descendant.SoftDelete();
-                    section.SoftDelete();
-                }
+                await SyncUsingIncrementalListingAsync(project, ct);
             }
 
             var author = await userRepo.GetAuthorAsync(ct);
@@ -163,6 +133,151 @@ public class ScrivenerSyncService(
         foreach (var child in node.Children)
             await ReconcileNodeAsync(child, existing.Id, projectId, scrivFolderPath, seenUuids, ct);
     }
+
+    private async Task SyncUsingFullListingAsync(Project project, CancellationToken ct)
+    {
+        var (entries, initialCursor) = await fileDownloader
+            .ListAllEntriesWithCursorAsync(project.AuthorId, project.DropboxPath, ct);
+
+        await fileDownloader.DownloadChangedEntriesAsync(project, project.AuthorId, entries, ct);
+        await ReconcileProjectFromScrivxAsync(project, ct);
+
+        project.UpdateDropboxCursor(initialCursor);
+
+        logger.LogInformation(
+            "Sync full listing processed {EntryCount} entries. Project {ProjectId} cursor set to {CursorPrefix}",
+            entries.Count,
+            project.Id,
+            TruncateCursor(initialCursor));
+    }
+
+    private async Task SyncUsingIncrementalListingAsync(Project project, CancellationToken ct)
+    {
+        try
+        {
+            var (entries, newCursor) = await fileDownloader
+                .ListChangedEntriesAsync(project.AuthorId, project.DropboxCursor!, ct);
+
+            await ProcessSyncEntriesAsync(project, entries, ct);
+            project.UpdateDropboxCursor(newCursor);
+
+            logger.LogInformation(
+                "Sync incremental listing processed {EntryCount} entries. Project {ProjectId} cursor set to {CursorPrefix}",
+                entries.Count,
+                project.Id,
+                TruncateCursor(newCursor));
+        }
+        catch (Exception ex) when (IsResetCursorError(ex))
+        {
+            logger.LogWarning(ex,
+                "Dropbox cursor expired for project {ProjectId}. Falling back to full listing.",
+                project.Id);
+
+            project.ClearDropboxCursor();
+            await SyncUsingFullListingAsync(project, ct);
+        }
+    }
+
+    private async Task ProcessSyncEntriesAsync(Project project, IReadOnlyList<DropboxChangedEntry> entries, CancellationToken ct)
+    {
+        await fileDownloader.DownloadChangedEntriesAsync(project, project.AuthorId, entries, ct);
+        var localPath = await pathResolver.ResolveAsync(project, ct);
+
+        foreach (var entry in entries)
+        {
+            var uuid = TryExtractSectionUuid(entry.Path);
+            if (string.IsNullOrWhiteSpace(uuid))
+                continue;
+
+            var section = await sectionRepo.GetByScrivenerUuidAsync(project.Id, uuid, ct);
+            if (section is null)
+                continue;
+
+            if (entry.EntryType == DropboxEntryType.Deleted)
+            {
+                await SoftDeleteSectionAsync(section, ct);
+                continue;
+            }
+
+            if (section.NodeType != NodeType.Document)
+                continue;
+
+            var rtf = await converter.ConvertAsync(localPath, uuid, ct);
+            if (rtf is not null && rtf.Hash != section.ContentHash)
+            {
+                section.UpdateContent(rtf.Html, rtf.Hash);
+                if (section.IsPublished)
+                    section.MarkContentChanged();
+            }
+        }
+    }
+
+    private async Task ReconcileProjectFromScrivxAsync(Project project, CancellationToken ct)
+    {
+        var scrivxPath = await pathResolver.ResolveScrivxAsync(project, ct);
+        var parsed = parser.Parse(scrivxPath);
+        var localPath = await pathResolver.ResolveAsync(project, ct);
+
+        if (parsed.ManuscriptRoot is null)
+        {
+            project.UpdateSyncStatus(SyncStatus.Error, DateTime.UtcNow,
+                "No DraftFolder found in project.scrivx.");
+            await unitOfWork.SaveChangesAsync(ct);
+            return;
+        }
+
+        var existingSections = await sectionRepo.GetByProjectIdAsync(project.Id, ct);
+        var seenUuids = new HashSet<string>();
+
+        var rootNode = parsed.ManuscriptRoot;
+        if (!string.IsNullOrWhiteSpace(project.SyncRootId))
+        {
+            var found = FindNodeByUuid(parsed.ManuscriptRoot, project.SyncRootId);
+            if (found is not null)
+                rootNode = found;
+        }
+
+        await ReconcileNodeAsync(rootNode, null, project.Id, localPath, seenUuids, ct);
+
+        foreach (var section in existingSections)
+        {
+            if (seenUuids.Contains(section.ScrivenerUuid) || section.IsSoftDeleted)
+                continue;
+
+            await SoftDeleteSectionAsync(section, ct);
+        }
+    }
+
+    private async Task SoftDeleteSectionAsync(Section section, CancellationToken ct)
+    {
+        if (!section.IsSoftDeleted)
+        {
+            var descendants = await sectionRepo.GetAllDescendantsAsync(section.Id, ct);
+            foreach (var descendant in descendants)
+                descendant.SoftDelete();
+
+            section.SoftDelete();
+        }
+    }
+
+    private static string? TryExtractSectionUuid(string path)
+    {
+        if (!path.EndsWith("content.rtf", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var parts = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 4)
+            return null;
+
+        return parts[^2];
+    }
+
+    private static bool IsResetCursorError(Exception ex) =>
+        ex.Message.Contains("reset_cursor", StringComparison.OrdinalIgnoreCase) ||
+        ex.InnerException?.Message.Contains("reset_cursor", StringComparison.OrdinalIgnoreCase) == true;
+
+    private static string TruncateCursor(string cursor) =>
+        cursor.Length <= 16 ? cursor : cursor[..16];
 
     private async Task<Section> CreateSectionAsync(
         ParsedBinderNode node, Guid? parentId, Guid projectId,
