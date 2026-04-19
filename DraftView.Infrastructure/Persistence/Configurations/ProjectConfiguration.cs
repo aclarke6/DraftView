@@ -21,6 +21,9 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
             .IsRequired()
             .HasMaxLength(500);
 
+        builder.Property(p => p.DropboxCursor)
+            .IsRequired(false);
+
         builder.Property(p => p.SyncStatus)
             .IsRequired()
             .HasConversion<string>();
