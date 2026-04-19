@@ -54,7 +54,12 @@ Last updated: 2026-04-19
 
 ## 2. Open Bugs
 
-- [ ] **BUG-001 — Removing a reader does not remove them from the Readers list**
+- [ ] **BUG-005 — Password reset link immediately shows Link Expired**
+  - Reset email arrives correctly but clicking the link shows ResetPasswordInvalid
+  - Root cause: `GetUserByEmailAsync` returns the BetaReader account (`8acb50d3`) when multiple domain accounts share the same email. Token is created with the BetaReader `UserId`. `ResetPassword` GET calls `userManager.FindByIdAsync` with the BetaReader ID but no Identity user exists for that ID, so it routes to ResetPasswordInvalid.
+  - Fix: `ForgotPassword` must look up the Identity user first via `userManager.FindByEmailAsync`, then find the matching domain user by that Identity user's ID, not the other way round
+  - Prompt: `.github/Prompts/BUG-005-password-reset-link-expired.prompt.md`
+
   - action completes but reader remains visible
   - investigate: `AuthorController.SoftDeleteReader`, `SoftDeleteUserAsync`, reader list filter
   - prompt: `.github/Prompts/BUG-001-reader-removal-not-reflecting.prompt.md`
@@ -152,6 +157,7 @@ See `REFACTORING.md` for full detail.
 - [DONE] Cross-platform local cache path resolution — `IPlatformPathService`, `PlatformPathService`, platform-aware fallback in `LocalPathResolver`, `appsettings.json` `LocalCachePath` cleared (BugFix-Mac, 2026-04-19)
 - [DONE] `/Author/InviteReader` submit production crash — operational failures now route to `Home/Error`; `InvariantViolationException` remains a form validation response (BugFix-Mac, 2026-04-19)
 - [DONE] MailKit NU1902 vulnerability — upgraded to 4.16.0 (BugFix-PC, 2026-04-19)
+- [DONE] BUG-005 — Password reset link immediately showed invalid/expired for users with mismatched Domain vs Identity IDs; reset flow now resolves Identity user by email fallback and regression coverage added (bugfix/BUG-005-password-reset-link-expired, 2026-04-19)
 - [DONE] Reader view does not apply saved Reading Preferences — resolved 2026-04-17
 - [DONE] CS9107 in `AccountController` primary constructor — resolved 2026-04-17
 - [DONE] Reader/Read mobile view 404 — resolved

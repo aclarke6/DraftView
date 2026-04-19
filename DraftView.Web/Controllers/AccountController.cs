@@ -229,6 +229,7 @@ public class AccountController(
             if (existingIdentity is null)
             {
                 var identityUser = new IdentityUser {
+                    Id = user.Id.ToString(),
                     UserName = model.Email,
                     Email = model.Email,
                     EmailConfirmed = true
@@ -302,6 +303,15 @@ public class AccountController(
 
         // Update Identity password
         var identityUser = await userManager.FindByIdAsync(resetToken.UserId.ToString());
+        if (identityUser is null)
+        {
+            var domainUser = await GetUserByIdAsync(resetToken.UserId);
+            if (domainUser is null)
+                return RedirectToAction("ResetPasswordInvalid");
+
+            identityUser = await userManager.FindByEmailAsync(domainUser.Email);
+        }
+
         if (identityUser is null)
             return RedirectToAction("ResetPasswordInvalid");
 
