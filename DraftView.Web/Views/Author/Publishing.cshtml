@@ -128,6 +128,46 @@ else
                                     </form>
                                 }
                             </div>
+
+                            @if (doc.ShowVersionHistory)
+                            {
+                                <div class="version-history">
+                                    <p class="version-history__prompt">
+                                        Version limit of @doc.RetentionLimit reached.
+                                        Delete an older version to publish again.
+                                    </p>
+                                    <ul class="version-history__list">
+                                        @foreach (var v in doc.VersionHistory)
+                                        {
+                                            <li class="version-history__item">
+                                                <span class="version-history__number">v@v.VersionNumber</span>
+                                                <span class="version-history__date">@v.CreatedAt.ToString("d MMM yyyy")</span>
+                                                @if (v.Classification.HasValue)
+                                                {
+                                                    <span class="change-indicator change-indicator--@v.Classification.Value.ToString().ToLower()">
+                                                        @v.Classification.Value
+                                                    </span>
+                                                }
+                                                @if (v.CanDelete)
+                                                {
+                                                    <form asp-action="DeleteVersion" method="post" style="display:inline"
+                                                          onsubmit="return confirm('Permanently delete version @v.VersionNumber? This cannot be undone.');">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="versionId" value="@v.VersionId" />
+                                                        <input type="hidden" name="sectionId" value="@doc.Document.Id" />
+                                                        <input type="hidden" name="projectId" value="@Model.Project.Id" />
+                                                        <button type="submit" class="btn btn--danger btn--sm">Delete</button>
+                                                    </form>
+                                                }
+                                                else
+                                                {
+                                                    <span class="version-history__current">Current</span>
+                                                }
+                                            </li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
                         </div>
                     }
                 </div>

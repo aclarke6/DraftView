@@ -43,6 +43,9 @@
     <File Path="vsprint9-phase2.prompt.md" />
     <File Path="vsprint9-phase3.prompt.md" />
   </Folder>
+  <Folder Name="/Solution Items/UAT/">
+    <File Path="DraftView-UAT-Plan.md" />
+  </Folder>
   <Folder Name="/Tests/">
     <Project Path="DraftView.Application.Tests/DraftView.Application.Tests.csproj" />
     <Project Path="DraftView.Domain.Tests/DraftView.Domain.Tests.csproj" />
