@@ -47,6 +47,35 @@ public sealed class Section
         };
     }
 
+    /// <summary>
+    /// Creates a folder section for explicit tree-builder workflows.
+    /// These sections do not have a ScrivenerUuid.
+    /// </summary>
+    public static Section CreateFolderForTree(
+        Guid projectId, string title, Guid? parentId, int sortOrder)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+            throw new InvariantViolationException("I-SEC-TITLE",
+                "Section title must not be null or whitespace.");
+
+        return new Section
+        {
+            Id             = Guid.NewGuid(),
+            ProjectId      = projectId,
+            ScrivenerUuid  = null!,
+            Title          = title.Trim(),
+            ParentId       = parentId,
+            SortOrder      = sortOrder,
+            NodeType       = NodeType.Folder,
+            HtmlContent    = null,
+            ContentHash    = null,
+            ScrivenerStatus = null,
+            IsPublished    = false,
+            IsSoftDeleted  = false,
+            ContentChangedSincePublish = false
+        };
+    }
+
     public static Section CreateDocument(
         Guid projectId, string scrivenerUuid, string title,
         Guid? parentId, int sortOrder, string? htmlContent,
@@ -200,6 +229,8 @@ public sealed class Section
     }
 
     public void UpdateSortOrder(int sortOrder) => SortOrder = sortOrder;
+
+    public void UpdateParent(Guid? parentId) => ParentId = parentId;
 
     public void UpdateTitle(string title)
     {

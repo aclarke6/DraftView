@@ -475,6 +475,76 @@ public class AuthorControllerTests
     }
 
     [Fact]
+    public async Task CreateSection_CallsSectionTreeService_WithCorrectArguments()
+    {
+        var author = User.Create("author@example.test", "Author", Role.Author);
+        var projectId = Guid.NewGuid();
+        var parentId = Guid.NewGuid();
+        var created = Section.CreateDocumentForUpload(projectId, "Scene 1", parentId, 1);
+        var sut = CreateSut();
+        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
+
+        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(author);
+        sectionTreeService.Setup(s => s.CreateSectionAsync(
+                projectId,
+                "Scene 1",
+                NodeType.Document,
+                parentId,
+                null,
+                author.Id,
+                default))
+            .ReturnsAsync(created);
+
+        await sut.CreateSection(projectId, "Scene 1", NodeType.Document, parentId);
+
+        sectionTreeService.Verify(s => s.CreateSectionAsync(
+            projectId,
+            "Scene 1",
+            NodeType.Document,
+            parentId,
+            null,
+            author.Id,
+            default), Times.Once);
+    }
+
+    [Fact]
+    public async Task MoveSection_ReturnsOk_WhenMoveSucceeds()
+    {
+        var author = User.Create("author@example.test", "Author", Role.Author);
+        var sectionId = Guid.NewGuid();
+        var projectId = Guid.NewGuid();
+        var newParentId = Guid.NewGuid();
+        var sut = CreateSut();
+        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
+
+        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(author);
+
+        var result = await sut.MoveSection(sectionId, projectId, newParentId, 2);
+
+        Assert.IsType<OkResult>(result);
+        sectionTreeService.Verify(s => s.MoveSectionAsync(sectionId, newParentId, 2, author.Id, default), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteSection_CallsSectionTreeService_WithCorrectSectionId()
+    {
+        var author = User.Create("author@example.test", "Author", Role.Author);
+        var sectionId = Guid.NewGuid();
+        var projectId = Guid.NewGuid();
+        var sut = CreateSut();
+        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
+
+        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(author);
+
+        await sut.DeleteSection(sectionId, projectId);
+
+        sectionTreeService.Verify(s => s.DeleteSectionAsync(sectionId, author.Id, default), Times.Once);
+    }
+
+    [Fact]
     public async Task DeleteVersion_WhenDeletingLatestVersion_SetsErrorAndDoesNotDelete()
     {
         var author = User.Create("author@example.test", "Author", Role.Author);

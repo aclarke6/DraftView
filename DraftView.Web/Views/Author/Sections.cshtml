@@ -13,6 +13,12 @@
         .Where(i => i.Section.NodeType == NodeType.Folder && i.Section.ParentId.HasValue)
         .Select(i => i.Section.ParentId!.Value)
         .ToHashSet();
+
+    var changedCount = project?.ProjectType == ProjectType.ScrivenerDropbox
+        ? Model.Count(x => !x.Section.IsSoftDeleted &&
+                           x.Section.NodeType == NodeType.Document &&
+                           x.Section.ContentChangedSincePublish)
+        : 0;
 }
 
 <h2>@project?.Name - Sections</h2>
@@ -21,6 +27,15 @@
     Publish buttons appear on chapters where all scenes are First Draft or above.
     Publishing a chapter makes all its scenes visible to readers.
 </p>
+
+@if (project?.ProjectType == ProjectType.ScrivenerDropbox)
+{
+    <p class="page-subtitle page-subtitle--info">
+        This project is managed by Scrivener. The section structure is updated
+        automatically when you sync. To add, remove, or reorder sections,
+        make the changes in Scrivener and sync again.
+    </p>
+}
 
 <script>
     (function () {
@@ -35,12 +50,42 @@
     })();
 </script>
 
+@if (project?.ProjectType == ProjectType.Manual)
+{
+    <div class="tree-builder__add-form">
+        <form asp-action="CreateSection" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="projectId" value="@project!.Id" />
+            <input type="text" name="title" placeholder="Section title" class="input input--sm" required />
+            <select name="nodeType" class="input input--sm">
+                <option value="Document">Document</option>
+                <option value="Folder">Chapter / Folder</option>
+            </select>
+            <select name="parentId" class="input input--sm">
+                <option value="">— No parent (root) —</option>
+                @foreach (var item in Model.Where(x => x.Section.NodeType == NodeType.Folder && !x.Section.IsSoftDeleted))
+                {
+                    <option value="@item.Section.Id">@item.Section.Title</option>
+                }
+            </select>
+            <button type="submit" class="btn btn--primary btn--sm">Add Section</button>
+        </form>
+    </div>
+}
+
 @if (!Model.Any())
 {
     <p>No sections found. Try syncing the project first.</p>
 }
 else
 {
+    @if (changedCount > 0)
+    {
+        <p class="sync-summary">
+            @changedCount section@(changedCount == 1 ? "" : "s") updated since last publish.
+        </p>
+    }
+
     <div class="table-wrapper">
         <table>
             <thead>
@@ -66,7 +111,12 @@ else
                     // Manual project documents need upload button
                     var isManualDocument = !isFolder && project?.ProjectType == ProjectType.Manual;
 
-                    <tr class="@(isFolder ? "tr--folder" : "tr--scene")" id="section-@s.Id">
+                    <tr class="@(isFolder ? "tr--folder" : "tr--scene")" id="section-@s.Id"
+                        data-section-id="@(project?.ProjectType == ProjectType.Manual ? s.Id : null)"
+                        data-draggable="@(project?.ProjectType == ProjectType.Manual ? "true" : null)"
+                        data-project-id="@(project?.ProjectType == ProjectType.Manual ? project?.Id : null)"
+                        data-parent-id="@(project?.ProjectType == ProjectType.Manual && s.ParentId.HasValue ? s.ParentId.Value : null)"
+                        data-sort-order="@(project?.ProjectType == ProjectType.Manual ? s.SortOrder : 0)">
                         <td style="padding-left: @(8 + indent)px">
                             @if (!isFolder)
                             {
@@ -79,6 +129,10 @@ else
                         </td>
                         <td style="color:var(--color-text-muted); font-size:var(--text-sm)">
                             @(isChapter ? "Chapter" : isFolder ? "Part / Book" : "Scene")
+                            @if (!isFolder && s.ContentChangedSincePublish && project?.ProjectType == ProjectType.ScrivenerDropbox)
+                            {
+                                <span class="sync-change-badge">Updated</span>
+                            }
                         </td>
                         <td>@(s.ScrivenerStatus ?? "-")</td>
                         <td>
@@ -143,12 +197,59 @@ else
                                     Upload
                                 </a>
                             }
+
+                            @if (project?.ProjectType == ProjectType.Manual)
+                            {
+                                <form asp-action="DeleteSection" method="post" style="display:inline"
+                                      onsubmit="return confirm('Delete this section and all descendants?');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="sectionId" value="@s.Id" />
+                                    <input type="hidden" name="projectId" value="@project!.Id" />
+                                    <button type="submit" class="btn btn--danger btn--sm">Delete</button>
+                                </form>
+                            }
                         </td>
                     </tr>
                 }
             </tbody>
         </table>
     </div>
+}
+
+@if (project?.ProjectType == ProjectType.Manual)
+{
+    <script>
+        // Tree builder drag-and-drop for Manual projects
+        (function () {
+            var rows = document.querySelectorAll('tr[data-section-id][data-draggable]');
+            var draggedId = null;
+            rows.forEach(function (row) {
+                row.setAttribute('draggable', 'true');
+                row.addEventListener('dragstart', function () { draggedId = row.dataset.sectionId; });
+                row.addEventListener('dragover', function (e) { e.preventDefault(); });
+                row.addEventListener('drop', function (e) {
+                    e.preventDefault();
+                    if (!draggedId || draggedId === row.dataset.sectionId) return;
+                    var token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                    fetch('/Author/MoveSection', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'RequestVerificationToken': token
+                        },
+                        body: 'sectionId=' + draggedId +
+                              '&projectId=' + row.dataset.projectId +
+                              '&newParentId=' + (row.dataset.parentId || '') +
+                              '&newSortOrder=' + row.dataset.sortOrder +
+                              '&__RequestVerificationToken=' + encodeURIComponent(token)
+                    }).then(function (r) {
+                        if (r.ok)
+                            location.reload();
+                    });
+                });
+            });
+        })();
+    </script>
 }
 
 

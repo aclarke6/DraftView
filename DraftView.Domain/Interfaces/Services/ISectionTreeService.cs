@@ -1,5 +1,6 @@
 using DraftView.Domain.Contracts;
 using DraftView.Domain.Entities;
+using DraftView.Domain.Enumerations;
 
 namespace DraftView.Domain.Interfaces.Services;
 
@@ -30,5 +31,38 @@ public interface ISectionTreeService
     /// </summary>
     Task<IReadOnlyList<SectionTreeNode>> GetTreeAsync(
         Guid projectId,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Creates a new Document or Folder section with an explicit title, parent, and sort order.
+    /// Called from the tree builder UI. Section will have ScrivenerUuid = null.
+    /// </summary>
+    Task<Section> CreateSectionAsync(
+        Guid projectId,
+        string title,
+        NodeType nodeType,
+        Guid? parentId,
+        int? sortOrder,
+        Guid authorId,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Moves a section to a new parent and/or sort order.
+    /// Validates that the move does not create a circular reference.
+    /// </summary>
+    Task MoveSectionAsync(
+        Guid sectionId,
+        Guid? newParentId,
+        int newSortOrder,
+        Guid authorId,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Soft-deletes a section and all its descendants.
+    /// Published sections are unpublished before soft-deletion.
+    /// </summary>
+    Task DeleteSectionAsync(
+        Guid sectionId,
+        Guid authorId,
         CancellationToken ct = default);
 }
