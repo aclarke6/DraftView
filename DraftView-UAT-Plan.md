@@ -29,35 +29,29 @@ Manuscript
 
 ## Database Reset — Run Before Each UAT Session
 
-This script resets the Test project to a known state. Run on production via SSH.
+This script resets the Test project to a known state.
 
-**Step 1 — SSH to production:**
-```bash
-ssh -i C:\Users\alast\.ssh\draftview-prod.key ubuntu@193.123.182.208
-```
+**On Windows — connect to production:**
 
-**Step 2 — Reset Test project data only (preserves The Fractured Lattice):**
+`ssh -i C:\Users\alast\.ssh\draftview-prod.key ubuntu@193.123.182.208`
 
-First find the Test project ID:
+**Once on the server — find the Test project ID:**
 ```bash
 /tmp/run-query.sh -c "SELECT \"Id\", \"Name\" FROM \"Projects\" WHERE \"Name\" = 'Test';"
 ```
 
-Then reset (replace {TEST_PROJECT_ID} with the actual UUID):
+**Then reset Test project data only (replace {TEST_PROJECT_ID} with the actual UUID):**
 ```bash
 /tmp/run-query.sh <<'EOF'
--- Reset Test project sections and versions only
-DO $$
+DO $
 DECLARE
     v_project_id UUID := '{TEST_PROJECT_ID}';
 BEGIN
-    -- Delete SectionVersions for Test project sections
     DELETE FROM "SectionVersions"
     WHERE "SectionId" IN (
         SELECT "Id" FROM "Sections" WHERE "ProjectId" = v_project_id
     );
 
-    -- Reset section publish state
     UPDATE "Sections"
     SET "IsPublished" = false,
         "PublishedAt" = null,
@@ -67,7 +61,6 @@ BEGIN
         "ScheduledPublishAt" = null
     WHERE "ProjectId" = v_project_id;
 
-    -- Reset ReadEvents for Test project sections
     UPDATE "ReadEvents"
     SET "LastReadVersionNumber" = null,
         "BannerDismissedAtVersion" = null
@@ -75,17 +68,16 @@ BEGIN
         SELECT "Id" FROM "Sections" WHERE "ProjectId" = v_project_id
     );
 
-    -- Reset comments for Test project sections
     UPDATE "Comments"
     SET "SectionVersionId" = null
     WHERE "SectionId" IN (
         SELECT "Id" FROM "Sections" WHERE "ProjectId" = v_project_id
     );
-END $$;
+END $;
 EOF
 ```
 
-**Step 3 — Trigger a fresh Dropbox sync** from the Author Dashboard to pull
+**Back on Windows — trigger a fresh Dropbox sync** from the Author Dashboard to pull
 current Scrivener content into Section.HtmlContent.
 
 ---
