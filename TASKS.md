@@ -54,10 +54,9 @@ Last updated: 2026-04-19
 
 ## 2. Open Bugs
 
-- [ ] **BUG-005 — Password reset link immediately shows Link Expired**
-  - Reset email arrives correctly but clicking the link shows ResetPasswordInvalid
-  - Root cause: `GetUserByEmailAsync` returns the BetaReader account (`8acb50d3`) when multiple domain accounts share the same email. Token is created with the BetaReader `UserId`. `ResetPassword` GET calls `userManager.FindByIdAsync` with the BetaReader ID but no Identity user exists for that ID, so it routes to ResetPasswordInvalid.
-  - Fix: `ForgotPassword` must look up the Identity user first via `userManager.FindByEmailAsync`, then find the matching domain user by that Identity user's ID, not the other way round
+- [x] **BUG-005 — Password reset link immediately showed invalid/expired** — FIXED
+  - Root cause: Domain user ID and Identity user ID were different; `ResetPassword` POST used domain ID to look up Identity user, returning null
+  - Fix: `ResetPassword` POST now falls back to `FindByEmailAsync` when `FindByIdAsync` returns null; regression test added covering mismatched ID scenario
   - Prompt: `.github/Prompts/BUG-005-password-reset-link-expired.prompt.md`
 
   - action completes but reader remains visible
