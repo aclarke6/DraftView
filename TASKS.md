@@ -54,20 +54,27 @@ Last updated: 2026-04-19
 
 ## 2. Open Bugs
 
-- [Open] **Removing a reader from `/Author/Readers` does not remove the reader from the list**
+- [ ] **BUG-001 — Removing a reader does not remove them from the Readers list**
   - action completes but reader remains visible
   - investigate: `AuthorController.SoftDeleteReader`, `SoftDeleteUserAsync`, reader list filter
+  - prompt: `.github/Prompts/BUG-001-reader-removal-not-reflecting.prompt.md`
 
-- [Open] **System Support has no readers page**
+- [ ] **BUG-002 — System Support has no readers page**
   - no UI surface to verify deny-by-default email behaviour for SystemSupport role
   - decide: dedicated support readers screen, or remove from UAT scope
+  - prompt: `.github/Prompts/BUG-002-system-support-no-readers-page.prompt.md`
 
-- [ ] **ForgotPassword returns HTTP 405 in production** — `/Account/ForgotPassword` shows raw browser 405 page instead of a controlled error. Two issues: (1) route/method mismatch on ForgotPassword action, (2) no custom 405 error page. Investigate after deploy to confirm if already fixed in latest code.
-
-- [Open] **Reader settings shows `Ciphertext is not in the expected format` on screen**
+- [ ] **BUG-003 — Reader settings shows `Ciphertext is not in the expected format` on screen**
   - protected-email decryption failure surfacing as a form validation error
   - should route through controlled 500 error path
   - investigate: `AccountController` settings actions, production rows with invalid `EmailCiphertext`
+  - prompt: `.github/Prompts/BUG-003-settings-ciphertext-error.prompt.md`
+
+- [ ] **BUG-004 — ForgotPassword returns HTTP 405 in production**
+  - `/Account/ForgotPassword` shows raw browser 405 page instead of a controlled error
+  - two issues: (1) route/method mismatch on ForgotPassword action, (2) no custom 405 error page
+  - investigate after deploy to confirm if already fixed in latest code
+  - prompt: `.github/Prompts/BUG-004-forgotpassword-405.prompt.md`
 
 ---
 

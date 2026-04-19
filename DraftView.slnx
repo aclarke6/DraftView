@@ -36,6 +36,10 @@
     <File Path="versioning.instructions.md" />
   </Folder>
   <Folder Name="/Solution Items/.github/Prompts/">
+    <File Path=".github/Prompts/BUG-001-reader-removal-not-reflecting.prompt.md" />
+    <File Path=".github/Prompts/BUG-002-system-support-no-readers-page.prompt.md" />
+    <File Path=".github/Prompts/BUG-003-settings-ciphertext-error.prompt.md" />
+    <File Path=".github/Prompts/BUG-004-forgotpassword-405.prompt.md" />
   </Folder>
   <Folder Name="/Solution Items/UAT/">
     <File Path="DraftView-UAT-Plan.md" />
