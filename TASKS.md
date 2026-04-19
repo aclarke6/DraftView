@@ -10,7 +10,7 @@ Last updated: 2026-04-19
 **Repository:** https://github.com/aclarke6/DraftView
 
 ### Current Test State
-- **686 passing, 1 skipped, 0 failed** (as of V-Sprint 7 complete + BugFix batches merged)
+- **700 passing, 1 skipped, 0 failed** (latest full suite)
 - 1 skipped — `SmtpEmailSenderIntegrationTests` (sends real email, manual only)
 
 ### Active Work
@@ -28,7 +28,7 @@ Last updated: 2026-04-19
 |----------|---------|
 | `Publishing And Versioning Architecture.md` | Full V-Sprint architecture, phases, domain model, publishing rules |
 | `PRINCIPLES.md` | Core engineering principles |
-| `REFACTORING.md` | Refactoring rules and roadmap |
+| `REFACTORING.md` & `.github/instructions/versioning.instructions.md` | Refactoring rules and roadmap |
 | `PowerShell.md` | PowerShell scripting standards |
 | `DraftView Git Rules.md` | Branch strategy, merge gates, commit standards |
 | `.github/copilot-instructions.md` | Agent instructions for Copilot/Claude sessions |
@@ -54,15 +54,15 @@ Last updated: 2026-04-19
 
 ## 2. Open Bugs
 
-- [ ] **Removing a reader from `/Author/Readers` does not remove the reader from the list**
+- [Open] **Removing a reader from `/Author/Readers` does not remove the reader from the list**
   - action completes but reader remains visible
   - investigate: `AuthorController.SoftDeleteReader`, `SoftDeleteUserAsync`, reader list filter
 
-- [ ] **System Support has no readers page**
+- [Open] **System Support has no readers page**
   - no UI surface to verify deny-by-default email behaviour for SystemSupport role
   - decide: dedicated support readers screen, or remove from UAT scope
 
-- [ ] **Reader settings shows `Ciphertext is not in the expected format` on screen**
+- [Open] **Reader settings shows `Ciphertext is not in the expected format` on screen**
   - protected-email decryption failure surfacing as a form validation error
   - should route through controlled 500 error path
   - investigate: `AccountController` settings actions, production rows with invalid `EmailCiphertext`
