@@ -36,12 +36,6 @@
     <File Path="versioning.instructions.md" />
   </Folder>
   <Folder Name="/Solution Items/.github/Prompts/">
-    <File Path="vsprint10-phase1.prompt.md" />
-    <File Path="vsprint10-phase2.prompt.md" />
-    <File Path="vsprint10-phase3.prompt.md" />
-    <File Path="vsprint9-phase1.prompt.md" />
-    <File Path="vsprint9-phase2.prompt.md" />
-    <File Path="vsprint9-phase3.prompt.md" />
   </Folder>
   <Folder Name="/Solution Items/UAT/">
     <File Path="DraftView-UAT-Plan.md" />
