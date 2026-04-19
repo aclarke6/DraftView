@@ -76,7 +76,7 @@ else
     app.UseHsts();
 }
 
-app.UseStatusCodePagesWithReExecute("/Home/NotFoundPage");
+app.UseStatusCodePagesWithReExecute("/Home/StatusCodeError", "?statusCode={0}");
 
 app.UseForwardedHeaders(new ForwardedHeadersOptions { ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto });
 app.UseHttpsRedirection();

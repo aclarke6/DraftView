@@ -177,6 +177,7 @@ See `REFACTORING.md` for full detail.
 - [DONE] **Incremental Refactor Phase 1** — `BaseController` auth helpers, controller guard consolidation
 
 ### 5c. Other Completed
+- [DONE] Home fault-page coverage and routing hardening — added anonymous test endpoints (`/Home/Test403`, `/Home/Test404`, `/Home/Test405`, `/Home/Test500`), status-code re-execute routing (`StatusCodeError`), dedicated 403/405 page handling, and Web integration tests proving correct 403/404/405/500 pages and data
 - [DONE] Audited `Views/Author/Publishing.cshtml` for style leakage during V-Sprint 9 Phase 3 version-management UI; retained existing inline form display pattern only and moved version-history styling into `DraftView.Core.css`
 - [DONE] Audited `Views/Author/Sections.cshtml` for style leakage during V-Sprint 10 Phase 2 tree builder UI; retained existing inline form pattern only and moved tree-builder interaction styling into `DraftView.Core.css`
 - [DONE] Audited `Views/Author/Sections.cshtml` for style leakage during V-Sprint 10 Phase 3 sync tree display; retained existing inline table pattern and added sync-specific read-only/badge styles in `DraftView.Core.css`

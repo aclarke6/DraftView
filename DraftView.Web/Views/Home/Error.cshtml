@@ -2,7 +2,11 @@
 
 @{
     ViewData["Title"] = "Error";
-    var heroClass = Model.StatusCode == 405 ? "method-not-allowed-hero" : "error-hero";
+    var heroClass = Model.StatusCode switch {
+        403 => "access-denied-hero",
+        405 => "method-not-allowed-hero",
+        _ => "error-hero"
+    };
 }
 
 <div class="error-page">

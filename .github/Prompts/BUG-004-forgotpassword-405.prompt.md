@@ -24,31 +24,41 @@ The raw browser 405 page is shown — there is no custom 405 error page.
 - Any 405 error should be handled by the custom error middleware and show a
   friendly error page, not the raw browser error
 
-## Two Issues to Fix
+## Root Cause (confirmed)
+The controller code is correct — `[HttpGet]` and `[HttpPost]` are both present on `ForgotPassword`.
+Nginx config is a clean proxy pass with no method restrictions.
 
-### Issue 1 — Route/method mismatch on ForgotPassword
-Before writing any code, read:
-1. `DraftView.Web/Controllers/AccountController.cs` — `ForgotPassword` GET and POST actions
-2. Check `[HttpGet]` and `[HttpPost]` attributes are correctly applied
-3. Check the form `method="post"` in `Views/Account/ForgotPassword.cshtml`
-4. Check route configuration in `Program.cs`
+The 405 is coming from ASP.NET Core routing. `Program.cs` has:
 
-Confirm whether the 405 is caused by:
-- Missing `[HttpGet]` on the GET action
-- Missing `[HttpPost]` on the POST action
-- A routing conflict
-- Antiforgery token misconfiguration
+    app.UseStatusCodePagesWithReExecute("/Home/NotFoundPage");
 
-Note: deploy the latest build first and retest — this may already be fixed.
+This routes all non-success status codes to `/Home/NotFoundPage` — but that action
+only handles 404 gracefully. A 405 from the routing layer hits `NotFoundPage` which
+shows the wrong page. More critically, the raw browser 405 page is shown because
+the status code middleware may not intercept routing-level 405s.
 
-### Issue 2 — No custom 405 error page
-Read:
-1. `DraftView.Web/Program.cs` — how error handling middleware is configured
-2. `DraftView.Web/Controllers/HomeController.cs` — `Error` action
-3. `DraftView.Web/Views/Shared/Error.cshtml` — existing error view
+## Fix Required
 
-The `UseStatusCodePagesWithReExecute` middleware should handle 405 the same as
-404. Check if it is configured and covers 405.
+### Fix 1 — Generalise status code handling in `Program.cs`
+Change:
+
+    app.UseStatusCodePagesWithReExecute("/Home/NotFoundPage");
+
+To:
+
+    app.UseStatusCodePagesWithReExecute("/Home/Error", "?statusCode={0}");
+
+### Fix 2 — Update `HomeController.Error` to accept a status code
+Read `DraftView.Web/Controllers/HomeController.cs` and `Views/Shared/Error.cshtml`.
+Add an optional `statusCode` parameter and show an appropriate user-friendly message:
+- 404 → "Page not found"
+- 405 → "That action is not allowed"
+- 500 → "Something went wrong"
+- default → "An unexpected error occurred"
+
+### Fix 3 — Remove or repurpose `NotFoundPage`
+If `NotFoundPage` is only used for 404s, it can remain as a dedicated 404 view
+called from the Error action. Or it can be removed if Error handles all cases.
 
 ## Rules
 - Deploy latest build and retest before fixing — may already be resolved
