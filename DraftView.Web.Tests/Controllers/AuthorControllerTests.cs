@@ -8,6 +8,7 @@ using DraftView.Web.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -36,6 +37,7 @@ public class AuthorControllerTests
     private readonly Mock<IImportService> importService = new();
     private readonly Mock<ISectionTreeService> sectionTreeService = new();
     private readonly Mock<IUnitOfWork> unitOfWork = new();
+    private readonly Mock<IConfiguration> configuration = new();
     private readonly Mock<ILogger<AuthorController>> logger = new();
 
     private AuthorController CreateSut(string email = "author@example.test")
@@ -59,6 +61,7 @@ public class AuthorControllerTests
             changeClassificationService.Object,
             importService.Object,
             sectionTreeService.Object,
+            configuration.Object,
             logger.Object);
 
         controller.ControllerContext = new ControllerContext
@@ -78,6 +81,7 @@ public class AuthorControllerTests
         urlHelper.Setup(u => u.IsLocalUrl(It.IsAny<string?>())).Returns(false);
         controller.Url = urlHelper.Object;
         controller.TempData = new Mock<ITempDataDictionary>().Object;
+        configuration.Setup(c => c["DraftView:SubscriptionTier"]).Returns((string?)null);
 
         return controller;
     }
@@ -252,6 +256,54 @@ public class AuthorControllerTests
     }
 
     [Fact]
+    public async Task Publishing_WhenAtRetentionLimit_ShowsVersionHistoryWithCurrentNotDeletable()
+    {
+        var author = User.Create("author@example.test", "Author", Role.Author);
+        var project = Project.Create("Project One", "/Apps/Scrivener/ProjectOne", author.Id, "sync-root");
+        var chapter = Section.CreateFolder(project.Id, Guid.NewGuid().ToString(), "Chapter 1", null, 0);
+        chapter.MarkAsPublishedContainer();
+        var document = Section.CreateDocument(
+            project.Id,
+            Guid.NewGuid().ToString(),
+            "Scene 1",
+            chapter.Id,
+            0,
+            "<p>content</p>",
+            "hash",
+            null);
+
+        var version1 = SectionVersion.Create(document, author.Id, 1);
+        var version2 = SectionVersion.Create(document, author.Id, 2);
+        var version3 = SectionVersion.Create(document, author.Id, 3);
+
+        var sut = CreateSut();
+
+        configuration.Setup(c => c["DraftView:SubscriptionTier"]).Returns("Free");
+        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(author);
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(project);
+        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([chapter, document]);
+        sectionVersionRepo.Setup(r => r.GetLatestAsync(document.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(version3);
+        sectionVersionRepo.Setup(r => r.GetAllBySectionIdAsync(document.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([version1, version2, version3]);
+
+        var result = await sut.Publishing(project.Id);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<PublishingPageViewModel>(view.Model);
+        var docModel = Assert.Single(model.Chapters[0].Documents);
+
+        Assert.True(docModel.ShowVersionHistory);
+        Assert.Equal(3, docModel.RetentionLimit);
+        Assert.Equal(3, docModel.VersionHistory.Count);
+        Assert.False(docModel.VersionHistory.First(v => v.VersionNumber == 3).CanDelete);
+        Assert.True(docModel.VersionHistory.First(v => v.VersionNumber == 2).CanDelete);
+    }
+
+    [Fact]
     public async Task RepublishChapter_CallsVersioningService_WithCorrectChapterId()
     {
         var author = User.Create("author@example.test", "Author", Role.Author);
@@ -420,5 +472,64 @@ public class AuthorControllerTests
         await sut.ClearChapterSchedule(chapterId, projectId);
 
         versioningService.Verify(v => v.ClearScheduleAsync(chapterId, author.Id, default), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteVersion_WhenDeletingLatestVersion_SetsErrorAndDoesNotDelete()
+    {
+        var author = User.Create("author@example.test", "Author", Role.Author);
+        var section = Section.CreateDocument(
+            Guid.NewGuid(),
+            Guid.NewGuid().ToString(),
+            "Scene 1",
+            null,
+            0,
+            "<p>content</p>",
+            "hash",
+            null);
+        var version1 = SectionVersion.Create(section, author.Id, 1);
+        var version2 = SectionVersion.Create(section, author.Id, 2);
+        var sut = CreateSut();
+        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
+
+        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(author);
+        sectionVersionRepo.Setup(r => r.GetAllBySectionIdAsync(section.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([version1, version2]);
+
+        await sut.DeleteVersion(version2.Id, section.Id, Guid.NewGuid());
+
+        Assert.Equal("The current version cannot be deleted. Use Revoke instead.", sut.TempData["Error"]);
+        sectionVersionRepo.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteVersion_WhenDeletingOlderVersion_DeletesAndSaves()
+    {
+        var author = User.Create("author@example.test", "Author", Role.Author);
+        var section = Section.CreateDocument(
+            Guid.NewGuid(),
+            Guid.NewGuid().ToString(),
+            "Scene 1",
+            null,
+            0,
+            "<p>content</p>",
+            "hash",
+            null);
+        var version1 = SectionVersion.Create(section, author.Id, 1);
+        var version2 = SectionVersion.Create(section, author.Id, 2);
+        var sut = CreateSut();
+        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
+
+        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(author);
+        sectionVersionRepo.Setup(r => r.GetAllBySectionIdAsync(section.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([version1, version2]);
+
+        await sut.DeleteVersion(version1.Id, section.Id, Guid.NewGuid());
+
+        Assert.Equal("Version deleted.", sut.TempData["Success"]);
+        sectionVersionRepo.Verify(r => r.DeleteAsync(version1.Id, It.IsAny<CancellationToken>()), Times.Once);
+        unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }

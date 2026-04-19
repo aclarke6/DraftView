@@ -3,9 +3,6 @@
     <File Path="DraftView Billing Model v2.docx" />
     <File Path="DraftView Business Model v3.docx" />
   </Folder>
-  <Folder Name="/UAT/">
-    <File Path="DraftView-UAT-Plan.md" />
-  </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".gitignore" />
     <File Path="AGENTS.md" />
@@ -45,6 +42,9 @@
     <File Path="vsprint9-phase1.prompt.md" />
     <File Path="vsprint9-phase2.prompt.md" />
     <File Path="vsprint9-phase3.prompt.md" />
+  </Folder>
+  <Folder Name="/Solution Items/UAT/">
+    <File Path="DraftView-UAT-Plan.md" />
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="DraftView.Application.Tests/DraftView.Application.Tests.csproj" />
