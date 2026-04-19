@@ -84,7 +84,7 @@ See `Publishing And Versioning Architecture.md` for full architecture, domain mo
 - [x] **V-Sprint 8 — Dropbox incremental sync** 🔄
   - [x] Phase 1 — Cursor-based incremental sync (`Project.DropboxCursor`, `ListChangedEntriesAsync`, `ListAllEntriesWithCursorAsync`, full sync on first run, cursor-expired fallback, deleted entries soft-deleted)
 - [ ] V-Sprint 9 — Version retention and deletion
-  - [ ] Phase 1 — Retention domain (rules per pricing tier, physical deletion)
+  - [x] Phase 1 — Retention domain (rules per pricing tier, physical deletion)
   - [ ] Phase 2 — Enforcement (limit check before version creation)
   - [ ] Phase 3 — Version management UI (version list on Publishing Page)
 - [ ] V-Sprint 10 — Tree builder UI (Option A, post-launch)
