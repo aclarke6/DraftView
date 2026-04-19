@@ -10,13 +10,13 @@ Last updated: 2026-04-19
 **Repository:** https://github.com/aclarke6/DraftView
 
 ### Current Test State
-- **700 passing, 1 skipped, 0 failed** (latest full suite)
+- **736 passing, 1 skipped, 0 failed** (V-Sprints 1-10 complete)
 - 1 skipped — `SmtpEmailSenderIntegrationTests` (sends real email, manual only)
 
 ### Active Work
 | Track | Status |
 |-------|--------|
-| V-Sprint 8 — Dropbox Incremental Sync | 🔄 In progress (Windows) |
+| V-Sprints 1-10 | ✅ All complete |
 | BugFix-Mac | 🟢 Synced with main, awaiting next bug |
 | BugFix-PC | 🟢 Merged to main |
 
@@ -70,27 +70,6 @@ Last updated: 2026-04-19
 ---
 
 ## 3. Active Projects
-
-### 3.1 V-Sprint Series — Publishing and Versioning
-See `Publishing And Versioning Architecture.md` for full architecture, domain model, and sprint specifications.
-
-- [x] V-Sprint 1 — Core versioning backbone + manual upload — **COMPLETE**
-- [x] V-Sprint 2 — Paragraph diff highlighting — **COMPLETE**
-- [x] V-Sprint 3 — Reader experience layer (state, messaging, banner) — **COMPLETE**
-- [x] V-Sprint 4 — Pending change indicator and classification — **COMPLETE**
-- [x] V-Sprint 5 — AI summary service and reader banner — **COMPLETE**
-- [x] V-Sprint 6 — Per-document publishing and Publishing Page — **COMPLETE**
-- [x] V-Sprint 7 — Chapter locking and scheduling — **COMPLETE**
-- [x] **V-Sprint 8 — Dropbox incremental sync** 🔄
-  - [x] Phase 1 — Cursor-based incremental sync (`Project.DropboxCursor`, `ListChangedEntriesAsync`, `ListAllEntriesWithCursorAsync`, full sync on first run, cursor-expired fallback, deleted entries soft-deleted)
-- [x] V-Sprint 9 — Version retention and deletion
-  - [x] Phase 1 — Retention domain (rules per pricing tier, physical deletion)
-  - [x] Phase 2 — Enforcement (limit check before version creation)
-  - [x] Phase 3 — Version management UI (version list on Publishing Page)
-- [x] V-Sprint 10 — Tree builder UI (Option A, post-launch)
-  - [x] Phase 1 — Tree service extension
-  - [x] Phase 2 — Tree builder UI
-  - [x] Phase 3 — Sync project tree display
 
 ### 3.2 Platform Hardening
 - [ ] Fail2ban setup on production VM
@@ -179,7 +158,7 @@ See `REFACTORING.md` for full detail.
 - [DONE] Removed paragraphs diff issue — resolved (bugfix-diff-para-removed)
 
 ### 5b. Sprints and Projects Complete
-- [DONE] **V-Sprints 1–7** — see `Publishing And Versioning Architecture.md`
+- [DONE] **V-Sprints 1–10 — Publishing and Versioning Series** — 736 tests, all phases complete. See `Publishing And Versioning Architecture.md`
 - [DONE] **Sprint 4 — Email Privacy and Controlled Access** — see `Sprint4-EmailPrivacy.md`
 - [DONE] **Sprint 3 — Reader Font Preferences** — `ProseFont`, `ProseFontSize` on `UserPreferences`, Google Fonts, CSS variables
 - [DONE] **Sprint 2 — Reader Experience** — project switcher, Kindle-style resume (anchor), AuthorNotifications, CommentStatus
