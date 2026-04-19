@@ -21,7 +21,7 @@ Before writing any code:
    — if not on this branch, stop and report
 8. Run `git status` — confirm the working tree is clean with no uncommitted changes.
    If uncommitted changes exist that are not part of this phase, stop and report.
-9. Run `.\test-summary.ps1` and record the baseline passing count before touching any code
+9. Run `dotnet test --nologo` and record the baseline passing count before touching any code
 
 ---
 
@@ -140,7 +140,7 @@ Update the CSS version in `_Layout.cshtml` to match.
 
 ## Phase Gate — All Must Pass Before Marking Complete
 
-Run `.\test-summary.ps1` and confirm:
+Run `dotnet test --nologo` and confirm:
 
 - [ ] All new tests green
 - [ ] Total passing count equal to or greater than baseline
