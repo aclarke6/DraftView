@@ -42,13 +42,6 @@ Last updated: 2026-04-20
 
 ## 2. Open Bugs
 
-- [ ] **BUG-009 — New scene added in Scrivener does not appear in DraftView after sync**
-  - Reported: 2026-04-20 (found during UAT)
-  - Symptoms: New scene added in Scrivener syncs to Dropbox correctly. DraftView incremental sync processes entries (13 entries logged) and the updated scrivx is present in the local cache — but the new Section row is never created in the database
-  - Investigate: `ScrivenerSyncService.ParseProjectAsync`, scrivx parse trigger logic, whether incremental listing reliably includes the scrivx when a child node is added
-  - prompt: `.github/Prompts/BUG-009-new-scene-not-appearing-after-sync.prompt.md`
-  - **Blocks UAT scenario C onwards**
-
 - [ ] **BUG-001 — Reader removal not reflecting in UI**
   - Action completes but reader remains visible in list
   - Investigate: `AuthorController.SoftDeleteReader`, `SoftDeleteUserAsync`, reader list filter
@@ -140,6 +133,7 @@ See `REFACTORING.md` for full detail.
 ## 4. Done
 
 ### Bugs Fixed
+- [DONE] BUG-009 — New scene added in Scrivener did not appear after incremental sync; fixed by running `ReconcileProjectFromScrivxAsync` in the incremental path so new binder UUIDs are created from the cached local `.scrivx` without additional Dropbox API round-trips (2026-04-20)
 - [DONE] BUG-006 — Unable to sync projects — seeder author lookup now Identity-ID-first; invalid ciphertext repaired on startup; duplicate author row repair added (2026-04-20)
 - [DONE] BUG-005 — Password reset link immediately expired — reset flow now resolves Identity user by email fallback (2026-04-19)
 - [DONE] BUG-004 — ForgotPassword returns HTTP 405 in production — two missing migrations applied; status code routing fixed

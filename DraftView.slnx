@@ -13,6 +13,7 @@
     <File Path="Copy-SourceFiles.ps1" />
     <File Path="Get-CodeFiles.ps1" />
     <File Path="get-dropbox-refresh-token.ps1" />
+    <File Path="MultiTenancy.md" />
     <File Path="pg.ps1" />
     <File Path="PowerShell.md" />
     <File Path="Principles.md" />
@@ -27,6 +28,7 @@
   </Folder>
   <Folder Name="/Solution Items/.github/">
     <File Path=".github/copilot-instructions.md" />
+    <File Path=".github/PROMPT-STANDARD.md" />
   </Folder>
   <Folder Name="/Solution Items/.github/Instructions/">
     <File Path=".github/Instructions/refactoring.instructions.md" />
@@ -38,6 +40,7 @@
     <File Path=".github/Prompts/BUG-003-settings-ciphertext-error.prompt.md" />
     <File Path=".github/Prompts/BUG-004-forgotpassword-405.prompt.md" />
     <File Path=".github/Prompts/BUG-005-password-reset-link-expired.prompt.md" />
+    <File Path=".github/Prompts/BUG-009-new-scene-not-appearing-after-sync.prompt.md" />
   </Folder>
   <Folder Name="/Solution Items/UAT/">
     <File Path="DraftView-UAT-Plan.md" />

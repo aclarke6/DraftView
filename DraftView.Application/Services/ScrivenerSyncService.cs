@@ -159,6 +159,7 @@ public class ScrivenerSyncService(
                 .ListChangedEntriesAsync(project.AuthorId, project.DropboxCursor!, ct);
 
             await ProcessSyncEntriesAsync(project, entries, ct);
+            await ReconcileProjectFromScrivxAsync(project, ct);
             project.UpdateDropboxCursor(newCursor);
 
             logger.LogInformation(
