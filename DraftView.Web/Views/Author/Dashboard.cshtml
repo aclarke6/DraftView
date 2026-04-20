@@ -129,6 +129,9 @@
                                             <button type="submit" class="btn btn--secondary btn--sm desktop-only"
                                                     @(p.SyncStatus == SyncStatus.Syncing ? "disabled" : "")>Sync</button>
                                         </form>
+                                        <a asp-action="Publishing"
+                                           asp-route-projectId="@p.Id"
+                                           class="btn btn--secondary btn--sm desktop-only">Publishing</a>
                                         @if (!p.IsReaderActive)
                                         {
                                             <form asp-action="ActivateProject" method="post" style="display:inline">

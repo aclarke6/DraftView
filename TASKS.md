@@ -49,10 +49,10 @@ Last updated: 2026-04-20
   - Fix: Restyle the view to use the dark theme consistently — content box, typography, breadcrumb, metadata line, comments section. CSS/view fix only — no domain or application layer changes.
   - prompt: `.github/Prompts/BUG-008-author-section-view-visual-design.prompt.md`
 
-- [ ] **BUG-010 — Publishing page has no navigation link from Sections view or Dashboard**
+- [DONE] **BUG-010 — Publishing page has no navigation link from Sections view or Dashboard**
   - Reported: 2026-04-20 (found during UAT)
   - Symptoms: Publishing page (`Author/Publishing?projectId={id}`) only reachable by typing the URL directly — no link from Sections view or Dashboard
-  - Fix: Add Publishing link on Sections view for changed chapters; consider persistent link in project actions on Dashboard
+  - Fix: Added direct **Republish** action for published changed chapters in Sections, added always-visible **Publishing** link for published chapters in Sections, and added per-project **Publishing** link in Dashboard project actions (2026-04-20)
   - prompt: `.github/Prompts/BUG-010-publishing-page-no-navigation-link.prompt.md`
   - **Blocks UAT scenarios C, D, E**
 
