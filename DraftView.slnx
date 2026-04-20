@@ -43,6 +43,7 @@
     <File Path=".github/Prompts/BUG-008-author-section-view-visual-design.prompt.md" />
     <File Path=".github/Prompts/BUG-009-new-scene-not-appearing-after-sync.prompt.md" />
     <File Path=".github/Prompts/BUG-010-publishing-page-no-navigation-link.prompt.md" />
+    <File Path=".github/Prompts/BUG-012-new-scene-in-published-chapter-no-republish-prompt.prompt.md" />
   </Folder>
   <Folder Name="/Solution Items/UAT/">
     <File Path="DraftView-UAT-Plan.md" />
