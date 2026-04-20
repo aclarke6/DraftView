@@ -43,38 +43,6 @@ Last updated: 2026-04-20
 
 ## 2. Open Bugs
 
-- [ ] **UX — Republish button should show would-be version number**
-  - Reported: 2026-04-20 (found during UAT)
-  - The Republish button on the Sections view should show the version number that will be created, e.g. "Republish" with text "to version 3" underneath the button as a comment.
-  - This gives the author visibility of what they are about to create before committing
-  - Belongs in RSprint-1
-
-- [DONE] **BUG-013 — Reader Account Settings missing font and font size preferences**
-  - Reported: 2026-04-20 (found during UAT)
-  - Fixed: 2026-04-20
-  - Symptoms: Reader navigates to `Account/Settings`. Profile, Appearance (theme), Email Address and Change Password sections present but ProseFont and ProseFontSize reading preferences are missing entirely
-  - Expected: Font face and font size preferences (built in Sprint 3) should be visible and editable in Account Settings for readers
-  - Resolution: `AccountController.Settings` now uses `BaseController` role helpers (`IsAuthorAsync` / `IsReaderAsync`) instead of inline role strings, correctly identifying `BetaReader` users so Reading Preferences (font and size) render as intended; prose preference load/save path unchanged
-  - prompt: `.github/Prompts/BUG-013-reader-settings-missing-font-preferences.prompt.md`
-
-- [DONE] **BUG-012 — Adding a new scene to a published chapter does not trigger a republish prompt**
-  - Reported: 2026-04-20 (found during UAT)
-  - Fixed: 2026-04-20
-  - Resolution: sync reconciliation now marks a published parent chapter as changed when a new unpublished child scene is created from Scrivener binder reconciliation. This enables chapter-level change indicators and Republish controls.
-  - prompt: `.github/Prompts/BUG-012-new-scene-in-published-chapter-no-republish-prompt.prompt.md`
-
-- [DONE] **BUG-014 — Republishing a chapter creates new versions for unchanged scenes**
-  - Reported: 2026-04-20 (found during UAT)
-  - Fixed: 2026-04-20
-  - Resolution: chapter republish now creates a new version only for scenes changed since last publish or scenes with no existing versions. Unchanged already-versioned scenes are skipped.
-  - prompt: `.github/Prompts/BUG-014-republish-creates-versions-for-unchanged-scenes.prompt.md`
-
-- [DONE] **BUG-007 — Activating a project does not deactivate the currently active project**
-  - Reported: 2026-04-20
-  - Fixed: activating a project now deactivates any currently active different project in the same save operation (atomic unit-of-work) (2026-04-20)
-  - Future: invariant becomes one active project per Tenancy under multi-tenancy
-  - prompt: `.github/Prompts/BUG-007-activate-project-does-not-deactivate-current.prompt.md`
-
 - [ ] **BUG-001 — Reader removal not reflecting in UI** — needs retest, may already be fixed
   - Action completes but reader remains visible in list
   - Investigate: `AuthorController.SoftDeleteReader`, `SoftDeleteUserAsync`, reader list filter
@@ -83,10 +51,6 @@ Last updated: 2026-04-20
 - [ ] **BUG-003 — Reader settings shows `Ciphertext is not in the expected format` on screen**
   - Protected-email decryption failure surfacing as a form validation error; should route to controlled 500 path
   - prompt: `.github/Prompts/BUG-003-settings-ciphertext-error.prompt.md`
-
-- [ ] **BUG-002 — System Support has no readers page**
-  - No UI surface to verify deny-by-default email behaviour for SystemSupport role
-  - prompt: `.github/Prompts/BUG-002-system-support-no-readers-page.prompt.md`
 
 ---
 
@@ -111,6 +75,7 @@ Last updated: 2026-04-20
 ### 3.3 RSprint-1 — Reader and Author Experience
 Items identified during UAT 2026-04-20. Full sprint design to follow.
 
+- [ ] Republish button should show would-be version number — e.g. "Republish" with "to version 3" underneath as a hint before committing
 - [ ] Reader progress drill-down on Author scene view — clicking "Read by N reader(s)" shows which readers have opened the scene and when
 - [ ] Reader scroll progress tracking — progress indicator per reader per scene (depends on scroll position work below)
 - [ ] Kindle-style resume — exact scroll position (`ScrollPosition` on `ReadEvent`, debounced JS POST, restore on load)

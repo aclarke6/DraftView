@@ -7,7 +7,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace DraftView.Web.Controllers;
 
 [Authorize(Roles = "SystemSupport")]
-public class SupportController(ISystemStateMessageService systemStateMessageService) : Controller
+public class SupportController(
+    ISystemStateMessageService systemStateMessageService,
+    IDashboardService dashboardService) : Controller
 {
     public IActionResult Index() => RedirectToAction("Dashboard");
 
@@ -27,6 +29,29 @@ public class SupportController(ISystemStateMessageService systemStateMessageServ
             ActiveReaders  = 0,
             ActiveMessage  = active,
             MessageHistory = history
+        };
+
+        return View(model);
+    }
+
+    [HttpGet]
+    [Authorize(Roles = "SystemSupport")]
+    public async Task<IActionResult> Readers(CancellationToken ct = default)
+    {
+        var readers = await dashboardService.GetReaderSummaryAsync(ct);
+
+        var model = new SupportReadersViewModel
+        {
+            Readers = readers
+                .Where(r => !r.IsSoftDeleted)
+                .OrderBy(r => r.DisplayName)
+                .Select(r => new SupportReaderRowViewModel
+                {
+                    ReaderId = r.Id,
+                    DisplayName = r.DisplayName,
+                    IsActive = r.IsActive
+                })
+                .ToList()
         };
 
         return View(model);

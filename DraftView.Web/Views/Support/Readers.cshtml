@@ -1,0 +1,53 @@
+@model DraftView.Web.Models.SupportReadersViewModel
+
+@{
+    ViewData["Title"] = "Readers";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Readers</h1>
+        <p class="page-subtitle">System support reader listing (deny-by-default email visibility).</p>
+    </div>
+</div>
+
+<p>
+    <a asp-action="Dashboard">&larr; Back to Support Dashboard</a>
+</p>
+
+@if (!Model.Readers.Any())
+{
+    <p>No readers found.</p>
+}
+else
+{
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Display Name</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var reader in Model.Readers)
+                {
+                    <tr>
+                        <td>@reader.DisplayName</td>
+                        <td>
+                            @if (reader.IsActive)
+                            {
+                                <span class="badge badge--success">Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge--warning">Inactive</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
