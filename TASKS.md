@@ -54,7 +54,7 @@ Last updated: 2026-04-19
 
 ## 2. Open Bugs
 
-- [ ] **BUG-006 — Unable to sync projects** (both projects show "Error" sync status in production)
+- [Done] **BUG-006 — Unable to sync projects** (both projects show "Error" sync status in production)
   - Reported: 2026-04-20
   - Symptoms: Both "Book 1 - The Fractured Lattice" and "Test - Book 1" show sync status "Error" on the Author Dashboard
   - Root cause: `UserRepository.GetAuthorAsync` decrypts `EmailCiphertext` as part of loading the author. The author `AppUsers` row (`a13f7ce4`) has `PENDING-CIPHERTEXT:...` / `PENDING-HMAC:...` placeholder values that were never replaced with real encrypted values. These are not valid Base-64, so decryption throws `InvalidOperationException`, aborting sync before Dropbox is even contacted.
@@ -63,7 +63,7 @@ Last updated: 2026-04-19
   - prompt: `.github/Prompts/BUG-006-unable-to-sync-projects.prompt.md`
 
 
-- [x] **BUG-005 — Password reset link immediately showed invalid/expired** — FIXED
+- [DONE] **BUG-005 — Password reset link immediately showed invalid/expired** — FIXED
   - Root cause: Domain user ID and Identity user ID were different; `ResetPassword` POST used domain ID to look up Identity user, returning null
   - Fix: `ResetPassword` POST now falls back to `FindByEmailAsync` when `FindByIdAsync` returns null; regression test added covering mismatched ID scenario
   - Prompt: `.github/Prompts/BUG-005-password-reset-link-expired.prompt.md`
@@ -71,6 +71,15 @@ Last updated: 2026-04-19
   - action completes but reader remains visible
   - investigate: `AuthorController.SoftDeleteReader`, `SoftDeleteUserAsync`, reader list filter
   - prompt: `.github/Prompts/BUG-001-reader-removal-not-reflecting.prompt.md`
+
+- [ ] **BUG-007 — Activating a project does not deactivate the currently active project**
+  - Reported: 2026-04-20
+  - Symptoms: Clicking Activate on a second project marks it Active without deactivating the currently active project, leaving two projects reader-active simultaneously
+  - Root cause: `ActivateForReaders` application service is not deactivating the current reader-active project before activating the new one
+  - Expected: Only one project may be reader-active at a time — activating a new project must atomically deactivate the existing one
+  - Investigate: `ProjectService.ActivateForReadersAsync` (or equivalent), domain invariant enforcement
+  - Future: When multi-tenancy arrives, the invariant becomes one active project per Tenancy; when multi-author support arrives, multiple authors may each have their own active project
+  - prompt: `.github/Prompts/BUG-007-activate-project-does-not-deactivate-current.prompt.md`
 
 - [ ] **BUG-002 — System Support has no readers page**
   - no UI surface to verify deny-by-default email behaviour for SystemSupport role
@@ -83,7 +92,7 @@ Last updated: 2026-04-19
   - investigate: `AccountController` settings actions, production rows with invalid `EmailCiphertext`
   - prompt: `.github/Prompts/BUG-003-settings-ciphertext-error.prompt.md`
 
-- [x] **BUG-004 — ForgotPassword returns HTTP 405 in production** — FIXED
+- [DONE] **BUG-004 — ForgotPassword returns HTTP 405 in production** — FIXED
   - root cause: two missing migrations (`ReplacePasswordResetTokenEmailWithUserId`, `AllowMultipleInvitationsPerUser`) applied manually to production
   - 405 error page fix (StatusCodeError action + UseStatusCodePagesWithReExecute) still to deploy
 
@@ -115,7 +124,7 @@ See `ScrivenerSync-BillingModel-v2.docx` and `ScrivenerSync-BusinessModel-v3.doc
 
 ### 3.5 Incremental Refactor Roadmap
 See `REFACTORING.md` for full detail.
-- [x] Phase 1 — Centralise controller user/role resolution — **COMPLETE**
+- [DONE] Phase 1 — Centralise controller user/role resolution — **COMPLETE**
 - [ ] Phase 2 — Extract procedural controller workflows (UpdateReaderAccess, Section query, AddProjects)
 - [ ] Phase 3 — Decompose startup/seeding
 - [ ] Phase 4 — Standardise inheritance and shared utilities
