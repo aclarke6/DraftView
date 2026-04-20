@@ -43,24 +43,11 @@ Last updated: 2026-04-20
 
 ## 2. Open Bugs
 
-- [ ] **BUG-001 — Reader removal not reflecting in UI**
-  - Action completes but reader remains visible in list
-  - Investigate: `AuthorController.SoftDeleteReader`, `SoftDeleteUserAsync`, reader list filter
-  - prompt: `.github/Prompts/BUG-001-reader-removal-not-reflecting.prompt.md`
-
-- [ ] **BUG-002 — System Support has no readers page**
-  - No UI surface to verify deny-by-default email behaviour for SystemSupport role
-  - prompt: `.github/Prompts/BUG-002-system-support-no-readers-page.prompt.md`
-
-- [ ] **BUG-003 — Reader settings shows `Ciphertext is not in the expected format` on screen**
-  - Protected-email decryption failure surfacing as a form validation error; should route to controlled 500 path
-  - prompt: `.github/Prompts/BUG-003-settings-ciphertext-error.prompt.md`
-
-- [ ] **BUG-007 — Activating a project does not deactivate the currently active project**
-  - Reported: 2026-04-20
-  - `ActivateForReaders` must atomically deactivate the existing active project
-  - Future: invariant becomes one active project per Tenancy under multi-tenancy
-  - prompt: `.github/Prompts/BUG-007-activate-project-does-not-deactivate-current.prompt.md`
+- [ ] **BUG-008 — Author/Section view has poor visual design and unreadable text**
+  - Reported: 2026-04-20 (found during UAT)
+  - Symptoms: The `Author/Section/{id}` view renders a white content box against the dark theme background. Text is barely readable (light colour on white). The overall visual impact is jarring and inconsistent with all other author views.
+  - Fix: Restyle the view to use the dark theme consistently — content box, typography, breadcrumb, metadata line, comments section. CSS/view fix only — no domain or application layer changes.
+  - prompt: `.github/Prompts/BUG-008-author-section-view-visual-design.prompt.md`
 
 - [ ] **BUG-010 — Publishing page has no navigation link from Sections view or Dashboard**
   - Reported: 2026-04-20 (found during UAT)
@@ -69,17 +56,24 @@ Last updated: 2026-04-20
   - prompt: `.github/Prompts/BUG-010-publishing-page-no-navigation-link.prompt.md`
   - **Blocks UAT scenarios C, D, E**
 
-- [ ] **BUG-011 — Author/Section view has poor visual design inconsistent with the rest of the app**
-  - Reported: 2026-04-20 (found during UAT)
-  - Symptoms: The `Author/Section/{id}` view renders a white content box against the dark theme background. The overall visual impact is jarring and inconsistent with all other author views. Text is barely readable (see also BUG-008).
-  - Fix: Restyle the view to use the dark theme consistently — content box, typography, breadcrumb, metadata line, comments section
-  - This is a CSS/view fix only — no domain or application layer changes
-  - prompt: `.github/Prompts/BUG-011-author-section-view-visual-design.prompt.md`
-
-- [ ] **BUG-008 — Author scene view has unreadable text colour**
+- [ ] **BUG-007 — Activating a project does not deactivate the currently active project**
   - Reported: 2026-04-20
-  - Light text on white background in `Author/Section/{id}` — dark theme CSS not applied to prose container
-  - prompt: `.github/Prompts/BUG-008-author-section-view-unreadable-text.prompt.md`
+  - `ActivateForReaders` must atomically deactivate the existing active project
+  - Future: invariant becomes one active project per Tenancy under multi-tenancy
+  - prompt: `.github/Prompts/BUG-007-activate-project-does-not-deactivate-current.prompt.md`
+
+- [ ] **BUG-001 — Reader removal not reflecting in UI** — needs retest, may already be fixed
+  - Action completes but reader remains visible in list
+  - Investigate: `AuthorController.SoftDeleteReader`, `SoftDeleteUserAsync`, reader list filter
+  - prompt: `.github/Prompts/BUG-001-reader-removal-not-reflecting.prompt.md`
+
+- [ ] **BUG-003 — Reader settings shows `Ciphertext is not in the expected format` on screen**
+  - Protected-email decryption failure surfacing as a form validation error; should route to controlled 500 path
+  - prompt: `.github/Prompts/BUG-003-settings-ciphertext-error.prompt.md`
+
+- [ ] **BUG-002 — System Support has no readers page**
+  - No UI surface to verify deny-by-default email behaviour for SystemSupport role
+  - prompt: `.github/Prompts/BUG-002-system-support-no-readers-page.prompt.md`
 
 ---
 
@@ -109,7 +103,7 @@ Items identified during UAT 2026-04-20. Full sprint design to follow.
 - [ ] Kindle-style resume — exact scroll position (`ScrollPosition` on `ReadEvent`, debounced JS POST, restore on load)
 - [ ] Reader progress in Recent Activity — author preference to show/hide reader open events; per-reader progress on Readers page
 - [ ] Reader version visibility — decide whether readers should see the version number (deferred, review post-UAT)
-- [ ] BUG-008 — Author scene view unreadable text colour
+- [ ] BUG-008 — Author/Section view poor visual design and unreadable text
 - [ ] BUG-007 — Activating a project does not deactivate current active project
 
 ### 3.4 Multi-Tenancy Sprint Series
