@@ -43,15 +43,6 @@ Last updated: 2026-04-20
 
 ## 2. Open Bugs
 
-- [ ] **BUG-014 — Republishing a chapter creates new versions for all scenes, not just changed ones**
-  - Reported: 2026-04-20 (found during UAT)
-  - Symptoms: Clicking Republish on a chapter creates a new `SectionVersion` for every scene in the chapter, including scenes with no content changes. A scene that has never been edited gets Version 2, 3, etc. on every republish. Reader sees "Updated — version N" and "Updated since you last read" on unchanged scenes.
-  - Root cause: `RepublishChapterAsync` (or equivalent) creates a new version for every document in the chapter unconditionally
-  - Expected: Only create a new version for scenes where `ContentChangedSincePublish = true` or where no version exists yet (first publish of a new scene)
-  - Impact: Misleads readers, wastes version quota, erodes trust
-  - prompt: `.github/Prompts/BUG-014-republish-creates-versions-for-unchanged-scenes.prompt.md`
-  - **Blocks UAT scenario C**
-
 - [ ] **UX — Republish button should show would-be version number**
   - Reported: 2026-04-20 (found during UAT)
   - The Republish button on the Sections view should show the version number that will be created, e.g. "Republish" with text "to version 3" underneath the button as a comment.
