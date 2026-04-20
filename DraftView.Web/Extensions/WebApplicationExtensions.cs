@@ -35,6 +35,8 @@ public static class WebApplicationExtensions
             supportEmail,
             supportPassword,
             supportDisplayName);
+
+        await DatabaseSeeder.RepairDuplicateAuthorRowsAsync(app.Services, seedEmail);
     }
 
     public static async Task ResetStaleSyncProjectsAsync(this WebApplication app)

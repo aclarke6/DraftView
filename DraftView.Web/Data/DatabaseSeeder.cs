@@ -9,6 +9,52 @@ namespace DraftView.Web.Data;
 
 public static class DatabaseSeeder
 {
+    public static async Task RepairDuplicateAuthorRowsAsync(IServiceProvider services, string authorEmail)
+    {
+        using var scope = services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<DraftViewDbContext>();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<DraftViewDbContext>>();
+
+        var existingIdentityUser = await userManager.FindByEmailAsync(authorEmail);
+        if (existingIdentityUser is null)
+            return;
+
+        var identityAuthorId = Guid.Parse(existingIdentityUser.Id);
+        var authorRows = db.AppUsers
+            .Where(u => u.Role == Role.Author)
+            .OrderBy(u => u.CreatedAt)
+            .ToList();
+
+        if (authorRows.Count <= 1)
+            return;
+
+        var canonicalAuthor = authorRows.FirstOrDefault(u => u.Id == identityAuthorId)
+            ?? authorRows.First();
+
+        var duplicateAuthors = authorRows
+            .Where(u => u.Id != canonicalAuthor.Id)
+            .ToList();
+
+        foreach (var duplicate in duplicateAuthors)
+        {
+            RepointDropboxConnection(db, duplicate.Id, canonicalAuthor.Id);
+            RepointUserPreferences(db, duplicate.Id, canonicalAuthor.Id);
+            RepointAuthorNotifications(db, duplicate.Id, canonicalAuthor.Id);
+            RepointProjects(db, duplicate.Id, canonicalAuthor.Id);
+            RepointReaderAccess(db, duplicate.Id, canonicalAuthor.Id);
+            db.AppUsers.Remove(duplicate);
+        }
+
+        canonicalAuthor.LoadEmailForRuntime(authorEmail);
+        await db.SaveChangesAsync();
+
+        logger.LogInformation(
+            "Duplicate author-row repair completed. Canonical AuthorId {AuthorId}. Removed duplicates: {DuplicateCount}",
+            canonicalAuthor.Id,
+            duplicateAuthors.Count);
+    }
+
     public static async Task SeedAsync(
         IServiceProvider services,
         string authorEmail,
@@ -131,8 +177,18 @@ public static class DatabaseSeeder
         // ---------------------------------------------------------------------------
         // Seed Author domain User
         // ---------------------------------------------------------------------------
-        var authorLookup = ComputeLookup(authorEmail, emailLookupHmacService);
-        var existingDomainUser = db.AppUsers.FirstOrDefault(u => u.EmailLookupHmac == authorLookup);
+        var identityAuthorId = Guid.Parse(existingIdentityUser.Id);
+        var existingDomainUser = db.AppUsers.FirstOrDefault(u => u.Id == identityAuthorId);
+        if (existingDomainUser is null)
+        {
+            var authorRows = db.AppUsers
+                .Where(u => u.Role == Role.Author)
+                .OrderBy(u => u.CreatedAt)
+                .ToList();
+
+            existingDomainUser = authorRows.FirstOrDefault();
+        }
+
         if (existingDomainUser is null)
         {
             var author = User.Create(authorEmail, authorDisplayName, Role.Author);
@@ -145,6 +201,14 @@ public static class DatabaseSeeder
 
             await db.SaveChangesAsync();
             logger.LogInformation("Author domain user created with user ID {UserId}", author.Id);
+
+            existingDomainUser = author;
+        }
+        else if (HasInvalidCiphertext(existingDomainUser.EmailCiphertext))
+        {
+            existingDomainUser.LoadEmailForRuntime(authorEmail);
+            await db.SaveChangesAsync();
+            logger.LogInformation("Author domain user repaired for user ID {UserId}", existingDomainUser.Id);
         }
 
         // ---------------------------------------------------------------------------
@@ -198,8 +262,10 @@ public static class DatabaseSeeder
         // If a legacy access token exists in config, seed it as connected.
         // The author should reconnect via OAuth to get a proper refresh token.
         // ---------------------------------------------------------------------------
-        var authorUser = db.AppUsers.First(u => u.EmailLookupHmac == authorLookup);
-        LoadRuntimeEmail(authorUser, emailEncryptionService);
+        var authorUser = existingDomainUser;
+        if (string.IsNullOrWhiteSpace(authorUser.Email))
+            authorUser.LoadEmailForRuntime(authorEmail);
+
         var existingConnection = db.DropboxConnections.FirstOrDefault(d => d.UserId == authorUser.Id);
         if (existingConnection is null)
         {
@@ -251,5 +317,88 @@ public static class DatabaseSeeder
         var runtimeEmail = emailEncryptionService.Decrypt(user.EmailCiphertext);
         user.LoadEmailForRuntime(runtimeEmail);
         return runtimeEmail;
+    }
+
+    private static bool HasInvalidCiphertext(string emailCiphertext)
+    {
+        if (string.IsNullOrWhiteSpace(emailCiphertext))
+            return true;
+
+        if (emailCiphertext.StartsWith("PENDING-", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        try
+        {
+            Convert.FromBase64String(emailCiphertext);
+            return false;
+        }
+        catch (FormatException)
+        {
+            return true;
+        }
+    }
+
+    private static void RepointDropboxConnection(DraftViewDbContext db, Guid fromAuthorId, Guid toAuthorId)
+    {
+        var canonical = db.DropboxConnections.FirstOrDefault(c => c.UserId == toAuthorId);
+        var duplicate = db.DropboxConnections.FirstOrDefault(c => c.UserId == fromAuthorId);
+
+        if (duplicate is null)
+            return;
+
+        if (canonical is not null)
+        {
+            db.DropboxConnections.Remove(duplicate);
+            return;
+        }
+
+        db.Entry(duplicate).Property(nameof(DropboxConnection.UserId)).CurrentValue = toAuthorId;
+    }
+
+    private static void RepointUserPreferences(DraftViewDbContext db, Guid fromAuthorId, Guid toAuthorId)
+    {
+        var canonical = db.UserPreferences.FirstOrDefault(p => p.UserId == toAuthorId);
+        var duplicate = db.UserPreferences.FirstOrDefault(p => p.UserId == fromAuthorId);
+
+        if (duplicate is null)
+            return;
+
+        if (canonical is not null)
+        {
+            db.UserPreferences.Remove(duplicate);
+            return;
+        }
+
+        db.Entry(duplicate).Property(nameof(UserPreferences.UserId)).CurrentValue = toAuthorId;
+    }
+
+    private static void RepointAuthorNotifications(DraftViewDbContext db, Guid fromAuthorId, Guid toAuthorId)
+    {
+        var notifications = db.AuthorNotifications
+            .Where(n => n.AuthorId == fromAuthorId)
+            .ToList();
+
+        foreach (var notification in notifications)
+            db.Entry(notification).Property(nameof(AuthorNotification.AuthorId)).CurrentValue = toAuthorId;
+    }
+
+    private static void RepointProjects(DraftViewDbContext db, Guid fromAuthorId, Guid toAuthorId)
+    {
+        var projects = db.Projects
+            .Where(p => p.AuthorId == fromAuthorId)
+            .ToList();
+
+        foreach (var project in projects)
+            db.Entry(project).Property(nameof(Project.AuthorId)).CurrentValue = toAuthorId;
+    }
+
+    private static void RepointReaderAccess(DraftViewDbContext db, Guid fromAuthorId, Guid toAuthorId)
+    {
+        var readerAccessRows = db.ReaderAccess
+            .Where(r => r.AuthorId == fromAuthorId)
+            .ToList();
+
+        foreach (var readerAccess in readerAccessRows)
+            db.Entry(readerAccess).Property(nameof(ReaderAccess.AuthorId)).CurrentValue = toAuthorId;
     }
 }
