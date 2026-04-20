@@ -43,7 +43,7 @@ Last updated: 2026-04-20
 
 ## 2. Open Bugs
 
-- [ ] **BUG-008 — Author/Section view has poor visual design and unreadable text**
+- [DONE] **BUG-008 — Author/Section view has poor visual design and unreadable text**
   - Reported: 2026-04-20 (found during UAT)
   - Symptoms: The `Author/Section/{id}` view renders a white content box against the dark theme background. Text is barely readable (light colour on white). The overall visual impact is jarring and inconsistent with all other author views.
   - Fix: Restyle the view to use the dark theme consistently — content box, typography, breadcrumb, metadata line, comments section. CSS/view fix only — no domain or application layer changes.

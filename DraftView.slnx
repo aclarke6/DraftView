@@ -40,7 +40,9 @@
     <File Path=".github/Prompts/BUG-003-settings-ciphertext-error.prompt.md" />
     <File Path=".github/Prompts/BUG-004-forgotpassword-405.prompt.md" />
     <File Path=".github/Prompts/BUG-005-password-reset-link-expired.prompt.md" />
+    <File Path=".github/Prompts/BUG-008-author-section-view-visual-design.prompt.md" />
     <File Path=".github/Prompts/BUG-009-new-scene-not-appearing-after-sync.prompt.md" />
+    <File Path=".github/Prompts/BUG-010-publishing-page-no-navigation-link.prompt.md" />
   </Folder>
   <Folder Name="/Solution Items/UAT/">
     <File Path="DraftView-UAT-Plan.md" />
