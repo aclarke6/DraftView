@@ -54,6 +54,15 @@ Last updated: 2026-04-19
 
 ## 2. Open Bugs
 
+- [ ] **BUG-006 — Unable to sync projects** (both projects show "Error" sync status in production)
+  - Reported: 2026-04-20
+  - Symptoms: Both "Book 1 - The Fractured Lattice" and "Test - Book 1" show sync status "Error" on the Author Dashboard
+  - Root cause: `UserRepository.GetAuthorAsync` decrypts `EmailCiphertext` as part of loading the author. The author `AppUsers` row (`a13f7ce4`) has `PENDING-CIPHERTEXT:...` / `PENDING-HMAC:...` placeholder values that were never replaced with real encrypted values. These are not valid Base-64, so decryption throws `InvalidOperationException`, aborting sync before Dropbox is even contacted.
+  - Secondary cause: Because the HMAC lookup fails to find the row on startup, the seeder creates a second Author row (`bd9a21c0`) with correct encrypted values each time the app restarts. All domain data (Projects, AuthorNotifications) references the broken `a13f7ce4` row; the new row is an orphan.
+  - Fix: (1) Data fix — delete the orphan `bd9a21c0` chain (DropboxConnections, UserPreferences, AppUsers) and update `a13f7ce4` with the real ciphertext/HMAC. (2) Code fix — `DatabaseSeeder` must not leave PENDING placeholder values; if `SaveChangesAsync` triggers `PrepareProtectedEmails` correctly, placeholders should never persist.
+  - prompt: `.github/Prompts/BUG-006-unable-to-sync-projects.prompt.md`
+
+
 - [x] **BUG-005 — Password reset link immediately showed invalid/expired** — FIXED
   - Root cause: Domain user ID and Identity user ID were different; `ResetPassword` POST used domain ID to look up Identity user, returning null
   - Fix: `ResetPassword` POST now falls back to `FindByEmailAsync` when `FindByIdAsync` returns null; regression test added covering mismatched ID scenario
