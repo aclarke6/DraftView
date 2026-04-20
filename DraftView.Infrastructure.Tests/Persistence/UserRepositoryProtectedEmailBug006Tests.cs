@@ -60,7 +60,7 @@ public class UserRepositoryProtectedEmailBug006Tests
 
         await using (var setupDb = CreateDb(databaseName))
         {
-            var author = User.Create("author.bug006@example.test", "Author", Role.Author); author.Activate(); setupDb.AppUsers.
+            var author = User.Create("author.bug006@example.test", "Author", Role.Author);
             author.Activate();
             setupDb.AppUsers.Add(author);
             await setupDb.SaveChangesAsync();
