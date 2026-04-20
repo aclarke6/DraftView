@@ -304,6 +304,58 @@ public class AuthorControllerTests
     }
 
     [Fact]
+    public async Task ActivateProject_DeactivatesExistingActiveProject_WhenDifferentProjectIsActivated()
+    {
+        var author = User.Create("author@example.test", "Author", Role.Author);
+        var activeProject = Project.Create("Old Project", "/Apps/Scrivener/Old", author.Id, "sync-root-old");
+        var newProject = Project.Create("New Project", "/Apps/Scrivener/New", author.Id, "sync-root-new");
+        activeProject.ActivateForReaders();
+        var sut = CreateSut();
+        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
+
+        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(author);
+        projectRepo.Setup(r => r.GetByIdAsync(newProject.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(newProject);
+        projectRepo.Setup(r => r.GetReaderActiveProjectAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(activeProject);
+
+        var result = await sut.ActivateProject(newProject.Id);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Dashboard", redirect.ActionName);
+        Assert.False(activeProject.IsReaderActive);
+        Assert.True(newProject.IsReaderActive);
+        unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ActivateProject_DoesNotDeactivate_WhenActivatingAlreadyActiveProject()
+    {
+        var author = User.Create("author@example.test", "Author", Role.Author);
+        var project = Project.Create("Project", "/Apps/Scrivener/Project", author.Id, "sync-root");
+        project.ActivateForReaders();
+        var originalActivatedAt = project.ReaderActivatedAt;
+        var sut = CreateSut();
+        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
+
+        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(author);
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(project);
+        projectRepo.Setup(r => r.GetReaderActiveProjectAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(project);
+
+        var result = await sut.ActivateProject(project.Id);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Dashboard", redirect.ActionName);
+        Assert.True(project.IsReaderActive);
+        Assert.NotNull(project.ReaderActivatedAt);
+        unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task RepublishChapter_CallsVersioningService_WithCorrectChapterId()
     {
         var author = User.Create("author@example.test", "Author", Role.Author);

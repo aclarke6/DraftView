@@ -163,6 +163,10 @@ public class AuthorController(
         var project = await projectRepo.GetByIdAsync(projectId);
         if (project is null) return NotFound();
 
+        var currentlyActiveProject = await projectRepo.GetReaderActiveProjectAsync();
+        if (currentlyActiveProject is not null && currentlyActiveProject.Id != project.Id)
+            currentlyActiveProject.DeactivateForReaders();
+
         project.ActivateForReaders();
         await GetUnitOfWork().SaveChangesAsync();
 

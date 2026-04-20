@@ -42,9 +42,17 @@ Last updated: 2026-04-20
 ---
 
 ## 2. Open Bugs
-- [ ] **BUG-007 — Activating a project does not deactivate the currently active project**
+
+- [ ] **BUG-012 — Adding a new scene to a published chapter does not trigger a republish prompt**
+  - Reported: 2026-04-20 (found during UAT)
+  - Symptoms: Author adds a new scene to a published chapter in Scrivener. Sync picks it up. No change indicator, no Republish button, no prompt on Publishing page. Author has no way to know the chapter needs republishing.
+  - Root cause: `ContentChangedSincePublish` only tracks content changes to existing published scenes. Structural additions (new scenes) are not detected.
+  - prompt: `.github/Prompts/BUG-012-new-scene-in-published-chapter-no-republish-prompt.prompt.md`
+  - **Blocks UAT scenario C**
+
+- [DONE] **BUG-007 — Activating a project does not deactivate the currently active project**
   - Reported: 2026-04-20
-  - `ActivateForReaders` must atomically deactivate the existing active project
+  - Fixed: activating a project now deactivates any currently active different project in the same save operation (atomic unit-of-work) (2026-04-20)
   - Future: invariant becomes one active project per Tenancy under multi-tenancy
   - prompt: `.github/Prompts/BUG-007-activate-project-does-not-deactivate-current.prompt.md`
 
@@ -89,8 +97,6 @@ Items identified during UAT 2026-04-20. Full sprint design to follow.
 - [ ] Kindle-style resume — exact scroll position (`ScrollPosition` on `ReadEvent`, debounced JS POST, restore on load)
 - [ ] Reader progress in Recent Activity — author preference to show/hide reader open events; per-reader progress on Readers page
 - [ ] Reader version visibility — decide whether readers should see the version number (deferred, review post-UAT)
-- [ ] BUG-008 — Author/Section view poor visual design and unreadable text
-- [ ] BUG-007 — Activating a project does not deactivate current active project
 
 ### 3.4 Multi-Tenancy Sprint Series
 See `MultiTenancy.md` for full design, migration strategy, and sprint plan.
@@ -128,6 +134,7 @@ See `REFACTORING.md` for full detail.
 ## 4. Done
 
 ### Bugs Fixed
+- [DONE] BUG-007 — Activating a project now deactivates any previously active project atomically during activation; added controller regression tests for both switching and same-project reactivation paths (2026-04-20)
 - [DONE] BUG-010 — Publishing page has no navigation link from Sections view or Dashboard
 - [DONE] BUG-008 — Author/Section view had unreadable light-on-light prose and inconsistent visual design; removed inline styling, applied dark-theme token-based styling, and aligned breadcrumb/metadata/comments with author UI patterns (2026-04-20)
 - [DONE] BUG-009 — New scene added in Scrivener did not appear after incremental sync; fixed by running `ReconcileProjectFromScrivxAsync` in the incremental path so new binder UUIDs are created from the cached local `.scrivx` without additional Dropbox API round-trips (2026-04-20)
