@@ -81,6 +81,12 @@ Any modification of a view must include an audit of that view for style leakage.
 
 ## BUGS
 
+- [DONE] BUG-006 — Unable to sync projects (`Ciphertext is not in the expected format`) — resolved 2026-04-20
+  - seeder author-domain lookup is now identity-ID-first with author-row fallback, eliminating recurrence from lookup-HMAC drift
+  - seeder now repairs invalid protected author ciphertext (`PENDING-*` / non-base64) by loading runtime email and forcing protected-field refresh on save
+  - one-time/idempotent duplicate-author repair path added (`RepairDuplicateAuthorRowsAsync`) to repoint dependent author data and remove duplicate author rows safely
+  - startup now runs duplicate-author repair alongside seeding
+
 - [OPEN] Cross-platform local cache path resolution and automatic cache directory creation
   - type: Bug Fix
   - problem: shared configuration currently carries a Windows-specific `DraftView:LocalCachePath`, which breaks macOS and Ubuntu environments and can require manual cache folder creation
