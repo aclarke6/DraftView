@@ -42,20 +42,6 @@ Last updated: 2026-04-20
 ---
 
 ## 2. Open Bugs
-
-- [DONE] **BUG-008 — Author/Section view has poor visual design and unreadable text**
-  - Reported: 2026-04-20 (found during UAT)
-  - Symptoms: The `Author/Section/{id}` view renders a white content box against the dark theme background. Text is barely readable (light colour on white). The overall visual impact is jarring and inconsistent with all other author views.
-  - Fix: Restyle the view to use the dark theme consistently — content box, typography, breadcrumb, metadata line, comments section. CSS/view fix only — no domain or application layer changes.
-  - prompt: `.github/Prompts/BUG-008-author-section-view-visual-design.prompt.md`
-
-- [DONE] **BUG-010 — Publishing page has no navigation link from Sections view or Dashboard**
-  - Reported: 2026-04-20 (found during UAT)
-  - Symptoms: Publishing page (`Author/Publishing?projectId={id}`) only reachable by typing the URL directly — no link from Sections view or Dashboard
-  - Fix: Added direct **Republish** action for published changed chapters in Sections, added always-visible **Publishing** link for published chapters in Sections, and added per-project **Publishing** link in Dashboard project actions (2026-04-20)
-  - prompt: `.github/Prompts/BUG-010-publishing-page-no-navigation-link.prompt.md`
-  - **Blocks UAT scenarios C, D, E**
-
 - [ ] **BUG-007 — Activating a project does not deactivate the currently active project**
   - Reported: 2026-04-20
   - `ActivateForReaders` must atomically deactivate the existing active project
@@ -142,6 +128,7 @@ See `REFACTORING.md` for full detail.
 ## 4. Done
 
 ### Bugs Fixed
+- [DONE] BUG-010 — Publishing page has no navigation link from Sections view or Dashboard
 - [DONE] BUG-008 — Author/Section view had unreadable light-on-light prose and inconsistent visual design; removed inline styling, applied dark-theme token-based styling, and aligned breadcrumb/metadata/comments with author UI patterns (2026-04-20)
 - [DONE] BUG-009 — New scene added in Scrivener did not appear after incremental sync; fixed by running `ReconcileProjectFromScrivxAsync` in the incremental path so new binder UUIDs are created from the cached local `.scrivx` without additional Dropbox API round-trips (2026-04-20)
 - [DONE] BUG-006 — Unable to sync projects — seeder author lookup now Identity-ID-first; invalid ciphertext repaired on startup; duplicate author row repair added (2026-04-20)
