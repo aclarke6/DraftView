@@ -161,8 +161,15 @@ else
                                     {
                                         if (classificationMap.TryGetValue(s.Id, out var classification))
                                         {
+                                            var classificationLabel = classification switch
+                                            {
+                                                ChangeClassification.Polish   => "Polished",
+                                                ChangeClassification.Revision => "Revised",
+                                                ChangeClassification.Rewrite  => "Rewritten",
+                                                _                             => classification.ToString()
+                                            };
                                             <span class="change-indicator change-indicator--@classification.ToString().ToLower()">
-                                                @classification
+                                                @classificationLabel
                                             </span>
                                         }
 
