@@ -105,6 +105,17 @@ public class AccountControllerTests
                 "TestAuth"));
     }
 
+    private static System.Security.Claims.ClaimsPrincipal AuthenticatedUserWithRole(string email, string role)
+    {
+        return new System.Security.Claims.ClaimsPrincipal(
+            new System.Security.Claims.ClaimsIdentity(
+                [
+                    new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, email),
+                    new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, role)
+                ],
+                "TestAuth"));
+    }
+
     // ---------------------------------------------------------------------------
     // Login
     // ---------------------------------------------------------------------------
@@ -308,6 +319,57 @@ public class AccountControllerTests
         var model = Assert.IsType<SettingsViewModel>(view.Model);
         Assert.Equal("resolved@example.test", model.Email);
         Assert.NotEqual(user.Email, model.Email);
+    }
+
+    [Fact]
+    public async Task Settings_BetaReaderRole_SetsIsReaderTrue_AndLoadsProsePreferences()
+    {
+        var user = Domain.Entities.User.Create("reader@example.test", "Reader", Domain.Enumerations.Role.BetaReader);
+        var prefs = UserPreferences.CreateForBetaReader(user.Id);
+        prefs.UpdateProseFontPreferences(ProseFont.Humanist, ProseFontSize.Large);
+        var sut = CreateSut(AuthenticatedUserWithRole("reader@example.test", Domain.Enumerations.Role.BetaReader.ToString()));
+
+        userRepo.Setup(r => r.GetByEmailAsync("reader@example.test"))
+            .ReturnsAsync(user);
+        prefsRepo.Setup(r => r.GetByUserIdAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(prefs);
+        controlledUserEmailService
+            .Setup(s => s.GetEmailAsync(It.IsAny<DraftView.Application.Contracts.UserEmailAccessRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("reader@example.test");
+
+        var result = await sut.Settings();
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<SettingsViewModel>(view.Model);
+        Assert.True(model.IsReader);
+        Assert.False(model.IsAuthor);
+        Assert.Equal("Humanist", model.ProseFont);
+        Assert.Equal("Large", model.ProseFontSize);
+    }
+
+    [Fact]
+    public async Task ChangeProseFontPreferences_ValidModel_CallsUpdateServiceAndRedirectsToSettings()
+    {
+        var user = Domain.Entities.User.Create("reader@example.test", "Reader", Domain.Enumerations.Role.BetaReader);
+        var sut = CreateSut(AuthenticatedUserWithRole("reader@example.test", Domain.Enumerations.Role.BetaReader.ToString()));
+        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
+
+        userRepo.Setup(r => r.GetByEmailAsync("reader@example.test"))
+            .ReturnsAsync(user);
+
+        var result = await sut.ChangeProseFontPreferences(new ChangeProseFontPreferencesViewModel
+        {
+            ProseFont = "SansSerif",
+            ProseFontSize = "ExtraLarge"
+        });
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Settings", redirect.ActionName);
+        userService.Verify(s => s.UpdateProseFontPreferencesAsync(
+            user.Id,
+            ProseFont.SansSerif,
+            ProseFontSize.ExtraLarge,
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

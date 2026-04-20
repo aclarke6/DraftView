@@ -418,8 +418,8 @@ public class AccountController(
         var vm = new SettingsViewModel {
             DisplayName = user.DisplayName,
             Email = resolvedEmail,
-            IsAuthor = User.IsInRole("Author"),
-            IsReader = User.IsInRole("Reader"),
+            IsAuthor = await IsAuthorAsync(),
+            IsReader = await IsReaderAsync(),
             DisplayTheme = prefs?.DisplayTheme.ToString() ?? "Light",
             ProseFont = prefs?.ProseFont.ToString() ?? "SystemSerif",
             ProseFontSize = prefs?.ProseFontSize.ToString() ?? "Medium"

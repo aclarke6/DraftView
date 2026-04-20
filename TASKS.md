@@ -49,11 +49,12 @@ Last updated: 2026-04-20
   - This gives the author visibility of what they are about to create before committing
   - Belongs in RSprint-1
 
-- [ ] **BUG-013 — Reader Account Settings missing font and font size preferences**
+- [DONE] **BUG-013 — Reader Account Settings missing font and font size preferences**
   - Reported: 2026-04-20 (found during UAT)
+  - Fixed: 2026-04-20
   - Symptoms: Reader navigates to `Account/Settings`. Profile, Appearance (theme), Email Address and Change Password sections present but ProseFont and ProseFontSize reading preferences are missing entirely
   - Expected: Font face and font size preferences (built in Sprint 3) should be visible and editable in Account Settings for readers
-  - Investigate: `AccountController` settings GET action, `AccountSettingsViewModel`, `Views/Account/Settings.cshtml`
+  - Resolution: `AccountController.Settings` now uses `BaseController` role helpers (`IsAuthorAsync` / `IsReaderAsync`) instead of inline role strings, correctly identifying `BetaReader` users so Reading Preferences (font and size) render as intended; prose preference load/save path unchanged
   - prompt: `.github/Prompts/BUG-013-reader-settings-missing-font-preferences.prompt.md`
 
 - [DONE] **BUG-012 — Adding a new scene to a published chapter does not trigger a republish prompt**

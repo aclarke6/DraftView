@@ -2,9 +2,7 @@
 
 ## Project Identity
 
-DraftView is a beta reader platform for authors. Authors publish prose sections for review.
-Beta readers comment on published content. The full architecture is in
-`Publishing And Versioning Architecture.md`. The task list is in `TASKS.md`.
+DraftView is a beta reader platform for authors. Authors publish prose sections for review. Beta readers comment on published content. The full architecture is in `Publishing And Versioning Architecture.md`. The task list is in `TASKS.md`.
 
 **Stack:** .NET 10, ASP.NET Core MVC, PostgreSQL, EF Core, ASP.NET Identity, xUnit/Moq  
 **Solution:** `DraftView.slnx`  
@@ -14,18 +12,13 @@ Beta readers comment on published content. The full architecture is in
 
 ## Layer Rules
 
-**Domain** — entities, invariants, factory methods, domain services. No EF, no HTTP, no crypto,
-no persistence concerns. Invariants enforced in factory methods or domain methods before any
-caller can persist invalid state.
+**Domain** — entities, invariants, factory methods, domain services. No EF, no HTTP, no crypto, no persistence concerns. Invariants enforced in factory methods or domain methods before any caller can persist invalid state.
 
-**Application** — orchestration services, interfaces, DTOs. Depends on domain and infrastructure
-interfaces only. No EF DbContext. No controller concerns.
+**Application** — orchestration services, interfaces, DTOs. Depends on domain and infrastructure interfaces only. No EF DbContext. No controller concerns.
 
-**Infrastructure** — EF Core, repositories, email, Dropbox, encryption. Implements application
-interfaces. No domain logic.
+**Infrastructure** — EF Core, repositories, email, Dropbox, encryption. Implements application interfaces. No domain logic.
 
-**Web** — controllers, Razor views, ViewModels. Thin HTTP surface only. No business logic.
-No repository calls. No domain mutations.
+**Web** — controllers, Razor views, ViewModels. Thin HTTP surface only. No business logic. No repository calls. No domain mutations.
 
 ---
 
@@ -39,8 +32,8 @@ Every Domain, Application, and Infrastructure change follows this sequence:
 4. Run the full test suite — zero regressions before proceeding
 5. Refactor with tests green throughout
 
-Never write production code before a failing test exists for it.
-Never skip TDD because a change seems small.
+Never write production code before a failing test exists for it.  
+Never skip TDD because a change seems small.  
 Search existing tests before writing new ones — never duplicate a test.
 
 ---
@@ -55,8 +48,7 @@ Every controller action must follow this structure only:
 4. Map result to TempData or ViewModel
 5. Return response
 
-Controllers must never contain: loops over domain entities, repository calls, domain mutations,
-branching business rules, or multi-step orchestration.
+Controllers must never contain: loops over domain entities, repository calls, domain mutations, branching business rules, or multi-step orchestration.
 
 ---
 
@@ -142,6 +134,14 @@ Full standards in `PowerShell.md`. Key rules:
 - Scripts over 50 lines delivered as `.ps1` files, not pasted inline
 - Every script starts with `cls` and `$ErrorActionPreference = "Stop"`
 
+---
+
+## Branching Rules
+
+For BUG-013 work, do not commit on main; all commits must be made on branch `bugfix/BUG-013-reader-settings-missing-font-preferences`.
+
+---
+
 ## Refactoring Rules
-- See refactoring.md for comprehensive standards and examples
-- 
+
+- See `refactoring.md` for comprehensive standards and examples
