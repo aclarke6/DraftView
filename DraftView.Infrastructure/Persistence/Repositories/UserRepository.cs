@@ -23,7 +23,9 @@ public class UserRepository(
         HydrateEmail(await db.AppUsers.FirstOrDefaultAsync(u => u.Role == Role.Author, ct));
 
     public async Task<IReadOnlyList<User>> GetAllBetaReadersAsync(CancellationToken ct = default) =>
-        HydrateEmails(await db.AppUsers.Where(u => u.Role == Role.BetaReader).ToListAsync(ct));
+        HydrateEmails(await db.AppUsers
+            .Where(u => u.Role == Role.BetaReader && !u.IsSoftDeleted)
+            .ToListAsync(ct));
 
     public async Task<int> CountActiveBetaReadersAsync(CancellationToken ct = default) =>
         await db.AppUsers.CountAsync(u =>

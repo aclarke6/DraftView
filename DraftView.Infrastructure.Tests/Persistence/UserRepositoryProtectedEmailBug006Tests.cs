@@ -82,4 +82,36 @@ public class UserRepositoryProtectedEmailBug006Tests
 
         Assert.Equal("Ciphertext is not in the expected format.", ex.Message);
     }
+
+    [Fact]
+    public async Task GetAllBetaReadersAsync_ExcludesSoftDeletedReaders()
+    {
+        var databaseName = Guid.NewGuid().ToString();
+
+        await using (var setupDb = CreateDb(databaseName))
+        {
+            var activeReader = User.Create("active.reader@example.test", "Active Reader", Role.BetaReader);
+            activeReader.Activate();
+            activeReader.SetProtectedEmail("ACTIVE-CIPHERTEXT", "ACTIVE-HMAC");
+
+            var softDeletedReader = User.Create("deleted.reader@example.test", "Deleted Reader", Role.BetaReader);
+            softDeletedReader.Activate();
+            softDeletedReader.SoftDelete();
+            softDeletedReader.SetProtectedEmail("DELETED-CIPHERTEXT", "DELETED-HMAC");
+
+            setupDb.AppUsers.Add(activeReader);
+            setupDb.AppUsers.Add(softDeletedReader);
+            await setupDb.SaveChangesAsync();
+        }
+
+        await using var repoDb = CreateDb(databaseName);
+        IUserEmailEncryptionService encryptionService = new UserEmailEncryptionService(EncryptionKey);
+        IUserEmailLookupHmacService hmacService = new UserEmailLookupHmacService(HmacKey);
+        var sut = new UserRepository(repoDb, encryptionService, hmacService);
+
+        var readers = await sut.GetAllBetaReadersAsync();
+
+        Assert.Single(readers);
+        Assert.Equal("Active Reader", readers[0].DisplayName);
+    }
 }
