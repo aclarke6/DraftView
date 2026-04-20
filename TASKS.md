@@ -43,10 +43,7 @@ Last updated: 2026-04-20
 
 ## 2. Open Bugs
 
-- [ ] **BUG-001 — Reader removal not reflecting in UI** — needs retest, may already be fixed
-  - Action completes but reader remains visible in list
-  - Investigate: `AuthorController.SoftDeleteReader`, `SoftDeleteUserAsync`, reader list filter
-  - prompt: `.github/Prompts/BUG-001-reader-removal-not-reflecting.prompt.md`
+- [DONE] **BUG-001 — Reader removal not reflecting in UI** — `GetAllBetaReadersAsync` now filters `!IsSoftDeleted` at repository level; confirmed by infrastructure test (2026-04-20)
 
 - [ ] **BUG-003 — Reader settings shows `Ciphertext is not in the expected format` on screen**
   - Protected-email decryption failure surfacing as a form validation error; should route to controlled 500 path
