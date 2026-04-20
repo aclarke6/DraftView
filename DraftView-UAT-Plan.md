@@ -234,14 +234,20 @@ Any ❌ Fail must be logged as an open bug with reproduction steps.
 
 | Scenario | Result | Notes | Date |
 |----------|--------|-------|------|
-| A — Sync and Initial State | | | |
-| B — Publishing Flow | | | |
+| A — Sync and Initial State | [PASSED] | Both projects syncing Healthy, incremental cursors set | 2026-04-20 |
+| B — Publishing Flow | [PARTIAL] | Chapter 2 and Chapter 3 published. Chapter 1 blocked — Scene 1 status "To Do" prevents publish (correct behaviour). BUG-008 author scene view unreadable text. | 2026-04-20 |
 | C — Republish and Versioning | | | |
 | D — Per-Document Publishing | | | |
 | E — Locking and Scheduling | | | |
-| F — Reader Experience | | | |
+| F — Reader Experience | [PARTIAL] | Reader dashboard shows chapters, reader opened Chapter 2, comment added and visible in author Recent Activity. Font preferences not yet tested. | 2026-04-20 |
 | G — Diff Highlighting | | | |
-| H — Incremental Sync | | | |
+| H — Incremental Sync | [PASSED] | Syncs completing in seconds with incremental cursor | 2026-04-20 |
 | I — Version Retention | | | |
 | J — Unpublish Flow | | | |
 | K — Mobile Reader | | | |
+
+### Bugs Found During UAT
+| Bug | Description | Status |
+|-----|-------------|--------|
+| BUG-007 | Activating a project does not deactivate the currently active project | Open |
+| BUG-008 | Author scene view has unreadable text colour | Open |

@@ -1,5 +1,5 @@
 # DraftView — Task List
-Last updated: 2026-04-19
+Last updated: 2026-04-20
 
 ---
 
@@ -10,15 +10,18 @@ Last updated: 2026-04-19
 **Repository:** https://github.com/aclarke6/DraftView
 
 ### Current Test State
-- **736 passing, 1 skipped, 0 failed** (V-Sprints 1-10 complete)
+- **636 passing, 1 skipped, 0 failed** (post BUG-006 fix)
 - 1 skipped — `SmtpEmailSenderIntegrationTests` (sends real email, manual only)
 
 ### Active Work
 | Track | Status |
 |-------|--------|
-| V-Sprints 1-10 | ✅ All complete |
+| V-Sprints 1–10 | ✅ All complete |
+| RSprint-1 | 🔵 Planned — reader and author experience improvements |
+| MT-Sprint Series | 🔵 Pre-planning — see `MultiTenancy.md` |
 | BugFix-Mac | 🟢 Synced with main, awaiting next bug |
 | BugFix-PC | 🟢 Merged to main |
+| UAT | 🟡 In progress — 2026-04-20 |
 
 ---
 
@@ -26,79 +29,62 @@ Last updated: 2026-04-19
 
 | Document | Purpose |
 |----------|---------|
+| `MultiTenancy.md` | Multi-tenancy sprint series, design decisions, migration strategy |
+| `DraftView-UAT-Plan.md` | UAT plan for versioning features |
 | `Publishing And Versioning Architecture.md` | Full V-Sprint architecture, phases, domain model, publishing rules |
 | `PRINCIPLES.md` | Core engineering principles |
-| `REFACTORING.md` & `.github/instructions/versioning.instructions.md` | Refactoring rules and roadmap |
+| `REFACTORING.md` | Refactoring rules and roadmap |
 | `PowerShell.md` | PowerShell scripting standards |
 | `DraftView Git Rules.md` | Branch strategy, merge gates, commit standards |
 | `.github/copilot-instructions.md` | Agent instructions for Copilot/Claude sessions |
-| `Sprint4-EmailPrivacy.md` | Email privacy sprint detail (Sprint 4, all phases complete) |
-| `Sprints-Legacy.md` | Sprints 1–3, Role Migration, Font Preferences, ScrivenerProject rename (all complete) |
-
-### Prompt Files (by sprint)
-- `vsprint1-phase1.prompt.md` through `vsprint1-phase6.prompt.md`
-- `vsprint2-phase1.prompt.md` through `vsprint2-phase3.prompt.md`
-- `vsprint3-phase2.prompt.md`, `vsprint3-phase3.prompt.md`
-- `vsprint4-phase1.prompt.md` through `vsprint4-phase3.prompt.md`
-- `vsprint5-phase1.prompt.md` through `vsprint5-phase3.prompt.md`
-- `vsprint6-phase1.prompt.md`, `vsprint6-phase2.prompt.md`
-- `vsprint7-phase1.prompt.md`, `vsprint7-phase2.prompt.md`
-- `vsprint8-phase1.prompt.md`
-- `bugfix-diff-para-removed.prompt.md`
-- `bugfix-mailkit-nu1902.prompt.md`
-- `BugFixes/invite-reader-submit-production-crash.md`
-- `BugFixes/mac-cross-platform-local-cache-path.md`
-- `production-reset.prompt.md`
 
 ---
 
 ## 2. Open Bugs
 
-- [Done] **BUG-006 — Unable to sync projects** (both projects show "Error" sync status in production)
-  - Reported: 2026-04-20
-  - Symptoms: Both "Book 1 - The Fractured Lattice" and "Test - Book 1" show sync status "Error" on the Author Dashboard
-  - Root cause: `UserRepository.GetAuthorAsync` decrypts `EmailCiphertext` as part of loading the author. The author `AppUsers` row (`a13f7ce4`) has `PENDING-CIPHERTEXT:...` / `PENDING-HMAC:...` placeholder values that were never replaced with real encrypted values. These are not valid Base-64, so decryption throws `InvalidOperationException`, aborting sync before Dropbox is even contacted.
-  - Secondary cause: Because the HMAC lookup fails to find the row on startup, the seeder creates a second Author row (`bd9a21c0`) with correct encrypted values each time the app restarts. All domain data (Projects, AuthorNotifications) references the broken `a13f7ce4` row; the new row is an orphan.
-  - Fix: (1) Data fix — delete the orphan `bd9a21c0` chain (DropboxConnections, UserPreferences, AppUsers) and update `a13f7ce4` with the real ciphertext/HMAC. (2) Code fix — `DatabaseSeeder` must not leave PENDING placeholder values; if `SaveChangesAsync` triggers `PrepareProtectedEmails` correctly, placeholders should never persist.
-  - prompt: `.github/Prompts/BUG-006-unable-to-sync-projects.prompt.md`
+- [ ] **BUG-009 — New scene added in Scrivener does not appear in DraftView after sync**
+  - Reported: 2026-04-20 (found during UAT)
+  - Symptoms: New scene added in Scrivener syncs to Dropbox correctly. DraftView incremental sync processes entries (13 entries logged) and the updated scrivx is present in the local cache — but the new Section row is never created in the database
+  - Investigate: `ScrivenerSyncService.ParseProjectAsync`, scrivx parse trigger logic, whether incremental listing reliably includes the scrivx when a child node is added
+  - prompt: `.github/Prompts/BUG-009-new-scene-not-appearing-after-sync.prompt.md`
+  - **Blocks UAT scenario C onwards**
 
-
-- [DONE] **BUG-005 — Password reset link immediately showed invalid/expired** — FIXED
-  - Root cause: Domain user ID and Identity user ID were different; `ResetPassword` POST used domain ID to look up Identity user, returning null
-  - Fix: `ResetPassword` POST now falls back to `FindByEmailAsync` when `FindByIdAsync` returns null; regression test added covering mismatched ID scenario
-  - Prompt: `.github/Prompts/BUG-005-password-reset-link-expired.prompt.md`
-
-  - action completes but reader remains visible
-  - investigate: `AuthorController.SoftDeleteReader`, `SoftDeleteUserAsync`, reader list filter
+- [ ] **BUG-001 — Reader removal not reflecting in UI**
+  - Action completes but reader remains visible in list
+  - Investigate: `AuthorController.SoftDeleteReader`, `SoftDeleteUserAsync`, reader list filter
   - prompt: `.github/Prompts/BUG-001-reader-removal-not-reflecting.prompt.md`
 
-- [ ] **BUG-007 — Activating a project does not deactivate the currently active project**
-  - Reported: 2026-04-20
-  - Symptoms: Clicking Activate on a second project marks it Active without deactivating the currently active project, leaving two projects reader-active simultaneously
-  - Root cause: `ActivateForReaders` application service is not deactivating the current reader-active project before activating the new one
-  - Expected: Only one project may be reader-active at a time — activating a new project must atomically deactivate the existing one
-  - Investigate: `ProjectService.ActivateForReadersAsync` (or equivalent), domain invariant enforcement
-  - Future: When multi-tenancy arrives, the invariant becomes one active project per Tenancy; when multi-author support arrives, multiple authors may each have their own active project
-  - prompt: `.github/Prompts/BUG-007-activate-project-does-not-deactivate-current.prompt.md`
-
 - [ ] **BUG-002 — System Support has no readers page**
-  - no UI surface to verify deny-by-default email behaviour for SystemSupport role
-  - decide: dedicated support readers screen, or remove from UAT scope
+  - No UI surface to verify deny-by-default email behaviour for SystemSupport role
   - prompt: `.github/Prompts/BUG-002-system-support-no-readers-page.prompt.md`
 
 - [ ] **BUG-003 — Reader settings shows `Ciphertext is not in the expected format` on screen**
-  - protected-email decryption failure surfacing as a form validation error
-  - should route through controlled 500 error path
-  - investigate: `AccountController` settings actions, production rows with invalid `EmailCiphertext`
+  - Protected-email decryption failure surfacing as a form validation error; should route to controlled 500 path
   - prompt: `.github/Prompts/BUG-003-settings-ciphertext-error.prompt.md`
 
-- [DONE] **BUG-004 — ForgotPassword returns HTTP 405 in production** — FIXED
-  - root cause: two missing migrations (`ReplacePasswordResetTokenEmailWithUserId`, `AllowMultipleInvitationsPerUser`) applied manually to production
-  - 405 error page fix (StatusCodeError action + UseStatusCodePagesWithReExecute) still to deploy
+- [ ] **BUG-007 — Activating a project does not deactivate the currently active project**
+  - Reported: 2026-04-20
+  - `ActivateForReaders` must atomically deactivate the existing active project
+  - Future: invariant becomes one active project per Tenancy under multi-tenancy
+  - prompt: `.github/Prompts/BUG-007-activate-project-does-not-deactivate-current.prompt.md`
+
+- [ ] **BUG-008 — Author scene view has unreadable text colour**
+  - Reported: 2026-04-20
+  - Light text on white background in `Author/Section/{id}` — dark theme CSS not applied to prose container
+  - prompt: `.github/Prompts/BUG-008-author-section-view-unreadable-text.prompt.md`
 
 ---
 
 ## 3. Active Projects
+
+### 3.1 Go-Live Prerequisites
+- [ ] Add `Anthropic:ApiKey` to `appsettings.Production.json` (enables AI summaries)
+- [ ] Invitation acceptance flow does not expose stored email
+- [ ] Forgot-password flow works end-to-end in production
+- [ ] Production smoke check: no `localhost` links, no plaintext email leakage
+- [ ] Data handling aligns with UK GDPR and Data Protection Act 2018
+- [ ] Copy production `EmailProtection:EncryptionKey` and `EmailProtection:LookupHmacKey` into secure password manager
+- [ ] Go-Live Day: send password reset emails to Becca (becca@the-dunlops.co.uk) and Hilary (hilaryrrb@gmail.com)
 
 ### 3.2 Platform Hardening
 - [ ] Fail2ban setup on production VM
@@ -107,111 +93,76 @@ Last updated: 2026-04-19
 - [ ] Logging: failed authorization attempts
 - [ ] Impersonation — read-only, explicit enter/exit mode (design agreed, not built)
 
-### 3.3 Kindle-style Resume — Exact Scroll Position
-- [ ] `ScrollPosition` (nullable int) on `ReadEvent`, `UpdateScrollPosition` domain method
-- [ ] EF migration: `ScrollPosition` column on `ReadEvents`
-- [ ] `UpdateScrollPositionAsync` on `IReadingProgressService`
-- [ ] `RecordScrollPosition` POST action on `ReaderController`
-- [ ] Resume redirect uses `?scrollTo=` query param if stored
-- [ ] JS: debounced scroll POST, page-load restore
+### 3.3 RSprint-1 — Reader and Author Experience
+Items identified during UAT 2026-04-20. Full sprint design to follow.
 
-### 3.4 Billing and Multi-tenancy (Post Go-Live)
-See `ScrivenerSync-BillingModel-v2.docx` and `ScrivenerSync-BusinessModel-v3.docx`.
-- [ ] `IBillingProvider` abstraction (Creem preferred, Paddle alternative)
-- [ ] Subscription tiers: Free / Paid / Ultimate
-- [ ] `ReaderTenant` model (`AuthorId`, `IsActive`, `IsDeleted`, `KnownAs`)
-- [ ] Reader Marketplace (post-revenue)
+- [ ] Reader progress drill-down on Author scene view — clicking "Read by N reader(s)" shows which readers have opened the scene and when
+- [ ] Reader scroll progress tracking — progress indicator per reader per scene (depends on scroll position work below)
+- [ ] Kindle-style resume — exact scroll position (`ScrollPosition` on `ReadEvent`, debounced JS POST, restore on load)
+- [ ] Reader progress in Recent Activity — author preference to show/hide reader open events; per-reader progress on Readers page
+- [ ] Reader version visibility — decide whether readers should see the version number (deferred, review post-UAT)
+- [ ] BUG-008 — Author scene view unreadable text colour
+- [ ] BUG-007 — Activating a project does not deactivate current active project
+
+### 3.4 Multi-Tenancy Sprint Series
+See `MultiTenancy.md` for full design, migration strategy, and sprint plan.
+
+| Sprint | Deliverable |
+|--------|-------------|
+| MT-Sprint-1 | Account / Tenancy / TenancyMembership entity split |
+| MT-Sprint-2 | Subscription enforcement, `IBillingProvider`, Creem integration |
+| MT-Sprint-3 | Author self-serve registration, Dropbox connect per Tenancy |
+| MT-Sprint-4 | Reader cross-tenancy identity |
+| MT-Sprint-5 | Reader Marketplace (post-revenue) |
+
+**Prerequisite:** Billing abstraction in place and production stable before MT-Sprint-1.
 
 ### 3.5 Incremental Refactor Roadmap
 See `REFACTORING.md` for full detail.
-- [DONE] Phase 1 — Centralise controller user/role resolution — **COMPLETE**
-- [ ] Phase 2 — Extract procedural controller workflows (UpdateReaderAccess, Section query, AddProjects)
+- [DONE] Phase 1 — Centralise controller user/role resolution
+- [ ] Phase 2 — Extract procedural controller workflows
 - [ ] Phase 3 — Decompose startup/seeding
 - [ ] Phase 4 — Standardise inheritance and shared utilities
 - [ ] Phase 5 — Extract remaining procedural workflows
 - [ ] Phase 6 — Standardise sync kickoff (remove inline `Task.Run`)
 
----
-
-## 4. Go-Live Prerequisites
-
-### Must Complete Before Go-Live
-- [ ] Add `Anthropic:ApiKey` to `appsettings.Production.json` on the production server (enables AI summaries)
-- [ ] Desktop: `/Author/InviteReader` sends invitation with correct production `App:BaseUrl`
-- [ ] Desktop: invitation acceptance flow does not expose stored email
-- [ ] Desktop: forgot-password flow works end-to-end in production
-- [ ] Desktop: support flows do not reveal user email
-- [ ] Mobile: account settings is the only self-service email view
-- [ ] Production smoke check: no `localhost` links, no plaintext email leakage, no fake-success on operational failures
-- [ ] Data handling aligns with UK GDPR and Data Protection Act 2018
-
-### Key Management
-- [ ] Copy production `EmailProtection:EncryptionKey` and `EmailProtection:LookupHmacKey` into a secure password manager
-- [ ] Consider moving keys to systemd environment variables (removes secrets from web root)
-- [ ] Confirm a second person or secure location holds recovery keys
-- [ ] Document recovery procedure: lost keys = unrecoverable encrypted emails
-
-### Go-Live Day (run on the day, not before)
-- [ ] Send password reset emails to Becca (becca@the-dunlops.co.uk) and Hilary (hilaryrrb@gmail.com)
-- [ ] Confirm Becca and Hilary can log in and access The Fractured Lattice
-
-### Backlog (post go-live)
+### 3.6 Post Go-Live Backlog
 - Reader notification emails (new chapter published)
-- Show last download timestamp alongside last sync timestamp
 - Dropbox OAuth2 token refresh
 - Dropbox webhook controller for push-based sync
 - In-app Dropbox re-auth page
 - Author/Comments view (mobile)
 - Author Chapter Page (`Author/Chapter/{id}`)
 - Publishing cascades (part-level, book-level)
-- Audit remaining user secrets
 
 ---
 
-## 5. Done
+## 4. Done
 
-### 5a. Bugs Fixed
-- [DONE] Cross-platform local cache path resolution — `IPlatformPathService`, `PlatformPathService`, platform-aware fallback in `LocalPathResolver`, `appsettings.json` `LocalCachePath` cleared (BugFix-Mac, 2026-04-19)
-- [DONE] `/Author/InviteReader` submit production crash — operational failures now route to `Home/Error`; `InvariantViolationException` remains a form validation response (BugFix-Mac, 2026-04-19)
+### Bugs Fixed
+- [DONE] BUG-006 — Unable to sync projects — seeder author lookup now Identity-ID-first; invalid ciphertext repaired on startup; duplicate author row repair added (2026-04-20)
+- [DONE] BUG-005 — Password reset link immediately expired — reset flow now resolves Identity user by email fallback (2026-04-19)
+- [DONE] BUG-004 — ForgotPassword returns HTTP 405 in production — two missing migrations applied; status code routing fixed
+- [DONE] Cross-platform local cache path resolution — `IPlatformPathService`, platform-aware fallback (BugFix-Mac, 2026-04-19)
+- [DONE] `/Author/InviteReader` submit production crash — operational failures route to `Home/Error` (BugFix-Mac, 2026-04-19)
 - [DONE] MailKit NU1902 vulnerability — upgraded to 4.16.0 (BugFix-PC, 2026-04-19)
-- [DONE] BUG-005 — Password reset link immediately showed invalid/expired for users with mismatched Domain vs Identity IDs; reset flow now resolves Identity user by email fallback and regression coverage added (bugfix/BUG-005-password-reset-link-expired, 2026-04-19)
-- [DONE] Reader view does not apply saved Reading Preferences — resolved 2026-04-17
-- [DONE] CS9107 in `AccountController` primary constructor — resolved 2026-04-17
-- [DONE] Reader/Read mobile view 404 — resolved
-- [DONE] Reader/Read comment box overflows page boundary on RHS — CSS fix
-- [DONE] AddComment POST redirects to top of chapter/page — fixed with `#scene-{id}` / `#chapter-comments` anchors
-- [DONE] SetCommentStatus POST redirects to wrong anchor — fixed
-- [DONE] Reader/Read comment status dropdown missing — added for author/moderator
+- [DONE] Reader view does not apply saved Reading Preferences (2026-04-17)
+- [DONE] CS9107 in `AccountController` primary constructor (2026-04-17)
+- [DONE] Reader/Read mobile view 404
+- [DONE] Reader/Read comment box overflows page boundary on RHS
+- [DONE] AddComment POST redirects to top of page — fixed with `#scene-{id}` anchors
 - [DONE] Author/Dashboard Recent Activity truncation — replaced with persisted `AuthorNotification`
 - [DONE] Login always redirected to Reader/Dashboard — fixed role-based redirect
 - [DONE] Reader diff UX for removed paragraphs — thin markers instead of strikethrough
-- [DONE] Removed paragraphs diff issue — resolved (bugfix-diff-para-removed)
 
-### 5b. Sprints and Projects Complete
-- [DONE] **V-Sprints 1–10 — Publishing and Versioning Series** — 736 tests, all phases complete. See `Publishing And Versioning Architecture.md`
-- [DONE] **Sprint 4 — Email Privacy and Controlled Access** — see `Sprint4-EmailPrivacy.md`
-- [DONE] **Sprint 3 — Reader Font Preferences** — `ProseFont`, `ProseFontSize` on `UserPreferences`, Google Fonts, CSS variables
-- [DONE] **Sprint 2 — Reader Experience** — project switcher, Kindle-style resume (anchor), AuthorNotifications, CommentStatus
-- [DONE] **Sprint 1 — Pre-Beta Push** — prose font, comment display name, reader reactivation
-- [DONE] **Email Sprint** — Oracle Email Delivery SMTP, MailKit, DKIM, SPF, Cloudflare routing
-- [DONE] **Role Migration** — Identity roles, SystemSupport, SystemStateMessage, mobile reader flow
-- [DONE] **ScrivenerProject → Project rename** — full solution-wide rename, SyncRootId, migration
-- [DONE] **UserNotificationPreferences → UserPreferences rename** — migration, DI, theme toggle
-- [DONE] **Incremental Refactor Phase 1** — `BaseController` auth helpers, controller guard consolidation
-
-### 5c. Other Completed
-- [DONE] Home fault-page coverage and routing hardening — added anonymous test endpoints (`/Home/Test403`, `/Home/Test404`, `/Home/Test405`, `/Home/Test500`), status-code re-execute routing (`StatusCodeError`), dedicated 403/405 page handling, and Web integration tests proving correct 403/404/405/500 pages and data
-- [DONE] Audited `Views/Author/Publishing.cshtml` for style leakage during V-Sprint 9 Phase 3 version-management UI; retained existing inline form display pattern only and moved version-history styling into `DraftView.Core.css`
-- [DONE] Audited `Views/Author/Sections.cshtml` for style leakage during V-Sprint 10 Phase 2 tree builder UI; retained existing inline form pattern only and moved tree-builder interaction styling into `DraftView.Core.css`
-- [DONE] Audited `Views/Author/Sections.cshtml` for style leakage during V-Sprint 10 Phase 3 sync tree display; retained existing inline table pattern and added sync-specific read-only/badge styles in `DraftView.Core.css`
-- [DONE] Production infrastructure — Oracle Cloud VM, Nginx, Cloudflare SSL, systemd service
-- [DONE] `IDropboxFileDownloader` — full Dropbox sync end to end in production
-- [DONE] `publish-draftview.ps1` deploy script
-- [DONE] `pg.ps1` PostgreSQL helper
-- [DONE] `run-query.sh` production bash query helper
-- [DONE] CSS split into 7 files by concern; Heroicons as static C# class
-- [DONE] Rebrand: DraftReader → DraftView
-- [DONE] BetaBooks comment importer (54 comments seeded)
-- [DONE] Becca Dunlop and Hilary Royston-Bishop accounts with real emails
-- [DONE] Toast notifications
-- [DONE] Production database rebuild (2026-04-19) — SectionVersions truncated, sections unpublished, ReadEvents cleared, sync and republish to follow
+### Sprints Complete
+- [DONE] V-Sprints 1–10 — Publishing and Versioning Series (636 tests). See `Publishing And Versioning Architecture.md`
+- [DONE] Sprint 4 — Email Privacy and Controlled Access. See `Sprint4-EmailPrivacy.md`
+- [DONE] Sprint 3 — Reader Font Preferences
+- [DONE] Sprint 2 — Reader Experience
+- [DONE] Sprint 1 — Pre-Beta Push
+- [DONE] Email Sprint — Oracle Email Delivery, MailKit, DKIM, SPF
+- [DONE] Role Migration — Identity roles, SystemSupport, SystemStateMessage, mobile reader flow
+- [DONE] ScrivenerProject → Project rename
+- [DONE] UserNotificationPreferences → UserPreferences rename
+- [DONE] Incremental Refactor Phase 1
