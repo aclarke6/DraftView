@@ -43,6 +43,13 @@ Last updated: 2026-04-20
 
 ## 2. Open Bugs
 
+- [ ] **BUG-013 — Reader Account Settings missing font and font size preferences**
+  - Reported: 2026-04-20 (found during UAT)
+  - Symptoms: Reader navigates to `Account/Settings`. Profile, Appearance (theme), Email Address and Change Password sections present but ProseFont and ProseFontSize reading preferences are missing entirely
+  - Expected: Font face and font size preferences (built in Sprint 3) should be visible and editable in Account Settings for readers
+  - Investigate: `AccountController` settings GET action, `AccountSettingsViewModel`, `Views/Account/Settings.cshtml`
+  - prompt: `.github/Prompts/BUG-013-reader-settings-missing-font-preferences.prompt.md`
+
 - [DONE] **BUG-012 — Adding a new scene to a published chapter does not trigger a republish prompt**
   - Reported: 2026-04-20 (found during UAT)
   - Fixed: 2026-04-20
