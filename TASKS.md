@@ -29,6 +29,7 @@ Last updated: 2026-04-20
 
 | Document | Purpose |
 |----------|---------|
+| `AIScoringService.md` | AI change scoring service — provider abstraction, tier model, sprint plan |
 | `MultiTenancy.md` | Multi-tenancy sprint series, design decisions, migration strategy |
 | `DraftView-UAT-Plan.md` | UAT plan for versioning features |
 | `Publishing And Versioning Architecture.md` | Full V-Sprint architecture, phases, domain model, publishing rules |
@@ -60,6 +61,20 @@ Last updated: 2026-04-20
   - `ActivateForReaders` must atomically deactivate the existing active project
   - Future: invariant becomes one active project per Tenancy under multi-tenancy
   - prompt: `.github/Prompts/BUG-007-activate-project-does-not-deactivate-current.prompt.md`
+
+- [ ] **BUG-010 — Publishing page has no navigation link from Sections view or Dashboard**
+  - Reported: 2026-04-20 (found during UAT)
+  - Symptoms: Publishing page (`Author/Publishing?projectId={id}`) only reachable by typing the URL directly — no link from Sections view or Dashboard
+  - Fix: Add Publishing link on Sections view for changed chapters; consider persistent link in project actions on Dashboard
+  - prompt: `.github/Prompts/BUG-010-publishing-page-no-navigation-link.prompt.md`
+  - **Blocks UAT scenarios C, D, E**
+
+- [ ] **BUG-011 — Author/Section view has poor visual design inconsistent with the rest of the app**
+  - Reported: 2026-04-20 (found during UAT)
+  - Symptoms: The `Author/Section/{id}` view renders a white content box against the dark theme background. The overall visual impact is jarring and inconsistent with all other author views. Text is barely readable (see also BUG-008).
+  - Fix: Restyle the view to use the dark theme consistently — content box, typography, breadcrumb, metadata line, comments section
+  - This is a CSS/view fix only — no domain or application layer changes
+  - prompt: `.github/Prompts/BUG-011-author-section-view-visual-design.prompt.md`
 
 - [ ] **BUG-008 — Author scene view has unreadable text colour**
   - Reported: 2026-04-20
