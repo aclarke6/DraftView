@@ -2,115 +2,119 @@
 @model SectionViewModel
 @{ ViewData["Title"] = Model.Section.Title; }
 
-@if (Model.ChapterTitle is not null)
-{
-    <p style="font-size:var(--text-sm); color:var(--color-ink-muted); margin-bottom:4px;">
-        <a asp-action="Sections" style="color:var(--color-ink-muted);">Sections</a>
-        &rsaquo; @Model.ChapterTitle
+<div class="author-section-view">
+    @if (Model.ChapterTitle is not null)
+    {
+        <p class="author-section-view__breadcrumb">
+            <a asp-action="Sections" class="author-section-view__breadcrumb-link">Sections</a>
+            <span class="author-section-view__breadcrumb-sep">&rsaquo;</span>
+            <span>@Model.ChapterTitle</span>
+        </p>
+    }
+
+    <h2 class="author-section-view__title">@Model.Section.Title</h2>
+    <p class="author-section-view__meta">
+        <span>@(Model.Section.ScrivenerStatus ?? "-")</span>
+        <span class="author-section-view__meta-sep">|</span>
+        <span>Read by @Model.ReadCount reader(s)</span>
     </p>
-}
-<h2 style="margin-top:0;">@Model.Section.Title</h2>
-<p style="color:var(--color-ink-muted)">@Model.Section.ScrivenerStatus | Read by @Model.ReadCount reader(s)</p>
 
-<div style="background:white; padding:24px; border:1px solid var(--color-border); margin-bottom:32px; border-radius:var(--radius-md);">
-    @Html.Raw(Model.Section.HtmlContent ?? "<p><em>No content.</em></p>")
-</div>
-
-<h3>Comments (@Model.Comments.Count)</h3>
-
-@foreach (var c in Model.Comments)
-{
-    var authorName    = Model.CommentAuthorNames.TryGetValue(c.AuthorId, out var n) ? n : "Unknown";
-    var isAuthorReply = c.Status == CommentStatus.AuthorReply;
-    var isReply       = c.ParentCommentId.HasValue;
-    var borderColour  = isReply ? "#ccc" : (c.Visibility == Visibility.Private ? "#f0ad4e" : "var(--color-accent)");
-
-    <div style="border-left:3px solid @borderColour; padding:14px 16px; margin-bottom:16px;
-                background:white; border-radius:0 var(--radius-sm) var(--radius-sm) 0;
-                @(isReply ? "margin-left:24px;" : "")">
-
-        <div style="display:flex; justify-content:space-between; align-items:center;
-                    margin-bottom:8px; flex-wrap:wrap; gap:8px;">
-            <div>
-                <strong style="font-size:var(--text-sm);">@authorName</strong>
-                @if (c.Visibility == Visibility.Private)
-                {
-                    <span style="color:#f0ad4e; font-size:var(--text-xs); margin-left:6px;">[Private]</span>
-                }
-                <span style="color:var(--color-ink-muted); font-size:var(--text-xs); margin-left:8px;">
-                    @c.CreatedAt.ToString("dd MMM yyyy HH:mm")
-                </span>
+    <div class="card author-section-view__content-card">
+        <div class="card__body">
+            <div class="author-section-view__prose">
+                @Html.Raw(Model.Section.HtmlContent ?? "<p><em>No content.</em></p>")
             </div>
-            @if (isAuthorReply)
+        </div>
+    </div>
+
+    <h3 class="author-section-view__comments-heading">Comments (@Model.Comments.Count)</h3>
+
+    @foreach (var c in Model.Comments)
+    {
+        var authorName = Model.CommentAuthorNames.TryGetValue(c.AuthorId, out var n) ? n : "Unknown";
+        var isAuthorReply = c.Status == CommentStatus.AuthorReply;
+        var isReply = c.ParentCommentId.HasValue;
+        var commentClasses = "author-section-comment";
+
+        if (isReply)
+            commentClasses += " author-section-comment--reply";
+
+        if (c.Visibility == Visibility.Private)
+            commentClasses += " author-section-comment--private";
+
+        <div class="@commentClasses">
+            <div class="author-section-comment__header">
+                <div class="author-section-comment__meta">
+                    <strong class="author-section-comment__author">@authorName</strong>
+                    @if (c.Visibility == Visibility.Private)
+                    {
+                        <span class="author-section-comment__private">[Private]</span>
+                    }
+                    <span class="author-section-comment__date">@c.CreatedAt.ToString("dd MMM yyyy HH:mm")</span>
+                </div>
+
+                @if (isAuthorReply)
+                {
+                    <span class="author-section-comment__author-reply">Author reply</span>
+                }
+                else if (!isReply)
+                {
+                    <form asp-action="SetCommentStatus" method="post" class="author-section-comment__status-form">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="commentId" value="@c.Id" />
+                        <input type="hidden" name="sectionId" value="@Model.Section.Id" />
+                        <select name="status" onchange="this.form.submit()"
+                                class="author-section-comment__status-select @StatusClass(c.Status)">
+                            @foreach (var s in Enum.GetValues<CommentStatus>().Where(s => s != CommentStatus.AuthorReply))
+                            {
+                                <option value="@s" selected="@(c.Status == s)">@s</option>
+                            }
+                        </select>
+                    </form>
+                }
+            </div>
+
+            @if (c.IsSoftDeleted)
             {
-                <span style="font-size:var(--text-xs); color:var(--color-ink-muted); font-style:italic;">
-                    Author reply
-                </span>
+                <p class="author-section-comment__deleted">This comment has been removed.</p>
             }
-            else if (!isReply)
+            else
             {
-                <form asp-action="SetCommentStatus" method="post" style="display:inline;">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="commentId" value="@c.Id" />
-                    <input type="hidden" name="sectionId" value="@Model.Section.Id" />
-                    <select name="status" onchange="this.form.submit()"
-                            style="font-size:var(--text-xs); padding:2px 6px;
-                                   border-radius:var(--radius-sm); border:1px solid var(--color-border);
-                                   background:white; cursor:pointer; color:@StatusColour(c.Status);">
-                        @foreach (var s in Enum.GetValues<CommentStatus>().Where(s => s != CommentStatus.AuthorReply))
-                        {
-                            <option value="@s" selected="@(c.Status == s)">@s</option>
-                        }
-                    </select>
-                </form>
+                <p class="author-section-comment__body">@c.Body</p>
+                <details class="author-section-comment__reply-details">
+                    <summary class="author-section-comment__reply-summary">
+                        @Icons.Reply() Reply
+                    </summary>
+                    <form asp-action="ReplyToComment" method="post" class="author-section-comment__reply-form">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="parentCommentId" value="@c.Id" />
+                        <input type="hidden" name="sectionId" value="@Model.Section.Id" />
+                        <textarea name="body" rows="3" placeholder="Your reply..." class="author-section-comment__reply-input"></textarea>
+                        <div class="author-section-comment__reply-actions">
+                            <button type="submit" class="btn btn--primary btn--sm">@Icons.Reply()</button>
+                        </div>
+                    </form>
+                </details>
             }
         </div>
+    }
 
-        @if (c.IsSoftDeleted)
-        {
-            <p style="color:var(--color-ink-muted); font-style:italic; margin:0;">This comment has been removed.</p>
-        }
-        else
-        {
-            <p style="margin:0 0 12px 0;">@c.Body</p>
-            <details style="margin-top:4px;">
-                <summary style="font-size:var(--text-xs); color:var(--color-accent);
-                                cursor:pointer; list-style:none; user-select:none;">
-                    @Icons.Reply() Reply
-                </summary>
-                <form asp-action="ReplyToComment" method="post" style="margin-top:8px;">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="parentCommentId" value="@c.Id" />
-                    <input type="hidden" name="sectionId" value="@Model.Section.Id" />
-                    <textarea name="body" rows="3" placeholder="Your reply..."
-                              style="width:100%; padding:8px; font-family:Georgia,serif;
-                                     font-size:var(--text-sm); border:1px solid var(--color-border);
-                                     border-radius:var(--radius-sm); box-sizing:border-box;
-                                     resize:vertical;"></textarea>
-                    <div style="margin-top:6px;">
-                        <button type="submit" class="btn btn--primary btn--sm">@Icons.Reply()</button>
-                    </div>
-                </form>
-            </details>
-        }
-    </div>
-}
-
-@if (!Model.Comments.Any())
-{
-    <p style="color:var(--color-ink-muted); font-style:italic;">No comments on this section yet.</p>
-}
+    @if (!Model.Comments.Any())
+    {
+        <p class="author-section-view__comments-empty">No comments on this section yet.</p>
+    }
+</div>
 
 @functions {
-    static string StatusColour(CommentStatus status) => status switch
+    static string StatusClass(CommentStatus status) => status switch
     {
-        CommentStatus.New      => "var(--color-accent)",
-        CommentStatus.Todo     => "#e67e22",
-        CommentStatus.Consider => "#8e44ad",
-        CommentStatus.Done     => "#22c55e",
-        CommentStatus.Ignore   => "var(--color-ink-muted)",
-        CommentStatus.Keep     => "#2980b9",
-        _                      => "inherit"
+        CommentStatus.New => "author-section-comment__status-select--new",
+        CommentStatus.Todo => "author-section-comment__status-select--todo",
+        CommentStatus.Consider => "author-section-comment__status-select--consider",
+        CommentStatus.Done => "author-section-comment__status-select--done",
+        CommentStatus.Ignore => "author-section-comment__status-select--ignore",
+        CommentStatus.Keep => "author-section-comment__status-select--keep",
+        _ => string.Empty
     };
 }
 

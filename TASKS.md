@@ -142,6 +142,7 @@ See `REFACTORING.md` for full detail.
 ## 4. Done
 
 ### Bugs Fixed
+- [DONE] BUG-008 — Author/Section view had unreadable light-on-light prose and inconsistent visual design; removed inline styling, applied dark-theme token-based styling, and aligned breadcrumb/metadata/comments with author UI patterns (2026-04-20)
 - [DONE] BUG-009 — New scene added in Scrivener did not appear after incremental sync; fixed by running `ReconcileProjectFromScrivxAsync` in the incremental path so new binder UUIDs are created from the cached local `.scrivx` without additional Dropbox API round-trips (2026-04-20)
 - [DONE] BUG-006 — Unable to sync projects — seeder author lookup now Identity-ID-first; invalid ciphertext repaired on startup; duplicate author row repair added (2026-04-20)
 - [DONE] BUG-005 — Password reset link immediately expired — reset flow now resolves Identity user by email fallback (2026-04-19)

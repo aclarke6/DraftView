@@ -13,7 +13,7 @@
    -------------------------------------------------------------------------- */
 :root {
     /* Update for every change */
-    --css-version: "v2026-04-19-3";
+    --css-version: "v2026-04-20-1";
     /* Colour palette now split into Light and Dark theme files */
     /* Typography */
     --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
@@ -59,7 +59,7 @@
     --transition: 150ms ease;
 }
 
-/* Version history — Author/Publishing.cshtml (V-Sprint 9 Phase 3) */
+/* Version history â€” Author/Publishing.cshtml (V-Sprint 9 Phase 3) */
 .version-history {
     margin-top: var(--space-3);
     padding: var(--space-3);
@@ -102,6 +102,208 @@
 
 .version-history__current {
     font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    font-style: italic;
+}
+
+/* Author/Section.cshtml â€” BUG-008 visual consistency and readability */
+.author-section-view {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.author-section-view__breadcrumb {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+}
+
+.author-section-view__breadcrumb-link {
+    color: var(--color-text-muted);
+}
+
+.author-section-view__breadcrumb-sep {
+    margin: 0 var(--space-1);
+}
+
+.author-section-view__title {
+    margin: 0;
+}
+
+.author-section-view__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+}
+
+.author-section-view__meta-sep {
+    color: var(--color-text-subtle);
+}
+
+.author-section-view__content-card {
+    margin-bottom: var(--space-3);
+}
+
+.author-section-view__prose {
+    color: var(--color-text);
+    font-family: var(--font-prose);
+    font-size: var(--text-base);
+    line-height: var(--leading-relaxed);
+    background: var(--color-surface-alt);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: var(--space-6);
+}
+
+.author-section-view__prose > :last-child {
+    margin-bottom: 0;
+}
+
+.author-section-view__comments-heading {
+    margin: 0;
+}
+
+.author-section-comment {
+    border-left: 3px solid var(--color-accent);
+    background: var(--color-surface-alt);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+    box-shadow: var(--shadow-sm);
+}
+
+.author-section-comment--reply {
+    margin-left: var(--space-6);
+    border-left-color: var(--color-border-strong);
+}
+
+.author-section-comment--private {
+    border-left-color: var(--color-warning, #f59e0b);
+}
+
+.author-section-comment__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-2);
+}
+
+.author-section-comment__meta {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.author-section-comment__author {
+    font-size: var(--text-sm);
+    color: var(--color-text);
+}
+
+.author-section-comment__private {
+    color: var(--color-warning, #f59e0b);
+    font-size: var(--text-xs);
+}
+
+.author-section-comment__date {
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+}
+
+.author-section-comment__author-reply {
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    font-style: italic;
+}
+
+.author-section-comment__status-form {
+    margin: 0;
+}
+
+.author-section-comment__status-select {
+    font-size: var(--text-xs);
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text);
+    cursor: pointer;
+}
+
+.author-section-comment__status-select--new {
+    color: var(--color-accent);
+}
+
+.author-section-comment__status-select--todo {
+    color: var(--color-warning, #f59e0b);
+}
+
+.author-section-comment__status-select--consider {
+    color: var(--color-accent-strong, #a855f7);
+}
+
+.author-section-comment__status-select--done {
+    color: var(--color-success, #22c55e);
+}
+
+.author-section-comment__status-select--ignore {
+    color: var(--color-text-muted);
+}
+
+.author-section-comment__status-select--keep {
+    color: var(--color-info-text, #60a5fa);
+}
+
+.author-section-comment__deleted {
+    color: var(--color-text-muted);
+    font-style: italic;
+    margin: 0;
+}
+
+.author-section-comment__body {
+    margin: 0 0 var(--space-3) 0;
+    color: var(--color-text);
+}
+
+.author-section-comment__reply-details {
+    margin-top: var(--space-1);
+}
+
+.author-section-comment__reply-summary {
+    font-size: var(--text-xs);
+    color: var(--color-accent);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+
+.author-section-comment__reply-form {
+    margin-top: var(--space-2);
+}
+
+.author-section-comment__reply-input {
+    width: 100%;
+    min-height: 84px;
+    padding: var(--space-2);
+    font-family: var(--font-prose);
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-text);
+    resize: vertical;
+}
+
+.author-section-comment__reply-actions {
+    margin-top: var(--space-2);
+}
+
+.author-section-view__comments-empty {
     color: var(--color-text-muted);
     font-style: italic;
 }
@@ -271,7 +473,7 @@ a {
 }
 
 /* --------------------------------------------------------------------------
-   Reader diff highlighting — DesktopRead.cshtml / MobileRead.cshtml
+   Reader diff highlighting â€” DesktopRead.cshtml / MobileRead.cshtml
    -------------------------------------------------------------------------- */
 .diff-para--added {
     background: var(--color-diff-added-bg, #f0fdf4);
@@ -280,8 +482,8 @@ a {
     margin-bottom: var(--space-2);
 }
 
-/* Removed paragraph marker — DesktopRead.cshtml / MobileRead.cshtml
-   Renders as a thin red left bar only. Content is intentionally hidden —
+/* Removed paragraph marker â€” DesktopRead.cshtml / MobileRead.cshtml
+   Renders as a thin red left bar only. Content is intentionally hidden â€”
    beta readers focus on what is present, not what was deleted. */
 .diff-para--removed {
     border-left: 3px solid var(--color-diff-removed, #ef4444);
@@ -290,7 +492,7 @@ a {
     opacity: 0.5;
 }
 
-/* Change classification indicator — Author/Sections.cshtml */
+/* Change classification indicator â€” Author/Sections.cshtml */
 .change-indicator {
     display: inline-flex;
     align-items: center;
@@ -355,7 +557,7 @@ a {
         background: var(--color-surface-alt);
     }
 
-/* Publishing Page — Author/Publishing.cshtml */
+/* Publishing Page â€” Author/Publishing.cshtml */
 .publishing-chapter {
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md, 6px);
@@ -411,7 +613,7 @@ a {
     gap: var(--space-2);
 }
 
-/* Chapter locking — Publishing.cshtml / DesktopRead.cshtml / MobileRead.cshtml */
+/* Chapter locking â€” Publishing.cshtml / DesktopRead.cshtml / MobileRead.cshtml */
 .lock-indicator {
     font-size: var(--text-xs);
     font-weight: 600;
@@ -436,7 +638,7 @@ a {
     font-size: var(--text-sm);
 }
 
-/* Chapter scheduling — Publishing.cshtml */
+/* Chapter scheduling â€” Publishing.cshtml */
 .schedule-indicator {
     font-size: var(--text-xs);
     color: var(--color-text-muted);
@@ -449,7 +651,7 @@ a {
     border-radius: var(--radius-sm, 4px);
 }
 
-/* Tree builder UI — Author/Sections.cshtml (V-Sprint 10 Phase 2) */
+/* Tree builder UI â€” Author/Sections.cshtml (V-Sprint 10 Phase 2) */
 .tree-builder__add-form {
     display: flex;
     align-items: center;
@@ -467,7 +669,7 @@ tr[draggable="true"]:active {
     opacity: 0.7;
 }
 
-/* Sync tree display — Author/Sections.cshtml (V-Sprint 10 Phase 3) */
+/* Sync tree display â€” Author/Sections.cshtml (V-Sprint 10 Phase 3) */
 .page-subtitle--info {
     color: var(--color-text-muted);
     font-style: italic;
