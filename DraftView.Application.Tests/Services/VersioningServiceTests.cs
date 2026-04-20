@@ -232,6 +232,7 @@ public class VersioningServiceTests
         var projectId = Guid.NewGuid();
         var chapter = MakeChapter(projectId);
         var doc = MakeDocument(projectId, chapter.Id);
+        doc.MarkContentChanged();
 
         _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default))
             .ReturnsAsync(chapter);
@@ -356,12 +357,107 @@ public class VersioningServiceTests
     }
 
     [Fact]
+    public async Task RepublishChapterAsync_OnlyChangedScene_CreatesVersionForChangedSceneOnly()
+    {
+        var projectId = Guid.NewGuid();
+        var chapter = MakeChapter(projectId);
+        var changedDoc = MakeDocument(projectId, chapter.Id);
+        var unchangedDoc = MakeDocument(projectId, chapter.Id);
+        changedDoc.MarkContentChanged();
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default))
+            .ReturnsAsync(chapter);
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapter.Id, default))
+            .ReturnsAsync(new List<Section> { changedDoc, unchangedDoc });
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(changedDoc.Id, default)).ReturnsAsync(1);
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(unchangedDoc.Id, default)).ReturnsAsync(1);
+
+        var addedSectionIds = new List<Guid>();
+        _versionRepo.Setup(r => r.AddAsync(It.IsAny<SectionVersion>(), default))
+            .Callback<SectionVersion, CancellationToken>((v, _) => addedSectionIds.Add(v.SectionId));
+
+        await _sut.RepublishChapterAsync(chapter.Id, Guid.NewGuid(), default);
+
+        Assert.Single(addedSectionIds);
+        Assert.Equal(changedDoc.Id, addedSectionIds[0]);
+    }
+
+    [Fact]
+    public async Task RepublishChapterAsync_NewSceneWithoutVersion_GetsVersionOne_UnchangedExistingSceneNotVersioned()
+    {
+        var projectId = Guid.NewGuid();
+        var chapter = MakeChapter(projectId);
+        var existingUnchanged = MakeDocument(projectId, chapter.Id);
+        var newSceneNoVersion = MakeDocument(projectId, chapter.Id);
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default))
+            .ReturnsAsync(chapter);
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapter.Id, default))
+            .ReturnsAsync(new List<Section> { existingUnchanged, newSceneNoVersion });
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(existingUnchanged.Id, default)).ReturnsAsync(2);
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(newSceneNoVersion.Id, default)).ReturnsAsync(0);
+
+        SectionVersion? addedVersion = null;
+        _versionRepo.Setup(r => r.AddAsync(It.IsAny<SectionVersion>(), default))
+            .Callback<SectionVersion, CancellationToken>((v, _) => addedVersion = v);
+
+        await _sut.RepublishChapterAsync(chapter.Id, Guid.NewGuid(), default);
+
+        Assert.NotNull(addedVersion);
+        Assert.Equal(newSceneNoVersion.Id, addedVersion!.SectionId);
+        Assert.Equal(1, addedVersion.VersionNumber);
+    }
+
+    [Fact]
+    public async Task RepublishChapterAsync_AllScenesChanged_CreatesVersionForAllChangedScenes()
+    {
+        var projectId = Guid.NewGuid();
+        var chapter = MakeChapter(projectId);
+        var doc1 = MakeDocument(projectId, chapter.Id);
+        var doc2 = MakeDocument(projectId, chapter.Id);
+        doc1.MarkContentChanged();
+        doc2.MarkContentChanged();
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default))
+            .ReturnsAsync(chapter);
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapter.Id, default))
+            .ReturnsAsync(new List<Section> { doc1, doc2 });
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(doc1.Id, default)).ReturnsAsync(1);
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(doc2.Id, default)).ReturnsAsync(3);
+
+        await _sut.RepublishChapterAsync(chapter.Id, Guid.NewGuid(), default);
+
+        _versionRepo.Verify(r => r.AddAsync(It.IsAny<SectionVersion>(), default), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task RepublishChapterAsync_NoScenesChangedAndAllVersioned_CreatesNoNewVersions()
+    {
+        var projectId = Guid.NewGuid();
+        var chapter = MakeChapter(projectId);
+        var doc1 = MakeDocument(projectId, chapter.Id);
+        var doc2 = MakeDocument(projectId, chapter.Id);
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default))
+            .ReturnsAsync(chapter);
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapter.Id, default))
+            .ReturnsAsync(new List<Section> { doc1, doc2 });
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(doc1.Id, default)).ReturnsAsync(1);
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(doc2.Id, default)).ReturnsAsync(4);
+
+        await _sut.RepublishChapterAsync(chapter.Id, Guid.NewGuid(), default);
+
+        _versionRepo.Verify(r => r.AddAsync(It.IsAny<SectionVersion>(), default), Times.Never);
+    }
+
+    [Fact]
     public async Task RepublishChapterAsync_SetsChangeClassification_WhenPreviousVersionExists()
     {
         var projectId = Guid.NewGuid();
         var authorId = Guid.NewGuid();
         var chapter = MakeChapter(projectId);
         var doc = MakeDocument(projectId, chapter.Id);
+        doc.MarkContentChanged();
         var previousVersion = SectionVersion.Create(doc, authorId, 1);
 
         _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default))
@@ -418,6 +514,7 @@ public class VersioningServiceTests
         var authorId = Guid.NewGuid();
         var chapter = MakeChapter(projectId);
         var doc = MakeDocument(projectId, chapter.Id);
+        doc.MarkContentChanged();
         var previousVersion = SectionVersion.Create(doc, authorId, 1);
 
         _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default))
@@ -530,6 +627,7 @@ public class VersioningServiceTests
         var authorId = Guid.NewGuid();
         var chapter = MakeChapter(projectId);
         var doc = MakeDocument(projectId, chapter.Id);
+        doc.MarkContentChanged();
         var previousVersion = SectionVersion.Create(doc, authorId, 1);
 
         _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default))

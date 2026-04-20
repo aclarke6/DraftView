@@ -71,6 +71,12 @@ Last updated: 2026-04-20
   - Resolution: sync reconciliation now marks a published parent chapter as changed when a new unpublished child scene is created from Scrivener binder reconciliation. This enables chapter-level change indicators and Republish controls.
   - prompt: `.github/Prompts/BUG-012-new-scene-in-published-chapter-no-republish-prompt.prompt.md`
 
+- [DONE] **BUG-014 — Republishing a chapter creates new versions for unchanged scenes**
+  - Reported: 2026-04-20 (found during UAT)
+  - Fixed: 2026-04-20
+  - Resolution: chapter republish now creates a new version only for scenes changed since last publish or scenes with no existing versions. Unchanged already-versioned scenes are skipped.
+  - prompt: `.github/Prompts/BUG-014-republish-creates-versions-for-unchanged-scenes.prompt.md`
+
 - [DONE] **BUG-007 — Activating a project does not deactivate the currently active project**
   - Reported: 2026-04-20
   - Fixed: activating a project now deactivates any currently active different project in the same save operation (atomic unit-of-work) (2026-04-20)

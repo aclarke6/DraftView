@@ -50,7 +50,15 @@ public class VersioningService(
         var subscriptionTier = GetSubscriptionTier();
 
         foreach (var document in publishableDocuments)
-            await CreateVersionForDocumentAsync(document, authorId, subscriptionTier, ct);
+        {
+            var maxVersion = await sectionVersionRepository.GetMaxVersionNumberAsync(document.Id, ct);
+            var shouldCreateVersion = document.ContentChangedSincePublish || maxVersion == 0;
+
+            if (!shouldCreateVersion)
+                continue;
+
+            await CreateVersionForDocumentAsync(document, authorId, subscriptionTier, maxVersion, ct);
+        }
 
         await unitOfWork.SaveChangesAsync(ct);
     }
@@ -67,7 +75,7 @@ public class VersioningService(
         await AssertParentChapterNotLockedAsync(section, ct);
 
         var subscriptionTier = GetSubscriptionTier();
-        await CreateVersionForDocumentAsync(section, authorId, subscriptionTier, ct);
+        await CreateVersionForDocumentAsync(section, authorId, subscriptionTier, null, ct);
         await unitOfWork.SaveChangesAsync(ct);
     }
 
@@ -161,12 +169,13 @@ public class VersioningService(
         Section document,
         Guid authorId,
         SubscriptionTier subscriptionTier,
+        int? maxVersion,
         CancellationToken ct)
     {
         await AssertWithinRetentionLimitAsync(document.Id, subscriptionTier, ct);
 
-        var maxVersion = await sectionVersionRepository.GetMaxVersionNumberAsync(document.Id, ct);
-        var nextVersion = maxVersion + 1;
+        var currentMaxVersion = maxVersion ?? await sectionVersionRepository.GetMaxVersionNumberAsync(document.Id, ct);
+        var nextVersion = currentMaxVersion + 1;
         var version = SectionVersion.Create(document, authorId, nextVersion);
 
         var allVersions = await sectionVersionRepository.GetAllBySectionIdAsync(document.Id, ct);
