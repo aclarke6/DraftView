@@ -15,19 +15,15 @@ deny-by-default email behaviour for the SystemSupport role cannot be verified
 through the UI, and the Sprint 4 UAT checklist item cannot be completed.
 
 ## Decision Required Before Implementing
-This is a design decision, not just a bug fix. Two options:
 
-**Option A** — Add a dedicated SystemSupport readers page at `/Support/Readers`
+
+- Add a dedicated SystemSupport readers page at `/Support/Readers`
 - Shows reader list with display names only (no email addresses)
 - Email access denied by default — SystemSupport must go through the controlled
   privileged access path to see an email
 - Proves the deny-by-default behaviour through the UI
 
-**Option B** — Remove this item from the UAT scope
-- Accept that SystemSupport has no reader list UI
-- Mark the Sprint 4 UAT item as N/A
 
-Discuss with the author before implementing. If Option A is chosen, proceed below.
 
 ## Option A Implementation
 
