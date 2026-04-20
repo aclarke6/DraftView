@@ -555,6 +555,117 @@ public class ScrivenerSyncServiceTests
     }
 
     [Fact]
+    public async Task ParseProjectAsync_WithPublishedChapter_NewSceneAdded_MarksChapterContentChanged()
+    {
+        var project = MakeProject();
+        var sut = CreateSut();
+        var existingRoot = Section.CreateFolder(project.Id, "ROOT-001", "Manuscript", null, 0);
+        var existingChapter = Section.CreateFolder(project.Id, "CHAP-001", "Chapter 1", existingRoot.Id, 0);
+        existingChapter.MarkAsPublishedContainer();
+
+        SetupPathResolver(project);
+        SetupParserWithTree(project, new ParsedBinderNode
+        {
+            Uuid = "ROOT-001",
+            Title = "Manuscript",
+            NodeType = ParsedNodeType.Folder,
+            Children = new List<ParsedBinderNode>
+            {
+                new()
+                {
+                    Uuid = "CHAP-001",
+                    Title = "Chapter 1",
+                    NodeType = ParsedNodeType.Folder,
+                    SortOrder = 0,
+                    Children = new List<ParsedBinderNode>
+                    {
+                        new()
+                        {
+                            Uuid = "SCEN-NEW-CH-001",
+                            Title = "Scene 2",
+                            NodeType = ParsedNodeType.Document,
+                            SortOrder = 0,
+                            Children = new()
+                        }
+                    }
+                }
+            }
+        });
+
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "ROOT-001", default))
+            .ReturnsAsync(existingRoot);
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "CHAP-001", default))
+            .ReturnsAsync(existingChapter);
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "SCEN-NEW-CH-001", default))
+            .ReturnsAsync((Section?)null);
+        _sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, default))
+            .ReturnsAsync(new List<Section> { existingRoot, existingChapter });
+        _converter.Setup(c => c.ConvertAsync("/fake/path", "SCEN-NEW-CH-001", default))
+            .ReturnsAsync(new RtfConversionResult { Html = "<p>Scene 2</p>", Hash = "h-new" });
+
+        await sut.ParseProjectAsync(project.Id);
+
+        Assert.True(existingChapter.ContentChangedSincePublish);
+    }
+
+    [Fact]
+    public async Task ParseProjectAsync_WithPublishedChapter_NoNewScene_DoesNotMarkChapterContentChanged()
+    {
+        var project = MakeProject();
+        var sut = CreateSut();
+        var existingRoot = Section.CreateFolder(project.Id, "ROOT-001", "Manuscript", null, 0);
+        var existingChapter = Section.CreateFolder(project.Id, "CHAP-001", "Chapter 1", existingRoot.Id, 0);
+        var existingScene = Section.CreateDocument(project.Id, "SCEN-EXIST-CH-001", "Scene 1", existingChapter.Id, 0, "<p>Scene 1</p>", "h-same", "First Draft");
+        existingChapter.MarkAsPublishedContainer();
+        existingChapter.UnmarkAsPublishedContainer();
+        existingChapter.MarkAsPublishedContainer();
+
+        SetupPathResolver(project);
+        SetupParserWithTree(project, new ParsedBinderNode
+        {
+            Uuid = "ROOT-001",
+            Title = "Manuscript",
+            NodeType = ParsedNodeType.Folder,
+            Children = new List<ParsedBinderNode>
+            {
+                new()
+                {
+                    Uuid = "CHAP-001",
+                    Title = "Chapter 1",
+                    NodeType = ParsedNodeType.Folder,
+                    SortOrder = 0,
+                    Children = new List<ParsedBinderNode>
+                    {
+                        new()
+                        {
+                            Uuid = "SCEN-EXIST-CH-001",
+                            Title = "Scene 1",
+                            NodeType = ParsedNodeType.Document,
+                            SortOrder = 0,
+                            Children = new()
+                        }
+                    }
+                }
+            }
+        });
+
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "ROOT-001", default))
+            .ReturnsAsync(existingRoot);
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "CHAP-001", default))
+            .ReturnsAsync(existingChapter);
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "SCEN-EXIST-CH-001", default))
+            .ReturnsAsync(existingScene);
+        _sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, default))
+            .ReturnsAsync(new List<Section> { existingRoot, existingChapter, existingScene });
+        _converter.Setup(c => c.ConvertAsync("/fake/path", "SCEN-EXIST-CH-001", default))
+            .ReturnsAsync(new RtfConversionResult { Html = "<p>Scene 1</p>", Hash = "h-same" });
+
+        await sut.ParseProjectAsync(project.Id);
+
+        Assert.False(existingChapter.ContentChangedSincePublish);
+    }
+
+    [Fact]
     public async Task ParseProjectAsync_OnParseException_SetsSyncStatusError()
     {
         var project = MakeProject();

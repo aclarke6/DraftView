@@ -43,12 +43,11 @@ Last updated: 2026-04-20
 
 ## 2. Open Bugs
 
-- [ ] **BUG-012 — Adding a new scene to a published chapter does not trigger a republish prompt**
+- [DONE] **BUG-012 — Adding a new scene to a published chapter does not trigger a republish prompt**
   - Reported: 2026-04-20 (found during UAT)
-  - Symptoms: Author adds a new scene to a published chapter in Scrivener. Sync picks it up. No change indicator, no Republish button, no prompt on Publishing page. Author has no way to know the chapter needs republishing.
-  - Root cause: `ContentChangedSincePublish` only tracks content changes to existing published scenes. Structural additions (new scenes) are not detected.
+  - Fixed: 2026-04-20
+  - Resolution: sync reconciliation now marks a published parent chapter as changed when a new unpublished child scene is created from Scrivener binder reconciliation. This enables chapter-level change indicators and Republish controls.
   - prompt: `.github/Prompts/BUG-012-new-scene-in-published-chapter-no-republish-prompt.prompt.md`
-  - **Blocks UAT scenario C**
 
 - [DONE] **BUG-007 — Activating a project does not deactivate the currently active project**
   - Reported: 2026-04-20

@@ -113,17 +113,25 @@ public class ScrivenerSyncService(
     }
 
     private async Task ReconcileNodeAsync(
-        ParsedBinderNode node, Guid? parentId, Guid projectId,
+        ParsedBinderNode node, Guid? parentId, Section? parentSection, Guid projectId,
         string scrivFolderPath, HashSet<string> seenUuids, CancellationToken ct)
     {
         seenUuids.Add(node.Uuid);
 
         var existing = await sectionRepo.GetByScrivenerUuidAsync(projectId, node.Uuid, ct);
+        var created = false;
 
         if (existing is null)
         {
             existing = await CreateSectionAsync(node, parentId, projectId, scrivFolderPath, ct);
             await sectionRepo.AddAsync(existing, ct);
+            created = true;
+
+            if (created && node.NodeType == ParsedNodeType.Document)
+            {
+                if (parentSection is not null && parentSection.NodeType == NodeType.Folder && parentSection.IsPublished)
+                    parentSection.MarkContentChanged();
+            }
         }
         else
         {
@@ -131,7 +139,7 @@ public class ScrivenerSyncService(
         }
 
         foreach (var child in node.Children)
-            await ReconcileNodeAsync(child, existing.Id, projectId, scrivFolderPath, seenUuids, ct);
+            await ReconcileNodeAsync(child, existing.Id, existing, projectId, scrivFolderPath, seenUuids, ct);
     }
 
     private async Task SyncUsingFullListingAsync(Project project, CancellationToken ct)
@@ -238,7 +246,7 @@ public class ScrivenerSyncService(
                 rootNode = found;
         }
 
-        await ReconcileNodeAsync(rootNode, null, project.Id, localPath, seenUuids, ct);
+        await ReconcileNodeAsync(rootNode, null, null, project.Id, localPath, seenUuids, ct);
 
         foreach (var section in existingSections)
         {
