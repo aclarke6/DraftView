@@ -46,9 +46,9 @@
     <File Path=".github/Prompts/BUG-010-publishing-page-no-navigation-link.prompt.md" />
     <File Path=".github/Prompts/BUG-012-new-scene-in-published-chapter-no-republish-prompt.prompt.md" />
     <File Path=".github/Prompts/BUG-014-republish-creates-versions-for-unchanged-scenes.prompt.md" />
+    <File Path=".github/Prompts/BUG-016-publishing-raw-version-label.prompt.md" />
+    <File Path=".github/Prompts/BUG-017-author-no-change-indicator-after-sync.prompt.md" />
     <File Path="BUG-015-reader-sees-unpublished-working-content-and-banner-version-missing.prompt.md" />
-    <File Path="BUG-016-publishing-raw-version-label.prompt.md" />
-    <File Path="BUG-017-author-no-change-indicator-after-sync.prompt.md" />
   </Folder>
   <Folder Name="/Solution Items/UAT/">
     <File Path="DraftView-UAT-Plan.md" />
