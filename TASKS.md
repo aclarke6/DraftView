@@ -1,5 +1,5 @@
 # DraftView — Task List
-Last updated: 2026-04-20
+Last updated: 2026-04-21
 
 ---
 
@@ -10,7 +10,7 @@ Last updated: 2026-04-20
 **Repository:** https://github.com/aclarke6/DraftView
 
 ### Current Test State
-- **636 passing, 1 skipped, 0 failed** (post BUG-006 fix)
+- 766 total, 765 passed, 1 skipped, 0 failed (post BUG-016 fix)
 - 1 skipped — `SmtpEmailSenderIntegrationTests` (sends real email, manual only)
 
 ### Active Work
