@@ -10,7 +10,7 @@ Last updated: 2026-04-21
 **Repository:** https://github.com/aclarke6/DraftView
 
 ### Current Test State
-- 766 total, 765 passed, 1 skipped, 0 failed (post BUG-016 fix)
+- 770 total, 769 passed, 1 skipped, 0 failed (post BUG-018 work)
 - 1 skipped — `SmtpEmailSenderIntegrationTests` (sends real email, manual only)
 
 ### Active Work
@@ -41,7 +41,14 @@ Last updated: 2026-04-21
 
 ---
 
-## 2. Open Bugs
+## 2. Open Minor Work
+
+### 2(a) Bugs
+
+
+### 2(b) Changes
+
+- [ ] CHANGE-001 — `Views/Reader/DesktopRead.cshtml` & `Mobileread.cshtml`: move the scene version label from the main scene title area to the left-hand scene navigation beside each scene heading.
 
 ---
 
