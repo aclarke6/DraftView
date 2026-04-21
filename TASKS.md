@@ -10,7 +10,7 @@ Last updated: 2026-04-20
 **Repository:** https://github.com/aclarke6/DraftView
 
 ### Current Test State
-- **761 passing, 1 skipped, 0 failed** (post BUG-001 fix, 2026-04-20)
+- **636 passing, 1 skipped, 0 failed** (post BUG-006 fix)
 - 1 skipped — `SmtpEmailSenderIntegrationTests` (sends real email, manual only)
 
 ### Active Work
@@ -21,7 +21,7 @@ Last updated: 2026-04-20
 | MT-Sprint Series | 🔵 Pre-planning — see `MultiTenancy.md` |
 | BugFix-Mac | 🟢 Synced with main, awaiting next bug |
 | BugFix-PC | 🟢 Merged to main |
-| UAT | 🟡 In progress — scenarios A, B, C partial; blocked by BUG-014 (now fixed), BUG-012 (now fixed) |
+| UAT | 🟡 In progress — 2026-04-20 |
 
 ---
 
@@ -43,8 +43,11 @@ Last updated: 2026-04-20
 
 ## 2. Open Bugs
 
-- [ ] **BUG-003 — Reader settings shows `Ciphertext is not in the expected format` on screen**
-  - Protected-email decryption failure surfacing as a form validation error; should route to controlled 500 path
+- [DONE] **BUG-001 — Reader removal not reflecting in UI** — `GetAllBetaReadersAsync` now filters `!IsSoftDeleted` at repository level; confirmed by infrastructure test (2026-04-20)
+
+- [DONE] **BUG-003 — Reader settings shows `Ciphertext is not in the expected format` on screen**
+  - Fixed: 2026-04-21
+  - Resolution: Account settings operational failures in `ChangeDisplayName` and `ChangePassword` now log and redirect to `Home/Error` instead of surfacing ciphertext/decryption exceptions to users via settings UI
   - prompt: `.github/Prompts/BUG-003-settings-ciphertext-error.prompt.md`
 
 ---
@@ -113,7 +116,6 @@ See `REFACTORING.md` for full detail.
 ## 4. Done
 
 ### Bugs Fixed
-- [DONE] BUG-001 — Reader removal not reflecting in UI; `GetAllBetaReadersAsync` now filters `!IsSoftDeleted` at repository level; confirmed by infrastructure test (2026-04-20)
 - [DONE] BUG-014 — Republishing a chapter created new versions for all scenes unconditionally; fixed to only create versions for scenes with `ContentChangedSincePublish = true` or no existing version (2026-04-20)
 - [DONE] BUG-013 — Reader Account Settings missing font/size preferences; `AccountController.Settings` now uses `BaseController` role helpers to correctly identify BetaReader users (2026-04-20)
 - [DONE] BUG-012 — New scene added in Scrivener did not trigger republish prompt; reconciliation now marks published parent chapter changed on new child scene creation (2026-04-20)
