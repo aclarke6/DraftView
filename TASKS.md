@@ -43,17 +43,16 @@ Last updated: 2026-04-20
 
 ## 2. Open Bugs
 
-- [DONE] **BUG-001 — Reader removal not reflecting in UI** — `GetAllBetaReadersAsync` now filters `!IsSoftDeleted` at repository level; confirmed by infrastructure test (2026-04-20)
+- [ ] **BUG-016 — Publishing page leaks raw Razor token for version label**
+  - Publishing page shows literal `v@doc.CurrentVersionNumber` instead of a rendered version value beside scene actions
+  - Seen on Chapter 1 / Scene 2 after sync and before republish during UAT on 2026-04-21
+  - prompt: `.github/Prompts/BUG-016-publishing-page-raw-razor-version-label.prompt.md`
 
-- [DONE] **BUG-003 — Reader settings shows `Ciphertext is not in the expected format` on screen**
-  - Fixed: 2026-04-21
-  - Resolution: Account settings operational failures in `ChangeDisplayName` and `ChangePassword` now log and redirect to `Home/Error` instead of surfacing ciphertext/decryption exceptions to users via settings UI
-  - prompt: `.github/Prompts/BUG-003-settings-ciphertext-error.prompt.md`
-- [DONE] **BUG-015 — Reader shows unpublished working content after sync and update banner version not visible**
-  - Fixed: 2026-04-21
-  - Resolution: reader content rendering is now pinned to latest published `SectionVersion` prose whenever a version exists; diff paragraphs no longer replace prose body in versioned paths. Desktop/mobile update banner rendering now requires `CurrentVersionNumber` so version labels are consistently visible and data-driven.
-  - prompt: `.github/Prompts/BUG-015-reader-sees-unpublished-working-content-and-banner-version-missing.prompt.md`
-
+- [ ] **BUG-017 — Author UI does not show pending change indication after sync for changed scene**
+  - After editing Scene 2 and syncing, Sections view did not show a clear changed-state indicator before opening Publishing
+  - Publishing page correctly identified the scene as changed (`Polish`) and allowed republish, so sync/change detection worked but author surfacing was incomplete
+  - Seen in UAT on 2026-04-21
+  - prompt: `.github/Prompts/BUG-017-no-author-change-indicator-after-sync.prompt.md`
 ---
 
 ## 3. Active Projects
@@ -120,6 +119,9 @@ See `REFACTORING.md` for full detail.
 ## 4. Done
 
 ### Bugs Fixed
+- [DONE] BUG-001 — Reader removal not reflected in UI; repository now filters `!IsSoftDeleted` (2026-04-20)
+- [DONE] BUG-003 — Settings surfaced ciphertext errors; now logs and redirects to error page instead of exposing exceptions (2026-04-21)
+- [DONE] BUG-015 — Reader showed unpublished content and inconsistent banner version; now pinned to latest `SectionVersion` with stable versioned banner rendering (2026-04-21)
 - [DONE] BUG-014 — Republishing a chapter created new versions for all scenes unconditionally; fixed to only create versions for scenes with `ContentChangedSincePublish = true` or no existing version (2026-04-20)
 - [DONE] BUG-013 — Reader Account Settings missing font/size preferences; `AccountController.Settings` now uses `BaseController` role helpers to correctly identify BetaReader users (2026-04-20)
 - [DONE] BUG-012 — New scene added in Scrivener did not trigger republish prompt; reconciliation now marks published parent chapter changed on new child scene creation (2026-04-20)
