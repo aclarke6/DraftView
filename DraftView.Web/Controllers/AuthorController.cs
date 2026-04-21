@@ -207,10 +207,10 @@ public class AuthorController(
         }
 
         var classificationMap = new Dictionary<Guid, ChangeClassification>();
+        var chapterHasChanges = new HashSet<Guid>();
         foreach (var (chapter, _) in sorted.Where(x =>
                      x.Section.NodeType == NodeType.Folder &&
-                     x.Section.IsPublished &&
-                     x.Section.ContentChangedSincePublish))
+                     x.Section.IsPublished))
         {
             try
             {
@@ -220,6 +220,11 @@ public class AuthorController(
                                 !x.Section.IsSoftDeleted)
                     .Select(x => x.Section)
                     .ToList();
+
+                if (!documents.Any(d => d.ContentChangedSincePublish))
+                    continue;
+
+                chapterHasChanges.Add(chapter.Id);
 
                 var highestClassification = ChangeClassification.Polish;
                 var hasClassifiableVersion = false;
@@ -250,6 +255,7 @@ public class AuthorController(
 
         ViewBag.Project     = project;
         ViewBag.Publishable = publishable;
+        ViewBag.ChapterHasChanges = chapterHasChanges;
         ViewBag.ClassificationMap = classificationMap;
         return View(sorted);
     }

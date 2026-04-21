@@ -256,6 +256,105 @@ public class AuthorControllerTests
     }
 
     [Fact]
+    public async Task Sections_WhenPublishedChapterHasChangedScene_ExposesChapterChangeIndicatorState()
+    {
+        var author = User.Create("author@example.test", "Author", Role.Author);
+        var project = Project.Create("Project One", "/Apps/Scrivener/ProjectOne", author.Id, "sync-root");
+        var chapter = Section.CreateFolder(project.Id, Guid.NewGuid().ToString(), "Chapter 1", null, 0);
+        chapter.MarkAsPublishedContainer();
+
+        var sceneVersioned = Section.CreateDocument(
+            project.Id,
+            Guid.NewGuid().ToString(),
+            "Scene 2",
+            chapter.Id,
+            0,
+            "<p>Updated prose</p>",
+            "hash-updated",
+            null);
+        sceneVersioned.PublishAsPartOfChapter("hash-original");
+        sceneVersioned.MarkContentChanged();
+
+        var previousSceneSnapshot = Section.CreateDocument(
+            project.Id,
+            Guid.NewGuid().ToString(),
+            "Scene 2",
+            chapter.Id,
+            0,
+            "<p>Original prose</p>",
+            "hash-original",
+            null);
+        var latestVersion = SectionVersion.Create(previousSceneSnapshot, author.Id, 1);
+
+        var sut = CreateSut();
+
+        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(author);
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(project);
+        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([chapter, sceneVersioned]);
+        publicationService.Setup(s => s.CanPublishAsync(chapter.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        sectionVersionRepo.Setup(r => r.GetLatestAsync(sceneVersioned.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(latestVersion);
+        htmlDiffService.Setup(s => s.Compute(latestVersion.HtmlContent, sceneVersioned.HtmlContent ?? string.Empty))
+            .Returns(new List<DraftView.Domain.Diff.ParagraphDiffResult>
+            {
+                new("Original prose", "<p>Original prose</p>", DiffResultType.Removed),
+                new("Updated prose", "<p>Updated prose</p>", DiffResultType.Added)
+            });
+        changeClassificationService.Setup(s => s.Classify(It.IsAny<IReadOnlyList<DraftView.Domain.Diff.ParagraphDiffResult>>()))
+            .Returns(ChangeClassification.Polish);
+
+        var result = await sut.Sections(project.Id);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var chapterHasChanges = Assert.IsType<HashSet<Guid>>(view.ViewData["ChapterHasChanges"]);
+        Assert.Contains(chapter.Id, chapterHasChanges);
+
+        var classificationMap = Assert.IsType<Dictionary<Guid, ChangeClassification>>(view.ViewData["ClassificationMap"]);
+        Assert.True(classificationMap.ContainsKey(chapter.Id));
+    }
+
+    [Fact]
+    public async Task Sections_WhenNoChangedScenes_DoesNotExposeChapterChangeIndicatorState()
+    {
+        var author = User.Create("author@example.test", "Author", Role.Author);
+        var project = Project.Create("Project One", "/Apps/Scrivener/ProjectOne", author.Id, "sync-root");
+        var chapter = Section.CreateFolder(project.Id, Guid.NewGuid().ToString(), "Chapter 1", null, 0);
+        chapter.MarkAsPublishedContainer();
+
+        var unchangedScene = Section.CreateDocument(
+            project.Id,
+            Guid.NewGuid().ToString(),
+            "Scene 1",
+            chapter.Id,
+            0,
+            "<p>Stable prose</p>",
+            "hash-stable",
+            null);
+        unchangedScene.PublishAsPartOfChapter("hash-stable");
+
+        var sut = CreateSut();
+
+        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(author);
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(project);
+        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([chapter, unchangedScene]);
+        publicationService.Setup(s => s.CanPublishAsync(chapter.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var result = await sut.Sections(project.Id);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var chapterHasChanges = Assert.IsType<HashSet<Guid>>(view.ViewData["ChapterHasChanges"]);
+        Assert.Empty(chapterHasChanges);
+    }
+
+    [Fact]
     public async Task Publishing_WhenAtRetentionLimit_ShowsVersionHistoryWithCurrentNotDeletable()
     {
         var author = User.Create("author@example.test", "Author", Role.Author);

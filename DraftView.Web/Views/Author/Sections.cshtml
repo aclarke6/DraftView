@@ -3,6 +3,7 @@
     ViewData["Title"] = "Sections";
     var project     = ViewBag.Project as DraftView.Domain.Entities.Project;
     var publishable = ViewBag.Publishable as HashSet<Guid> ?? new HashSet<Guid>();
+    var chapterHasChanges = ViewBag.ChapterHasChanges as HashSet<Guid> ?? new HashSet<Guid>();
     var classificationMap = ViewBag.ClassificationMap as Dictionary<Guid, DraftView.Domain.Enumerations.ChangeClassification>
         ?? new Dictionary<Guid, DraftView.Domain.Enumerations.ChangeClassification>();
 
@@ -159,6 +160,11 @@ else
 
                                     @if (s.ContentChangedSincePublish)
                                     {
+                                        @if (chapterHasChanges.Contains(s.Id))
+                                        {
+                                            <span class="sync-change-badge">Pending changes</span>
+                                        }
+
                                         if (classificationMap.TryGetValue(s.Id, out var classification))
                                         {
                                             var classificationLabel = classification switch

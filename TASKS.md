@@ -43,14 +43,6 @@ Last updated: 2026-04-21
 
 ## 2. Open Bugs
 
-- [DONE] BUG-016 — Publishing page leaked raw Razor token for version label; scene version hint now renders explicitly as text (e.g. `v3`)
-  instead of showing `v@doc.CurrentVersionNumber` (2026-04-21)
-
-- [ ] **BUG-017 — Author UI does not show pending change indication after sync for changed scene**
-  - After editing Scene 2 and syncing, Sections view did not show a clear changed-state indicator before opening Publishing
-  - Publishing page correctly identified the scene as changed (`Polish`) and allowed republish, so sync/change detection worked but author surfacing was incomplete
-  - Seen in UAT on 2026-04-21
-  - prompt: `.github/Prompts/BUG-017-no-author-change-indicator-after-sync.prompt.md`
 ---
 
 ## 3. Active Projects
@@ -117,6 +109,11 @@ See `REFACTORING.md` for full detail.
 ## 4. Done
 
 ### Bugs Fixed
+
+- [DONE] BUG-016 — Publishing page leaked raw Razor token for version label; scene version hint now renders explicitly as text (e.g. `v3`)
+  instead of showing `v@doc.CurrentVersionNumber` (2026-04-21)
+- [DONE] BUG-017 — Sections view did not clearly surface pending synced scene changes; added explicit chapter-level “Pending changes”
+  indication for published chapters with changed child scenes (2026-04-21)
 - [DONE] BUG-001 — Reader removal not reflected in UI; repository now filters `!IsSoftDeleted` (2026-04-20)
 - [DONE] BUG-003 — Settings surfaced ciphertext errors; now logs and redirects to error page instead of exposing exceptions (2026-04-21)
 - [DONE] BUG-015 — Reader showed unpublished content and inconsistent banner version; now pinned to latest `SectionVersion` with stable versioned banner rendering (2026-04-21)
