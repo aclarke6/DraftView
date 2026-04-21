@@ -506,7 +506,17 @@ public class AccountController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ChangeDisplayName(ChangeDisplayNameViewModel model)
     {
-        var user = await GetCurrentUserAsync();
+        DraftView.Domain.Entities.User? user;
+        try
+        {
+            user = await GetCurrentUserAsync();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Settings operational failure resolving current user in ChangeDisplayName.");
+            return RedirectToAction("Error", "Home");
+        }
+
         if (user is null)
             return RedirectToAction("Login");
 
@@ -523,7 +533,8 @@ public class AccountController(
         }
         catch (Exception ex)
         {
-            TempData["Error"] = ex.Message;
+            logger.LogError(ex, "Settings operational failure in ChangeDisplayName for user {UserId}", user.Id);
+            return RedirectToAction("Error", "Home");
         }
 
         return RedirectToAction("Settings");
@@ -583,15 +594,34 @@ public class AccountController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ChangePassword(ChangePasswordViewModel model)
     {
-        var user = await GetCurrentUserAsync();
+        DraftView.Domain.Entities.User? user;
+        try
+        {
+            user = await GetCurrentUserAsync();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Settings operational failure resolving current user in ChangePassword.");
+            return RedirectToAction("Error", "Home");
+        }
+
         if (user is null)
             return RedirectToAction("Login");
 
-        var currentStoredEmail = await controlledUserEmailService.GetEmailAsync(new DraftView.Application.Contracts.UserEmailAccessRequest(
-            user.Id,
-            user.Role,
-            user.Id,
-            DraftView.Application.Contracts.UserEmailAccessPurpose.SelfServiceSettings));
+        string currentStoredEmail;
+        try
+        {
+            currentStoredEmail = await controlledUserEmailService.GetEmailAsync(new DraftView.Application.Contracts.UserEmailAccessRequest(
+                user.Id,
+                user.Role,
+                user.Id,
+                DraftView.Application.Contracts.UserEmailAccessPurpose.SelfServiceSettings));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Settings operational failure resolving stored email in ChangePassword for user {UserId}", user.Id);
+            return RedirectToAction("Error", "Home");
+        }
 
         if (!ModelState.IsValid)
         {

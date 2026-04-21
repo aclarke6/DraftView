@@ -192,6 +192,24 @@ public class AccountControllerTests
         Assert.Equal("Login", redirect.ActionName);
     }
 
+    [Fact]
+    public async Task ChangeDisplayName_WhenCurrentUserResolutionThrows_RedirectsToControlledErrorPage()
+    {
+        var sut = CreateSut(AuthenticatedUser("test@test.com"));
+
+        userRepo.Setup(r => r.GetByEmailAsync("test@test.com"))
+            .ThrowsAsync(new InvalidOperationException("Ciphertext is not in the expected format."));
+
+        var result = await sut.ChangeDisplayName(new ChangeDisplayNameViewModel
+        {
+            DisplayName = "Reader Name"
+        });
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Error", redirect.ActionName);
+        Assert.Equal("Home", redirect.ControllerName);
+    }
+
     // ---------------------------------------------------------------------------
     // ChangeDisplayTheme
     // ---------------------------------------------------------------------------
@@ -446,6 +464,30 @@ public class AccountControllerTests
         userManager.Verify(m => m.FindByEmailAsync("stored@example.test"), Times.Once);
         userManager.Verify(m => m.FindByEmailAsync("claim@example.test"), Times.Never);
         signInManager.Verify(m => m.RefreshSignInAsync(identityUser), Times.Once);
+    }
+
+    [Fact]
+    public async Task ChangePassword_WhenControlledEmailResolutionThrows_RedirectsToControlledErrorPage()
+    {
+        var user = Domain.Entities.User.Create("claim@example.test", "Test", Domain.Enumerations.Role.BetaReader);
+        var sut = CreateSut(AuthenticatedUser("claim@example.test"));
+
+        userRepo.Setup(r => r.GetByEmailAsync("claim@example.test"))
+            .ReturnsAsync(user);
+        controlledUserEmailService
+            .Setup(s => s.GetEmailAsync(It.IsAny<DraftView.Application.Contracts.UserEmailAccessRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Ciphertext is not in the expected format."));
+
+        var result = await sut.ChangePassword(new ChangePasswordViewModel
+        {
+            CurrentPassword = "CurrentPassword1!",
+            NewPassword = "NewPassword1!",
+            ConfirmPassword = "NewPassword1!"
+        });
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Error", redirect.ActionName);
+        Assert.Equal("Home", redirect.ControllerName);
     }
 
     [Fact]
