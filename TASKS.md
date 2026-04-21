@@ -42,7 +42,7 @@ Last updated: 2026-04-21
 ---
 
 ## 2. Open Bugs
-
+- [ ] BUG-018 — Reader view does not persistently display scene version number; database correctly shows Chapter 1 / Scene 2 at `v2`, but reader UI shows no version label
 ---
 
 ## 3. Active Projects
