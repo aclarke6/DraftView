@@ -200,6 +200,11 @@
 
                         <h4 class="scene-heading">@item.Scene.Title</h4>
 
+                        @if (item.CurrentVersionNumber.HasValue)
+                        {
+                            <div class="scene-version-label">@($"v{item.CurrentVersionNumber.Value}")</div>
+                        }
+
                         @if (item.ShowUpdateBanner && item.CurrentVersionNumber.HasValue)
                         {
                             <div class="update-banner" data-section-id="@item.Scene.Id" data-version="@item.CurrentVersionNumber">

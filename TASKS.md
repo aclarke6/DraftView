@@ -42,7 +42,7 @@ Last updated: 2026-04-21
 ---
 
 ## 2. Open Bugs
-- [ ] BUG-018 — Reader view does not persistently display scene version number; database correctly shows Chapter 1 / Scene 2 at `v2`, but reader UI shows no version label
+
 ---
 
 ## 3. Active Projects
@@ -110,10 +110,9 @@ See `REFACTORING.md` for full detail.
 
 ### Bugs Fixed
 
-- [DONE] BUG-016 — Publishing page leaked raw Razor token for version label; scene version hint now renders explicitly as text (e.g. `v3`)
-  instead of showing `v@doc.CurrentVersionNumber` (2026-04-21)
-- [DONE] BUG-017 — Sections view did not clearly surface pending synced scene changes; added explicit chapter-level “Pending changes”
-  indication for published chapters with changed child scenes (2026-04-21)
+- [DONE] BUG-018 — Reader view did not display scene version number; DesktopRead and MobileRead now render a persistent scene version label from existing `CurrentVersionNumber` (`vN`) independent of update-banner state (2026-04-21)
+- [DONE] BUG-017 — Sections view did not clearly surface pending synced scene changes; added explicit chapter-level “Pending changes” indication for published chapters with changed child scenes (2026-04-21)
+- [DONE] BUG-016 — Publishing page leaked raw Razor token for version label; scene version hint now renders explicitly as text (e.g. `v3`) instead of showing `v@doc.CurrentVersionNumber` (2026-04-21)
 - [DONE] BUG-001 — Reader removal not reflected in UI; repository now filters `!IsSoftDeleted` (2026-04-20)
 - [DONE] BUG-003 — Settings surfaced ciphertext errors; now logs and redirects to error page instead of exposing exceptions (2026-04-21)
 - [DONE] BUG-015 — Reader showed unpublished content and inconsistent banner version; now pinned to latest `SectionVersion` with stable versioned banner rendering (2026-04-21)

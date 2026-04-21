@@ -270,6 +270,47 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
             html);
     }
 
+    [Fact]
+    public async Task Read_Desktop_RendersSceneVersionLabel_WhenVersionExists()
+    {
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = true,
+            BaseAddress = new Uri("https://localhost")
+        });
+
+        client.DefaultRequestHeaders.Add(TestAuthHandler.HeaderName, TestAuthHandler.ReaderMode);
+
+        var response = await client.GetAsync($"/Reader/Read/{factory.ChapterId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Matches(new Regex("scene-version-label\"[^>]*>\\s*v2\\s*<", RegexOptions.IgnoreCase), html);
+    }
+
+    [Fact]
+    public async Task Read_Mobile_RendersSceneVersionLabel_WhenVersionExists()
+    {
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = true,
+            BaseAddress = new Uri("https://localhost")
+        });
+
+        client.DefaultRequestHeaders.Add(TestAuthHandler.HeaderName, TestAuthHandler.ReaderMode);
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (iPhone)");
+
+        var response = await client.GetAsync($"/Reader/Read/{factory.SceneId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Matches(new Regex("scene-version-label\"[^>]*>\\s*v2\\s*<", RegexOptions.IgnoreCase), html);
+    }
+
     public sealed class ReaderReadFactory : WebApplicationFactory<Program>
     {
         public static readonly Guid ReaderId = Guid.Parse("11111111-1111-1111-1111-111111111111");
@@ -279,8 +320,10 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
         private readonly Section chapter;
         private readonly Section scene;
         private readonly UserPreferences prefs;
+        private readonly SectionVersion latestVersion;
 
         public Guid ChapterId => chapter.Id;
+        public Guid SceneId => scene.Id;
 
         public ReaderReadFactory()
         {
@@ -294,6 +337,9 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
 
             scene = Section.CreateDocument(project.Id, "scene-uuid", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "scene-hash", "Draft");
             scene.PublishAsPartOfChapter("scene-hash");
+
+            var publishedScene = Section.CreateDocument(project.Id, "scene-uuid-version", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "scene-hash", "Published");
+            latestVersion = SectionVersion.Create(publishedScene, ReaderId, 2);
 
             prefs = UserPreferences.CreateForBetaReader(reader.Id);
             prefs.UpdateProseFontPreferences(ProseFont.Humanist, ProseFontSize.Large);
@@ -378,6 +424,9 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
                 services.RemoveAll<ISectionDiffService>();
                 services.RemoveAll<ISystemStateMessageService>();
 
+                var sectionVersionRepo = new Mock<ISectionVersionRepository>();
+                sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(latestVersion);
+
                 services.AddSingleton(userRepo.Object);
                 services.AddSingleton(prefsRepo.Object);
                 services.AddSingleton(projectRepo.Object);
@@ -385,7 +434,7 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
                 services.AddSingleton(commentService.Object);
                 services.AddSingleton(progressService.Object);
                 services.AddSingleton(Mock.Of<IReaderAccessRepository>());
-                services.AddSingleton(Mock.Of<ISectionVersionRepository>());
+                services.AddSingleton(sectionVersionRepo.Object);
                 services.AddSingleton(readEventRepo.Object);
                 services.AddSingleton(sectionDiffService.Object);
                 services.AddSingleton(systemStateMessageService.Object);
