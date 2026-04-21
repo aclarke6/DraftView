@@ -42,7 +42,7 @@
             <div class="reader__contents-label">This chapter</div>
             @foreach (var item in Model.Scenes)
             {
-                <a href="#scene-@item.Scene.Id" class="reader__contents-link">@item.Scene.Title</a>
+                <a href="#scene-@item.Scene.Id" class="reader__contents-link">@item.Scene.Title@(item.CurrentVersionNumber.HasValue ? $" (v{item.CurrentVersionNumber.Value})" : string.Empty)</a>
             }
             <a href="#chapter-comments"
                    class="reader__contents-link reader__contents-link--muted">
@@ -109,7 +109,7 @@
             <div class="chapter-sidebar__label">This chapter</div>
             @foreach (var item in Model.Scenes)
             {
-                <a href="#scene-@item.Scene.Id" class="chapter-sidebar__link">@item.Scene.Title</a>
+                <a href="#scene-@item.Scene.Id" class="chapter-sidebar__link">@item.Scene.Title@(item.CurrentVersionNumber.HasValue ? $" (v{item.CurrentVersionNumber.Value})" : string.Empty)</a>
             }
 
             <a href="#chapter-comments"
@@ -199,11 +199,6 @@
                         }
 
                         <h4 class="scene-heading">@item.Scene.Title</h4>
-
-                        @if (item.CurrentVersionNumber.HasValue)
-                        {
-                            <div class="scene-version-label">@($"v{item.CurrentVersionNumber.Value}")</div>
-                        }
 
                         @if (item.ShowUpdateBanner && item.CurrentVersionNumber.HasValue)
                         {

@@ -287,7 +287,27 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
 
         var html = await response.Content.ReadAsStringAsync();
 
-        Assert.Matches(new Regex("scene-version-label\"[^>]*>\\s*v2\\s*<", RegexOptions.IgnoreCase), html);
+        Assert.Matches(new Regex("href=\"#scene-[^\"]+\"[^>]*>\\s*Scene 1\\s*\\(v2\\)\\s*</a>", RegexOptions.IgnoreCase), html);
+    }
+
+    [Fact]
+    public async Task Read_Desktop_DoesNotRenderPersistentVersionLabel_InMainSceneHeading()
+    {
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = true,
+            BaseAddress = new Uri("https://localhost")
+        });
+
+        client.DefaultRequestHeaders.Add(TestAuthHandler.HeaderName, TestAuthHandler.ReaderMode);
+
+        var response = await client.GetAsync($"/Reader/Read/{factory.ChapterId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.DoesNotContain("scene-version-label", html, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -308,7 +328,9 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
 
         var html = await response.Content.ReadAsStringAsync();
 
-        Assert.Matches(new Regex("scene-version-label\"[^>]*>\\s*v2\\s*<", RegexOptions.IgnoreCase), html);
+        Assert.Contains("Scenes", html);
+        Assert.Contains("v2", html);
+        Assert.DoesNotContain("scene-version-label", html, StringComparison.OrdinalIgnoreCase);
     }
 
     public sealed class ReaderReadFactory : WebApplicationFactory<Program>
