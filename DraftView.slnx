@@ -50,6 +50,7 @@
     <File Path=".github/Prompts/BUG-017-author-no-change-indicator-after-sync.prompt.md" />
     <File Path=".github/Prompts/BUG-018-reader-version-display.prompt.md" />
     <File Path=".github/Prompts/CHANGE-001-Move-Version-Number-In-Reader-DesktopAndMobileRead-views.md" />
+    <File Path=".github/Prompts/CHANGE-002-Align-Scene-Version-Labels-On-Publishing.md" />
     <File Path="BUG-015-reader-sees-unpublished-working-content-and-banner-version-missing.prompt.md" />
   </Folder>
   <Folder Name="/Solution Items/UAT/">
