@@ -507,11 +507,13 @@ public class ReaderController(
 
         var updatedSinceLastRead = diffResult is not null
             && diffResult.HasChanges
-            && readEvent?.LastReadVersionNumber is not null;
+            && readEvent?.LastReadVersionNumber is not null
+            && currentVersionNumber.HasValue;
 
         var showUpdateBanner = diffResult is not null
             && diffResult.HasChanges
             && readEvent?.LastReadVersionNumber is not null
+            && currentVersionNumber.HasValue
             && readEvent?.BannerDismissedAtVersion != diffResult.CurrentVersionNumber;
 
         if (latestVersion is not null)
@@ -519,7 +521,7 @@ public class ReaderController(
             await ProgressService.UpdateLastReadVersionAsync(scene.Id, userId, latestVersion.VersionNumber, ct);
         }
 
-        var diffParagraphs = diffResult?.HasChanges == true
+        var diffParagraphs = latestVersion is null && diffResult?.HasChanges == true
             ? diffResult.Paragraphs
             : Array.Empty<ParagraphDiffResult>();
 

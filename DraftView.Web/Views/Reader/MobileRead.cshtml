@@ -56,7 +56,7 @@
         </div>
     }
 
-    @if (Model.ShowUpdateBanner)
+    @if (Model.ShowUpdateBanner && Model.CurrentVersionNumber.HasValue)
     {
         <div class="update-banner" data-section-id="@Model.Scene.Id" data-version="@Model.CurrentVersionNumber">
             <div class="update-banner__content">

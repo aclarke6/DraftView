@@ -49,6 +49,10 @@ Last updated: 2026-04-20
   - Fixed: 2026-04-21
   - Resolution: Account settings operational failures in `ChangeDisplayName` and `ChangePassword` now log and redirect to `Home/Error` instead of surfacing ciphertext/decryption exceptions to users via settings UI
   - prompt: `.github/Prompts/BUG-003-settings-ciphertext-error.prompt.md`
+- [DONE] **BUG-015 — Reader shows unpublished working content after sync and update banner version not visible**
+  - Fixed: 2026-04-21
+  - Resolution: reader content rendering is now pinned to latest published `SectionVersion` prose whenever a version exists; diff paragraphs no longer replace prose body in versioned paths. Desktop/mobile update banner rendering now requires `CurrentVersionNumber` so version labels are consistently visible and data-driven.
+  - prompt: `.github/Prompts/BUG-015-reader-sees-unpublished-working-content-and-banner-version-missing.prompt.md`
 
 ---
 

@@ -144,6 +144,30 @@ public class SectionDiffServiceTests
     }
 
     [Fact]
+    public async Task GetDiffForReaderAsync_DoesNotIntroduceContentBeyondLatestPublishedVersion()
+    {
+        var section = CreateSection();
+        section.UpdateContent("<p>Unpublished working text</p>", "working-hash");
+
+        var fromVersion = CreateVersionForSection(section, 1, "<p>Published v1</p>");
+        var latestVersion = CreateVersionForSection(section, 2, "<p>Published v2</p>");
+
+        versionRepo.Setup(r => r.GetLatestAsync(section.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(latestVersion);
+        versionRepo.Setup(r => r.GetAllBySectionIdAsync(section.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<SectionVersion> { fromVersion, latestVersion });
+
+        htmlDiffService.Setup(s => s.Compute(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(new List<ParagraphDiffResult>());
+
+        await Sut.GetDiffForReaderAsync(section.Id, lastReadVersionNumber: 1);
+
+        htmlDiffService.Verify(s => s.Compute("<p>Published v1</p>", "<p>Published v2</p>"), Times.Once);
+        htmlDiffService.Verify(s => s.Compute(It.Is<string>(x => x.Contains("Unpublished")), It.IsAny<string>()), Times.Never);
+        htmlDiffService.Verify(s => s.Compute(It.IsAny<string>(), It.Is<string>(x => x.Contains("Unpublished"))), Times.Never);
+    }
+
+    [Fact]
     public async Task GetDiffForReaderAsync_WhenFromVersionNotFound_ReturnsHasChangesWithEmptyParagraphs()
     {
         var latestVersion = CreateVersion(5, "<p>Latest</p>");

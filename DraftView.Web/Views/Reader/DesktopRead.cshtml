@@ -200,7 +200,7 @@
 
                         <h4 class="scene-heading">@item.Scene.Title</h4>
 
-                        @if (item.ShowUpdateBanner)
+                        @if (item.ShowUpdateBanner && item.CurrentVersionNumber.HasValue)
                         {
                             <div class="update-banner" data-section-id="@item.Scene.Id" data-version="@item.CurrentVersionNumber">
                                 <div class="update-banner__content">

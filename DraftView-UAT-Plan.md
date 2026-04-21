@@ -74,109 +74,107 @@ EOF
 
 ## A — Sync and Initial State
 
-| Step | Action | Expected |
-|------|--------|----------|
-| A.1 | Go to Author Dashboard. Click Sync on the Test project | Sync completes. No error shown |
-| A.2 | Open Sections view for Test project | Tree shows: Book 1 / Part 1 / Chapter 1 / Scene 1 + Scene 2 |
-| A.3 | Check Chapter 2 under Part 1 | Scene 1 visible, unpublished |
-| A.4 | Check Book 1 / Part 2 / Chapter 3 | Scene 1 visible, unpublished |
-| A.5 | Check Book 2 / Act 1 / Chapter 1 | Scene 1 visible, unpublished |
-| A.6 | Check Scrivener status labels on scenes | To Do, First Draft, Revised Draft, In Progress visible |
-
+| Step | State | Action | Expected |
+|------|-------|--------|----------|
+| A.1 | [✔] |Go to Author Dashboard. Click Sync on the Test project | Sync completes. No error shown |
+| A.2 | [✔] |Open Sections view for Test project | Tree shows: Book 1 / Part 1 / Chapter 1 / Scene 1 + Scene 2 |
+| A.3 | [✔] |Check Chapter 2 under Part 1 | Scene 1 visible, unpublished |
+| A.4 | [✔] |Check Book 1 / Part 2 / Chapter 3 | Scene 1 visible, unpublished |
+| A.5 | [✔] |Check Book 2 / Act 1 / Chapter 1 | Scene 1 visible, unpublished |
+| A.6 | [✔] |Check Scrivener status labels on scenes | To Do, First Draft, Revised Draft, In Progress visible |
 ---
 
 ## B — Publishing Flow
 
-| Step | Action | Expected |
-|------|--------|----------|
-| B.1 | On Sections view, publish Chapter 1 (Book 1 / Part 1) | Both scenes get Published badge |
-| B.2 | Publish Chapter 2 (Book 1 / Part 1) | Scene 1 gets Published badge |
-| B.3 | Publish Chapter 3 (Book 1 / Part 2) | Scene 1 gets Published badge |
-| B.4 | Publish Book 2 / Act 1 / Chapter 1 | Scene 1 gets Published badge |
-| B.5 | Log in as reader. Open Chapter 1 Scene 1 | Content visible. No update banner. No diff notice |
-| B.6 | Open Chapter 1 Scene 2 | Content visible. No update banner. No diff notice |
+| Step | State | Action | Expected |
+|------|-------|--------|----------|
+| B.1 | [✔] |On Sections view, publish Chapter 1 (Book 1 / Part 1) | Both scenes get Published badge |
+| B.2 | [✔] |Publish Chapter 2 (Book 1 / Part 1) | Scene 1 gets Published badge |
+| B.3 | [✔] |Publish Chapter 3 (Book 1 / Part 2) | Scene 1 gets Published badge |
+| B.4 | [✔] |Publish Book 2 / Act 1 / Chapter 1 | Scene 1 gets Published badge |
+| B.5 | [✔] |Log in as reader. Open Chapter 1 Scene 1 | Content visible. No update banner. No diff notice |
+| B.6 | [✔] |Open Chapter 1 Scene 2 | Content visible. No update banner. No diff notice |
 
 ---
 
 ## C — Republish and Versioning
 
-| Step | Action | Expected |
-|------|--------|----------|
-| C.1 | In Scrivener, make a small edit to Chapter 1 Scene 1. Save | Scene modified in Scrivener |
-| C.2 | Back on DraftView, sync the Test project | Sync completes |
-| C.3 | Open Sections view | Chapter 1 shows "Publish changes" link and change indicator (Polish/Revision/Rewrite) |
-| C.4 | Click "Publish changes" | Publishing Page opens showing Chapter 1 with changes |
-| C.5 | Click Republish Chapter on Publishing Page | Chapter republished. Change indicator clears |
-| C.6 | Log in as reader. Open Chapter 1 Scene 1 | Update banner shows version number |
-| C.7 | Check banner content | Version number shown. AI summary shown if Anthropic:ApiKey configured |
-| C.8 | Click dismiss on the banner | Banner disappears immediately |
-| C.9 | Reload the scene | Banner does not reappear |
+| Step | State | Action | Expected |
+|------|-------|--------|----------|
+| C.1 | [✔] |In Scrivener, make a small edit to Chapter 1 Scene 1. Save | Scene modified in Scrivener |
+| C.2 | [✔] |Back on DraftView, sync the Test project | Sync completes |
+| C.3 | [✔] | Open Sections view | Chapter 1 shows "Publish changes" link and change indicator (Polish/Revision/Rewrite) |
+| C.4 | [✔] | Click "Publish changes" | Publishing Page opens showing Chapter 1 with changes |
+| C.5 | [✔] | Click Republish Chapter on Publishing Page | Chapter republished. Change indicator clears |
+| C.6 | [ ] | Log in as reader. Open Chapter 1 Scene 1 | Update banner shows version number |
+| C.7 | [ ] | Check banner content | Version number shown. AI summary shown if Anthropic:ApiKey configured |
+| C.8 | [ ] | Click dismiss on the banner | Banner disappears immediately |
+| C.9 | [ ] | Reload the scene | Banner does not reappear |
 
 ---
 
 ## D — Per-Document Publishing
 
-| Step | Action | Expected |
-|------|--------|----------|
-| D.1 | In Scrivener, edit only Scene 2 of Chapter 1. Save | Scene 2 modified |
-| D.2 | Sync the Test project | Sync completes |
-| D.3 | Open Publishing Page for Test project | Chapter 1 shows per-document controls. Scene 2 shows change |
-| D.4 | Republish Scene 2 only (not Scene 1) | Scene 2 gets new version. Scene 1 unchanged |
-| D.5 | Log in as reader. Open Scene 2 | Update banner appears |
-| D.6 | Open Scene 1 | No update banner |
-| D.7 | On Publishing Page, click Revoke on Scene 2 | Previous version restored |
-| D.8 | As reader, open Scene 2 again | Shows previous version content |
+| Step | State | Action | Expected |
+|------|-------|--------|----------|
+| D.1 | [ ] | In Scrivener, edit only Scene 2 of Chapter 1. Save | Scene 2 modified |
+| D.2 | [ ] | Sync the Test project | Sync completes |
+| D.3 | [ ] | Open Publishing Page for Test project | Chapter 1 shows per-document controls. Scene 2 shows change |
+| D.4 | [ ] | Republish Scene 2 only (not Scene 1) | Scene 2 gets new version. Scene 1 unchanged |
+| D.5 | [ ] | Log in as reader. Open Scene 2 | Update banner appears |
+| D.6 | [ ] | Open Scene 1 | No update banner |
+| D.7 | [ ] | On Publishing Page, click Revoke on Scene 2 | Previous version restored |
+| D.8 | [ ] | As reader, open Scene 2 again | Shows previous version content |
 
 ---
 
 ## E — Locking and Scheduling
 
-| Step | Action | Expected |
-|------|--------|----------|
-| E.1 | On Publishing Page, click Lock on Chapter 2 | Lock indicator shown. Republish button hidden |
-| E.2 | In Scrivener, edit Chapter 2 Scene 1. Sync | Sync completes. ContentChangedSincePublish set |
-| E.3 | Attempt to republish Chapter 2 | Error toast: chapter is locked |
-| E.4 | Click Unlock on Chapter 2 | Republish available again |
-| E.5 | On Publishing Page, set a suggested date on Chapter 3 | Date shown next to Chapter 3 |
-| E.6 | Click Republish Chapter 3 | Republish succeeds — schedule is advisory only |
-| E.7 | Clear the suggested date on Chapter 3 | Date removed |
+| Step | State | Action | Expected |
+|------|-------|--------|----------|
+| E.1 | [ ] | On Publishing Page, click Lock on Chapter 2 | Lock indicator shown. Republish button hidden |
+| E.2 | [ ] | In Scrivener, edit Chapter 2 Scene 1. Sync | Sync completes. ContentChangedSincePublish set |
+| E.3 | [ ] | Attempt to republish Chapter 2 | Error toast: chapter is locked |
+| E.4 | [ ] | Click Unlock on Chapter 2 | Republish available again |
+| E.5 | [ ] | On Publishing Page, set a suggested date on Chapter 3 | Date shown next to Chapter 3 |
+| E.6 | [ ] | Click Republish Chapter 3 | Republish succeeds — schedule is advisory only |
+| E.7 | [ ] | Clear the suggested date on Chapter 3 | Date removed |
 
 ---
 
 ## F — Reader Experience
 
-| Step | Action | Expected |
-|------|--------|----------|
-| F.1 | As reader, open a scene not yet read | No banner. No "updated since you last read" notice |
-| F.2 | Author republishes that scene | New version created |
-| F.3 | Reader opens same scene again | "Updated since you last read" notice shown above content |
-| F.4 | Update banner shown | Banner non-blocking. Reader can scroll and read |
-| F.5 | Reader dismisses banner | Banner gone |
-| F.6 | Reader opens a different scene | Banner state is independent per scene |
-| F.7 | Change reading font in Account Settings | Font applies in reader view |
-| F.8 | Change reading font size | Size applies in reader view |
+| Step | State | Action | Expected |
+|------|-------|--------|----------|
+| F.1 | [ ] | As reader, open a scene not yet read | No banner. No "updated since you last read" notice |
+| F.2 | [ ] | Author republishes that scene | New version created |
+| F.3 | [ ] | Reader opens same scene again | "Updated since you last read" notice shown above content |
+| F.4 | [ ] | Update banner shown | Banner non-blocking. Reader can scroll and read |
+| F.5 | [ ] | Reader dismisses banner | Banner gone |
+| F.6 | [ ] | Reader opens a different scene | Banner state is independent per scene |
+| F.7 | [ ] | Change reading font in Account Settings | Font applies in reader view |
+| F.8 | [ ] | Change reading font size | Size applies in reader view |
 
 ---
 
 ## G — Diff Highlighting
 
-| Step | Action | Expected |
-|------|--------|----------|
-| G.1 | Reader opens a scene after republish | Changed paragraphs highlighted in green/red |
-| G.2 | Identify an added paragraph | Shown with added styling (green) |
-| G.3 | Identify a removed paragraph | Shown as thin visual marker, not strikethrough |
-| G.4 | Identify an unchanged paragraph | No highlight |
-| G.5 | Open the same scene as a different reader who has never read it | No diff shown |
-
+| Step | State | Action | Expected |
+|------|-------|--------|----------|
+| G.1 | [ ] | Reader opens a scene after republish | Changed paragraphs highlighted in green/red |
+| G.2 | [ ] | Identify an added paragraph | Shown with added styling (green) |
+| G.3 | [ ] | Identify a removed paragraph | Shown as thin visual marker, not strikethrough |
+| G.4 | [ ] | Identify an unchanged paragraph | No highlight |
+| G.5 | [ ] | Open the same scene as a different reader who has never read it | No diff shown |
 ---
 
 ## H — Incremental Sync
 
-| Step | Action | Expected |
-|------|--------|----------|
-| H.1 | After any sync, SSH to production and check DropboxCursor on Test project | Cursor is set (non-null) |
-| H.2 | In Scrivener, edit one scene only. Sync | Sync completes quickly |
-| H.3 | Check production service logs | Log shows incremental sync, not full download |
+| Step | State | Action | Expected |
+|------|-------|--------|----------|
+| H.1 | [ ] | After any sync, SSH to production and check DropboxCursor on Test project | Cursor is set (non-null) |
+| H.2 | [ ] | In Scrivener, edit one scene only. Sync | Sync completes quickly |
+| H.3 | [ ] | Check production service logs | Log shows incremental sync, not full download |
 
 Check cursor:
 ```bash
