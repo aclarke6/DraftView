@@ -2,6 +2,7 @@ using System.Net;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
+using DraftView.Domain.Contracts;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
 using DraftView.Domain.Interfaces.Repositories;
@@ -114,6 +115,96 @@ public class ReaderControllerTests
         var model = Assert.IsType<MobileReadViewModel>(view.Model);
         Assert.Equal(ProseFont.Classic, model.ProseFont);
         Assert.Equal(ProseFontSize.ExtraLarge, model.ProseFontSize);
+    }
+
+    [Fact]
+    public async Task Read_Desktop_WithVersionAndDiff_DoesNotRenderDiffAsProse()
+    {
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+
+        var project = Project.Create("Project 1", "/Apps/Scrivener/Project1", user.Id, "project-root");
+        var chapter = Section.CreateFolder(project.Id, "chapter-uuid", "Chapter 1", null, 1);
+        chapter.MarkAsPublishedContainer();
+        var scene = Section.CreateDocument(project.Id, "scene-uuid", "Scene 1", chapter.Id, 1, "<p>Working unpublished text</p>", "scene-hash", "Draft");
+        scene.PublishAsPartOfChapter("scene-hash");
+
+        var publishedSection = Section.CreateDocument(project.Id, "scene-published", "Scene 1", chapter.Id, 1, "<p>Published text</p>", "published-hash", "Published");
+        var latestVersion = SectionVersion.Create(publishedSection, Guid.NewGuid(), 1);
+
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0");
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, It.IsAny<CancellationToken>())).ReturnsAsync(chapter);
+        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
+        sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(latestVersion);
+        readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ReadEvent.Create(scene.Id, user.Id));
+        sectionDiffService.Setup(s => s.GetDiffForReaderAsync(scene.Id, It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SectionDiffResult
+            {
+                FromVersionNumber = 1,
+                CurrentVersionNumber = 2,
+                HasChanges = true,
+                Paragraphs = [new DraftView.Domain.Diff.ParagraphDiffResult("Unpublished", "<p>Working unpublished text</p>", DraftView.Domain.Enumerations.DiffResultType.Added)]
+            });
+        progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        progressService.Setup(r => r.UpdateLastReadVersionAsync(scene.Id, user.Id, latestVersion.VersionNumber, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        commentService.Setup(r => r.GetThreadsForSectionAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<Comment>());
+
+        var result = await sut.Read(chapter.Id);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<DesktopChapterReadViewModel>(view.Model);
+        var renderedScene = Assert.Single(model.Scenes);
+        Assert.Equal("<p>Published text</p>", renderedScene.ResolvedHtmlContent);
+        Assert.False(renderedScene.HasDiff);
+    }
+
+    [Fact]
+    public async Task Read_Mobile_WhenBannerShown_WithCurrentVersion_SetsVersionNumber()
+    {
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+
+        var project = Project.Create("Project 1", "/Apps/Scrivener/Project1", user.Id, "project-root");
+        var chapter = Section.CreateFolder(project.Id, "chapter-uuid", "Chapter 1", null, 1);
+        chapter.MarkAsPublishedContainer();
+        var scene = Section.CreateDocument(project.Id, "scene-uuid", "Scene 1", chapter.Id, 1, "<p>Working</p>", "scene-hash", "Draft");
+        scene.PublishAsPartOfChapter("scene-hash");
+
+        var publishedSection = Section.CreateDocument(project.Id, "scene-published", "Scene 1", chapter.Id, 1, "<p>Published text</p>", "published-hash", "Published");
+        var latestVersion = SectionVersion.Create(publishedSection, Guid.NewGuid(), 3);
+        var readEvent = ReadEvent.Create(scene.Id, user.Id);
+        readEvent.UpdateLastReadVersion(1);
+
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0 (iPhone)");
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        sectionRepo.Setup(r => r.GetByIdAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(scene);
+        sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, It.IsAny<CancellationToken>())).ReturnsAsync(chapter);
+        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
+        sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(latestVersion);
+        readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(readEvent);
+        sectionDiffService.Setup(s => s.GetDiffForReaderAsync(scene.Id, readEvent.LastReadVersionNumber, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SectionDiffResult
+            {
+                FromVersionNumber = 1,
+                CurrentVersionNumber = 3,
+                HasChanges = true,
+                Paragraphs = []
+            });
+        progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        progressService.Setup(r => r.UpdateLastReadVersionAsync(scene.Id, user.Id, latestVersion.VersionNumber, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        commentService.Setup(r => r.GetThreadsForSectionAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<Comment>());
+
+        var result = await sut.Read(scene.Id);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<MobileReadViewModel>(view.Model);
+        Assert.True(model.ShowUpdateBanner);
+        Assert.Equal(3, model.CurrentVersionNumber);
     }
 
     private ReaderController CreateSut(User user, string userAgent)
