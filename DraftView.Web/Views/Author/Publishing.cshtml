@@ -97,7 +97,7 @@ else
 
                             @if (doc.CurrentVersionNumber.HasValue)
                             {
-                                <span class="publishing-doc__version">v@doc.CurrentVersionNumber</span>
+                                <span class="publishing-doc__version">@($"v{doc.CurrentVersionNumber.Value}")</span>
                             }
 
                             @if (doc.Classification.HasValue)

@@ -43,10 +43,8 @@ Last updated: 2026-04-20
 
 ## 2. Open Bugs
 
-- [ ] **BUG-016 — Publishing page leaks raw Razor token for version label**
-  - Publishing page shows literal `v@doc.CurrentVersionNumber` instead of a rendered version value beside scene actions
-  - Seen on Chapter 1 / Scene 2 after sync and before republish during UAT on 2026-04-21
-  - prompt: `.github/Prompts/BUG-016-publishing-page-raw-razor-version-label.prompt.md`
+- [DONE] BUG-016 — Publishing page leaked raw Razor token for version label; scene version hint now renders explicitly as text (e.g. `v3`)
+  instead of showing `v@doc.CurrentVersionNumber` (2026-04-21)
 
 - [ ] **BUG-017 — Author UI does not show pending change indication after sync for changed scene**
   - After editing Scene 2 and syncing, Sections view did not show a clear changed-state indicator before opening Publishing
