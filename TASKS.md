@@ -45,8 +45,9 @@ Last updated: 2026-04-20
 
 - [DONE] **BUG-001 — Reader removal not reflecting in UI** — `GetAllBetaReadersAsync` now filters `!IsSoftDeleted` at repository level; confirmed by infrastructure test (2026-04-20)
 
-- [ ] **BUG-003 — Reader settings shows `Ciphertext is not in the expected format` on screen**
-  - Protected-email decryption failure surfacing as a form validation error; should route to controlled 500 path
+- [DONE] **BUG-003 — Reader settings shows `Ciphertext is not in the expected format` on screen**
+  - Fixed: 2026-04-21
+  - Resolution: Account settings operational failures in `ChangeDisplayName` and `ChangePassword` now log and redirect to `Home/Error` instead of surfacing ciphertext/decryption exceptions to users via settings UI
   - prompt: `.github/Prompts/BUG-003-settings-ciphertext-error.prompt.md`
 
 ---
