@@ -53,7 +53,7 @@ Last updated: 2026-04-21
 ### 2(b) Changes
 
 - [DONE] CHANGE-001 — `Views/Reader/DesktopRead.cshtml` & `MobileRead.cshtml`: moved scene version labels from main title area to left-hand navigation (desktop) and top nav metadata (mobile) for reduced reading noise (2026-04-21)
-- [ ] CHANGE-002 — `Views/Author/Publishing.cshtml`: align scene version labels beside scene titles using CSS Grid layout (2026-04-21)
+- [DONE] CHANGE-002 — `Views/Author/Publishing.cshtml`: align scene version labels beside scene titles using CSS Grid layout (2026-04-21)
 
 ---
 ## 3. Active Projects
