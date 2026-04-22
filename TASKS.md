@@ -30,16 +30,18 @@ Last updated: 2026-04-21
 
 | Document | Purpose |
 |----------|---------|
-| `AIScoringService.md` | AI change scoring service — provider abstraction, tier model, sprint plan |
-| `DropBox Synchronisation Using WebHooks.md` | Webhook-driven background Dropbox sync — control model, cursor-based interrogation, S-Sprint series |
-| `MultiTenancy.md` | Multi-tenancy sprint series, design decisions, migration strategy |
-| `DraftView-UAT-Plan.md` | UAT plan for versioning features |
-| `Publishing And Versioning Architecture.md` | Full V-Sprint architecture, phases, domain model, publishing rules |
-| `PRINCIPLES.md` | Core engineering principles |
-| `REFACTORING.md` | Refactoring rules and roadmap |
-| `PowerShell.md` | PowerShell scripting standards |
-| `DraftView Git Rules.md` | Branch strategy, merge gates, commit standards |
-| `.github/copilot-instructions.md` | Agent instructions for Copilot/Claude sessions |
+| `AGENTS.md` | Authoritative execution rules for all coding agents — defines constraints, architecture boundaries, TDD requirements, and hard-gated response behaviour across all tools |
+| `Passage Anchoring, Reader Continuity, and Inline Commentary.md` | Authoritative design for passage anchoring, relocation, reader continuity, and inline commentary (RSprint series) |
+| `AIScoringService.md` | AI change scoring service — provider abstraction, tier model, and usage for relocation confidence (RS-G) |
+| `DropBox Synchronisation Using WebHooks.md` | Webhook-driven background Dropbox sync — control model, cursor-based interrogation, and S-Sprint series |
+| `MultiTenancy.md` | Multi-tenancy sprint series, design decisions, and migration strategy |
+| `Publishing And Versioning Architecture.md` | Versioning model — SectionVersion, publish/republish rules, and lifecycle behaviour |
+| `DraftView-UAT-Plan.md` | UAT plan and validation scenarios for reader and author workflows |
+| `PRINCIPLES.md` | Core engineering principles — architecture, layering, and behavioural rules |
+| `REFACTORING.md` | Refactoring roadmap and constraints for safe structural improvement |
+| `PowerShell.md` | PowerShell scripting standards for safe file modification and verification |
+| `DraftView Git Rules.md` | Branching strategy, merge gates, and commit standards |
+| `.github/copilot-instructions.md` | Supplemental agent guidance for repository-integrated coding agents |
 
 ---
 
