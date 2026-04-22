@@ -30,16 +30,18 @@ Last updated: 2026-04-21
 
 | Document | Purpose |
 |----------|---------|
-| `AIScoringService.md` | AI change scoring service — provider abstraction, tier model, sprint plan |
-| `DropBox Synchronisation Using WebHooks.md` | Webhook-driven background Dropbox sync — control model, cursor-based interrogation, S-Sprint series |
-| `MultiTenancy.md` | Multi-tenancy sprint series, design decisions, migration strategy |
-| `DraftView-UAT-Plan.md` | UAT plan for versioning features |
-| `Publishing And Versioning Architecture.md` | Full V-Sprint architecture, phases, domain model, publishing rules |
-| `PRINCIPLES.md` | Core engineering principles |
-| `REFACTORING.md` | Refactoring rules and roadmap |
-| `PowerShell.md` | PowerShell scripting standards |
-| `DraftView Git Rules.md` | Branch strategy, merge gates, commit standards |
-| `.github/copilot-instructions.md` | Agent instructions for Copilot/Claude sessions |
+| `AGENTS.md` | Authoritative execution rules for all coding agents — defines constraints, architecture boundaries, TDD requirements, and hard-gated response behaviour across all tools |
+| `Passage Anchoring, Reader Continuity, and Inline Commentary.md` | Authoritative design for passage anchoring, relocation, reader continuity, and inline commentary (RSprint series) |
+| `AIScoringService.md` | AI change scoring service — provider abstraction, tier model, and usage for relocation confidence (RS-G) |
+| `DropBox Synchronisation Using WebHooks.md` | Webhook-driven background Dropbox sync — control model, cursor-based interrogation, and S-Sprint series |
+| `MultiTenancy.md` | Multi-tenancy sprint series, design decisions, and migration strategy |
+| `Publishing And Versioning Architecture.md` | Versioning model — SectionVersion, publish/republish rules, and lifecycle behaviour |
+| `DraftView-UAT-Plan.md` | UAT plan and validation scenarios for reader and author workflows |
+| `PRINCIPLES.md` | Core engineering principles — architecture, layering, and behavioural rules |
+| `REFACTORING.md` | Refactoring roadmap and constraints for safe structural improvement |
+| `PowerShell.md` | PowerShell scripting standards for safe file modification and verification |
+| `DraftView Git Rules.md` | Branching strategy, merge gates, and commit standards |
+| `.github/copilot-instructions.md` | Supplemental agent guidance for repository-integrated coding agents |
 
 ---
 
@@ -54,14 +56,114 @@ Last updated: 2026-04-21
 - [ ] CHANGE-002 — `Views/Author/Publishing.cshtml`: align scene version labels beside scene titles using CSS Grid layout (2026-04-21)
 
 ---
-
 ## 3. Active Projects
 
-### 3.1 Dropbox Webhook Sync Sprint Series
+### 3.1 RSprint — Passage Anchoring, Reader Continuity, and Inline Commentary
+
+**Status:** 🔵 Planned — foundation capability
+
+Establish a **core passage anchoring capability** that supports:
+
+- Inline (selected text) comments  
+- Cross-version comment relocation  
+- Reader resume position across versions  
+- Human correction (relink / reject)  
+- Original context integrity  
+
+This is a **platform capability**, not a feature.
+
+**Sprint Series:**
+
+- [ ] **RS-A — Anchor Foundation**
+  - [ ] Phase A1 — Model discovery (Copilot-led inspection and proposal)
+  - [ ] Phase A2 — Domain definition (TDD)
+  - [ ] Phase A3 — Persistence (migration, additive only)
+  - [ ] Phase A4 — Application surface (creation/retrieval)
+
+- [ ] **RS-B — Anchored Resume**
+  - [ ] Phase B1 — Capture anchor from reading position
+  - [ ] Phase B2 — Restore using matching pipeline
+  - [ ] Phase B3 — Integration with ReadEvent
+  - [ ] Phase B4 — Tests (cross-version resume)
+
+- [ ] **RS-C — Inline Comments**
+  - [ ] Phase C1 — Selection capture
+  - [ ] Phase C2 — Comment creation with anchor
+  - [ ] Phase C3 — Rendering (inline indicators)
+  - [ ] Phase C4 — Tests
+
+- [ ] **RS-D — Deterministic Relocation**
+  - [ ] Phase D1 — Exact matching
+  - [ ] Phase D2 — Context matching
+  - [ ] Phase D3 — Fuzzy matching
+  - [ ] Phase D4 — Confidence scoring
+  - [ ] Phase D5 — Integration and tests
+
+- [ ] **RS-E — Human Override**
+  - [ ] Phase E1 — Permission enforcement (reader + author only)
+  - [ ] Phase E2 — Reject match (“wrong place”)
+  - [ ] Phase E3 — Relink to new passage
+  - [ ] Phase E4 — Status tracking (actor + timestamp)
+
+- [ ] **RS-F — Original Context**
+  - [ ] Phase F1 — Retrieve original version content
+  - [ ] Phase F2 — Navigate to original anchor
+  - [ ] Phase F3 — UI integration (“View original context”)
+
+- [ ] **RS-G — AI-Assisted Relocation**
+  - [ ] Phase G1 — Integration via AIScoringService
+  - [ ] Phase G2 — Prompt design and candidate matching
+  - [ ] Phase G3 — Confidence thresholds and activation
+
+- [ ] **RS-H — Reader Insight**
+  - [ ] Phase H1 — Progress tracking (anchor-based)
+  - [ ] Phase H2 — Author insight (reader activity)
+  - [ ] Phase H3 — UI (drill-down and indicators)
+
+---
+
+### 3.2 Go-Live Prerequisites
+
+- [ ] Add `Anthropic:ApiKey` to `appsettings.Production.json` (enables AI summaries)
+- [ ] Invitation acceptance flow does not expose stored email
+- [ ] Forgot-password flow works end-to-end in production
+- [ ] Production smoke check: no `localhost` links, no plaintext email leakage
+- [ ] Data handling aligns with UK GDPR and Data Protection Act 2018
+- [ ] Copy production `EmailProtection:EncryptionKey` and `EmailProtection:LookupHmacKey` into secure password manager
+- [ ] Go-Live Day: send password reset emails to Becca (becca@the-dunlops.co.uk) and Hilary (hilaryrrb@gmail.com)
+
+---
+
+### 3.3 Platform Hardening
+
+- [ ] Fail2ban setup on production VM
+- [ ] Report Fault modal (HomeController POST + `_Layout.cshtml` modal + CSS)
+- [ ] SystemStateMessage expiry (`ExpiresAt` nullable DateTime, `GetActiveAsync` filters expired)
+- [ ] Logging: failed authorization attempts
+- [ ] Impersonation — read-only, explicit enter/exit mode (design agreed, not built)
+
+---
+
+### 3.4 Multi-Tenancy Sprint Series
+See `MultiTenancy.md` for full design, migration strategy, and sprint plan.
+
+| Sprint | Deliverable |
+|--------|-------------|
+| MT-Sprint-1 | Account / Tenancy / TenancyMembership entity split |
+| MT-Sprint-2 | Subscription enforcement, `IBillingProvider`, Creem integration |
+| MT-Sprint-3 | Author self-serve registration, Dropbox connect per Tenancy |
+| MT-Sprint-4 | Reader cross-tenancy identity |
+| MT-Sprint-5 | Reader Marketplace (post-revenue) |
+
+**Prerequisite:** Billing abstraction in place and production stable before MT-Sprint-1.
+
+---
+
+### 3.5 Dropbox Webhook Sync Sprint Series
 See `DropBox Synchronisation Using WebHooks.md` for full architecture, control model, and sprint plan.
 
 - [Started] **S-Sprint-1 — Foundation for background Dropbox sync**
-  - [DONE] Phase 1: Architecture and task alignment — In progress, task tracking alignment started
+  - [DONE] Phase 1: Architecture and task alignment
   - [DONE] Phase 2: Domain model for sync control
   - [ ] Phase 3: Domain tests for control rules
   - [ ] Phase 4: Infrastructure mapping and migration
@@ -101,49 +203,11 @@ See `DropBox Synchronisation Using WebHooks.md` for full architecture, control m
   - [ ] Phase 3: Cursor health and abandoned lease cleanup
   - [ ] Phase 4: Full rescan orchestration and operational verification
 
-**Status:** Not started. Webhook sync is ingestion-only; never publishes or creates versions.
-
-### 3.2 Go-Live Prerequisites
-- [ ] Add `Anthropic:ApiKey` to `appsettings.Production.json` (enables AI summaries)
-- [ ] Invitation acceptance flow does not expose stored email
-- [ ] Forgot-password flow works end-to-end in production
-- [ ] Production smoke check: no `localhost` links, no plaintext email leakage
-- [ ] Data handling aligns with UK GDPR and Data Protection Act 2018
-- [ ] Copy production `EmailProtection:EncryptionKey` and `EmailProtection:LookupHmacKey` into secure password manager
-- [ ] Go-Live Day: send password reset emails to Becca (becca@the-dunlops.co.uk) and Hilary (hilaryrrb@gmail.com)
-
-### 3.3 Platform Hardening
-- [ ] Fail2ban setup on production VM
-- [ ] Report Fault modal (HomeController POST + `_Layout.cshtml` modal + CSS)
-- [ ] SystemStateMessage expiry (`ExpiresAt` nullable DateTime, `GetActiveAsync` filters expired)
-- [ ] Logging: failed authorization attempts
-- [ ] Impersonation — read-only, explicit enter/exit mode (design agreed, not built)
-
-### 3.4 RSprint-1 — Reader and Author Experience
-Items identified during UAT 2026-04-20. Full sprint design to follow.
-
-- [ ] Republish button should show would-be version number — e.g. "Republish" with "to version 3" underneath as a hint before committing
-- [ ] Reader progress drill-down on Author scene view — clicking "Read by N reader(s)" shows which readers have opened the scene and when
-- [ ] Reader scroll progress tracking — progress indicator per reader per scene (depends on scroll position work below)
-- [ ] Kindle-style resume — exact scroll position (`ScrollPosition` on `ReadEvent`, debounced JS POST, restore on load)
-- [ ] Reader progress in Recent Activity — author preference to show/hide reader open events; per-reader progress on Readers page
-- [ ] Reader version visibility — decide whether readers should see the version number (deferred, review post-UAT)
-
-### 3.5 Multi-Tenancy Sprint Series
-See `MultiTenancy.md` for full design, migration strategy, and sprint plan.
-
-| Sprint | Deliverable |
-|--------|-------------|
-| MT-Sprint-1 | Account / Tenancy / TenancyMembership entity split |
-| MT-Sprint-2 | Subscription enforcement, `IBillingProvider`, Creem integration |
-| MT-Sprint-3 | Author self-serve registration, Dropbox connect per Tenancy |
-| MT-Sprint-4 | Reader cross-tenancy identity |
-| MT-Sprint-5 | Reader Marketplace (post-revenue) |
-
-**Prerequisite:** Billing abstraction in place and production stable before MT-Sprint-1.
+---
 
 ### 3.6 Incremental Refactor Roadmap
 See `REFACTORING.md` for full detail.
+
 - [DONE] Phase 1 — Centralise controller user/role resolution
 - [ ] Phase 2 — Extract procedural controller workflows
 - [ ] Phase 3 — Decompose startup/seeding
@@ -151,7 +215,10 @@ See `REFACTORING.md` for full detail.
 - [ ] Phase 5 — Extract remaining procedural workflows
 - [ ] Phase 6 — Standardise sync kickoff (remove inline `Task.Run`)
 
+---
+
 ### 3.7 Post Go-Live Backlog
+
 - Reader notification emails (new chapter published)
 - Dropbox OAuth2 token refresh
 - Dropbox webhook controller for push-based sync
