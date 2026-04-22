@@ -1,4 +1,20 @@
-﻿---
+# AGENT REQUIREMENT - MANDATORY
+
+Before performing any work, the agent MUST:
+
+1. Read and apply:
+   - AGENTS.md
+   - .github/Instructions/refactoring.instructions.md
+
+2. Operate fully within their constraints
+
+If these files are not read or cannot be applied:
+
+STOP.
+
+Do not proceed with the task.
+
+---
 mode: agent
 description: S-Sprint-6 Phase 1 - Worker host and scheduling
 ---
@@ -10,7 +26,7 @@ description: S-Sprint-6 Phase 1 - Worker host and scheduling
 2. Create `ssprint/S-Sprint-6-Phase-1-worker-host-and-scheduling` from `main`
 3. All work on `ssprint/S-Sprint-6-Phase-1-worker-host-and-scheduling`
 4. When all Success Gates pass, present merge commands - do not execute
-5. Developer merges: `ssprint/S-Sprint-6-Phase-1-worker-host-and-scheduling` â†’ `main`
+5. Developer merges: `ssprint/S-Sprint-6-Phase-1-worker-host-and-scheduling` → `main`
 
 ## Context
 This is Phase 1 of S-Sprint-6 (Periodic Worker and Held Request Recovery).
@@ -46,7 +62,7 @@ Refer to `DropBox Synchronisation Using WebHooks.md` S-Sprint-6 Phase 1 for:
 - Test coverage expectations
 
 ### What NOT to Do
-- Do not skip TDD sequence (stub â†’ failing test â†’ implementation)
+- Do not skip TDD sequence (stub → failing test → implementation)
 - Do not add features beyond this phase's scope
 - Do not modify unrelated code
 - Do not publish content or create versions (ingestion-only constraint)
@@ -67,7 +83,7 @@ State precisely:
 Describe in plain English:
 - What files will be created or modified
 - What tests will be written (arrange/act/assert)
-- What the TDD sequence is (stub â†’ red â†’ green)
+- What the TDD sequence is (stub → red → green)
 
 ### Section 3 - Verification Steps
 Confirm:
@@ -110,7 +126,7 @@ Confirm:
 
 ## Rules
 - No code before the plan is reviewed and approved
-- TDD: stub â†’ failing test â†’ implementation â†’ confirm green
+- TDD: stub → failing test → implementation → confirm green
 - Follow existing patterns in Domain/Application/Infrastructure layers
 - No inline styles in views - CSS classes only
 - Webhook sync is ingestion-only - never publishes or creates versions

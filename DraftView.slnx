@@ -7,6 +7,7 @@
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".gitignore" />
+    <File Path="Add-AgentRequirements-To-Prompts.ps1" />
     <File Path="AGENTS.md" />
     <File Path="betabooks-export.json" />
     <File Path="CLAUDE.md" />
@@ -28,6 +29,7 @@
     <File Path="TASKS2.old" />
     <File Path="Update-CssVersion.ps1" />
   </Folder>
+  <Folder Name="/Solution Items/.codex/" />
   <Folder Name="/Solution Items/.github/">
     <File Path=".github/copilot-instructions.md" />
     <File Path=".github/PROMPT-STANDARD.md" />
