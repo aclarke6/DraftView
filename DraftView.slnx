@@ -54,6 +54,7 @@
     <File Path=".github/Prompts/CHANGE-002-Align-Scene-Version-Labels-On-Publishing.md" />
     <File Path="BUG-015-reader-sees-unpublished-working-content-and-banner-version-missing.prompt.md" />
   </Folder>
+  <Folder Name="/Solution Items/.github/Prompts/S-Sprint Prompts/" />
   <Folder Name="/Solution Items/UAT/">
     <File Path="DraftView-UAT-Plan.md" />
   </Folder>
