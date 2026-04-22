@@ -19,16 +19,11 @@ If these files cannot be read or applied, stop and ask for clarification.
 
 ## Branching
 
-This task is sprint work, so use a task-specific sub-branch under the sprint parent branch.
-
-1. Confirm the current branch before making changes.
-2. Ensure the sprint parent branch is `S-Sprint-1`.
-3. Create and work on `S-Sprint-1/phase-1-architecture-task-alignment`.
-4. Commit only documentation changes on that task branch.
-5. When all Success Gates pass, present merge commands only. Do not merge to `main`.
-
-If `S-Sprint-1` does not exist locally, stop and ask the developer whether to create it
-from `main` or another branch.
+1. Checkout `main` and pull latest from `origin/main`
+2. Create `S-Sprint-1-base` from `main` if it does not already exist
+3. Create `S-Sprint-1-base/phase-1-architecture-task-alignment` from `S-Sprint-1-base`
+4. All work on `S-Sprint-1-base/phase-1-architecture-task-alignment`
+5. Developer merges: `S-Sprint-1-base/phase-1-architecture-task-alignment` -> `S-Sprint-1-base` -> `main`
 
 ## Context
 
@@ -149,7 +144,7 @@ Use these gates for this documentation-only phase.
 - [ ] Manual diff review confirms no unintended formatting changes.
 
 **Gate 4 - Committed to task branch**
-- [ ] Changes committed to `S-Sprint-1/phase-1-architecture-task-alignment` with message:
+- [ ] Changes committed to `S-Sprint-1-base/phase-1-architecture-task-alignment` with message:
   `docs: mark S-Sprint-1 Phase 1 in progress`
 - [ ] `git status` is clean.
 
@@ -157,10 +152,10 @@ Use these gates for this documentation-only phase.
 - [ ] Present for manual execution. Do not execute:
 
 ```bash
-git checkout S-Sprint-1
-git merge S-Sprint-1/phase-1-architecture-task-alignment
+git checkout S-Sprint-1-base
+git merge S-Sprint-1-base/phase-1-architecture-task-alignment
 git checkout main
-git merge S-Sprint-1
+git merge S-Sprint-1-base
 git push origin main
 ```
 

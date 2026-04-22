@@ -20,16 +20,11 @@ If these files cannot be read or applied, stop and ask for clarification.
 
 ## Branching
 
-This task is sprint work, so use a task-specific sub-branch under the sprint parent branch.
-
-1. Confirm the current branch before making changes.
-2. Ensure the sprint parent branch is `S-Sprint-7`.
-3. Create and work on `S-Sprint-7/phase-3-manual-operational-controls`.
-4. Commit only Phase 3 work on that task branch.
-5. When all Success Gates pass, present merge commands only. Do not merge to `main`.
-
-If `S-Sprint-7` does not exist locally, stop and ask the developer whether to create it
-from `main` or another branch.
+1. Checkout `main` and pull latest from `origin/main`
+2. Create `S-Sprint-7-base` from `main` if it does not already exist
+3. Create `S-Sprint-7-base/phase-3-manual-operational-controls` from `S-Sprint-7-base`
+4. All work on `S-Sprint-7-base/phase-3-manual-operational-controls`
+5. Developer merges: `S-Sprint-7-base/phase-3-manual-operational-controls` -> `S-Sprint-7-base` -> `main`
 
 ## Context
 
@@ -220,7 +215,7 @@ Confirm:
 - [ ] Authorization verified: non-SystemSupport users cannot access it.
 
 **Gate 5 - Committed to GitHub**
-- [ ] Committed to `S-Sprint-7/phase-3-manual-operational-controls` with message:
+- [ ] Committed to `S-Sprint-7-base/phase-3-manual-operational-controls` with message:
   `feat: add S-Sprint-7 manual operational controls`
 - [ ] `git status` is clean.
 
@@ -233,10 +228,10 @@ Confirm:
 - [ ] Present for manual execution. Do not execute:
 
 ```bash
-git checkout S-Sprint-7
-git merge S-Sprint-7/phase-3-manual-operational-controls
+git checkout S-Sprint-7-base
+git merge S-Sprint-7-base/phase-3-manual-operational-controls
 git checkout main
-git merge S-Sprint-7
+git merge S-Sprint-7-base
 git push origin main
 ```
 

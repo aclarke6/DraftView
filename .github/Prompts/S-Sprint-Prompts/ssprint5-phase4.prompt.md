@@ -1,17 +1,31 @@
-# AGENT REQUIREMENT - MANDATORY
-
-Before performing any work, the agent MUST:
-
-1. Read and apply:
-   - AGENTS.md
-   - .github/Instructions/refactoring.instructions.md
-
-2. Operate fully within their constraints
-
-If these files are not read or cannot be applied:
-
-STOP.
-
+# AGENT REQUIREMENT - MANDATORY
+
+
+
+Before performing any work, the agent MUST:
+
+
+
+1. Read and apply:
+
+   - AGENTS.md
+
+   - .github/Instructions/refactoring.instructions.md
+
+
+
+2. Operate fully within their constraints
+
+
+
+If these files are not read or cannot be applied:
+
+
+
+STOP.
+
+
+
 Do not proceed with the task.
 
 ---
@@ -23,10 +37,10 @@ description: S-Sprint-5 Phase 4 - Integration tests
 
 ## Branching
 1. Checkout `main` and pull latest from `origin/main`
-2. Create `ssprint/S-Sprint-5-Phase-4-integration-tests` from `main`
-3. All work on `ssprint/S-Sprint-5-Phase-4-integration-tests`
-4. When all Success Gates pass, present merge commands - do not execute
-5. Developer merges: `ssprint/S-Sprint-5-Phase-4-integration-tests` → `main`
+2. Create `S-Sprint-5-base` from `main` if it does not already exist
+3. Create `S-Sprint-5-base/phase-4-integration-tests` from `S-Sprint-5-base`
+4. All work on `S-Sprint-5-base/phase-4-integration-tests`
+5. Developer merges: `S-Sprint-5-base/phase-4-integration-tests` -> `S-Sprint-5-base` -> `main`
 
 ## Context
 This is Phase 4 of S-Sprint-5 (Reuse Existing Sync Pipeline End to End).
@@ -108,7 +122,7 @@ Confirm:
 - [ ] Manual verification complete (describe what was verified)
 
 **Gate 5 - Committed to GitHub**
-- [ ] Committed to `ssprint/S-Sprint-5-Phase-4-integration-tests` with message:
+- [ ] Committed to `S-Sprint-5-base/phase-4-integration-tests` with message:
     `feat: S-Sprint-5 Phase 4 - Integration tests`
 - [ ] `git status` is clean
 
@@ -119,8 +133,10 @@ Confirm:
 **Gate 7 - Present merge commands**
 - [ ] Present for manual execution - do not execute:
   ```
+  git checkout S-Sprint-5-base
+  git merge S-Sprint-5-base/phase-4-integration-tests
   git checkout main
-  git merge ssprint/S-Sprint-5-Phase-4-integration-tests
+  git merge S-Sprint-5-base
   git push origin main
   ```
 

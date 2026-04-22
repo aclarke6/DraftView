@@ -1,17 +1,31 @@
-# AGENT REQUIREMENT - MANDATORY
-
-Before performing any work, the agent MUST:
-
-1. Read and apply:
-   - AGENTS.md
-   - .github/Instructions/refactoring.instructions.md
-
-2. Operate fully within their constraints
-
-If these files are not read or cannot be applied:
-
-STOP.
-
+# AGENT REQUIREMENT - MANDATORY
+
+
+
+Before performing any work, the agent MUST:
+
+
+
+1. Read and apply:
+
+   - AGENTS.md
+
+   - .github/Instructions/refactoring.instructions.md
+
+
+
+2. Operate fully within their constraints
+
+
+
+If these files are not read or cannot be applied:
+
+
+
+STOP.
+
+
+
 Do not proceed with the task.
 
 ---
@@ -23,10 +37,10 @@ description: S-Sprint-1 Phase 4 — Infrastructure mapping and migration for syn
 
 ## Branching
 1. Checkout `main` and pull latest from `origin/main`
-2. Create `ssprint/S-Sprint-1-Phase-4-infrastructure` from `main`
-3. All work on `ssprint/S-Sprint-1-Phase-4-infrastructure`
-4. When all Success Gates pass, present merge commands — do not execute
-5. Developer merges: `ssprint/S-Sprint-1-Phase-4-infrastructure` → `main`
+2. Create `S-Sprint-1-base` from `main` if it does not already exist
+3. Create `S-Sprint-1-base/phase-4-infrastructure` from `S-Sprint-1-base`
+4. All work on `S-Sprint-1-base/phase-4-infrastructure`
+5. Developer merges: `S-Sprint-1-base/phase-4-infrastructure` -> `S-Sprint-1-base` -> `main`
 
 ## Context
 S-Sprint-1 Phase 3 is complete. Domain tests prove sync control state derivation rules.
@@ -124,7 +138,7 @@ Confirm:
 - [ ] Full test suite passes — paste count
 
 **Gate 6 — Committed to GitHub**
-- [ ] Committed to `ssprint/S-Sprint-1-Phase-4-infrastructure` with message:
+- [ ] Committed to `S-Sprint-1-base/phase-4-infrastructure` with message:
     `infra: add EF configuration and migration for Project webhook sync control fields`
 - [ ] `git status` is clean
 
@@ -136,8 +150,10 @@ Confirm:
 **Gate 8 — Present merge commands**
 - [ ] Present for manual execution — do not execute:
   ```
+  git checkout S-Sprint-1-base
+  git merge S-Sprint-1-base/phase-4-infrastructure
   git checkout main
-  git merge ssprint/S-Sprint-1-Phase-4-infrastructure
+  git merge S-Sprint-1-base
   git push origin main
   ```
 

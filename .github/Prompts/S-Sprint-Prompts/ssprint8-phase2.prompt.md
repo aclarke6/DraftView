@@ -1,4 +1,4 @@
-﻿---
+---
 mode: agent
 description: S-Sprint-8 Phase 2 - Stale project reconciliation with lease-based protection
 ---
@@ -7,10 +7,10 @@ description: S-Sprint-8 Phase 2 - Stale project reconciliation with lease-based 
 
 ## Branching
 1. Checkout `main` and pull latest from `origin/main`
-2. Create `ssprint/S-Sprint-8-Phase-2-stale-project-reconciliation-with-lease-based-protection` from `main`
-3. All work on `ssprint/S-Sprint-8-Phase-2-stale-project-reconciliation-with-lease-based-protection`
-4. When all Success Gates pass, present merge commands - do not execute
-5. Developer merges: `ssprint/S-Sprint-8-Phase-2-stale-project-reconciliation-with-lease-based-protection` â†’ `main`
+2. Create `S-Sprint-8-base` from `main` if it does not already exist
+3. Create `S-Sprint-8-base/phase-2-stale-project-reconciliation-with-lease-based-protection` from `S-Sprint-8-base`
+4. All work on `S-Sprint-8-base/phase-2-stale-project-reconciliation-with-lease-based-protection`
+5. Developer merges: `S-Sprint-8-base/phase-2-stale-project-reconciliation-with-lease-based-protection` -> `S-Sprint-8-base` -> `main`
 
 ## Context
 This is Phase 2 of S-Sprint-8 (Daily Health Check and Reconciliation App).
@@ -92,7 +92,7 @@ Confirm:
 - [ ] Manual verification complete (describe what was verified)
 
 **Gate 5 - Committed to GitHub**
-- [ ] Committed to `ssprint/S-Sprint-8-Phase-2-stale-project-reconciliation-with-lease-based-protection` with message:
+- [ ] Committed to `S-Sprint-8-base/phase-2-stale-project-reconciliation-with-lease-based-protection` with message:
     `feat: S-Sprint-8 Phase 2 - Stale project reconciliation with lease-based protection`
 - [ ] `git status` is clean
 
@@ -103,8 +103,10 @@ Confirm:
 **Gate 7 - Present merge commands**
 - [ ] Present for manual execution - do not execute:
   ```
+  git checkout S-Sprint-8-base
+  git merge S-Sprint-8-base/phase-2-stale-project-reconciliation-with-lease-based-protection
   git checkout main
-  git merge ssprint/S-Sprint-8-Phase-2-stale-project-reconciliation-with-lease-based-protection
+  git merge S-Sprint-8-base
   git push origin main
   ```
 

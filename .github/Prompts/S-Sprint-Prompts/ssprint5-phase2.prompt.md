@@ -1,17 +1,31 @@
-# AGENT REQUIREMENT - MANDATORY
-
-Before performing any work, the agent MUST:
-
-1. Read and apply:
-   - AGENTS.md
-   - .github/Instructions/refactoring.instructions.md
-
-2. Operate fully within their constraints
-
-If these files are not read or cannot be applied:
-
-STOP.
-
+# AGENT REQUIREMENT - MANDATORY
+
+
+
+Before performing any work, the agent MUST:
+
+
+
+1. Read and apply:
+
+   - AGENTS.md
+
+   - .github/Instructions/refactoring.instructions.md
+
+
+
+2. Operate fully within their constraints
+
+
+
+If these files are not read or cannot be applied:
+
+
+
+STOP.
+
+
+
 Do not proceed with the task.
 
 ---
@@ -23,10 +37,10 @@ description: S-Sprint-5 Phase 2 - End-to-end background sync execution
 
 ## Branching
 1. Checkout `main` and pull latest from `origin/main`
-2. Create `ssprint/S-Sprint-5-Phase-2-end-to-end-background-sync-execution` from `main`
-3. All work on `ssprint/S-Sprint-5-Phase-2-end-to-end-background-sync-execution`
-4. When all Success Gates pass, present merge commands - do not execute
-5. Developer merges: `ssprint/S-Sprint-5-Phase-2-end-to-end-background-sync-execution` → `main`
+2. Create `S-Sprint-5-base` from `main` if it does not already exist
+3. Create `S-Sprint-5-base/phase-2-end-to-end-background-sync-execution` from `S-Sprint-5-base`
+4. All work on `S-Sprint-5-base/phase-2-end-to-end-background-sync-execution`
+5. Developer merges: `S-Sprint-5-base/phase-2-end-to-end-background-sync-execution` -> `S-Sprint-5-base` -> `main`
 
 ## Context
 This is Phase 2 of S-Sprint-5 (Reuse Existing Sync Pipeline End to End).
@@ -108,7 +122,7 @@ Confirm:
 - [ ] Manual verification complete (describe what was verified)
 
 **Gate 5 - Committed to GitHub**
-- [ ] Committed to `ssprint/S-Sprint-5-Phase-2-end-to-end-background-sync-execution` with message:
+- [ ] Committed to `S-Sprint-5-base/phase-2-end-to-end-background-sync-execution` with message:
     `feat: S-Sprint-5 Phase 2 - End-to-end background sync execution`
 - [ ] `git status` is clean
 
@@ -119,8 +133,10 @@ Confirm:
 **Gate 7 - Present merge commands**
 - [ ] Present for manual execution - do not execute:
   ```
+  git checkout S-Sprint-5-base
+  git merge S-Sprint-5-base/phase-2-end-to-end-background-sync-execution
   git checkout main
-  git merge ssprint/S-Sprint-5-Phase-2-end-to-end-background-sync-execution
+  git merge S-Sprint-5-base
   git push origin main
   ```
 

@@ -1,17 +1,31 @@
-# AGENT REQUIREMENT - MANDATORY
-
-Before performing any work, the agent MUST:
-
-1. Read and apply:
-   - AGENTS.md
-   - .github/Instructions/refactoring.instructions.md
-
-2. Operate fully within their constraints
-
-If these files are not read or cannot be applied:
-
-STOP.
-
+# AGENT REQUIREMENT - MANDATORY
+
+
+
+Before performing any work, the agent MUST:
+
+
+
+1. Read and apply:
+
+   - AGENTS.md
+
+   - .github/Instructions/refactoring.instructions.md
+
+
+
+2. Operate fully within their constraints
+
+
+
+If these files are not read or cannot be applied:
+
+
+
+STOP.
+
+
+
 Do not proceed with the task.
 
 ---
@@ -23,10 +37,10 @@ description: S-Sprint-2 Phase 3 - Request recording service
 
 ## Branching
 1. Checkout `main` and pull latest from `origin/main`
-2. Create `ssprint/S-Sprint-2-Phase-3-request-recording-service` from `main`
-3. All work on `ssprint/S-Sprint-2-Phase-3-request-recording-service`
-4. When all Success Gates pass, present merge commands - do not execute
-5. Developer merges: `ssprint/S-Sprint-2-Phase-3-request-recording-service` → `main`
+2. Create `S-Sprint-2-base` from `main` if it does not already exist
+3. Create `S-Sprint-2-base/phase-3-request-recording-service` from `S-Sprint-2-base`
+4. All work on `S-Sprint-2-base/phase-3-request-recording-service`
+5. Developer merges: `S-Sprint-2-base/phase-3-request-recording-service` -> `S-Sprint-2-base` -> `main`
 
 ## Context
 This is Phase 3 of S-Sprint-2 (Webhook Receipt and Durable Request Recording).
@@ -108,7 +122,7 @@ Confirm:
 - [ ] Manual verification complete (describe what was verified)
 
 **Gate 5 - Committed to GitHub**
-- [ ] Committed to `ssprint/S-Sprint-2-Phase-3-request-recording-service` with message:
+- [ ] Committed to `S-Sprint-2-base/phase-3-request-recording-service` with message:
     `feat: S-Sprint-2 Phase 3 - Request recording service`
 - [ ] `git status` is clean
 
@@ -119,8 +133,10 @@ Confirm:
 **Gate 7 - Present merge commands**
 - [ ] Present for manual execution - do not execute:
   ```
+  git checkout S-Sprint-2-base
+  git merge S-Sprint-2-base/phase-3-request-recording-service
   git checkout main
-  git merge ssprint/S-Sprint-2-Phase-3-request-recording-service
+  git merge S-Sprint-2-base
   git push origin main
   ```
 

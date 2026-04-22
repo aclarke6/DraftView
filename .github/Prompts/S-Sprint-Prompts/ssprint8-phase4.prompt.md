@@ -1,17 +1,31 @@
-﻿# AGENT REQUIREMENT - MANDATORY
-
-Before performing any work, the agent MUST:
-
-1. Read and apply:
-   - AGENTS.md
-   - .github/Instructions/refactoring.instructions.md
-
-2. Operate fully within their constraints
-
-If these files are not read or cannot be applied:
-
-STOP.
-
+# AGENT REQUIREMENT - MANDATORY
+
+
+
+Before performing any work, the agent MUST:
+
+
+
+1. Read and apply:
+
+   - AGENTS.md
+
+   - .github/Instructions/refactoring.instructions.md
+
+
+
+2. Operate fully within their constraints
+
+
+
+If these files are not read or cannot be applied:
+
+
+
+STOP.
+
+
+
 Do not proceed with the task.
 ---
 mode: agent
@@ -22,10 +36,10 @@ description: S-Sprint-8 Phase 4 - Full rescan orchestration and operational veri
 
 ## Branching
 1. Checkout `main` and pull latest from `origin/main`
-2. Create `ssprint/S-Sprint-8-Phase-4-full-rescan-orchestration-and-operational-verification` from `main`
-3. All work on `ssprint/S-Sprint-8-Phase-4-full-rescan-orchestration-and-operational-verification`
-4. When all Success Gates pass, present merge commands - do not execute
-5. Developer merges: `ssprint/S-Sprint-8-Phase-4-full-rescan-orchestration-and-operational-verification` â†’ `main`
+2. Create `S-Sprint-8-base` from `main` if it does not already exist
+3. Create `S-Sprint-8-base/phase-4-full-rescan-orchestration-and-operational-verification` from `S-Sprint-8-base`
+4. All work on `S-Sprint-8-base/phase-4-full-rescan-orchestration-and-operational-verification`
+5. Developer merges: `S-Sprint-8-base/phase-4-full-rescan-orchestration-and-operational-verification` -> `S-Sprint-8-base` -> `main`
 
 ## Context
 This is Phase 4 of S-Sprint-8 (Daily Health Check and Reconciliation App).
@@ -107,7 +121,7 @@ Confirm:
 - [ ] Manual verification complete (describe what was verified)
 
 **Gate 5 - Committed to GitHub**
-- [ ] Committed to `ssprint/S-Sprint-8-Phase-4-full-rescan-orchestration-and-operational-verification` with message:
+- [ ] Committed to `S-Sprint-8-base/phase-4-full-rescan-orchestration-and-operational-verification` with message:
     `feat: S-Sprint-8 Phase 4 - Full rescan orchestration and operational verification`
 - [ ] `git status` is clean
 
@@ -118,8 +132,10 @@ Confirm:
 **Gate 7 - Present merge commands**
 - [ ] Present for manual execution - do not execute:
   ```
+  git checkout S-Sprint-8-base
+  git merge S-Sprint-8-base/phase-4-full-rescan-orchestration-and-operational-verification
   git checkout main
-  git merge ssprint/S-Sprint-8-Phase-4-full-rescan-orchestration-and-operational-verification
+  git merge S-Sprint-8-base
   git push origin main
   ```
 

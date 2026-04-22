@@ -1,17 +1,31 @@
-# AGENT REQUIREMENT - MANDATORY
-
-Before performing any work, the agent MUST:
-
-1. Read and apply:
-   - AGENTS.md
-   - .github/Instructions/refactoring.instructions.md
-
-2. Operate fully within their constraints
-
-If these files are not read or cannot be applied:
-
-STOP.
-
+# AGENT REQUIREMENT - MANDATORY
+
+
+
+Before performing any work, the agent MUST:
+
+
+
+1. Read and apply:
+
+   - AGENTS.md
+
+   - .github/Instructions/refactoring.instructions.md
+
+
+
+2. Operate fully within their constraints
+
+
+
+If these files are not read or cannot be applied:
+
+
+
+STOP.
+
+
+
 Do not proceed with the task.
 
 ---
@@ -23,10 +37,10 @@ description: S-Sprint-1 Phase 2 — Domain model for sync control state
 
 ## Branching
 1. Checkout `main` and pull latest from `origin/main`
-2. Create `ssprint/S-Sprint-1-Phase-2-domain-model` from `main`
-3. All work on `ssprint/S-Sprint-1-Phase-2-domain-model`
-4. When all Success Gates pass, present merge commands — do not execute
-5. Developer merges: `ssprint/S-Sprint-1-Phase-2-domain-model` → `main`
+2. Create `S-Sprint-1-base` from `main` if it does not already exist
+3. Create `S-Sprint-1-base/phase-2-domain-model` from `S-Sprint-1-base`
+4. All work on `S-Sprint-1-base/phase-2-domain-model`
+5. Developer merges: `S-Sprint-1-base/phase-2-domain-model` -> `S-Sprint-1-base` -> `main`
 
 ## Context
 S-Sprint-1 Phase 1 is complete. TASKS.md has been updated to reflect the start of the webhook sync series.
@@ -115,7 +129,7 @@ Confirm:
 - [ ] Full test suite passes — paste count
 
 **Gate 4 — Committed to GitHub**
-- [ ] Committed to `ssprint/S-Sprint-1-Phase-2-domain-model` with message:
+- [ ] Committed to `S-Sprint-1-base/phase-2-domain-model` with message:
     `domain: add webhook sync control properties to Project entity`
 - [ ] `git status` is clean
 
@@ -126,8 +140,10 @@ Confirm:
 **Gate 6 — Present merge commands**
 - [ ] Present for manual execution — do not execute:
   ```
+  git checkout S-Sprint-1-base
+  git merge S-Sprint-1-base/phase-2-domain-model
   git checkout main
-  git merge ssprint/S-Sprint-1-Phase-2-domain-model
+  git merge S-Sprint-1-base
   git push origin main
   ```
 
