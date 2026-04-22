@@ -2,6 +2,7 @@
   <Folder Name="/Docs/">
     <File Path="DraftView Billing Model v2.docx" />
     <File Path="DraftView Business Model v3.docx" />
+    <File Path="DropBox Synchronisation Using WebHooks.md" />
     <File Path="Publishing And versioning Architecture.md" />
   </Folder>
   <Folder Name="/Solution Items/">
