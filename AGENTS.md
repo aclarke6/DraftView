@@ -138,6 +138,72 @@ For Domain, Application, and Infrastructure:
 
 Agents must not write production code without tests where required.
 
+
+## Test Execution Override — Cloud Phases
+
+This section defines a **global override** to standard test execution rules.
+
+### Activation
+
+This override applies when a task, issue, or phase is explicitly marked as:
+
+- "Cloud Execution Phase"
+- "GitHub Agent Phase"
+- or equivalent wording indicating cloud-based execution
+
+---
+
+### Override Behaviour
+
+When active, the following rules replace standard test execution requirements:
+
+#### Required Tests
+- Unit tests that do not require:
+  - database access
+  - application startup
+  - external services
+  - browser or UI automation
+
+#### Explicitly Not Required
+- Integration tests requiring PostgreSQL
+- EF Core migrations validated against a live database
+- Full application startup verification
+- End-to-end or browser-based tests
+
+---
+
+### Hard Stop Condition
+
+If safe or correct implementation requires any of the excluded test types:
+
+- STOP immediately
+- DO NOT proceed with implementation
+- Report:
+  - what validation is required
+  - why it cannot be executed in cloud context
+  - what follow-on local phase is required
+
+---
+
+### Non-Negotiable Constraints
+
+- This override does NOT permit:
+  - skipping required validation silently
+  - weakening correctness guarantees
+  - introducing behaviour that cannot be safely verified
+
+- System integrity takes precedence over task completion
+
+---
+
+### Precedence
+
+This override takes precedence over:
+- standard TDD execution rules
+- phase-level instructions that assume full environment access
+
+Unless the phase explicitly states:
+> "Full environment validation required — do not apply cloud override"
 ---
 
 ## Persistence
