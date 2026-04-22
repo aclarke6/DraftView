@@ -54,7 +54,36 @@
     <File Path=".github/Prompts/CHANGE-002-Align-Scene-Version-Labels-On-Publishing.md" />
     <File Path="BUG-015-reader-sees-unpublished-working-content-and-banner-version-missing.prompt.md" />
   </Folder>
-  <Folder Name="/Solution Items/.github/Prompts/S-Sprint Prompts/" />
+  <Folder Name="/Solution Items/.github/Prompts/S-Sprint-Prompts/">
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint1-phase1.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint1-phase2.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint1-phase3.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint1-phase4.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint2-phase1.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint2-phase2.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint2-phase3.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint2-phase4.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint3-phase1.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint3-phase2.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint3-phase3.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint3-phase4.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint4-phase1.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint4-phase2.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint4-phase3.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint4-phase4.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint5-phase1.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint5-phase2.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint5-phase3.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint5-phase4.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint6-phase1.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint6-phase2.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint6-phase3.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint6-phase4.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint7-phase1.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint7-phase2.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint7-phase3.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint7-phase4.prompt.md" />
+  </Folder>
   <Folder Name="/Solution Items/UAT/">
     <File Path="DraftView-UAT-Plan.md" />
   </Folder>
