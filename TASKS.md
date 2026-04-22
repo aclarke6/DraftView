@@ -165,7 +165,7 @@ See `DropBox Synchronisation Using WebHooks.md` for full architecture, control m
 - [Started] **S-Sprint-1 — Foundation for background Dropbox sync**
   - [DONE] Phase 1: Architecture and task alignment
   - [DONE] Phase 2: Domain model for sync control
-  - [ ] Phase 3: Domain tests for control rules
+  - [DONE] Phase 3: Domain tests for control rules
   - [ ] Phase 4: Infrastructure mapping and migration
 - [ ] **S-Sprint-2 — Webhook receipt and durable request recording**
   - [ ] Phase 1: Webhook endpoint surface
