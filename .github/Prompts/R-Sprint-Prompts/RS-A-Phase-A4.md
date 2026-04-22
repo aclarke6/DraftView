@@ -33,10 +33,10 @@ Sprint goal: Introduce anchor model, persistence, and application surface withou
 ## Branching
 
 1. Checkout `main` and pull latest from `origin/main`.
-2. Create `RS-A-base` from `main` if it does not already exist.
-3. Create `RS-A-base/phase-a4-application-surface` from `RS-A-base`.
-4. All work for this phase must be committed on `RS-A-base/phase-a4-application-surface`.
-5. Developer merges: `RS-A-base/phase-a4-application-surface` -> `RS-A-base` -> `main`.
+2. Create `RS-A/base` from `main` if it does not already exist.
+3. Create `RS-A/phase-a4-application-surface` from `RS-A/base`.
+4. All work for this phase must be committed on `RS-A/phase-a4-application-surface`.
+5. Developer merges: `RS-A/phase-a4-application-surface` -> `RS-A/base` -> `main`.
 
 ---
 
@@ -53,6 +53,7 @@ These instructions are mandatory. If this prompt conflicts with the source docum
 ## Scope
 
 - Add application DTOs and services for anchor create/retrieve.
+- Use the A1-selected names and files from `Passage Anchoring, Reader Continuity, and Inline Commentary.md`, Section 3.1.1.
 - Add authorization checks at the application boundary.
 - Register service interfaces in DI if required.
 - Do not change reader or comment UI yet.
@@ -98,9 +99,16 @@ These instructions are mandatory. If this prompt conflicts with the source docum
 ## Required Implementation Steps
 
 - Write failing application tests.
-- Add DTOs and service interfaces.
+- Add the exact DTOs and service interfaces selected by A1:
+  - `DraftView.Application/Services/PassageAnchorService.cs`
+  - `DraftView.Application/Contracts/CreatePassageAnchorRequest.cs`
+  - `DraftView.Application/Contracts/PassageAnchorDto.cs`
+  - `DraftView.Application/Contracts/PassageAnchorSnapshotDto.cs`
+  - `DraftView.Application/Contracts/PassageAnchorMatchDto.cs`
+  - `DraftView.Domain/Interfaces/Services/IPassageAnchorService.cs`
 - Implement authorization and orchestration through repositories/unit of work.
-- Register services as needed.
+- Register `IPassageAnchorService` in `DraftView.Web/Extensions/ServiceCollectionExtensions.cs`.
+- Resolve reader-facing content from `SectionVersion.HtmlContent` when a version exists; use `Section.HtmlContent` only for legacy no-version fallback.
 - Verify current user behavior is unchanged.
 ---
 

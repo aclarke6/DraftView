@@ -33,10 +33,10 @@ Sprint goal: Introduce anchor model, persistence, and application surface withou
 ## Branching
 
 1. Checkout `main` and pull latest from `origin/main`.
-2. Create `RS-A-base` from `main` if it does not already exist.
-3. Create `RS-A-base/phase-a3-persistence` from `RS-A-base`.
-4. All work for this phase must be committed on `RS-A-base/phase-a3-persistence`.
-5. Developer merges: `RS-A-base/phase-a3-persistence` -> `RS-A-base` -> `main`.
+2. Create `RS-A/base` from `main` if it does not already exist.
+3. Create `RS-A/phase-a3-persistence` from `RS-A/base`.
+4. All work for this phase must be committed on `RS-A/phase-a3-persistence`.
+5. Developer merges: `RS-A/phase-a3-persistence` -> `RS-A/base` -> `main`.
 
 ---
 
@@ -53,7 +53,7 @@ These instructions are mandatory. If this prompt conflicts with the source docum
 ## Scope
 
 - Add EF mappings, repository interfaces/implementations, and migration.
-- Add nullable FK links from comments/read events only if the A1 proposal selected that relationship.
+- Add nullable FK links from `Comments.PassageAnchorId` and `ReadEvents.ResumeAnchorId` to `PassageAnchors`.
 - Keep schema additive and backward compatible.
 - Do not add UI usage.
 
@@ -98,6 +98,14 @@ These instructions are mandatory. If this prompt conflicts with the source docum
 ## Required Implementation Steps
 
 - Write failing persistence tests for the selected mapping shape.
+- Create the exact persistence files selected by A1:
+  - `DraftView.Infrastructure/Persistence/Configurations/PassageAnchorConfiguration.cs`
+  - `DraftView.Infrastructure/Persistence/Repositories/PassageAnchorRepository.cs`
+- Modify only the selected persistence files:
+  - `DraftView.Infrastructure/Persistence/DraftViewDbContext.cs`
+  - `DraftView.Infrastructure/Persistence/Configurations/CommentConfiguration.cs`
+  - `DraftView.Infrastructure/Persistence/Configurations/ReadEventConfiguration.cs`
+  - `DraftView.Web/Extensions/ServiceCollectionExtensions.cs` for repository DI registration
 - Add mapping and repository code.
 - Create an additive migration.
 - Verify legacy null-anchor records remain valid.
@@ -109,6 +117,8 @@ These instructions are mandatory. If this prompt conflicts with the source docum
 - Anchor persists and reloads with immutable snapshot.
 - Null anchor comments remain valid.
 - Null anchor read events remain valid.
+- `Comment.PassageAnchorId` persists and reloads when present.
+- `ReadEvent.ResumeAnchorId` persists and reloads when present.
 - Current match persists and reloads.
 - Migration does not require existing comment/read-event rows to be updated.
 ---

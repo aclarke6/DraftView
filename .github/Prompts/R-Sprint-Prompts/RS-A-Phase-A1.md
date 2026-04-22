@@ -33,10 +33,10 @@ Sprint goal: Introduce anchor model, persistence, and application surface withou
 ## Branching
 
 1. Checkout `main` and pull latest from `origin/main`.
-2. Create `RS-A-base` from `main` if it does not already exist.
-3. Create `RS-A-base/phase-a1-model-discovery` from `RS-A-base`.
-4. All work for this phase must be committed on `RS-A-base/phase-a1-model-discovery`.
-5. Developer merges: `RS-A-base/phase-a1-model-discovery` -> `RS-A-base` -> `main`.
+2. Create `RS-A/base` from `main` if it does not already exist.
+3. Create `RS-A/phase-a1-model-discovery` from `RS-A/base`.
+4. All work for this phase must be committed on `RS-A/phase-a1-model-discovery`.
+5. Developer merges: `RS-A/phase-a1-model-discovery` -> `RS-A/base` -> `main`.
 
 ---
 
@@ -64,6 +64,7 @@ These instructions are mandatory. If this prompt conflicts with the source docum
 - A written proposal only.
 - No production code.
 - No migrations.
+- Completed A1 decision must be recorded in `Passage Anchoring, Reader Continuity, and Inline Commentary.md`, Section 3.1.1.
 
 ---
 
@@ -97,6 +98,7 @@ These instructions are mandatory. If this prompt conflicts with the source docum
 - Read the required documents and inspect the existing model.
 - Map existing comment, read event, section, and version relationships.
 - Propose RS-A A2-A4 files/classes/services/repositories/migrations.
+- Confirm whether the A1-selected nullable links are `Comment.PassageAnchorId` and `ReadEvent.ResumeAnchorId`.
 - Call out any deviations needed from the architecture document before implementation phases begin.
 ---
 
@@ -125,6 +127,7 @@ Stop immediately and report if any of the following occur:
 This phase is done only when:
 
 - Proposal names exact files/classes to change in A2-A4.
+- Proposal confirms the selected branch pattern is `RS-A/base` and `RS-A/phase-*`.
 - Proposal confirms how legacy comments/read events remain valid.
 - Proposal confirms versioning boundary compliance.
 - No code or migration changes are made.

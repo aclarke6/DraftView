@@ -97,20 +97,76 @@ The system must never imply certainty when the match is uncertain.
 
 ### 3.1 Core Domain Concepts
 
-The implementation should introduce these concepts unless RS-A Phase A1 discovers a
-stronger fit in the current codebase:
+RS-A Phase A1 selected the following names and responsibilities for the current codebase:
 
 | Concept | Layer | Purpose |
 |---------|-------|---------|
 | `PassageAnchor` | Domain entity | Owns original immutable anchor capture and current status. |
 | `PassageAnchorSnapshot` | Domain value object | Immutable source text, context, offsets, and hashes. |
-| `PassageAnchorMatch` | Domain value object or entity | Current resolved location, confidence, source, and target version. |
+| `PassageAnchorMatch` | Domain value object | Current resolved location, confidence, source, and target version. |
 | `PassageAnchorStatus` | Domain enum | Current state visible to Application and Web. |
 | `PassageAnchorPurpose` | Domain enum | Distinguishes comment, resume, progress, and future uses. |
 | `PassageAnchorMatchMethod` | Domain enum | Exact, context, fuzzy, AI, manual relink, rejected, orphaned. |
 
-The final names may vary to match existing project conventions, but the responsibilities
-must remain separate.
+These names are now the implementation contract for RS-A A2-A4 unless a later phase hits
+a stop condition and records a replacement decision before code changes continue.
+
+### 3.1.1 RS-A Phase A1 Implementation Decisions
+
+RS-A Phase A1 confirmed that the current model can support an additive anchor migration.
+The implementation must use these exact file/class decisions for A2-A4:
+
+Domain files:
+
+- `DraftView.Domain/Entities/PassageAnchor.cs`
+- `DraftView.Domain/ValueObjects/PassageAnchorSnapshot.cs`
+- `DraftView.Domain/ValueObjects/PassageAnchorMatch.cs`
+- `DraftView.Domain/Enumerations/PassageAnchorPurpose.cs`
+- `DraftView.Domain/Enumerations/PassageAnchorStatus.cs`
+- `DraftView.Domain/Enumerations/PassageAnchorMatchMethod.cs`
+- `DraftView.Domain/Interfaces/Repositories/IPassageAnchorRepository.cs`
+
+Domain modifications:
+
+- `DraftView.Domain/Entities/Comment.cs` gets nullable `Guid? PassageAnchorId`.
+- `DraftView.Domain/Entities/ReadEvent.cs` gets nullable `Guid? ResumeAnchorId`.
+- Existing `Comment` factories must keep working with a null anchor.
+- Existing `ReadEvent` creation and update paths must keep working with a null resume anchor.
+
+Infrastructure files:
+
+- `DraftView.Infrastructure/Persistence/Configurations/PassageAnchorConfiguration.cs`
+- `DraftView.Infrastructure/Persistence/Repositories/PassageAnchorRepository.cs`
+- `DraftView.Infrastructure/Persistence/DraftViewDbContext.cs`
+- `DraftView.Infrastructure/Persistence/Configurations/CommentConfiguration.cs`
+- `DraftView.Infrastructure/Persistence/Configurations/ReadEventConfiguration.cs`
+- an additive EF migration for `PassageAnchors`, `Comments.PassageAnchorId`, and
+  `ReadEvents.ResumeAnchorId`
+
+Application files:
+
+- `DraftView.Application/Services/PassageAnchorService.cs`
+- `DraftView.Application/Contracts/CreatePassageAnchorRequest.cs`
+- `DraftView.Application/Contracts/PassageAnchorDto.cs`
+- `DraftView.Application/Contracts/PassageAnchorSnapshotDto.cs`
+- `DraftView.Application/Contracts/PassageAnchorMatchDto.cs`
+- `DraftView.Domain/Interfaces/Services/IPassageAnchorService.cs`
+- `DraftView.Web/Extensions/ServiceCollectionExtensions.cs` for DI registration only
+
+Reader progress decision:
+
+- `ReadEvent` is sufficient for RS-A and RS-B latest-position resume anchoring.
+- Store the active resume anchor in `ReadEvent.ResumeAnchorId`.
+- Do not introduce a separate progress-history table in RS-A.
+- A separate historical progress/event table may be considered later only if RS-H or
+  analytics requirements need position history beyond the latest resume point.
+
+Branching decision:
+
+- The earlier `RS-A-base/phase-*` branch pattern is not Git-valid when `RS-A-base` exists
+  as a branch.
+- RS-A implementation phases must use `RS-A/base` and `RS-A/phase-*` branches.
+- Phase branches merge `RS-A/phase-*` -> `RS-A/base` -> `main`.
 
 ### 3.2 PassageAnchor Required Data
 
@@ -373,7 +429,7 @@ Expected operations:
 - Create an anchor from a validated selection.
 - Get anchor by id with current status.
 - Get anchors for a section/version.
-- Get anchors owned by a comment or read event.
+- Get anchors referenced by a comment or by `ReadEvent.ResumeAnchorId`.
 
 ### 6.2 Anchor Resolution Service
 
@@ -405,7 +461,8 @@ Expected operations:
 - Capture latest reader position as an anchor.
 - Resolve resume anchor when a reader opens a section.
 - Fall back safely when no anchor exists or the anchor is orphaned.
-- Preserve existing read-event behavior until RS-B integration replaces scroll-only resume.
+- Preserve existing read-event behavior until RS-B integration activates anchor restore.
+- Store the latest active resume anchor on `ReadEvent.ResumeAnchorId`.
 
 ### 6.5 Original Context Service
 
@@ -441,12 +498,13 @@ Expected persistence shape:
 
 - `PassageAnchors`
 - Optional owned table or JSON/owned columns for original snapshot
-- Optional `PassageAnchorMatches` if match history is retained
-- Nullable FK from `Comment` to `PassageAnchor`
-- Nullable FK or equivalent from `ReadEvent`/reader progress record to `PassageAnchor`
+- Owned columns or an owned type for the current match
+- Nullable FK from `Comment.PassageAnchorId` to `PassageAnchor`
+- Nullable FK from `ReadEvent.ResumeAnchorId` to `PassageAnchor`
 
-If RS-A Phase A1 finds that owned EF types are simpler and well-supported by the current
-project style, use owned types. If audit/history becomes important, use separate tables.
+Use EF owned types for the original snapshot and current match unless a concrete provider
+limitation is found during A3. Do not add `PassageAnchorMatches` in RS-A; if audit/history
+becomes important, add a separate table in a later phase.
 
 ### 7.2 Indexes
 
@@ -456,8 +514,8 @@ Minimum indexes:
 - `OriginalSectionVersionId`
 - `Purpose`
 - `CreatedByUserId`
-- Comment anchor FK, if added
-- Read event/progress anchor FK, if added
+- `Comments.PassageAnchorId`
+- `ReadEvents.ResumeAnchorId`
 
 ### 7.3 Backward Compatibility
 
@@ -556,6 +614,9 @@ Scope:
 - Propose final class names, relationships, repository shape, and migration strategy.
 - Identify whether `ReadEvent` is sufficient for anchor-based progress or whether a
   separate progress record is needed later.
+- Completed decision: use `PassageAnchor`, `PassageAnchorSnapshot`, and
+  `PassageAnchorMatch`; add nullable `Comment.PassageAnchorId` and
+  `ReadEvent.ResumeAnchorId`; no separate progress-history table in RS-A.
 
 Deliverable:
 
@@ -584,6 +645,8 @@ Must deploy with: A3.
 Scope:
 
 - Add domain entity/value objects/enums for anchors and matches.
+- Use the exact A1-selected files/classes listed in Section 3.1.1.
+- Add nullable anchor references to `Comment` and `ReadEvent` at the domain level.
 - Add domain methods for creation, match update, orphaning, rejection, and relink.
 - Do not add EF mappings or Web usage.
 
@@ -595,6 +658,9 @@ Deliverable:
 Required tests:
 
 - Create anchor with valid snapshot succeeds.
+- Existing comments can be created with no `PassageAnchorId`.
+- Existing read events can be created with no `ResumeAnchorId`.
+- Read event resume anchor can be updated and cleared.
 - Empty selected text throws.
 - End offset before start offset throws.
 - Original snapshot cannot be mutated through domain API.
@@ -617,8 +683,8 @@ Deployable: yes when combined with A2.
 Scope:
 
 - Add EF mappings, repository interfaces/implementations, and migration.
-- Add nullable FK links from comments/read events only if the A1 proposal selects that
-  relationship.
+- Add nullable FK links from `Comments.PassageAnchorId` and `ReadEvents.ResumeAnchorId`
+  to `PassageAnchors`.
 - Keep schema additive.
 
 Deliverable:
@@ -632,6 +698,8 @@ Required tests:
 - Anchor persists and reloads with immutable snapshot.
 - Null anchor comments remain valid.
 - Null anchor read events remain valid.
+- `Comment.PassageAnchorId` persists and reloads when present.
+- `ReadEvent.ResumeAnchorId` persists and reloads when present.
 - Current match persists and reloads.
 - Migration does not require existing comment/read-event rows to be updated.
 
@@ -648,6 +716,7 @@ Deployable: yes.
 Scope:
 
 - Add application DTOs and services for anchor create/retrieve.
+- Use the exact A1-selected DTO/service files listed in Section 3.1.1.
 - Add authorization checks at application boundary.
 - Do not change reader or comment UI yet.
 
@@ -1190,6 +1259,6 @@ The RSprint series is complete only when:
 
 Start with RS-A Phase A1 - Model Discovery.
 
-A1 must stop after producing a proposal. It must not change production code or create a
-migration. The proposal should confirm or refine the model contract in this document
-before A2 begins.
+A1 is complete. The selected model contract is recorded in Section 3.1.1. Continue with
+RS-A Phase A2 using that contract. A2 must not revisit the model discovery decision unless
+it hits a documented stop condition.
