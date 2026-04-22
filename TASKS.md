@@ -94,6 +94,11 @@ See `DropBox Synchronisation Using WebHooks.md` for full architecture, control m
   - [ ] Phase 2: Diagnostics and audit logging
   - [ ] Phase 3: Manual operational controls
   - [ ] Phase 4: Browser and operational verification
+- [ ] **S-Sprint-8 — Daily health check and reconciliation app**
+  - [ ] Phase 1: Separate console app scaffolding
+  - [ ] Phase 2: Stale project reconciliation with lease-based protection
+  - [ ] Phase 3: Cursor health and abandoned lease cleanup
+  - [ ] Phase 4: Full rescan orchestration and operational verification
 
 **Status:** Not started. Webhook sync is ingestion-only; never publishes or creates versions.
 
