@@ -9,6 +9,7 @@ See DraftView Platform Architecture — Publishing and Versioning for the platfo
 | Version | Change |
 |---------|--------|
 | v1.0 | Initial architecture for webhook-driven background Dropbox synchronisation |
+| v1.1 | Added S-Sprint-8: separate daily health check and reconciliation app |
 
 ---
 
@@ -423,7 +424,153 @@ A practical model is:
 
 ---
 
-## 20. Multi-Tenancy Upgrade Requirements (Future)
+## 21. S-Sprint-8 — Daily Health Check and Reconciliation App
+
+### 21.1 Purpose
+A separate console application that runs once per day to detect and recover from operational issues that webhook sync cannot handle:
+- Projects with no successful sync in 24+ hours (stale projects)
+- Projects with expired or missing Dropbox cursors
+- Projects with abandoned leases (expired but not cleared)
+
+This is a safety net. Webhook sync (S-Sprint-1 through S-Sprint-7) handles normal operation. The health check app recovers from edge cases.
+
+### 21.2 Separate Application Architecture
+The health check is deployed as a standalone console app, not built into the web application.
+
+**Why separate:**
+- Deployment independence (web app restarts don't interrupt health checks)
+- Operational isolation (health check failures don't cascade to web app)
+- Resource allocation (can run on lower-priority schedule/VM)
+- Clear execution boundaries (daily cron job, not long-running background service)
+
+**Deployment:**
+- Compiled as `DraftView.HealthCheck.dll`
+- Deployed to same VM as web app (e.g., `/opt/draftview/health-check/`)
+- Scheduled via systemd timer (Linux) or Task Scheduler (Windows)
+- Runs once per day at 3:00 AM UTC (low-traffic period)
+
+**Shared infrastructure:**
+- References `DraftView.Domain`, `DraftView.Application`, `DraftView.Infrastructure`
+- Reuses existing repositories, Dropbox services, sync pipeline
+- No code duplication—orchestration only
+
+### 21.3 Lease-Based Mutual Exclusion
+**Critical rule:** HealthCheck must acquire a lease before processing any project.
+
+**Why lease (not hold):**
+- Lease provides mutual exclusion (prevents webhook worker from syncing same project)
+- Hold is post-success cooldown (not pre-work protection)
+- Lease expiry protects against HealthCheck crashes (webhook can retry after 30 minutes)
+
+**HealthCheck lease behavior:**
+```csharp
+// Acquire lease with 30-minute timeout (longer than webhook's 5 minutes)
+var leaseAcquired = await _leaseService.TryAcquireLeaseAsync(
+    project.Id, 
+    leaseId, 
+    TimeSpan.FromMinutes(30), 
+    ct);
+
+if (!leaseAcquired)
+{
+    // Webhook worker or another HealthCheck already processing—skip
+    return;
+}
+
+try
+{
+    // Perform reconciliation work
+    await ReconcileProjectAsync(project, ct);
+
+    // On success: set normal 2-minute cooldown hold
+    project.HeldUntilUtc = DateTime.UtcNow.AddMinutes(2);
+}
+finally
+{
+    // Always release lease
+    await _leaseService.ReleaseLeaseAsync(project.Id, leaseId, ct);
+}
+```
+
+### 21.4 Stale Project Threshold
+**Configurable via `appsettings.json`:**
+```json
+{
+  "HealthCheck": {
+    "StaleProjectThresholdHours": 24,
+    "MaxProjectsPerRun": 50
+  }
+}
+```
+
+**Query for stale projects:**
+```sql
+SELECT * FROM Projects 
+WHERE ProjectType = 0 -- ScrivenerDropbox
+  AND LastSuccessfulSyncUtc < (NOW() - INTERVAL '24 hours')
+  AND (SyncLeaseId IS NULL OR SyncLeaseExpiresUtc < NOW())
+LIMIT 50;
+```
+
+### 21.5 Cursor Health and Full Rescan
+**Normal flow:**
+1. Try cursor-based sync first (call `ListChangedEntriesAsync` with stored cursor)
+2. If successful: process incremental changes via existing sync pipeline
+3. Update cursor and timestamps
+
+**Escalation to full rescan:**
+Triggered when:
+- `DropboxCursor` is null (missing cursor)
+- Dropbox API returns `"reset"` or `"expired_cursor"` error
+
+**Full rescan behavior:**
+1. Query all Dropbox entries (no cursor): `ListAllEntriesAsync(project.DropboxPath)`
+2. Compare against local cache to identify changed files
+3. Download **only changed files** (not re-download everything)
+4. Run existing sync pipeline (reconciliation, parse, update working state)
+5. Store new cursor from Dropbox response
+6. Never create versions or trigger publishing (ingestion-only)
+
+### 21.6 Abandoned Lease Cleanup
+**Definition:** A lease is abandoned when `SyncLeaseId` is set but `SyncLeaseExpiresUtc < now`.
+
+**HealthCheck behavior:**
+```csharp
+if (project.SyncLeaseId != null && project.SyncLeaseExpiresUtc < DateTime.UtcNow)
+{
+    _logger.LogWarning("Clearing abandoned lease on project {ProjectId}", project.Id);
+
+    project.SyncLeaseId = null;
+    project.SyncLeaseExpiresUtc = null;
+
+    // Only mark for retry if project is genuinely stale
+    if (project.LastSuccessfulSyncUtc < DateTime.UtcNow.AddHours(-24))
+    {
+        project.SyncRequestedUtc = DateTime.UtcNow;
+    }
+
+    await _unitOfWork.SaveChangesAsync(ct);
+}
+```
+
+**HealthCheck does not attempt sync after clearing lease**—it leaves work for webhook worker or next HealthCheck run.
+
+### 21.7 Operational Constraints
+- Bounded batch: process maximum 50 projects per run (prevent runaway workload)
+- Lease timeout: 30 minutes (longer than webhook's 5 minutes to allow full rescan)
+- Cooldown after success: 2 minutes (same as webhook sync)
+- Logging: structured logs for all interventions (cleared leases, full rescans, cursor errors)
+
+### 21.8 Success Criteria
+- Stale projects recovered within 24 hours
+- Expired cursors detected and rebuilt
+- Abandoned leases cleared automatically
+- Zero impact on webhook sync operation
+- Zero version creation or publishing
+
+---
+
+## 22. Multi-Tenancy Upgrade Requirements (Future)
 
 When multi-tenancy is implemented (MT-Sprint-1), the following changes will be required to this webhook sync design:
 
@@ -450,7 +597,7 @@ All sync control logic (lease, hold, cursor interrogation, sync execution) remai
 
 ---
 
-## 21. Implementation Plan
+## 23. Implementation Plan
 
 The implementation should proceed in thin deployable slices.
 
@@ -638,6 +785,34 @@ Complete the system with stale-project reconciliation, diagnostics, and producti
 ## Deployable state
 - Background webhook sync is operationally viable
 - Reconciliation and diagnostics are in place
+
+---
+
+# S-Sprint-8 — Daily Health Check and Reconciliation App
+
+## Goal
+
+Deploy a separate console application that runs daily to detect and recover from operational issues that webhook sync cannot handle.
+
+## Phase 1 — Separate console app scaffolding
+**Brief:** Create `DraftView.HealthCheck` console project with DI setup (DbContext, repositories, services), logging configuration, and deployment scripts (systemd service or Task Scheduler config).
+
+## Phase 2 — Stale project reconciliation with lease-based protection
+**Brief:** Implement stale project detection (no successful sync in 24+ hours), lease acquisition with 30-minute timeout, cursor-based sync attempt, and escalation to full rescan on cursor expiry.
+
+## Phase 3 — Cursor health and abandoned lease cleanup
+**Brief:** Add detection and recovery for missing/expired Dropbox cursors (trigger full rescan) and abandoned leases (clear lease, mark for retry if stale).
+
+## Phase 4 — Full rescan orchestration and operational verification
+**Brief:** Implement full rescan path (query all Dropbox entries without cursor, download only changed files), test on projects with broken cursors, verify no version creation or publishing, and confirm lease mutual exclusion with webhook workers.
+
+## Deployable state
+- Health check app deployed as systemd timer (Linux) or Task Scheduler (Windows)
+- Runs daily at 3:00 AM UTC
+- Stale projects recovered within 24 hours
+- Expired cursors rebuilt
+- Abandoned leases cleared
+- Zero impact on webhook sync operation
 
 ---
 
