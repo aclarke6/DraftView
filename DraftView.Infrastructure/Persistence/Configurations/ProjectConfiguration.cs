@@ -4,6 +4,10 @@ using DraftView.Domain.Entities;
 
 namespace DraftView.Infrastructure.Persistence.Configurations;
 
+/// <summary>
+/// Configures persistence for Project, including sync status conversion and optional
+/// Dropbox webhook control fields.
+/// </summary>
 public class ProjectConfiguration : IEntityTypeConfiguration<Project>
 {
     public void Configure(EntityTypeBuilder<Project> builder)
@@ -23,6 +27,10 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
 
         builder.Property(p => p.DropboxCursor)
             .IsRequired(false);
+
+        builder.Property(p => p.LastBackgroundSyncOutcome)
+            .IsRequired(false)
+            .HasMaxLength(500);
 
         builder.Property(p => p.SyncStatus)
             .IsRequired()

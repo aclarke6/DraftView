@@ -4,6 +4,10 @@ using DraftView.Domain.Exceptions;
 
 namespace DraftView.Domain.Tests.Entities;
 
+/// <summary>
+/// Tests Project creation, reader activation, sync status, soft-delete behaviour,
+/// manual project creation, and webhook sync control fields. Excludes persistence mapping.
+/// </summary>
 public class ProjectTests
 {
     private static readonly Guid ValidAuthorId = Guid.NewGuid();
@@ -28,6 +32,52 @@ public class ProjectTests
         Assert.Null(project.SyncErrorMessage);
         Assert.Null(project.SoftDeletedAt);
         Assert.Equal(SyncStatus.Stale, project.SyncStatus);
+    }
+
+    [Fact]
+    public void Create_InitializesWebhookSyncControlFieldsAsNull()
+    {
+        var project = Project.Create("My Novel", "/dropbox/MyNovel.scriv", ValidAuthorId);
+
+        Assert.Null(project.SyncRequestedUtc);
+        Assert.Null(project.LastWebhookUtc);
+        Assert.Null(project.HeldUntilUtc);
+        Assert.Null(project.LastSuccessfulSyncUtc);
+        Assert.Null(project.LastSyncAttemptUtc);
+        Assert.Null(project.SyncLeaseId);
+        Assert.Null(project.SyncLeaseExpiresUtc);
+        Assert.Null(project.LastBackgroundSyncOutcome);
+    }
+
+    [Fact]
+    public void WebhookSyncControlFields_CanBeUpdatedByApplicationServices()
+    {
+        var project = Project.Create("My Novel", "/dropbox/MyNovel.scriv", ValidAuthorId);
+        var leaseId = Guid.NewGuid();
+        var requestedAt = DateTime.UtcNow.AddMinutes(-5);
+        var webhookAt = DateTime.UtcNow.AddMinutes(-4);
+        var heldUntil = DateTime.UtcNow.AddMinutes(5);
+        var successfulAt = DateTime.UtcNow.AddMinutes(-3);
+        var attemptedAt = DateTime.UtcNow.AddMinutes(-2);
+        var leaseExpiresAt = DateTime.UtcNow.AddMinutes(10);
+
+        project.SyncRequestedUtc = requestedAt;
+        project.LastWebhookUtc = webhookAt;
+        project.HeldUntilUtc = heldUntil;
+        project.LastSuccessfulSyncUtc = successfulAt;
+        project.LastSyncAttemptUtc = attemptedAt;
+        project.SyncLeaseId = leaseId;
+        project.SyncLeaseExpiresUtc = leaseExpiresAt;
+        project.LastBackgroundSyncOutcome = "Completed";
+
+        Assert.Equal(requestedAt, project.SyncRequestedUtc);
+        Assert.Equal(webhookAt, project.LastWebhookUtc);
+        Assert.Equal(heldUntil, project.HeldUntilUtc);
+        Assert.Equal(successfulAt, project.LastSuccessfulSyncUtc);
+        Assert.Equal(attemptedAt, project.LastSyncAttemptUtc);
+        Assert.Equal(leaseId, project.SyncLeaseId);
+        Assert.Equal(leaseExpiresAt, project.SyncLeaseExpiresUtc);
+        Assert.Equal("Completed", project.LastBackgroundSyncOutcome);
     }
 
     [Fact]

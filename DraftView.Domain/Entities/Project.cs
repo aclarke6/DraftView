@@ -3,6 +3,10 @@ using DraftView.Domain.Exceptions;
 
 namespace DraftView.Domain.Entities;
 
+/// <summary>
+/// Represents an author's DraftView project, including reader availability, sync status,
+/// and operational state for Dropbox-backed ingestion.
+/// </summary>
 public sealed class Project
 {
     // ---------------------------------------------------------------------------
@@ -27,6 +31,14 @@ public sealed class Project
     public DateTime? LastSyncedAt { get; private set; }
     public SyncStatus SyncStatus { get; private set; }
     public string? SyncErrorMessage { get; private set; }
+    public DateTime? SyncRequestedUtc { get; set; }
+    public DateTime? LastWebhookUtc { get; set; }
+    public DateTime? HeldUntilUtc { get; set; }
+    public DateTime? LastSuccessfulSyncUtc { get; set; }
+    public DateTime? LastSyncAttemptUtc { get; set; }
+    public Guid? SyncLeaseId { get; set; }
+    public DateTime? SyncLeaseExpiresUtc { get; set; }
+    public string? LastBackgroundSyncOutcome { get; set; }
     public bool IsSoftDeleted { get; private set; }
     public DateTime? SoftDeletedAt { get; private set; }
 

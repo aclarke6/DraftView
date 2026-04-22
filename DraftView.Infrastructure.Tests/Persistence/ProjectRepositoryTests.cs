@@ -6,6 +6,10 @@ using DraftView.Infrastructure.Persistence.Repositories;
 
 namespace DraftView.Infrastructure.Tests.Persistence;
 
+/// <summary>
+/// Tests ProjectRepository persistence contracts and Project EF model configuration.
+/// Excludes sync orchestration behaviour, which belongs in application service tests.
+/// </summary>
 public class ProjectRepositoryTests : IDisposable
 {
     private static readonly Guid ValidAuthorId = Guid.NewGuid();
@@ -55,6 +59,26 @@ public class ProjectRepositoryTests : IDisposable
 
         var all = await _sut.GetAllAsync();
         Assert.Single(all);
+    }
+
+    [Fact]
+    public void ModelConfiguration_WebhookSyncControlFields_AreNullableWithBoundedOutcome()
+    {
+        var projectType = _db.Model.FindEntityType(typeof(Project));
+
+        Assert.NotNull(projectType);
+        Assert.True(projectType!.FindProperty(nameof(Project.SyncRequestedUtc))!.IsNullable);
+        Assert.True(projectType.FindProperty(nameof(Project.LastWebhookUtc))!.IsNullable);
+        Assert.True(projectType.FindProperty(nameof(Project.HeldUntilUtc))!.IsNullable);
+        Assert.True(projectType.FindProperty(nameof(Project.LastSuccessfulSyncUtc))!.IsNullable);
+        Assert.True(projectType.FindProperty(nameof(Project.LastSyncAttemptUtc))!.IsNullable);
+        Assert.True(projectType.FindProperty(nameof(Project.SyncLeaseId))!.IsNullable);
+        Assert.True(projectType.FindProperty(nameof(Project.SyncLeaseExpiresUtc))!.IsNullable);
+
+        var outcome = projectType.FindProperty(nameof(Project.LastBackgroundSyncOutcome));
+        Assert.NotNull(outcome);
+        Assert.True(outcome!.IsNullable);
+        Assert.Equal(500, outcome.GetMaxLength());
     }
 
     [Fact]

@@ -285,13 +285,29 @@ namespace DraftView.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<DateTime?>("HeldUntilUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("IsReaderActive")
                         .HasColumnType("boolean");
 
                     b.Property<bool>("IsSoftDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("LastBackgroundSyncOutcome")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("LastSuccessfulSyncUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime?>("LastSyncedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LastSyncAttemptUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LastWebhookUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Name")
@@ -310,6 +326,15 @@ namespace DraftView.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("SyncErrorMessage")
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("SyncLeaseExpiresUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("SyncLeaseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("SyncRequestedUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("SyncRootId")
                         .HasColumnType("text");
