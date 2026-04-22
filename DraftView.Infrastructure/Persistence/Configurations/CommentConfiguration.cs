@@ -14,9 +14,15 @@ public class CommentConfiguration : IEntityTypeConfiguration<Comment>
         builder.Property(c => c.Status).IsRequired().HasConversion<string>();
         builder.Property(c => c.CreatedAt).IsRequired();
         builder.Property(c => c.IsSoftDeleted).IsRequired();
+        builder.HasIndex(c => c.PassageAnchorId);
         builder.HasOne<Comment>()
             .WithMany()
             .HasForeignKey(c => c.ParentCommentId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false);
+        builder.HasOne<PassageAnchor>()
+            .WithMany()
+            .HasForeignKey(c => c.PassageAnchorId)
             .OnDelete(DeleteBehavior.Restrict)
             .IsRequired(false);
     }

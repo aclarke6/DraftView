@@ -14,6 +14,8 @@ public class ReadEventConfiguration : IEntityTypeConfiguration<ReadEvent>
         builder.HasIndex(r => new { r.SectionId, r.UserId })
             .IsUnique();
 
+        builder.HasIndex(r => r.ResumeAnchorId);
+
         builder.Property(r => r.FirstOpenedAt)
             .IsRequired();
 
@@ -25,6 +27,12 @@ public class ReadEventConfiguration : IEntityTypeConfiguration<ReadEvent>
 
         builder.Property(e => e.BannerDismissedAtVersion)
             .HasColumnName("BannerDismissedAtVersion")
+            .IsRequired(false);
+
+        builder.HasOne<PassageAnchor>()
+            .WithMany()
+            .HasForeignKey(r => r.ResumeAnchorId)
+            .OnDelete(DeleteBehavior.Restrict)
             .IsRequired(false);
     }
 }

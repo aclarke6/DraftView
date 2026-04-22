@@ -58,6 +58,48 @@ namespace DraftView.Infrastructure.Persistence.Migrations
                     b.ToTable("AuthorNotifications");
                 });
 
+            modelBuilder.Entity("DraftView.Domain.Entities.PassageAnchor", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("OriginalSectionVersionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("SectionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("OriginalSectionVersionId");
+
+                    b.HasIndex("Purpose");
+
+                    b.HasIndex("SectionId");
+
+                    b.ToTable("PassageAnchors");
+                });
+
             modelBuilder.Entity("DraftView.Domain.Entities.Comment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -83,6 +125,9 @@ namespace DraftView.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("ParentCommentId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("PassageAnchorId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("SectionId")
                         .HasColumnType("uuid");
 
@@ -103,6 +148,8 @@ namespace DraftView.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ParentCommentId");
+
+                    b.HasIndex("PassageAnchorId");
 
                     b.HasIndex("SectionId");
 
@@ -372,6 +419,9 @@ namespace DraftView.Infrastructure.Persistence.Migrations
                     b.Property<int>("OpenCount")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("ResumeAnchorId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("SectionId")
                         .HasColumnType("uuid");
 
@@ -379,6 +429,8 @@ namespace DraftView.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ResumeAnchorId");
 
                     b.HasIndex("SectionId", "UserId")
                         .IsUnique();
@@ -897,8 +949,146 @@ namespace DraftView.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("DraftView.Domain.Entities.PassageAnchor", b =>
+                {
+                    b.HasOne("DraftView.Domain.Entities.SectionVersion", null)
+                        .WithMany()
+                        .HasForeignKey("OriginalSectionVersionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("DraftView.Domain.Entities.Section", null)
+                        .WithMany()
+                        .HasForeignKey("SectionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.OwnsOne("DraftView.Domain.ValueObjects.PassageAnchorMatch", "CurrentMatch", b1 =>
+                        {
+                            b1.Property<Guid>("PassageAnchorId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int?>("ConfidenceScore")
+                                .HasColumnType("integer")
+                                .HasColumnName("CurrentConfidenceScore");
+
+                            b1.Property<int?>("EndOffset")
+                                .HasColumnType("integer")
+                                .HasColumnName("CurrentEndOffset");
+
+                            b1.Property<string>("MatchMethod")
+                                .HasColumnType("text")
+                                .HasColumnName("CurrentMatchMethod");
+
+                            b1.Property<string>("MatchedText")
+                                .HasColumnType("TEXT")
+                                .HasColumnName("CurrentMatchedText");
+
+                            b1.Property<string>("Reason")
+                                .HasColumnType("TEXT")
+                                .HasColumnName("CurrentReason");
+
+                            b1.Property<DateTime?>("ResolvedAt")
+                                .HasColumnType("timestamp with time zone")
+                                .HasColumnName("CurrentResolvedAt");
+
+                            b1.Property<Guid?>("ResolvedByUserId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("CurrentResolvedByUserId");
+
+                            b1.Property<int?>("StartOffset")
+                                .HasColumnType("integer")
+                                .HasColumnName("CurrentStartOffset");
+
+                            b1.Property<Guid?>("TargetSectionVersionId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("CurrentTargetSectionVersionId");
+
+                            b1.HasKey("PassageAnchorId");
+
+                            b1.ToTable("PassageAnchors");
+
+                            b1.WithOwner()
+                                .HasForeignKey("PassageAnchorId");
+                        });
+
+                    b.OwnsOne("DraftView.Domain.ValueObjects.PassageAnchorSnapshot", "OriginalSnapshot", b1 =>
+                        {
+                            b1.Property<Guid>("PassageAnchorId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("CanonicalContentHash")
+                                .IsRequired()
+                                .HasMaxLength(128)
+                                .HasColumnType("character varying(128)")
+                                .HasColumnName("OriginalCanonicalContentHash");
+
+                            b1.Property<int>("EndOffset")
+                                .HasColumnType("integer")
+                                .HasColumnName("OriginalEndOffset");
+
+                            b1.Property<string>("HtmlSelectorHint")
+                                .HasColumnType("TEXT")
+                                .HasColumnName("OriginalHtmlSelectorHint");
+
+                            b1.Property<string>("NormalizedSelectedText")
+                                .IsRequired()
+                                .HasColumnType("TEXT")
+                                .HasColumnName("OriginalNormalizedSelectedText");
+
+                            b1.Property<string>("PrefixContext")
+                                .IsRequired()
+                                .HasColumnType("TEXT")
+                                .HasColumnName("OriginalPrefixContext");
+
+                            b1.Property<string>("SelectedText")
+                                .IsRequired()
+                                .HasColumnType("TEXT")
+                                .HasColumnName("OriginalSelectedText");
+
+                            b1.Property<string>("SelectedTextHash")
+                                .IsRequired()
+                                .HasMaxLength(128)
+                                .HasColumnType("character varying(128)")
+                                .HasColumnName("OriginalSelectedTextHash");
+
+                            b1.Property<string>("SuffixContext")
+                                .IsRequired()
+                                .HasColumnType("TEXT")
+                                .HasColumnName("OriginalSuffixContext");
+
+                            b1.Property<int>("StartOffset")
+                                .HasColumnType("integer")
+                                .HasColumnName("OriginalStartOffset");
+
+                            b1.HasKey("PassageAnchorId");
+
+                            b1.ToTable("PassageAnchors");
+
+                            b1.WithOwner()
+                                .HasForeignKey("PassageAnchorId");
+                        });
+
+                    b.Navigation("CurrentMatch");
+
+                    b.Navigation("OriginalSnapshot")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("DraftView.Domain.Entities.Comment", b =>
+                {
+                    b.HasOne("DraftView.Domain.Entities.PassageAnchor", null)
+                        .WithMany()
+                        .HasForeignKey("PassageAnchorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("DraftView.Domain.Entities.ReadEvent", b =>
                 {
+                    b.HasOne("DraftView.Domain.Entities.PassageAnchor", null)
+                        .WithMany()
+                        .HasForeignKey("ResumeAnchorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("DraftView.Domain.Entities.Section", null)
                         .WithMany()
                         .HasForeignKey("SectionId")
