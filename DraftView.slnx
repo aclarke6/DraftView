@@ -83,6 +83,10 @@
     <File Path=".github/Prompts/S-Sprint-Prompts/ssprint7-phase2.prompt.md" />
     <File Path=".github/Prompts/S-Sprint-Prompts/ssprint7-phase3.prompt.md" />
     <File Path=".github/Prompts/S-Sprint-Prompts/ssprint7-phase4.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint8-phase1.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint8-phase2.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint8-phase3.prompt.md" />
+    <File Path=".github/Prompts/S-Sprint-Prompts/ssprint8-phase4.prompt.md" />
   </Folder>
   <Folder Name="/Solution Items/UAT/">
     <File Path="DraftView-UAT-Plan.md" />
