@@ -23,6 +23,7 @@ public class ReadEventTests
         Assert.Equal(SectionId, readEvent.SectionId);
         Assert.Equal(UserId, readEvent.UserId);
         Assert.Equal(1, readEvent.OpenCount);
+        Assert.Null(readEvent.ResumeAnchorId);
         Assert.True(readEvent.FirstOpenedAt >= before);
         Assert.Equal(readEvent.FirstOpenedAt, readEvent.LastOpenedAt);
     }
@@ -33,6 +34,43 @@ public class ReadEventTests
         var readEvent = ReadEvent.Create(SectionId, UserId);
 
         Assert.Equal(1, readEvent.OpenCount);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Resume anchor
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void UpdateResumeAnchor_WithValidAnchorId_SetsResumeAnchorId()
+    {
+        var readEvent = ReadEvent.Create(SectionId, UserId);
+        var anchorId = Guid.NewGuid();
+
+        readEvent.UpdateResumeAnchor(anchorId);
+
+        Assert.Equal(anchorId, readEvent.ResumeAnchorId);
+    }
+
+    [Fact]
+    public void UpdateResumeAnchor_WithEmptyAnchorId_ThrowsInvariantViolationException()
+    {
+        var readEvent = ReadEvent.Create(SectionId, UserId);
+
+        var ex = Assert.Throws<InvariantViolationException>(() =>
+            readEvent.UpdateResumeAnchor(Guid.Empty));
+
+        Assert.Equal("I-READ-ANCHOR", ex.InvariantCode);
+    }
+
+    [Fact]
+    public void ClearResumeAnchor_WithExistingAnchor_ClearsResumeAnchorId()
+    {
+        var readEvent = ReadEvent.Create(SectionId, UserId);
+        readEvent.UpdateResumeAnchor(Guid.NewGuid());
+
+        readEvent.ClearResumeAnchor();
+
+        Assert.Null(readEvent.ResumeAnchorId);
     }
 
     // ---------------------------------------------------------------------------

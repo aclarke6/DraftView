@@ -24,12 +24,28 @@ public class CommentTests
         Assert.Equal(SectionId, comment.SectionId);
         Assert.Equal(UserId, comment.AuthorId);
         Assert.Null(comment.ParentCommentId);
+        Assert.Null(comment.PassageAnchorId);
         Assert.Equal("Great scene!", comment.Body);
         Assert.Equal(Visibility.Public, comment.Visibility);
         Assert.False(comment.IsSoftDeleted);
         Assert.Null(comment.EditedAt);
         Assert.Null(comment.SoftDeletedAt);
         Assert.True(comment.CreatedAt >= before);
+    }
+
+    [Fact]
+    public void CreateRoot_WithPassageAnchorId_ReturnsAnchoredComment()
+    {
+        var anchorId = Guid.NewGuid();
+
+        var comment = Comment.CreateRoot(
+            SectionId,
+            UserId,
+            "Great scene!",
+            Visibility.Public,
+            passageAnchorId: anchorId);
+
+        Assert.Equal(anchorId, comment.PassageAnchorId);
     }
 
     [Fact]
@@ -67,7 +83,22 @@ public class CommentTests
 
         Assert.Equal(parent.Id, reply.ParentCommentId);
         Assert.Equal(SectionId, reply.SectionId);
+        Assert.Null(reply.PassageAnchorId);
         Assert.Equal(Visibility.Public, reply.Visibility);
+    }
+
+    [Fact]
+    public void CreateForImport_WithNoPassageAnchorId_ReturnsCommentWithNullPassageAnchorId()
+    {
+        var comment = Comment.CreateForImport(
+            SectionId,
+            UserId,
+            "Imported.",
+            Visibility.Public,
+            CommentStatus.New,
+            DateTime.UtcNow);
+
+        Assert.Null(comment.PassageAnchorId);
     }
 
     [Fact]
@@ -333,5 +364,4 @@ public class CommentTests
     }
 
 }
-
 

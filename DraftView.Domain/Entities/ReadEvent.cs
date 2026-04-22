@@ -15,6 +15,7 @@ public sealed class ReadEvent
     public DateTime LastOpenedAt { get; private set; }
     public int OpenCount { get; private set; }
     public int? LastReadVersionNumber { get; private set; }
+    public Guid? ResumeAnchorId { get; private set; }
 
     /// <summary>
     /// The version number at which the reader dismissed the update banner.
@@ -87,5 +88,24 @@ public sealed class ReadEvent
                 "Version number must be 1 or greater.");
 
         BannerDismissedAtVersion = versionNumber;
+    }
+
+    /// <summary>
+    /// Records the passage anchor that represents the latest resume position.
+    /// </summary>
+    /// <param name="resumeAnchorId">The passage anchor id to use for resume.</param>
+    /// <exception cref="InvariantViolationException">Thrown when the anchor id is empty.</exception>
+    public void UpdateResumeAnchor(Guid resumeAnchorId)
+    {
+        if (resumeAnchorId == Guid.Empty)
+            throw new InvariantViolationException("I-READ-ANCHOR",
+                "Resume anchor id must not be empty.");
+
+        ResumeAnchorId = resumeAnchorId;
+    }
+
+    public void ClearResumeAnchor()
+    {
+        ResumeAnchorId = null;
     }
 }
