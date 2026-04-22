@@ -30,6 +30,7 @@ Last updated: 2026-04-21
 | Document | Purpose |
 |----------|---------|
 | `AIScoringService.md` | AI change scoring service — provider abstraction, tier model, sprint plan |
+| `DropBox Synchronisation Using WebHooks.md` | Webhook-driven background Dropbox sync — control model, cursor-based interrogation, S-Sprint series |
 | `MultiTenancy.md` | Multi-tenancy sprint series, design decisions, migration strategy |
 | `DraftView-UAT-Plan.md` | UAT plan for versioning features |
 | `Publishing And Versioning Architecture.md` | Full V-Sprint architecture, phases, domain model, publishing rules |
@@ -49,13 +50,54 @@ Last updated: 2026-04-21
 ### 2(b) Changes
 
 - [DONE] CHANGE-001 — `Views/Reader/DesktopRead.cshtml` & `MobileRead.cshtml`: moved scene version labels from main title area to left-hand navigation (desktop) and top nav metadata (mobile) for reduced reading noise (2026-04-21)
-- [DONE] CHANGE-002 — `Views/Author/Publishing.cshtml`: align scene version labels beside scene titles using CSS Grid layout (2026-04-21)
+- [ ] CHANGE-002 — `Views/Author/Publishing.cshtml`: align scene version labels beside scene titles using CSS Grid layout (2026-04-21)
 
 ---
 
 ## 3. Active Projects
 
-### 3.1 Go-Live Prerequisites
+### 3.1 Dropbox Webhook Sync Sprint Series
+See `DropBox Synchronisation Using WebHooks.md` for full architecture, control model, and sprint plan.
+
+- [ ] **S-Sprint-1 — Foundation for background Dropbox sync**
+  - [ ] Phase 1: Architecture and task alignment
+  - [ ] Phase 2: Domain model for sync control
+  - [ ] Phase 3: Domain tests for control rules
+  - [ ] Phase 4: Infrastructure mapping and migration
+- [ ] **S-Sprint-2 — Webhook receipt and durable request recording**
+  - [ ] Phase 1: Webhook endpoint surface
+  - [ ] Phase 2: Signature validation and request parsing
+  - [ ] Phase 3: Request recording service
+  - [ ] Phase 4: Web endpoint tests
+- [ ] **S-Sprint-3 — Immediate orchestration path**
+  - [ ] Phase 1: Sync lease service
+  - [ ] Phase 2: Cooldown hold evaluation
+  - [ ] Phase 3: Background sync orchestration service shell
+  - [ ] Phase 4: Orchestration tests
+- [ ] **S-Sprint-4 — Dropbox delta interrogation and incremental download**
+  - [ ] Phase 1: Cursor integration
+  - [ ] Phase 2: Relevant-path filtering
+  - [ ] Phase 3: Incremental download integration
+  - [ ] Phase 4: Dropbox delta tests
+- [ ] **S-Sprint-5 — Reuse existing sync pipeline end to end**
+  - [ ] Phase 1: Existing pipeline integration seam
+  - [ ] Phase 2: End-to-end background sync execution
+  - [ ] Phase 3: Failure and recovery handling
+  - [ ] Phase 4: Integration tests
+- [ ] **S-Sprint-6 — Periodic worker and held request recovery**
+  - [ ] Phase 1: Worker host and scheduling
+  - [ ] Phase 2: Batch selection and bounded processing
+  - [ ] Phase 3: Held request recovery
+  - [ ] Phase 4: Worker tests
+- [ ] **S-Sprint-7 — Stale reconciliation and operational hardening**
+  - [ ] Phase 1: Daily stale reconciliation
+  - [ ] Phase 2: Diagnostics and audit logging
+  - [ ] Phase 3: Manual operational controls
+  - [ ] Phase 4: Browser and operational verification
+
+**Status:** Not started. Webhook sync is ingestion-only; never publishes or creates versions.
+
+### 3.2 Go-Live Prerequisites
 - [ ] Add `Anthropic:ApiKey` to `appsettings.Production.json` (enables AI summaries)
 - [ ] Invitation acceptance flow does not expose stored email
 - [ ] Forgot-password flow works end-to-end in production
@@ -64,14 +106,14 @@ Last updated: 2026-04-21
 - [ ] Copy production `EmailProtection:EncryptionKey` and `EmailProtection:LookupHmacKey` into secure password manager
 - [ ] Go-Live Day: send password reset emails to Becca (becca@the-dunlops.co.uk) and Hilary (hilaryrrb@gmail.com)
 
-### 3.2 Platform Hardening
+### 3.3 Platform Hardening
 - [ ] Fail2ban setup on production VM
 - [ ] Report Fault modal (HomeController POST + `_Layout.cshtml` modal + CSS)
 - [ ] SystemStateMessage expiry (`ExpiresAt` nullable DateTime, `GetActiveAsync` filters expired)
 - [ ] Logging: failed authorization attempts
 - [ ] Impersonation — read-only, explicit enter/exit mode (design agreed, not built)
 
-### 3.3 RSprint-1 — Reader and Author Experience
+### 3.4 RSprint-1 — Reader and Author Experience
 Items identified during UAT 2026-04-20. Full sprint design to follow.
 
 - [ ] Republish button should show would-be version number — e.g. "Republish" with "to version 3" underneath as a hint before committing
@@ -81,7 +123,7 @@ Items identified during UAT 2026-04-20. Full sprint design to follow.
 - [ ] Reader progress in Recent Activity — author preference to show/hide reader open events; per-reader progress on Readers page
 - [ ] Reader version visibility — decide whether readers should see the version number (deferred, review post-UAT)
 
-### 3.4 Multi-Tenancy Sprint Series
+### 3.5 Multi-Tenancy Sprint Series
 See `MultiTenancy.md` for full design, migration strategy, and sprint plan.
 
 | Sprint | Deliverable |
@@ -94,7 +136,7 @@ See `MultiTenancy.md` for full design, migration strategy, and sprint plan.
 
 **Prerequisite:** Billing abstraction in place and production stable before MT-Sprint-1.
 
-### 3.5 Incremental Refactor Roadmap
+### 3.6 Incremental Refactor Roadmap
 See `REFACTORING.md` for full detail.
 - [DONE] Phase 1 — Centralise controller user/role resolution
 - [ ] Phase 2 — Extract procedural controller workflows
@@ -103,7 +145,7 @@ See `REFACTORING.md` for full detail.
 - [ ] Phase 5 — Extract remaining procedural workflows
 - [ ] Phase 6 — Standardise sync kickoff (remove inline `Task.Run`)
 
-### 3.6 Post Go-Live Backlog
+### 3.7 Post Go-Live Backlog
 - Reader notification emails (new chapter published)
 - Dropbox OAuth2 token refresh
 - Dropbox webhook controller for push-based sync

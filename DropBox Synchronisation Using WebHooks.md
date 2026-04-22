@@ -189,19 +189,20 @@ The endpoint does not perform sync itself.
 It should only:
 
 - validate the webhook handshake and signature
-- extract changed Dropbox account identifiers
-- map those accounts to DraftView author or project records
-- record durable sync demand
+- extract changed Dropbox account identifiers (logged but not used for filtering in single-author mode)
+- record durable sync demand for all Scrivener projects
 - return success quickly
 
 ### 8.2 No per-author webhook endpoint
 Webhook routing should happen inside DraftView after receipt. The system should not create a dedicated webhook endpoint per author.
 
-### 8.3 Request recording behaviour
-For each affected project, the handler records:
+### 8.3 Request recording behaviour (single-author mode)
+When a webhook is received, the handler records sync demand for **all** `ScrivenerDropbox` projects:
 
 - `SyncRequestedUtc = now`
 - `LastWebhookUtc = now`
+
+Since only one author exists in the system, all Scrivener projects are potentially affected by any Dropbox webhook notification. The background sync orchestrator will use per-project cursors to determine whether each specific project's folder actually changed.
 
 No heavy sync, download, or parse work belongs in the webhook action itself.
 
@@ -257,15 +258,21 @@ Webhook notification alone is not enough to know which project file changed.
 
 The application must use a saved Dropbox cursor to determine what has changed and whether those changes affect the tracked project folder.
 
+### 11.1 Per-project cursor storage (single-author mode)
+Each `ScrivenerDropbox` project stores its own cursor. This allows independent tracking of changes within each project's Dropbox folder path.
+
 The flow is:
 
-- load stored cursor
-- request changed entries from Dropbox
-- filter changes to the project path of interest
-- if relevant, download changed entries and run the existing update path
-- store the latest cursor regardless of whether changes were relevant
+- load project's stored cursor
+- request changed entries from Dropbox using that cursor
+- filter changes to the project's `DropboxPath`
+- if relevant changes found, download changed entries and run the existing update path
+- store the updated cursor on the project regardless of whether changes were relevant
 
-This preserves a lightweight ingestion model.
+This preserves a lightweight ingestion model and allows per-project sync control.
+
+### 11.2 Single-author simplification
+In single-author mode, when a webhook arrives, all Scrivener projects are marked as `SyncRequestedUtc`. Each project's background sync execution independently interrogates Dropbox using its own cursor. Projects whose folders were not affected will update their cursor but skip the sync pipeline.
 
 ---
 
@@ -404,6 +411,8 @@ A practical model is:
 
 ## 19. Known Debt and Deliberate Deferrals
 
+- **Single-author webhook mapping:** Current implementation marks all `ScrivenerDropbox` projects for sync on webhook receipt. Multi-tenant filtering via `Project.DropboxAccountId` deferred to MT-Sprint-1.
+- **Per-project cursor storage:** Each project stores its own Dropbox cursor. Per-account cursor consolidation (optimization to reduce Dropbox API calls) deferred until multi-project performance becomes an issue.
 - Account-level batching across many projects may be introduced later if required
 - More advanced priority logic is deferred
 - Queue infrastructure is deferred
@@ -414,7 +423,34 @@ A practical model is:
 
 ---
 
-## 20. Implementation Plan
+## 20. Multi-Tenancy Upgrade Requirements (Future)
+
+When multi-tenancy is implemented (MT-Sprint-1), the following changes will be required to this webhook sync design:
+
+### 20.1 Domain changes
+- Add `Project.DropboxAccountId` field to map projects to Dropbox accounts
+- Populate `DropboxAccountId` during Dropbox OAuth connection flow
+- Store Dropbox account ID per tenancy (likely via new `DropboxConnection` entity linking `TenancyId` to `DropboxAccountId`)
+
+### 20.2 Webhook handler changes
+- Filter projects by `DropboxAccountId` when recording sync demand
+- Only mark projects belonging to the webhook's changed Dropbox account
+
+### 20.3 Cursor optimization opportunity
+- Optionally consolidate to per-account cursor storage (instead of per-project)
+- Query Dropbox once per account, distribute changes to multiple projects
+- Reduces Dropbox API calls for authors with multiple projects
+
+### 20.4 Migration path
+- Schema migration: add nullable `DropboxAccountId` to `Projects` table
+- Backfill existing projects with their connected Dropbox account ID
+- Update webhook request recording service to use filtered query
+
+All sync control logic (lease, hold, cursor interrogation, sync execution) remains unchanged. Multi-tenancy affects only the webhook-to-project mapping step.
+
+---
+
+## 21. Implementation Plan
 
 The implementation should proceed in thin deployable slices.
 
@@ -473,7 +509,7 @@ Accept Dropbox webhook notifications and record background sync demand safely an
 **Brief:** Implement Dropbox webhook signature validation and parsing of changed account identifiers, keeping the controller or endpoint thin.
 
 ## Phase 3 — Request recording service
-**Brief:** Introduce an application service that maps changed Dropbox accounts to DraftView synced projects and records `SyncRequestedUtc` and related webhook audit state.
+**Brief:** Introduce an application service that records `SyncRequestedUtc` and `LastWebhookUtc` for all `ScrivenerDropbox` projects when a webhook is received (single-author mode).
 
 ## Phase 4 — Web endpoint tests
 **Brief:** Add tests proving the webhook endpoint validates correctly, records sync demand, remains lightweight, and does not perform heavyweight sync work inline.
