@@ -19,6 +19,7 @@ Last updated: 2026-04-21
 | V-Sprints 1–10 | ✅ All complete |
 | RSprint-1 | 🔵 Planned — reader and author experience improvements |
 | MT-Sprint Series | 🔵 Pre-planning — see `MultiTenancy.md` |
+| S-Sprint Series | 🟡 In progress — S-Sprint-1 Phase 1 |
 | BugFix-Mac | 🟢 Synced with main, awaiting next bug |
 | BugFix-PC | 🟢 Merged to main |
 | UAT | 🟡 In progress — 2026-04-20 |
@@ -60,7 +61,7 @@ Last updated: 2026-04-21
 See `DropBox Synchronisation Using WebHooks.md` for full architecture, control model, and sprint plan.
 
 - [ ] **S-Sprint-1 — Foundation for background Dropbox sync**
-  - [ ] Phase 1: Architecture and task alignment
+  - [ ] Phase 1: Architecture and task alignment — In progress, task tracking alignment started
   - [ ] Phase 2: Domain model for sync control
   - [ ] Phase 3: Domain tests for control rules
   - [ ] Phase 4: Infrastructure mapping and migration
