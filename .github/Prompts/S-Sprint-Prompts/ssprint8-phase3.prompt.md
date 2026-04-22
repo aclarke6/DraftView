@@ -1,4 +1,19 @@
-﻿---
+﻿# AGENT REQUIREMENT - MANDATORY
+
+Before performing any work, the agent MUST:
+
+1. Read and apply:
+   - AGENTS.md
+   - .github/Instructions/refactoring.instructions.md
+
+2. Operate fully within their constraints
+
+If these files are not read or cannot be applied:
+
+STOP.
+
+Do not proceed with the task.
+---
 mode: agent
 description: S-Sprint-8 Phase 3 - Cursor health and abandoned lease cleanup
 ---
