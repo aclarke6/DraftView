@@ -94,7 +94,7 @@ This is a **platform capability**, not a feature.
   - [DONE] Phase C4 — Tests
 
 - [ ] **RS-D — Deterministic Relocation**
-  - [ ] Phase D1 — Exact matching
+  - [DONE] Phase D1 — Exact matching
   - [ ] Phase D2 — Context matching
   - [ ] Phase D3 — Fuzzy matching
   - [ ] Phase D4 — Confidence scoring
