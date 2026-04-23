@@ -733,7 +733,105 @@
     (function () {
         var key = 'scroll_chapter_@Model.Chapter.Id';
         var saved = localStorage.getItem(key);
-        if (saved) {
+        var sceneBlocks = Array.prototype.slice.call(document.querySelectorAll('.scene-block[data-section-id]'));
+
+        function parseIntAttribute(element, name) {
+            var value = element.getAttribute(name);
+            if (!value) {
+                return null;
+            }
+
+            var parsed = parseInt(value, 10);
+            return Number.isNaN(parsed) ? null : parsed;
+        }
+
+        function buildCanonicalPoints(container) {
+            var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+            var points = [];
+            var pendingWhitespace = null;
+
+            while (walker.nextNode()) {
+                var node = walker.currentNode;
+                var text = node.nodeValue || '';
+
+                for (var i = 0; i < text.length; i++) {
+                    var character = text.charAt(i);
+                    if (/\s/.test(character)) {
+                        if (points.length > 0 && !pendingWhitespace) {
+                            pendingWhitespace = { node: node, start: i, end: i + 1 };
+                        }
+
+                        continue;
+                    }
+
+                    if (pendingWhitespace) {
+                        points.push(pendingWhitespace);
+                        pendingWhitespace = null;
+                    }
+
+                    points.push({ node: node, start: i, end: i + 1 });
+                }
+            }
+
+            return points;
+        }
+
+        function createCanonicalRange(container, startOffset, endOffset) {
+            if (startOffset === null || endOffset === null || endOffset <= startOffset) {
+                return null;
+            }
+
+            var points = buildCanonicalPoints(container);
+            if (startOffset < 0 || endOffset > points.length) {
+                return null;
+            }
+
+            var startPoint = points[startOffset];
+            var endPoint = points[endOffset - 1];
+            if (!startPoint || !endPoint) {
+                return null;
+            }
+
+            var range = document.createRange();
+            range.setStart(startPoint.node, startPoint.start);
+            range.setEnd(endPoint.node, endPoint.end);
+            return range;
+        }
+
+        function scrollToRange(range, fallbackElement) {
+            var rect = range ? range.getBoundingClientRect() : fallbackElement.getBoundingClientRect();
+            var targetY = window.scrollY + rect.top - (window.innerHeight * 0.33);
+            window.scrollTo(0, Math.max(0, Math.floor(targetY)));
+        }
+
+        function restoreFromAnchor() {
+            if (window.location.hash) {
+                return false;
+            }
+
+            var targetScene = sceneBlocks.find(function (scene) {
+                return scene.getAttribute('data-resume-restore-has-target') === 'true';
+            });
+
+            if (!targetScene) {
+                return false;
+            }
+
+            var prose = targetScene.querySelector('.scene-prose-content');
+            if (!prose) {
+                scrollToRange(null, targetScene);
+                return true;
+            }
+
+            var startOffset = parseIntAttribute(targetScene, 'data-resume-restore-start-offset');
+            var endOffset = parseIntAttribute(targetScene, 'data-resume-restore-end-offset');
+            var range = createCanonicalRange(prose, startOffset, endOffset);
+
+            scrollToRange(range, targetScene);
+            return true;
+        }
+
+        if (!restoreFromAnchor() && saved) {
             setTimeout(function () { window.scrollTo(0, parseInt(saved, 10)); }, 100);
         }
 

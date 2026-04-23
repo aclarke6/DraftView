@@ -529,6 +529,54 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
         Assert.DoesNotContain("scene-version-label", html, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task Read_Desktop_RendersAnchorResumeIntegration_WithScrollFallbackScript()
+    {
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = true,
+            BaseAddress = new Uri("https://localhost")
+        });
+
+        client.DefaultRequestHeaders.Add(TestAuthHandler.HeaderName, TestAuthHandler.ReaderMode);
+
+        var response = await client.GetAsync($"/Reader/Read/{factory.ChapterId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Contains("data-resume-restore-has-target=", html);
+        Assert.Contains("data-resume-restore-start-offset=", html);
+        Assert.Contains("data-resume-restore-end-offset=", html);
+        Assert.Contains("scroll_chapter_", html);
+        Assert.Contains("data-resume-restore-has-target", html);
+    }
+
+    [Fact]
+    public async Task Read_Mobile_RendersAnchorResumeIntegration_Metadata()
+    {
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = true,
+            BaseAddress = new Uri("https://localhost")
+        });
+
+        client.DefaultRequestHeaders.Add(TestAuthHandler.HeaderName, TestAuthHandler.ReaderMode);
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (iPhone)");
+
+        var response = await client.GetAsync($"/Reader/Read/{factory.SceneId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Contains("data-resume-restore-has-target=", html);
+        Assert.Contains("data-resume-restore-start-offset=", html);
+        Assert.Contains("data-resume-restore-end-offset=", html);
+        Assert.Contains("data-resume-restore-status=", html);
+    }
+
     public sealed class ReaderReadFactory : WebApplicationFactory<Program>
     {
         public static readonly Guid ReaderId = Guid.Parse("11111111-1111-1111-1111-111111111111");
