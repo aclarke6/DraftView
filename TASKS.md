@@ -86,11 +86,11 @@ This is a **platform capability**, not a feature.
   - [DONE] Phase B3 — Integration with ReadEvent
   - [DONE] Phase B4 — Tests (cross-version resume)
 
-- [ ] **RS-C — Inline Comments**
-  - [ ] Phase C1 — Selection capture
-  - [ ] Phase C2 — Comment creation with anchor
-  - [ ] Phase C3 — Rendering (inline indicators)
-  - [ ] Phase C4 — Tests
+- [DONE] **RS-C — Inline Comments**
+  - [DONE] Phase C1 — Selection capture
+  - [DONE] Phase C2 — Comment creation with anchor
+  - [DONE] Phase C3 — Rendering (inline indicators)
+  - [DONE] Phase C4 — Tests
 
 - [ ] **RS-D — Deterministic Relocation**
   - [ ] Phase D1 — Exact matching

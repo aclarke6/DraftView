@@ -121,6 +121,165 @@ public class ReaderControllerTests
     }
 
     [Fact]
+    public async Task Read_Desktop_WithAnchoredComment_PopulatesPassageAnchorMetadata()
+    {
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+
+        var project = Project.Create("Project 1", "/Apps/Scrivener/Project1", user.Id, "project-root");
+        var chapter = Section.CreateFolder(project.Id, "chapter-uuid", "Chapter 1", null, 1);
+        chapter.MarkAsPublishedContainer();
+        var scene = Section.CreateDocument(project.Id, "scene-uuid", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "scene-hash", "Draft");
+        scene.PublishAsPartOfChapter("scene-hash");
+        var latestVersion = SectionVersion.Create(
+            Section.CreateDocument(project.Id, "scene-published", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "scene-hash", "Published"),
+            Guid.NewGuid(),
+            2);
+
+        var anchorId = Guid.NewGuid();
+        var anchoredComment = Comment.CreateRoot(
+            scene.Id,
+            user.Id,
+            "Anchored scene comment.",
+            Visibility.Public,
+            sectionVersionId: latestVersion.Id,
+            passageAnchorId: anchorId);
+        var anchor = new PassageAnchorDto(
+            anchorId,
+            scene.Id,
+            latestVersion.Id,
+            PassageAnchorPurpose.Comment,
+            user.Id,
+            DateTime.UtcNow,
+            PassageAnchorStatus.Context,
+            null,
+            new PassageAnchorSnapshotDto(
+                "Hello",
+                "Hello",
+                "selected-hash",
+                string.Empty,
+                string.Empty,
+                0,
+                5,
+                "content-hash",
+                "#scene-uuid"),
+            null);
+
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0");
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, It.IsAny<CancellationToken>())).ReturnsAsync(chapter);
+        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
+        sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(latestVersion);
+        readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync((ReadEvent?)null);
+        sectionDiffService.Setup(s => s.GetDiffForReaderAsync(scene.Id, It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((SectionDiffResult?)null);
+        progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        commentService.Setup(r => r.GetThreadsForSectionAsync(scene.Id, user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([anchoredComment]);
+        commentService.Setup(r => r.GetThreadsForSectionAsync(chapter.Id, user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<Comment>());
+        passageAnchorService.Setup(s => s.GetByIdAsync(anchorId, user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(anchor);
+
+        var result = await sut.Read(chapter.Id);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<DesktopChapterReadViewModel>(view.Model);
+        var renderedScene = Assert.Single(model.Scenes);
+        var renderedComment = Assert.Single(renderedScene.Comments);
+        Assert.NotNull(renderedComment.PassageAnchor);
+        Assert.Equal(PassageAnchorStatus.Context, renderedComment.PassageAnchor!.Status);
+    }
+
+    [Fact]
+    public async Task Read_Desktop_WithNullAnchorComment_KeepsLegacyCommentVisible()
+    {
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+
+        var project = Project.Create("Project 1", "/Apps/Scrivener/Project1", user.Id, "project-root");
+        var chapter = Section.CreateFolder(project.Id, "chapter-uuid", "Chapter 1", null, 1);
+        chapter.MarkAsPublishedContainer();
+        var scene = Section.CreateDocument(project.Id, "scene-uuid", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "scene-hash", "Draft");
+        scene.PublishAsPartOfChapter("scene-hash");
+
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0");
+        var legacyComment = Comment.CreateRoot(scene.Id, user.Id, "Legacy comment.", Visibility.Public);
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, It.IsAny<CancellationToken>())).ReturnsAsync(chapter);
+        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
+        sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync((SectionVersion?)null);
+        readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync((ReadEvent?)null);
+        sectionDiffService.Setup(s => s.GetDiffForReaderAsync(scene.Id, It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((SectionDiffResult?)null);
+        progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        commentService.Setup(r => r.GetThreadsForSectionAsync(scene.Id, user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([legacyComment]);
+        commentService.Setup(r => r.GetThreadsForSectionAsync(chapter.Id, user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<Comment>());
+
+        var result = await sut.Read(chapter.Id);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<DesktopChapterReadViewModel>(view.Model);
+        var renderedScene = Assert.Single(model.Scenes);
+        var renderedComment = Assert.Single(renderedScene.Comments);
+        Assert.False(renderedComment.HasPassageAnchor);
+        Assert.False(renderedComment.IsPassageAnchorMissing);
+    }
+
+    [Fact]
+    public async Task Read_Desktop_WithOrphanedAnchor_LeavesCommentVisibleAndMarksMissingAnchor()
+    {
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+
+        var project = Project.Create("Project 1", "/Apps/Scrivener/Project1", user.Id, "project-root");
+        var chapter = Section.CreateFolder(project.Id, "chapter-uuid", "Chapter 1", null, 1);
+        chapter.MarkAsPublishedContainer();
+        var scene = Section.CreateDocument(project.Id, "scene-uuid", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "scene-hash", "Draft");
+        scene.PublishAsPartOfChapter("scene-hash");
+
+        var anchorId = Guid.NewGuid();
+        var orphanedComment = Comment.CreateRoot(
+            scene.Id,
+            user.Id,
+            "Orphaned anchor comment.",
+            Visibility.Public,
+            passageAnchorId: anchorId);
+
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0");
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, It.IsAny<CancellationToken>())).ReturnsAsync(chapter);
+        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
+        sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync((SectionVersion?)null);
+        readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync((ReadEvent?)null);
+        sectionDiffService.Setup(s => s.GetDiffForReaderAsync(scene.Id, It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((SectionDiffResult?)null);
+        progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        commentService.Setup(r => r.GetThreadsForSectionAsync(scene.Id, user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([orphanedComment]);
+        commentService.Setup(r => r.GetThreadsForSectionAsync(chapter.Id, user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<Comment>());
+        passageAnchorService.Setup(s => s.GetByIdAsync(anchorId, user.Id, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new EntityNotFoundException(nameof(PassageAnchor), anchorId));
+
+        var result = await sut.Read(chapter.Id);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<DesktopChapterReadViewModel>(view.Model);
+        var renderedScene = Assert.Single(model.Scenes);
+        var renderedComment = Assert.Single(renderedScene.Comments);
+        Assert.True(renderedComment.IsPassageAnchorMissing);
+    }
+
+    [Fact]
     public async Task Read_Desktop_WithVersionAndDiff_DoesNotRenderDiffAsProse()
     {
         var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
