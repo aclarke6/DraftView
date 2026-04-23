@@ -1,4 +1,6 @@
+using DraftView.Domain.Contracts;
 using DraftView.Domain.Entities;
+using DraftView.Domain.Enumerations;
 using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Interfaces.Services;
 
@@ -7,6 +9,7 @@ namespace DraftView.Application.Services;
 public class ReadingProgressService(
     IReadEventRepository readEventRepo,
     ISectionRepository sectionRepo,
+    IPassageAnchorService passageAnchorService,
     IUnitOfWork unitOfWork) : IReadingProgressService
 {
     public async Task RecordOpenAsync(
@@ -81,6 +84,43 @@ public class ReadingProgressService(
         if (readEvent is null) return;
 
         readEvent.DismissBannerAtVersion(versionNumber);
+        await unitOfWork.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Persists the reader's latest resume position as a resume-purpose passage anchor
+    /// and stores the anchor id on the current read event.
+    /// </summary>
+    public async Task CaptureResumePositionAsync(
+        CaptureResumePositionRequest request,
+        Guid userId,
+        CancellationToken ct = default)
+    {
+        var anchor = await passageAnchorService.CreateAsync(
+            new CreatePassageAnchorRequest(
+                request.SectionId,
+                request.OriginalSectionVersionId,
+                PassageAnchorPurpose.Resume,
+                request.SelectedText,
+                request.NormalizedSelectedText,
+                request.SelectedTextHash,
+                request.PrefixContext,
+                request.SuffixContext,
+                request.StartOffset,
+                request.EndOffset,
+                request.CanonicalContentHash,
+                request.HtmlSelectorHint),
+            userId,
+            ct);
+
+        var readEvent = await readEventRepo.GetAsync(request.SectionId, userId, ct);
+        if (readEvent is null)
+        {
+            readEvent = ReadEvent.Create(request.SectionId, userId);
+            await readEventRepo.AddAsync(readEvent, ct);
+        }
+
+        readEvent.UpdateResumeAnchor(anchor.Id);
         await unitOfWork.SaveChangesAsync(ct);
     }
 }

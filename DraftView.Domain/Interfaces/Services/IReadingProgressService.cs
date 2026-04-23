@@ -1,3 +1,4 @@
+using DraftView.Domain.Contracts;
 using DraftView.Domain.Entities;
 
 namespace DraftView.Domain.Interfaces.Services;
@@ -27,4 +28,9 @@ public interface IReadingProgressService
     /// No-op if no ReadEvent exists.
     /// </summary>
     Task DismissBannerAsync(Guid sectionId, Guid userId, int versionNumber, CancellationToken ct = default);
+
+    Task CaptureResumePositionAsync(
+        CaptureResumePositionRequest request,
+        Guid userId,
+        CancellationToken ct = default);
 }

@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using DraftView.Domain.Contracts;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
+using DraftView.Domain.Exceptions;
 using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Interfaces.Services;
 using DraftView.Domain.Notifications;
@@ -205,6 +206,89 @@ public class ReaderControllerTests
         var model = Assert.IsType<MobileReadViewModel>(view.Model);
         Assert.True(model.ShowUpdateBanner);
         Assert.Equal(3, model.CurrentVersionNumber);
+    }
+
+    [Fact]
+    public async Task CaptureResumePosition_ValidRequest_CallsProgressServiceAndReturnsOk()
+    {
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0");
+        var request = new CaptureResumePositionRequest(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Alpha beta",
+            "Alpha beta",
+            "selected-hash",
+            string.Empty,
+            " gamma",
+            0,
+            10,
+            "content-hash",
+            "#scene");
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        progressService.Setup(r => r.CaptureResumePositionAsync(request, user.Id, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var result = await sut.CaptureResumePosition(request);
+
+        Assert.IsType<OkResult>(result);
+    }
+
+    [Fact]
+    public async Task CaptureResumePosition_InvalidRequest_ReturnsBadRequest()
+    {
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0");
+        var request = new CaptureResumePositionRequest(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            0,
+            0,
+            string.Empty);
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        progressService.Setup(r => r.CaptureResumePositionAsync(request, user.Id, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvariantViolationException("I-ANCHOR-SELECTION", "Invalid position."));
+
+        var result = await sut.CaptureResumePosition(request);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task CaptureResumePosition_InaccessibleContent_ReturnsForbid()
+    {
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0");
+        var request = new CaptureResumePositionRequest(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Alpha beta",
+            "Alpha beta",
+            "selected-hash",
+            string.Empty,
+            " gamma",
+            0,
+            10,
+            "content-hash",
+            "#scene");
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        progressService.Setup(r => r.CaptureResumePositionAsync(request, user.Id, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new UnauthorisedOperationException("Forbidden"));
+
+        var result = await sut.CaptureResumePosition(request);
+
+        Assert.IsType<ForbidResult>(result);
     }
 
     private ReaderController CreateSut(User user, string userAgent)
