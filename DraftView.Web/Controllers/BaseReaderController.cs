@@ -52,7 +52,11 @@ public abstract class BaseReaderController(
                     model.ParentCommentId.Value, user.Id, model.Body, visibility);
             else
                 await CommentService.CreateRootCommentAsync(
-                    model.SectionId, user.Id, model.Body, visibility);
+                    model.SectionId,
+                    user.Id,
+                    model.Body,
+                    visibility,
+                    model.PassageAnchorRequest);
         }
         catch (Exception ex)
         {

@@ -466,7 +466,7 @@
                         }
 
                         <div class="add-comment-mini">
-                            <form asp-action="AddComment" method="post">
+                            <form asp-action="AddComment" method="post" data-anchor-comment-form="true">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="SectionId" value="@item.Scene.Id" />
                                 <textarea name="Body" rows="3" placeholder="Comment on @item.Scene.Title..."></textarea>
@@ -1042,6 +1042,7 @@
         var contextLength = 120;
         var lastCaptureKey = '';
         var timer;
+        window.__draftViewPendingPassageAnchorPayload = null;
 
         function normalizeText(text) {
             return (text || '').replace(/\s+/g, ' ').trim();
@@ -1148,7 +1149,16 @@
                     'RequestVerificationToken': antiForgeryInput.value
                 },
                 body: JSON.stringify(payload)
+            }).then(function (response) {
+                if (response.ok) {
+                    window.__draftViewPendingPassageAnchorPayload = payload;
+                    return;
+                }
+
+                window.__draftViewPendingPassageAnchorPayload = null;
+                lastCaptureKey = '';
             }).catch(function () {
+                window.__draftViewPendingPassageAnchorPayload = null;
                 lastCaptureKey = '';
             });
         }
@@ -1161,6 +1171,59 @@
         document.addEventListener('mouseup', function () {
             clearTimeout(timer);
             timer = setTimeout(captureSelection, 60);
+        });
+    })();
+
+    (function () {
+        function applyPendingAnchor(form) {
+            var pending = window.__draftViewPendingPassageAnchorPayload;
+            if (!pending) {
+                return;
+            }
+
+            var sectionIdInput = form.querySelector('input[name="SectionId"]');
+            if (!sectionIdInput || sectionIdInput.value !== pending.sectionId) {
+                return;
+            }
+
+            if (form.querySelector('input[name="ParentCommentId"]')) {
+                return;
+            }
+
+            var fields = {
+                'PassageAnchorRequest.SectionId': pending.sectionId,
+                'PassageAnchorRequest.OriginalSectionVersionId': pending.originalSectionVersionId || '',
+                'PassageAnchorRequest.Purpose': pending.purpose,
+                'PassageAnchorRequest.SelectedText': pending.selectedText,
+                'PassageAnchorRequest.NormalizedSelectedText': pending.normalizedSelectedText,
+                'PassageAnchorRequest.SelectedTextHash': pending.selectedTextHash,
+                'PassageAnchorRequest.PrefixContext': pending.prefixContext,
+                'PassageAnchorRequest.SuffixContext': pending.suffixContext,
+                'PassageAnchorRequest.StartOffset': pending.startOffset,
+                'PassageAnchorRequest.EndOffset': pending.endOffset,
+                'PassageAnchorRequest.CanonicalContentHash': pending.canonicalContentHash,
+                'PassageAnchorRequest.HtmlSelectorHint': pending.htmlSelectorHint || ''
+            };
+
+            Object.keys(fields).forEach(function (name) {
+                var input = form.querySelector('input[name="' + name + '"]');
+                if (!input) {
+                    input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = name;
+                    form.appendChild(input);
+                }
+
+                input.value = fields[name];
+            });
+
+            window.__draftViewPendingPassageAnchorPayload = null;
+        }
+
+        document.querySelectorAll('form[data-anchor-comment-form="true"]').forEach(function (form) {
+            form.addEventListener('submit', function () {
+                applyPendingAnchor(form);
+            });
         });
     })();
 

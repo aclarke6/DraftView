@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -547,6 +548,59 @@ public class ReaderControllerTests
         Assert.IsType<ForbidResult>(result);
     }
 
+    [Fact]
+    public async Task AddComment_WithPassageAnchorRequest_ForRootComment_ForwardsAnchorRequestToCommentService()
+    {
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+
+        var project = Project.Create("Project 1", "/Apps/Scrivener/Project1", user.Id, "project-root");
+        var chapter = Section.CreateFolder(project.Id, "chapter-uuid", "Chapter 1", null, 1);
+        chapter.MarkAsPublishedContainer();
+        var scene = Section.CreateDocument(project.Id, "scene-uuid", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "scene-hash", "Draft");
+        scene.PublishAsPartOfChapter("scene-hash");
+
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0");
+        var urlHelper = new Mock<IUrlHelper>();
+        var passageAnchorRequest = new CreatePassageAnchorRequest(
+            scene.Id,
+            null,
+            PassageAnchorPurpose.Comment,
+            "Hello",
+            "Hello",
+            "selected-hash",
+            string.Empty,
+            string.Empty,
+            0,
+            5,
+            "content-hash",
+            "#scene-uuid");
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        sectionRepo.Setup(r => r.GetByIdAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(scene);
+        commentService.Setup(r => r.CreateRootCommentAsync(
+                scene.Id,
+                user.Id,
+                "Great scene!",
+                Visibility.Public,
+                passageAnchorRequest,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Comment.CreateRoot(scene.Id, user.Id, "Great scene!", Visibility.Public));
+        urlHelper.Setup(u => u.Action(It.Is<UrlActionContext>(c => c.Action == "Read")))
+            .Returns($"/Reader/Read/{chapter.Id}");
+        sut.Url = urlHelper.Object;
+
+        var result = await sut.AddComment(new AddCommentViewModel
+        {
+            SectionId = scene.Id,
+            Body = "Great scene!",
+            PassageAnchorRequest = passageAnchorRequest
+        });
+
+        var redirect = Assert.IsType<RedirectResult>(result);
+        Assert.Contains("#scene-", redirect.Url);
+    }
+
     private ReaderController CreateSut(User user, string userAgent)
     {
         var controller = new ReaderController(
@@ -697,6 +751,7 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
         Assert.Contains("scroll_chapter_", html);
         Assert.Contains("data-resume-restore-has-target", html);
         Assert.Contains("/Reader/CapturePassageAnchorSelection", html);
+        Assert.Contains("data-anchor-comment-form=\"true\"", html);
     }
 
     [Fact]
@@ -718,6 +773,7 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
         var html = await response.Content.ReadAsStringAsync();
 
         Assert.Contains("/Reader/CapturePassageAnchorSelection", html);
+        Assert.Contains("data-anchor-comment-form=\"true\"", html);
     }
 
     [Fact]

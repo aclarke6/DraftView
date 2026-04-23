@@ -1,9 +1,11 @@
-﻿using Moq;
+﻿using DraftView.Domain.Contracts;
+using Moq;
 using DraftView.Application.Services;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
 using DraftView.Domain.Exceptions;
 using DraftView.Domain.Interfaces.Repositories;
+using DraftView.Domain.Interfaces.Services;
 
 namespace DraftView.Application.Tests.Services;
 
@@ -15,6 +17,7 @@ public class CommentServiceTests
     private readonly Mock<IUnitOfWork>                   _unitOfWork       = new();
     private readonly Mock<IAuthorNotificationRepository> _notificationRepo = new();
     private readonly Mock<ISectionVersionRepository>     _versionRepo      = new();
+    private readonly Mock<IPassageAnchorService>         _passageAnchorService = new();
 
     private CommentService CreateSut() => new(
         _commentRepo.Object,
@@ -22,7 +25,8 @@ public class CommentServiceTests
         _userRepo.Object,
         _unitOfWork.Object,
         _notificationRepo.Object,
-        _versionRepo.Object);
+        _versionRepo.Object,
+        _passageAnchorService.Object);
 
     private static Section MakePublishedSection()
     {
@@ -37,6 +41,20 @@ public class CommentServiceTests
 
     private static User MakeAuthor() =>
         User.Create("author@example.com", "Author", Role.Author);
+
+    private static CreatePassageAnchorRequest CreatePassageAnchorRequest(Guid sectionId) =>
+        new(
+            sectionId,
+            null,
+            PassageAnchorPurpose.Comment,
+            "Alpha beta",
+            "Alpha beta",
+            "hash",
+            string.Empty,
+            string.Empty,
+            0,
+            10,
+            "content-hash");
 
     // ---------------------------------------------------------------------------
     // CreateRootComment
@@ -63,6 +81,62 @@ public class CommentServiceTests
         Assert.NotNull(added);
         Assert.Equal("Great scene!", result.Body);
         _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateRootCommentAsync_WithPassageAnchorRequest_CreatesAnchorAndPersistsAnchorId()
+    {
+        var section = MakePublishedSection();
+        var reader = MakeBetaReader();
+        reader.Activate();
+        var sut = CreateSut();
+        var anchorRequest = CreatePassageAnchorRequest(section.Id);
+        var anchorId = Guid.NewGuid();
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _userRepo.Setup(r => r.GetByIdAsync(reader.Id, default)).ReturnsAsync(reader);
+        _versionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync((SectionVersion?)null);
+        _passageAnchorService.Setup(s => s.CreateAsync(
+                It.Is<CreatePassageAnchorRequest>(r =>
+                    r.SectionId == section.Id &&
+                    r.Purpose == PassageAnchorPurpose.Comment),
+                reader.Id,
+                default))
+            .ReturnsAsync(new PassageAnchorDto(
+                anchorId,
+                section.Id,
+                null,
+                PassageAnchorPurpose.Comment,
+                reader.Id,
+                DateTime.UtcNow,
+                PassageAnchorStatus.Original,
+                null,
+                new PassageAnchorSnapshotDto(
+                    "Alpha beta",
+                    "Alpha beta",
+                    "hash",
+                    string.Empty,
+                    string.Empty,
+                    0,
+                    10,
+                    "content-hash",
+                    null),
+                null));
+
+        Comment? added = null;
+        _commentRepo.Setup(r => r.AddAsync(It.IsAny<Comment>(), default))
+            .Callback<Comment, CancellationToken>((c, _) => added = c);
+
+        var result = await sut.CreateRootCommentAsync(
+            section.Id,
+            reader.Id,
+            "Great scene!",
+            Visibility.Public,
+            anchorRequest);
+
+        Assert.NotNull(added);
+        Assert.Equal(anchorId, result.PassageAnchorId);
+        _passageAnchorService.VerifyAll();
     }
 
     [Fact]
@@ -333,7 +407,8 @@ public class CommentServiceTests
             _userRepo.Object,
             _unitOfWork.Object,
             _notificationRepo.Object,
-            versionRepo.Object);
+            versionRepo.Object,
+            _passageAnchorService.Object);
 
         _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
         _userRepo.Setup(r => r.GetByIdAsync(reader.Id, default)).ReturnsAsync(reader);
@@ -366,7 +441,8 @@ public class CommentServiceTests
             _userRepo.Object,
             _unitOfWork.Object,
             _notificationRepo.Object,
-            versionRepo.Object);
+            versionRepo.Object,
+            _passageAnchorService.Object);
 
         _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
         _userRepo.Setup(r => r.GetByIdAsync(reader.Id, default)).ReturnsAsync(reader);

@@ -1,4 +1,5 @@
-﻿using DraftView.Domain.Entities;
+﻿using DraftView.Domain.Contracts;
+using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
 using DraftView.Domain.Exceptions;
 using DraftView.Domain.Interfaces.Repositories;
@@ -13,10 +14,15 @@ public class CommentService(
     IUserRepository userRepo,
     IUnitOfWork unitOfWork,
     IAuthorNotificationRepository notificationRepo,
-    ISectionVersionRepository sectionVersionRepo) : ICommentService
+    ISectionVersionRepository sectionVersionRepo,
+    IPassageAnchorService? passageAnchorService = null) : ICommentService
 {
     public async Task<Comment> CreateRootCommentAsync(
-        Guid sectionId, Guid userId, string body, Visibility visibility,
+        Guid sectionId,
+        Guid userId,
+        string body,
+        Visibility visibility,
+        CreatePassageAnchorRequest? passageAnchorRequest = null,
         CancellationToken ct = default)
     {
         var section = await sectionRepo.GetByIdAsync(sectionId, ct)
@@ -28,8 +34,29 @@ public class CommentService(
                 "Beta readers may only comment on published sections.");
 
         var latestVersion = await sectionVersionRepo.GetLatestAsync(sectionId, ct);
+        Guid? passageAnchorId = null;
+        if (passageAnchorRequest is not null)
+        {
+            if (passageAnchorService is null)
+                throw new InvalidOperationException(
+                    "Passage anchor creation is not available in this service configuration.");
+
+            if (passageAnchorRequest.SectionId != sectionId)
+                throw new InvariantViolationException(
+                    "I-COMMENT-ANCHOR-SECTION",
+                    "Passage anchors must target the same section as the comment.");
+
+            var anchor = await passageAnchorService.CreateAsync(
+                passageAnchorRequest with { Purpose = PassageAnchorPurpose.Comment },
+                userId,
+                ct);
+            passageAnchorId = anchor.Id;
+        }
+
         var comment = Comment.CreateRoot(sectionId, userId, body, visibility,
-            isReaderComment: user.Role == Role.BetaReader, sectionVersionId: latestVersion?.Id);
+            isReaderComment: user.Role == Role.BetaReader,
+            sectionVersionId: latestVersion?.Id,
+            passageAnchorId: passageAnchorId);
         await commentRepo.AddAsync(comment, ct);
         await unitOfWork.SaveChangesAsync(ct);
 

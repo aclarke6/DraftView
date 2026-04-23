@@ -1,3 +1,4 @@
+using DraftView.Domain.Contracts;
 using DraftView.Domain.Diff;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
@@ -118,6 +119,7 @@ public class AddCommentViewModel
     public bool IsPrivate { get; set; }
     public Guid? ParentCommentId { get; set; }
     public Guid? ReturnSceneId { get; set; }
+    public CreatePassageAnchorRequest? PassageAnchorRequest { get; set; }
 }
 
 /// <summary>
