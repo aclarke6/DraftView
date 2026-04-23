@@ -96,7 +96,7 @@ This is a **platform capability**, not a feature.
 - [ ] **RS-D — Deterministic Relocation**
   - [DONE] Phase D1 — Exact matching
   - [DONE] Phase D2 — Context matching
-  - [ ] Phase D3 — Fuzzy matching
+  - [DONE] Phase D3 — Fuzzy matching
   - [ ] Phase D4 — Confidence scoring
   - [ ] Phase D5 — Integration and tests
 
