@@ -101,7 +101,7 @@ This is a **platform capability**, not a feature.
   - [DONE] Phase D5 — Integration and tests
 
 - [ ] **RS-E — Human Override**
-  - [ ] Phase E1 — Permission enforcement (reader + author only)
+  - [DONE] Phase E1 — Permission enforcement (reader + author only)
   - [ ] Phase E2 — Reject match (“wrong place”)
   - [ ] Phase E3 — Relink to new passage
   - [ ] Phase E4 — Status tracking (actor + timestamp)
