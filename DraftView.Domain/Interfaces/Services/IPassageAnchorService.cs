@@ -27,6 +27,15 @@ public interface IPassageAnchorService
         Guid currentUserId,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Resolves an anchor using deterministic prefix/suffix context when exact matching
+    /// is ambiguous. Returns null when context is insufficient to choose safely.
+    /// </summary>
+    Task<PassageAnchorMatchDto?> TryResolveContextMatchAsync(
+        Guid anchorId,
+        Guid currentUserId,
+        CancellationToken ct = default);
+
     Task<PassageAnchorDto> GetByIdAsync(
         Guid anchorId,
         Guid currentUserId,

@@ -13,8 +13,8 @@ namespace DraftView.Application.Tests.Services;
 /// <summary>
 /// Tests for PassageAnchorService create and retrieve orchestration.
 /// Covers: access checks, selection validation, anchor persistence, DTO mapping,
-/// and exact-match relocation.
-/// Excludes: UI activation, context/fuzzy relocation, and reader resume integration.
+/// exact-match relocation, and context disambiguation.
+/// Excludes: UI activation, fuzzy relocation, and reader resume integration.
 /// </summary>
 public class PassageAnchorServiceTests
 {
@@ -299,6 +299,95 @@ public class PassageAnchorServiceTests
         _authFacade.Setup(f => f.IsAuthor()).Returns(true);
 
         var result = await sut.TryResolveExactMatchAsync(anchor.Id, author.Id);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task TryResolveContextMatchAsync_WithRepeatedTextAndUniqueContext_ReturnsContextMatch()
+    {
+        var author = MakeAuthor();
+        var section = Section.CreateDocument(
+            Guid.NewGuid(),
+            Guid.NewGuid().ToString(),
+            "Scene 1",
+            null,
+            0,
+            "<p>Alpha beta gamma. Delta Alpha beta omega.</p>",
+            "section-hash",
+            "Draft");
+        section.PublishAsPartOfChapter("section-hash");
+        var version = SectionVersion.Create(section, author.Id, 1);
+        var anchor = PassageAnchor.Create(
+            section.Id,
+            version.Id,
+            PassageAnchorPurpose.Comment,
+            author.Id,
+            PassageAnchorSnapshot.Create(
+                "Alpha beta",
+                "Alpha beta",
+                "hash",
+                "Delta ",
+                " omega",
+                0,
+                10,
+                "content-hash"));
+        var sut = CreateSut();
+
+        _anchorRepo.Setup(r => r.GetByIdAsync(anchor.Id, default)).ReturnsAsync(anchor);
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
+        _userRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
+        _authFacade.Setup(f => f.IsAuthor()).Returns(true);
+
+        var result = await sut.TryResolveContextMatchAsync(anchor.Id, author.Id);
+
+        Assert.NotNull(result);
+        Assert.Equal(version.Id, result!.TargetSectionVersionId);
+        Assert.Equal(80, result.ConfidenceScore);
+        Assert.Equal(PassageAnchorMatchMethod.Context, result.MatchMethod);
+        Assert.Equal(24, result.StartOffset);
+        Assert.Equal(34, result.EndOffset);
+    }
+
+    [Fact]
+    public async Task TryResolveContextMatchAsync_WithAmbiguousContext_ReturnsNull()
+    {
+        var author = MakeAuthor();
+        var section = Section.CreateDocument(
+            Guid.NewGuid(),
+            Guid.NewGuid().ToString(),
+            "Scene 1",
+            null,
+            0,
+            "<p>Alpha beta gamma Alpha beta gamma</p>",
+            "section-hash",
+            "Draft");
+        section.PublishAsPartOfChapter("section-hash");
+        var version = SectionVersion.Create(section, author.Id, 1);
+        var anchor = PassageAnchor.Create(
+            section.Id,
+            version.Id,
+            PassageAnchorPurpose.Comment,
+            author.Id,
+            PassageAnchorSnapshot.Create(
+                "Alpha beta",
+                "Alpha beta",
+                "hash",
+                string.Empty,
+                " gamma",
+                0,
+                10,
+                "content-hash"));
+        var sut = CreateSut();
+
+        _anchorRepo.Setup(r => r.GetByIdAsync(anchor.Id, default)).ReturnsAsync(anchor);
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
+        _userRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
+        _authFacade.Setup(f => f.IsAuthor()).Returns(true);
+
+        var result = await sut.TryResolveContextMatchAsync(anchor.Id, author.Id);
 
         Assert.Null(result);
     }

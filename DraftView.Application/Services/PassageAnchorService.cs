@@ -24,6 +24,8 @@ public sealed class PassageAnchorService(
 {
     private static readonly Regex HtmlTagRegex = new("<[^>]+>", RegexOptions.Compiled);
     private static readonly Regex WhitespaceRegex = new("\\s+", RegexOptions.Compiled);
+    private const int ExactConfidenceScore = 100;
+    private const int ContextConfidenceScore = 80;
 
     /// <summary>
     /// Creates a new passage anchor from a reader-visible selection after enforcing section access.
@@ -101,6 +103,18 @@ public sealed class PassageAnchorService(
             DateTime.UtcNow,
             null,
             null);
+    }
+
+    /// <summary>
+    /// Attempts to resolve an anchor using deterministic prefix/suffix context when the
+    /// selected text appears multiple times in the target content.
+    /// </summary>
+    public Task<PassageAnchorMatchDto?> TryResolveContextMatchAsync(
+        Guid anchorId,
+        Guid currentUserId,
+        CancellationToken ct = default)
+    {
+        return TryResolveContextMatchInternalAsync(anchorId, currentUserId, ct);
     }
 
     /// <summary>
@@ -302,6 +316,107 @@ public sealed class PassageAnchorService(
 
         return matches;
     }
+
+    /// <summary>
+    /// Resolves an anchor using deterministic prefix/suffix context when exact matching
+    /// is ambiguous. Requires a single candidate with a full context match.
+    /// </summary>
+    private async Task<PassageAnchorMatchDto?> TryResolveContextMatchInternalAsync(
+        Guid anchorId,
+        Guid currentUserId,
+        CancellationToken ct)
+    {
+        var anchor = await anchorRepo.GetByIdAsync(anchorId, ct)
+            ?? throw new EntityNotFoundException(nameof(PassageAnchor), anchorId);
+        var section = await sectionRepo.GetByIdAsync(anchor.SectionId, ct)
+            ?? throw new EntityNotFoundException(nameof(Section), anchor.SectionId);
+
+        await EnsureAuthorizedAsync(section, currentUserId, ct);
+
+        var latestVersion = await sectionVersionRepo.GetLatestAsync(section.Id, ct);
+        var readerVisibleText = latestVersion is not null
+            ? Canonicalize(latestVersion.HtmlContent)
+            : Canonicalize(section.HtmlContent ?? string.Empty);
+
+        var exactMatches = FindExactMatchOffsets(
+            readerVisibleText,
+            anchor.OriginalSnapshot.NormalizedSelectedText);
+
+        if (exactMatches.Count == 1)
+        {
+            var (exactStart, exactEnd) = exactMatches[0];
+            return new PassageAnchorMatchDto(
+                latestVersion?.Id,
+                exactStart,
+                exactEnd,
+                readerVisibleText[exactStart..exactEnd],
+                ExactConfidenceScore,
+                PassageAnchorMatchMethod.Exact,
+                DateTime.UtcNow,
+                null,
+                null);
+        }
+
+        var contextMatch = FindUniqueContextMatch(
+            readerVisibleText,
+            anchor.OriginalSnapshot,
+            exactMatches);
+
+        if (contextMatch is null)
+            return null;
+
+        return new PassageAnchorMatchDto(
+            latestVersion?.Id,
+            contextMatch.Value.StartOffset,
+            contextMatch.Value.EndOffset,
+            readerVisibleText[contextMatch.Value.StartOffset..contextMatch.Value.EndOffset],
+            ContextConfidenceScore,
+            PassageAnchorMatchMethod.Context,
+            DateTime.UtcNow,
+            null,
+            null);
+    }
+
+    /// <summary>
+    /// Selects a single exact-text candidate whose surrounding context matches the
+    /// original captured prefix and suffix. Returns null when the context is ambiguous.
+    /// </summary>
+    private static (int StartOffset, int EndOffset)? FindUniqueContextMatch(
+        string readerVisibleText,
+        PassageAnchorSnapshot originalSnapshot,
+        IReadOnlyList<(int StartOffset, int EndOffset)> exactMatches)
+    {
+        (int StartOffset, int EndOffset)? selected = null;
+
+        foreach (var (startOffset, endOffset) in exactMatches)
+        {
+            var prefix = SliceContext(
+                readerVisibleText,
+                Math.Max(0, startOffset - originalSnapshot.PrefixContext.Length),
+                startOffset);
+            var suffix = SliceContext(
+                readerVisibleText,
+                endOffset,
+                Math.Min(readerVisibleText.Length, endOffset + originalSnapshot.SuffixContext.Length));
+
+            if (!string.Equals(prefix, originalSnapshot.PrefixContext, StringComparison.Ordinal) ||
+                !string.Equals(suffix, originalSnapshot.SuffixContext, StringComparison.Ordinal))
+                continue;
+
+            if (selected is not null)
+                return null;
+
+            selected = (startOffset, endOffset);
+        }
+
+        return selected;
+    }
+
+    /// <summary>
+    /// Returns a canonical slice of the target text for context comparison.
+    /// </summary>
+    private static string SliceContext(string text, int start, int end) =>
+        start >= end ? string.Empty : text[start..end];
 
     /// <summary>
     /// Maps a passage anchor aggregate to its service DTO shape.
