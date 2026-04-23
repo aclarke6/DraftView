@@ -36,6 +36,15 @@ public interface IPassageAnchorService
         Guid currentUserId,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Resolves an anchor using deterministic fuzzy text matching when exact and
+    /// context matching cannot produce a safe answer.
+    /// </summary>
+    Task<PassageAnchorMatchDto?> TryResolveFuzzyMatchAsync(
+        Guid anchorId,
+        Guid currentUserId,
+        CancellationToken ct = default);
+
     Task<PassageAnchorDto> GetByIdAsync(
         Guid anchorId,
         Guid currentUserId,

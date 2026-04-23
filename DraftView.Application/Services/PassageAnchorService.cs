@@ -26,6 +26,7 @@ public sealed class PassageAnchorService(
     private static readonly Regex WhitespaceRegex = new("\\s+", RegexOptions.Compiled);
     private const int ExactConfidenceScore = 100;
     private const int ContextConfidenceScore = 80;
+    private const int FuzzyConfidenceThreshold = 65;
 
     /// <summary>
     /// Creates a new passage anchor from a reader-visible selection after enforcing section access.
@@ -115,6 +116,43 @@ public sealed class PassageAnchorService(
         CancellationToken ct = default)
     {
         return TryResolveContextMatchInternalAsync(anchorId, currentUserId, ct);
+    }
+
+    /// <summary>
+    /// Attempts to resolve an anchor using deterministic fuzzy matching on canonical
+    /// text when exact and context matching are insufficient.
+    /// </summary>
+    public async Task<PassageAnchorMatchDto?> TryResolveFuzzyMatchAsync(
+        Guid anchorId,
+        Guid currentUserId,
+        CancellationToken ct = default)
+    {
+        var anchor = await anchorRepo.GetByIdAsync(anchorId, ct)
+            ?? throw new EntityNotFoundException(nameof(PassageAnchor), anchorId);
+        var section = await sectionRepo.GetByIdAsync(anchor.SectionId, ct)
+            ?? throw new EntityNotFoundException(nameof(Section), anchor.SectionId);
+
+        await EnsureAuthorizedAsync(section, currentUserId, ct);
+
+        var latestVersion = await sectionVersionRepo.GetLatestAsync(section.Id, ct);
+        var readerVisibleText = latestVersion is not null
+            ? Canonicalize(latestVersion.HtmlContent)
+            : Canonicalize(section.HtmlContent ?? string.Empty);
+
+        var match = FindBestFuzzyMatch(readerVisibleText, anchor.OriginalSnapshot.NormalizedSelectedText);
+        if (match is null || match.Value.ConfidenceScore < FuzzyConfidenceThreshold)
+            return null;
+
+        return new PassageAnchorMatchDto(
+            latestVersion?.Id,
+            match.Value.StartOffset,
+            match.Value.EndOffset,
+            readerVisibleText[match.Value.StartOffset..match.Value.EndOffset],
+            match.Value.ConfidenceScore,
+            PassageAnchorMatchMethod.Fuzzy,
+            DateTime.UtcNow,
+            null,
+            null);
     }
 
     /// <summary>
@@ -417,6 +455,91 @@ public sealed class PassageAnchorService(
     /// </summary>
     private static string SliceContext(string text, int start, int end) =>
         start >= end ? string.Empty : text[start..end];
+
+    /// <summary>
+    /// Finds the highest-scoring fuzzy window for the selected text within canonical text.
+    /// Ties are treated as ambiguous and return null.
+    /// </summary>
+    private static (int StartOffset, int EndOffset, int ConfidenceScore)? FindBestFuzzyMatch(
+        string readerVisibleText,
+        string normalizedSelectedText)
+    {
+        if (string.IsNullOrWhiteSpace(readerVisibleText) ||
+            string.IsNullOrWhiteSpace(normalizedSelectedText))
+            return null;
+
+        var selectedLength = normalizedSelectedText.Length;
+        var minLength = Math.Max(1, selectedLength - 2);
+        var maxLength = Math.Min(readerVisibleText.Length, selectedLength + 2);
+
+        (int StartOffset, int EndOffset, int ConfidenceScore)? best = null;
+        var bestScore = -1;
+        var tieCount = 0;
+
+        for (var candidateLength = minLength; candidateLength <= maxLength; candidateLength++)
+        {
+            for (var startOffset = 0; startOffset <= readerVisibleText.Length - candidateLength; startOffset++)
+            {
+                var candidate = readerVisibleText[startOffset..(startOffset + candidateLength)];
+                var score = ComputeFuzzyConfidence(normalizedSelectedText, candidate);
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = (startOffset, startOffset + candidateLength, score);
+                    tieCount = 1;
+                }
+                else if (score == bestScore)
+                {
+                    tieCount++;
+                }
+            }
+        }
+
+        return tieCount == 1 ? best : null;
+    }
+
+    /// <summary>
+    /// Scores the similarity between the anchor text and a candidate window on a 0-100 scale.
+    /// </summary>
+    private static int ComputeFuzzyConfidence(string selectedText, string candidateText)
+    {
+        if (selectedText.Length == 0 && candidateText.Length == 0)
+            return 100;
+
+        var distance = ComputeLevenshteinDistance(selectedText, candidateText);
+        var maxLength = Math.Max(selectedText.Length, candidateText.Length);
+        var rawScore = 100.0 * (1.0 - ((double)distance / maxLength));
+        return (int)Math.Round(Math.Clamp(rawScore, 0, 100));
+    }
+
+    /// <summary>
+    /// Computes a deterministic Levenshtein edit distance.
+    /// </summary>
+    private static int ComputeLevenshteinDistance(string left, string right)
+    {
+        var rows = left.Length + 1;
+        var cols = right.Length + 1;
+        var matrix = new int[rows, cols];
+
+        for (var i = 0; i < rows; i++)
+            matrix[i, 0] = i;
+
+        for (var j = 0; j < cols; j++)
+            matrix[0, j] = j;
+
+        for (var i = 1; i < rows; i++)
+        {
+            for (var j = 1; j < cols; j++)
+            {
+                var cost = left[i - 1] == right[j - 1] ? 0 : 1;
+                matrix[i, j] = Math.Min(
+                    Math.Min(matrix[i - 1, j] + 1, matrix[i, j - 1] + 1),
+                    matrix[i - 1, j - 1] + cost);
+            }
+        }
+
+        return matrix[left.Length, right.Length];
+    }
 
     /// <summary>
     /// Maps a passage anchor aggregate to its service DTO shape.
