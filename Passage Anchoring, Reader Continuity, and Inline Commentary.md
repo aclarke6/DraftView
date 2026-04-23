@@ -1262,3 +1262,145 @@ Start with RS-A Phase A1 - Model Discovery.
 A1 is complete. The selected model contract is recorded in Section 3.1.1. Continue with
 RS-A Phase A2 using that contract. A2 must not revisit the model discovery decision unless
 it hits a documented stop condition.
+
+---
+
+# Explanations in Basic Terms - Non-authoritative Summary
+
+## RS-A — Anchor Foundation
+
+What it means:
+You teach the system to understand:
+
+> “this exact piece of text”
+
+Instead of:
+
+> “somewhere in Scene 3”
+
+In plain terms:
+
+Identify a chunk of text
+Store enough information to find it again later
+Do this without breaking anything existing
+
+**Outcome:**
+The system can point to a specific passage, not just a location.
+
+## RS-B — Anchored Resume
+
+What it means:
+When a reader leaves and comes back:
+
+> they return to the same place in the text, even if things changed
+
+In plain terms:
+
+- Remember where the reader was reading
+- Use the anchor to find that place again
+- If the text moved, find the closest match
+
+**Outcome:**
+“Continue reading” actually works reliably.
+
+## RS-C — Inline Comments
+
+What it means:
+Readers can highlight text and comment on it directly.
+
+In plain terms:
+
+Select a sentence or paragraph
+Attach a comment to that exact text
+Show that comment in context
+
+**Outcome:**
+Comments become precise, not general.
+
+## RS-D — Deterministic Relocation
+
+What it means:
+When the author edits the text:
+
+comments don’t break — they move with the text
+
+In plain terms:
+
+Try to find the same text in the new version
+If not exact, find something very close
+Do this using rules, not AI
+
+**Outcome:**
+Comments survive edits like:
+
+## RS-E — Human Override
+
+What it means:
+When the system matches a comment:
+
+this is the wrong place
+
+Instead of:
+
+the correct passage
+
+In plain terms:
+
+Let the reader or author say “this is the wrong place”
+Let them relink the comment to the correct passage
+Record who made the change
+
+**Outcome:**
+The system can be corrected when it gets things wrong.
+
+## RS-F — Original Context
+
+What it means:
+When a version changes:
+
+the original passage is still available
+
+In plain terms:
+
+Store the original version of the text
+Allow viewing the comment in that original passage
+Do not lose historical context
+
+**Outcome:**
+The system always shows the true original meaning.
+
+## RS-G — AI-Assisted Relocation
+
+What it means:
+When the system cannot find a match:
+
+use AI to locate the passage
+
+Instead of:
+
+failing to match at all
+
+In plain terms:
+
+Try rule-based matching first
+If that fails, use AI to find a similar passage
+Only apply if confidence is high
+
+**Outcome:**
+Comments can still be recovered after major rewrites.
+
+## RS-H — Reader Insight
+
+What it means:
+Once this data exists:
+
+understand how readers engage with the text
+
+In plain terms:
+
+Track how far readers get
+Show authors reader progress
+Surface useful engagement insights
+
+**Outcome:**
+Authors gain visibility into how their work is read.
