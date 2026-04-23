@@ -100,7 +100,7 @@ This is a **platform capability**, not a feature.
   - [DONE] Phase D4 — Confidence scoring
   - [DONE] Phase D5 — Integration and tests
 
-- [ ] **RS-E — Human Override**
+- [In Progress] **RS-E — Human Override**
   - [DONE] Phase E1 — Permission enforcement (reader + author only)
   - [ ] Phase E2 — Reject match (“wrong place”)
   - [ ] Phase E3 — Relink to new passage
