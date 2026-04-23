@@ -85,6 +85,58 @@ public class PassageAnchorServiceTests
     }
 
     [Fact]
+    public async Task ValidateSelectionAsync_WithValidSelection_DoesNotPersistAnchor()
+    {
+        var reader = MakeReader();
+        var section = MakePublishedSection();
+        var version = SectionVersion.Create(section, Guid.NewGuid(), 1);
+        var request = CreateRequest(section.Id, version.Id, "Alpha beta");
+        var sut = CreateSut();
+
+        _userRepo.Setup(r => r.GetByIdAsync(reader.Id, default)).ReturnsAsync(reader);
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
+        _readerAccessRepo.Setup(r => r.GetByReaderAndProjectAsync(reader.Id, section.ProjectId, default))
+            .ReturnsAsync(ReaderAccess.Grant(reader.Id, Guid.NewGuid(), section.ProjectId));
+        _authFacade.Setup(f => f.IsBetaReader()).Returns(true);
+
+        await sut.ValidateSelectionAsync(request, reader.Id);
+
+        _anchorRepo.Verify(r => r.AddAsync(It.IsAny<PassageAnchor>(), default), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Never);
+    }
+
+    [Fact]
+    public async Task ValidateSelectionAsync_WithInlineMarkupSelection_AllowsCanonicalText()
+    {
+        var reader = MakeReader();
+        var section = Section.CreateDocument(
+            Guid.NewGuid(),
+            Guid.NewGuid().ToString(),
+            "Scene 1",
+            null,
+            0,
+            "<p><strong>Alpha</strong> beta gamma</p>",
+            "section-hash",
+            "Draft");
+        section.PublishAsPartOfChapter("section-hash");
+        var version = SectionVersion.Create(section, Guid.NewGuid(), 1);
+        var request = CreateRequest(section.Id, version.Id, "Alpha beta");
+        var sut = CreateSut();
+
+        _userRepo.Setup(r => r.GetByIdAsync(reader.Id, default)).ReturnsAsync(reader);
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
+        _readerAccessRepo.Setup(r => r.GetByReaderAndProjectAsync(reader.Id, section.ProjectId, default))
+            .ReturnsAsync(ReaderAccess.Grant(reader.Id, Guid.NewGuid(), section.ProjectId));
+        _authFacade.Setup(f => f.IsBetaReader()).Returns(true);
+
+        await sut.ValidateSelectionAsync(request, reader.Id);
+
+        _anchorRepo.Verify(r => r.AddAsync(It.IsAny<PassageAnchor>(), default), Times.Never);
+    }
+
+    [Fact]
     public async Task CreateAsync_WithUnauthorizedUser_ThrowsUnauthorisedOperationException()
     {
         var reader = MakeReader();
@@ -101,6 +153,26 @@ public class PassageAnchorServiceTests
             .ReturnsAsync((ReaderAccess?)null);
 
         await Assert.ThrowsAsync<UnauthorisedOperationException>(() => sut.CreateAsync(request, reader.Id));
+    }
+
+    [Fact]
+    public async Task ValidateSelectionAsync_WithUnauthorizedUser_ThrowsUnauthorisedOperationException()
+    {
+        var reader = MakeReader();
+        var section = MakePublishedSection();
+        var version = SectionVersion.Create(section, Guid.NewGuid(), 1);
+        var request = CreateRequest(section.Id, version.Id, "Alpha beta");
+        var sut = CreateSut();
+
+        _userRepo.Setup(r => r.GetByIdAsync(reader.Id, default)).ReturnsAsync(reader);
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
+        _authFacade.Setup(f => f.IsBetaReader()).Returns(true);
+        _readerAccessRepo.Setup(r => r.GetByReaderAndProjectAsync(reader.Id, section.ProjectId, default))
+            .ReturnsAsync((ReaderAccess?)null);
+
+        await Assert.ThrowsAsync<UnauthorisedOperationException>(
+            () => sut.ValidateSelectionAsync(request, reader.Id));
     }
 
     [Fact]

@@ -541,6 +541,112 @@
     })();
 
     (function () {
+        var antiForgeryInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        var prose = document.querySelector('.mobile-read__prose[data-section-id]');
+        if (!antiForgeryInput || !prose) {
+            return;
+        }
+
+        var captureUrl = '/Reader/CapturePassageAnchorSelection';
+        var contextLength = 120;
+        var lastCaptureKey = '';
+        var timer;
+
+        function normalizeText(text) {
+            return (text || '').replace(/\s+/g, ' ').trim();
+        }
+
+        async function hashText(text) {
+            if (window.crypto && window.crypto.subtle && window.TextEncoder) {
+                var bytes = new TextEncoder().encode(text);
+                var digest = await window.crypto.subtle.digest('SHA-256', bytes);
+                return Array.from(new Uint8Array(digest)).map(function (b) {
+                    return b.toString(16).padStart(2, '0');
+                }).join('');
+            }
+
+            return String(text.length) + ':' + text.substring(0, 32);
+        }
+
+        async function captureSelection() {
+            var selection = window.getSelection();
+            if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+                return;
+            }
+
+            if (!prose.contains(selection.anchorNode) || !prose.contains(selection.focusNode)) {
+                return;
+            }
+
+            var selectedText = normalizeText(selection.toString());
+            var canonicalText = prose.getAttribute('data-resume-capture-text') || '';
+            if (!selectedText || !canonicalText) {
+                return;
+            }
+
+            var startOffset = canonicalText.indexOf(selectedText);
+            if (startOffset < 0) {
+                return;
+            }
+
+            var endOffset = startOffset + selectedText.length;
+            var prefixStart = Math.max(0, startOffset - contextLength);
+            var suffixEnd = Math.min(canonicalText.length, endOffset + contextLength);
+            var sectionId = prose.getAttribute('data-section-id');
+            var versionId = prose.getAttribute('data-section-version-id');
+            var captureKey = JSON.stringify([
+                sectionId,
+                versionId,
+                startOffset,
+                endOffset,
+                selectedText
+            ]);
+
+            if (captureKey === lastCaptureKey) {
+                return;
+            }
+
+            var payload = {
+                sectionId: sectionId,
+                originalSectionVersionId: versionId || null,
+                purpose: 0,
+                selectedText: selectedText,
+                normalizedSelectedText: selectedText,
+                selectedTextHash: await hashText(selectedText),
+                prefixContext: canonicalText.slice(prefixStart, startOffset),
+                suffixContext: canonicalText.slice(endOffset, suffixEnd),
+                startOffset: startOffset,
+                endOffset: endOffset,
+                canonicalContentHash: await hashText(canonicalText),
+                htmlSelectorHint: '#mobile-scene-' + sectionId
+            };
+
+            lastCaptureKey = captureKey;
+
+            fetch(captureUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': antiForgeryInput.value
+                },
+                body: JSON.stringify(payload)
+            }).catch(function () {
+                lastCaptureKey = '';
+            });
+        }
+
+        document.addEventListener('selectionchange', function () {
+            clearTimeout(timer);
+            timer = setTimeout(captureSelection, 120);
+        });
+
+        document.addEventListener('mouseup', function () {
+            clearTimeout(timer);
+            timer = setTimeout(captureSelection, 60);
+        });
+    })();
+
+    (function () {
         var deleteForms = document.querySelectorAll('.comment-delete-form');
         deleteForms.forEach(function (form) {
             form.addEventListener('submit', function (event) {

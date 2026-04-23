@@ -39,6 +39,7 @@ public class ReaderControllerTests
     private readonly Mock<ISectionVersionRepository> sectionVersionRepo = new();
     private readonly Mock<IReadEventRepository> readEventRepo = new();
     private readonly Mock<ISectionDiffService> sectionDiffService = new();
+    private readonly Mock<IPassageAnchorService> passageAnchorService = new();
     private readonly Mock<ILogger<ReaderController>> logger = new();
 
     [Fact]
@@ -459,6 +460,93 @@ public class ReaderControllerTests
         Assert.IsType<ForbidResult>(result);
     }
 
+    [Fact]
+    public async Task CapturePassageAnchorSelection_ValidRequest_ReturnsOk()
+    {
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0");
+        var request = new CreatePassageAnchorRequest(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            PassageAnchorPurpose.Comment,
+            "Alpha beta",
+            "Alpha beta",
+            "selected-hash",
+            string.Empty,
+            " gamma",
+            0,
+            10,
+            "content-hash",
+            "#scene");
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        passageAnchorService.Setup(s => s.ValidateSelectionAsync(request, user.Id, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var result = await sut.CapturePassageAnchorSelection(request);
+
+        Assert.IsType<OkResult>(result);
+    }
+
+    [Fact]
+    public async Task CapturePassageAnchorSelection_InvalidRequest_ReturnsBadRequest()
+    {
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0");
+        var request = new CreatePassageAnchorRequest(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            PassageAnchorPurpose.Comment,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            0,
+            0,
+            string.Empty,
+            "#scene");
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        passageAnchorService.Setup(s => s.ValidateSelectionAsync(request, user.Id, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvariantViolationException("I-ANCHOR-SELECTION", "Invalid selection."));
+
+        var result = await sut.CapturePassageAnchorSelection(request);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task CapturePassageAnchorSelection_InaccessibleContent_ReturnsForbid()
+    {
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0");
+        var request = new CreatePassageAnchorRequest(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            PassageAnchorPurpose.Comment,
+            "Alpha beta",
+            "Alpha beta",
+            "selected-hash",
+            string.Empty,
+            " gamma",
+            0,
+            10,
+            "content-hash",
+            "#scene");
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        passageAnchorService.Setup(s => s.ValidateSelectionAsync(request, user.Id, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new UnauthorisedOperationException("Forbidden"));
+
+        var result = await sut.CapturePassageAnchorSelection(request);
+
+        Assert.IsType<ForbidResult>(result);
+    }
+
     private ReaderController CreateSut(User user, string userAgent)
     {
         var controller = new ReaderController(
@@ -472,6 +560,7 @@ public class ReaderControllerTests
             sectionVersionRepo.Object,
             readEventRepo.Object,
             sectionDiffService.Object,
+            passageAnchorService.Object,
             logger.Object);
 
         controller.ControllerContext = new ControllerContext
@@ -607,6 +696,28 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
         Assert.Contains("data-resume-restore-end-offset=", html);
         Assert.Contains("scroll_chapter_", html);
         Assert.Contains("data-resume-restore-has-target", html);
+        Assert.Contains("/Reader/CapturePassageAnchorSelection", html);
+    }
+
+    [Fact]
+    public async Task Read_Mobile_RendersPassageAnchorSelectionCaptureScript()
+    {
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = true,
+            BaseAddress = new Uri("https://localhost")
+        });
+
+        client.DefaultRequestHeaders.Add(TestAuthHandler.HeaderName, TestAuthHandler.ReaderMode);
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (iPhone)");
+
+        var response = await client.GetAsync($"/Reader/Read/{factory.SceneId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Contains("/Reader/CapturePassageAnchorSelection", html);
     }
 
     [Fact]

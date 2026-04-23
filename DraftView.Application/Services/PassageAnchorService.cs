@@ -34,6 +34,15 @@ public sealed class PassageAnchorService(
         CreateInternalAsync(request, currentUserId, ct);
 
     /// <summary>
+    /// Validates a reader-visible selection without persisting a passage anchor.
+    /// </summary>
+    public Task ValidateSelectionAsync(
+        CreatePassageAnchorRequest request,
+        Guid currentUserId,
+        CancellationToken ct = default) =>
+        ValidateInternalAsync(request, currentUserId, ct);
+
+    /// <summary>
     /// Retrieves a passage anchor for an authorized caller and returns its current status metadata.
     /// </summary>
     public async Task<PassageAnchorDto> GetByIdAsync(
@@ -62,12 +71,7 @@ public sealed class PassageAnchorService(
         var section = await sectionRepo.GetByIdAsync(request.SectionId, ct)
             ?? throw new EntityNotFoundException(nameof(Section), request.SectionId);
 
-        await EnsureAuthorizedAsync(section, currentUserId, ct);
-
-        var latestVersion = await sectionVersionRepo.GetLatestAsync(section.Id, ct);
-        var source = ResolveReaderVisibleSource(section, latestVersion, request.OriginalSectionVersionId);
-
-        ValidateSelection(request, source.ReaderVisibleText);
+        var source = await ValidateSelectionInternalAsync(section, request, currentUserId, ct);
 
         var snapshot = PassageAnchorSnapshot.Create(
             request.SelectedText,
@@ -90,6 +94,38 @@ public sealed class PassageAnchorService(
         await unitOfWork.SaveChangesAsync(ct);
 
         return Map(anchor);
+    }
+
+    /// <summary>
+    /// Executes validation without persisting a passage anchor.
+    /// </summary>
+    private async Task ValidateInternalAsync(
+        CreatePassageAnchorRequest request,
+        Guid currentUserId,
+        CancellationToken ct = default)
+    {
+        var section = await sectionRepo.GetByIdAsync(request.SectionId, ct)
+            ?? throw new EntityNotFoundException(nameof(Section), request.SectionId);
+
+        await ValidateSelectionInternalAsync(section, request, currentUserId, ct);
+    }
+
+    /// <summary>
+    /// Resolves the reader-visible content source and validates the supplied selection against it.
+    /// </summary>
+    private async Task<ReaderVisibleSource> ValidateSelectionInternalAsync(
+        Section section,
+        CreatePassageAnchorRequest request,
+        Guid currentUserId,
+        CancellationToken ct)
+    {
+        await EnsureAuthorizedAsync(section, currentUserId, ct);
+
+        var latestVersion = await sectionVersionRepo.GetLatestAsync(section.Id, ct);
+        var source = ResolveReaderVisibleSource(section, latestVersion, request.OriginalSectionVersionId);
+
+        ValidateSelection(request, source.ReaderVisibleText);
+        return source;
     }
 
     /// <summary>

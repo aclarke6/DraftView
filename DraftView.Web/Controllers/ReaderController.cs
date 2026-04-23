@@ -24,11 +24,13 @@ public class ReaderController(
     ISectionVersionRepository sectionVersionRepo,
     IReadEventRepository readEventRepo,
     ISectionDiffService sectionDiffService,
+    IPassageAnchorService passageAnchorService,
     ILogger<ReaderController> logger)
     : BaseReaderController(projectRepo, sectionRepo, commentService, progressService,
                            userRepository, readerAccessRepo, logger)
 {
     private readonly IUserPreferencesRepository _userPreferencesRepo = userPreferencesRepo;
+    private readonly IPassageAnchorService _passageAnchorService = passageAnchorService;
     private static readonly Regex HtmlTagRegex = new("<[^>]+>", RegexOptions.Compiled);
     private static readonly Regex WhitespaceRegex = new("\\s+", RegexOptions.Compiled);
 
@@ -222,6 +224,33 @@ public class ReaderController(
         try
         {
             await ProgressService.CaptureResumePositionAsync(request, user.Id);
+            return Ok();
+        }
+        catch (UnauthorisedOperationException)
+        {
+            return Forbid();
+        }
+        catch (InvariantViolationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // POST: /Reader/CapturePassageAnchorSelection
+    // -----------------------------------------------------------------------
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CapturePassageAnchorSelection(
+        [FromBody] CreatePassageAnchorRequest request)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return Forbid();
+
+        try
+        {
+            await _passageAnchorService.ValidateSelectionAsync(request, user.Id);
             return Ok();
         }
         catch (UnauthorisedOperationException)

@@ -7,6 +7,11 @@ namespace DraftView.Domain.Interfaces.Services;
 /// </summary>
 public interface IPassageAnchorService
 {
+    Task ValidateSelectionAsync(
+        CreatePassageAnchorRequest request,
+        Guid currentUserId,
+        CancellationToken ct = default);
+
     Task<PassageAnchorDto> CreateAsync(
         CreatePassageAnchorRequest request,
         Guid currentUserId,
