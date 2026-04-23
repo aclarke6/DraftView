@@ -508,6 +508,62 @@ public class ReadingProgressServiceTests
     }
 
     [Fact]
+    public async Task GetResumeRestoreTargetAsync_ExactCrossVersionMatch_ReturnsExactCrossVersionTarget()
+    {
+        var sectionId = Guid.NewGuid();
+        var originalVersionId = Guid.NewGuid();
+        var currentVersionId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var anchorId = Guid.NewGuid();
+        var readEvent = ReadEvent.Create(sectionId, userId);
+        readEvent.UpdateResumeAnchor(anchorId);
+        var sut = CreateSut();
+
+        _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default))
+            .ReturnsAsync(readEvent);
+        _passageAnchorService.Setup(s => s.GetByIdAsync(anchorId, userId, default))
+            .ReturnsAsync(new PassageAnchorDto(
+                anchorId,
+                sectionId,
+                originalVersionId,
+                PassageAnchorPurpose.Resume,
+                userId,
+                DateTime.UtcNow,
+                PassageAnchorStatus.Exact,
+                DateTime.UtcNow,
+                new PassageAnchorSnapshotDto(
+                    "Alpha beta",
+                    "Alpha beta",
+                    "selected-hash",
+                    string.Empty,
+                    " gamma",
+                    0,
+                    10,
+                    "content-hash",
+                    "#scene"),
+                new PassageAnchorMatchDto(
+                    currentVersionId,
+                    0,
+                    10,
+                    "Alpha beta",
+                    100,
+                    PassageAnchorMatchMethod.Exact,
+                    DateTime.UtcNow,
+                    null,
+                    null)));
+
+        var result = await sut.GetResumeRestoreTargetAsync(sectionId, currentVersionId, userId);
+
+        Assert.NotNull(result);
+        Assert.True(result!.HasTarget);
+        Assert.Equal(PassageAnchorStatus.Exact, result.Status);
+        Assert.Equal(0, result.StartOffset);
+        Assert.Equal(10, result.EndOffset);
+        Assert.Equal(100, result.ConfidenceScore);
+        Assert.Equal(PassageAnchorMatchMethod.Exact, result.MatchMethod);
+    }
+
+    [Fact]
     public async Task GetResumeRestoreTargetAsync_OrphanedAnchor_ReturnsSafeFallback()
     {
         var sectionId = Guid.NewGuid();

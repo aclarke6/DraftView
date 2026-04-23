@@ -265,6 +265,62 @@ public class ReaderControllerTests
     }
 
     [Fact]
+    public async Task Read_Desktop_WhenResumeRestoreTargetCrossVersion_PopulatesSceneResumeRestoreMetadata()
+    {
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+
+        var project = Project.Create("Project 1", "/Apps/Scrivener/Project1", user.Id, "project-root");
+        var chapter = Section.CreateFolder(project.Id, "chapter-uuid", "Chapter 1", null, 1);
+        chapter.MarkAsPublishedContainer();
+        var scene = Section.CreateDocument(project.Id, "scene-uuid", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "scene-hash", "Draft");
+        scene.PublishAsPartOfChapter("scene-hash");
+        var latestVersion = SectionVersion.Create(
+            Section.CreateDocument(project.Id, "scene-published", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "published-hash", "Published"),
+            Guid.NewGuid(),
+            2);
+
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0");
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, It.IsAny<CancellationToken>())).ReturnsAsync(chapter);
+        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
+        sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(latestVersion);
+        readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ReadEvent.Create(scene.Id, user.Id));
+        sectionDiffService.Setup(s => s.GetDiffForReaderAsync(scene.Id, It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((SectionDiffResult?)null);
+        progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        progressService.Setup(r => r.UpdateLastReadVersionAsync(scene.Id, user.Id, latestVersion.VersionNumber, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        progressService.Setup(r => r.GetResumeRestoreTargetAsync(scene.Id, latestVersion.Id, user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ResumeRestoreTargetDto(
+                Guid.NewGuid(),
+                scene.Id,
+                latestVersion.Id,
+                PassageAnchorStatus.Exact,
+                true,
+                0,
+                10,
+                "Alpha beta",
+                100,
+                PassageAnchorMatchMethod.Exact));
+        commentService.Setup(r => r.GetThreadsForSectionAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<Comment>());
+
+        var result = await sut.Read(chapter.Id);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<DesktopChapterReadViewModel>(view.Model);
+        var renderedScene = Assert.Single(model.Scenes);
+        Assert.True(renderedScene.HasResumeRestoreTarget);
+        Assert.Equal(0, renderedScene.ResumeRestoreStartOffset);
+        Assert.Equal(10, renderedScene.ResumeRestoreEndOffset);
+        Assert.Equal(PassageAnchorStatus.Exact, renderedScene.ResumeRestoreStatus);
+        Assert.Equal(100, renderedScene.ResumeRestoreConfidenceScore);
+        Assert.Equal(PassageAnchorMatchMethod.Exact, renderedScene.ResumeRestoreMatchMethod);
+    }
+
+    [Fact]
     public async Task Read_Mobile_WhenResumeRestoreFallsBack_PopulatesSafeFallbackMetadata()
     {
         var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
@@ -575,6 +631,27 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
         Assert.Contains("data-resume-restore-start-offset=", html);
         Assert.Contains("data-resume-restore-end-offset=", html);
         Assert.Contains("data-resume-restore-status=", html);
+    }
+
+    [Fact]
+    public async Task Read_Desktop_RendersLegacyScrollFallback_WhenNoResumeRestoreTarget()
+    {
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = true,
+            BaseAddress = new Uri("https://localhost")
+        });
+
+        client.DefaultRequestHeaders.Add(TestAuthHandler.HeaderName, TestAuthHandler.ReaderMode);
+
+        var response = await client.GetAsync($"/Reader/Read/{factory.ChapterId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Contains("data-resume-restore-has-target=\"false\"", html);
+        Assert.Contains("scroll_chapter_", html);
     }
 
     public sealed class ReaderReadFactory : WebApplicationFactory<Program>
