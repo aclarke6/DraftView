@@ -166,7 +166,7 @@ See `DropBox Synchronisation Using WebHooks.md` for full architecture, control m
   - [DONE] Phase 1: Architecture and task alignment
   - [DONE] Phase 2: Domain model for sync control
   - [DONE] Phase 3: Domain tests for control rules
-  - [ ] Phase 4: Infrastructure mapping and migration
+  - [DONE] Phase 4: Infrastructure mapping and migration
 - [ ] **S-Sprint-2 — Webhook receipt and durable request recording**
   - [ ] Phase 1: Webhook endpoint surface
   - [ ] Phase 2: Signature validation and request parsing
