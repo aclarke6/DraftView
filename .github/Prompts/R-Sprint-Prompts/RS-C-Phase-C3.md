@@ -61,6 +61,11 @@ These instructions are mandatory. If this prompt conflicts with the source docum
 ## Deliverable
 
 - Reader UI rendering for anchored comments.
+- Commented text should be highlighted in the story content.
+- Hovering over this highlighted text should show a Tooltip with comment preview (author, date, truncated content).
+- Clicking on the highlighted comment should open a modal box with comment details, including responses.
+- Modal box should allow deleting, editing, and responding to comments.
+- Author features for comments should be preserved in the modal box.
 - ViewModels and CSS/JS needed for indicators.
 - Regression tests for rendering states.
 
