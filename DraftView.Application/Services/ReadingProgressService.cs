@@ -1,6 +1,7 @@
 using DraftView.Domain.Contracts;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
+using DraftView.Domain.Exceptions;
 using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Interfaces.Services;
 
@@ -122,5 +123,77 @@ public class ReadingProgressService(
 
         readEvent.UpdateResumeAnchor(anchor.Id);
         await unitOfWork.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Resolves the reader's latest stored resume anchor into a view-safe target for the
+    /// currently reader-visible section version, preserving safe fallback when no target exists.
+    /// </summary>
+    public async Task<ResumeRestoreTargetDto?> GetResumeRestoreTargetAsync(
+        Guid sectionId,
+        Guid? currentSectionVersionId,
+        Guid userId,
+        CancellationToken ct = default)
+    {
+        var readEvent = await readEventRepo.GetAsync(sectionId, userId, ct);
+        if (readEvent?.ResumeAnchorId is not Guid resumeAnchorId)
+            return null;
+
+        PassageAnchorDto anchor;
+        try
+        {
+            anchor = await passageAnchorService.GetByIdAsync(resumeAnchorId, userId, ct);
+        }
+        catch (EntityNotFoundException)
+        {
+            return null;
+        }
+
+        if (anchor.SectionId != sectionId)
+            return null;
+
+        if (anchor.Status == PassageAnchorStatus.Original &&
+            anchor.OriginalSectionVersionId == currentSectionVersionId)
+        {
+            return new ResumeRestoreTargetDto(
+                anchor.Id,
+                sectionId,
+                currentSectionVersionId,
+                anchor.Status,
+                true,
+                anchor.OriginalSnapshot.StartOffset,
+                anchor.OriginalSnapshot.EndOffset,
+                anchor.OriginalSnapshot.NormalizedSelectedText,
+                100,
+                PassageAnchorMatchMethod.Exact);
+        }
+
+        if (anchor.CurrentMatch is not null &&
+            anchor.CurrentMatch.TargetSectionVersionId == currentSectionVersionId)
+        {
+            return new ResumeRestoreTargetDto(
+                anchor.Id,
+                sectionId,
+                currentSectionVersionId,
+                anchor.Status,
+                true,
+                anchor.CurrentMatch.StartOffset,
+                anchor.CurrentMatch.EndOffset,
+                anchor.CurrentMatch.MatchedText,
+                anchor.CurrentMatch.ConfidenceScore,
+                anchor.CurrentMatch.MatchMethod);
+        }
+
+        return new ResumeRestoreTargetDto(
+            anchor.Id,
+            sectionId,
+            currentSectionVersionId,
+            anchor.Status,
+            false,
+            null,
+            null,
+            null,
+            null,
+            null);
     }
 }

@@ -53,6 +53,12 @@ public class SceneWithComments
     public string? ResolvedHtmlContent { get; set; }
     public Guid? CurrentSectionVersionId { get; set; }
     public string ResumeCaptureText { get; set; } = string.Empty;
+    public bool HasResumeRestoreTarget { get; set; }
+    public int? ResumeRestoreStartOffset { get; set; }
+    public int? ResumeRestoreEndOffset { get; set; }
+    public PassageAnchorStatus? ResumeRestoreStatus { get; set; }
+    public int? ResumeRestoreConfidenceScore { get; set; }
+    public PassageAnchorMatchMethod? ResumeRestoreMatchMethod { get; set; }
 
     /// <summary>
     /// Paragraph-level diff results when the reader has a prior read version

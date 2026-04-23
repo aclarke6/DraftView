@@ -85,7 +85,13 @@
          id="mobile-scene-@Model.Scene.Id"
          data-section-id="@Model.Scene.Id"
          data-section-version-id="@(Model.CurrentSectionVersionId?.ToString() ?? string.Empty)"
-         data-resume-capture-text="@Model.ResumeCaptureText">
+         data-resume-capture-text="@Model.ResumeCaptureText"
+         data-resume-restore-has-target="@Model.HasResumeRestoreTarget.ToString().ToLowerInvariant()"
+         data-resume-restore-start-offset="@(Model.ResumeRestoreStartOffset?.ToString() ?? string.Empty)"
+         data-resume-restore-end-offset="@(Model.ResumeRestoreEndOffset?.ToString() ?? string.Empty)"
+         data-resume-restore-status="@(Model.ResumeRestoreStatus?.ToString() ?? string.Empty)"
+         data-resume-restore-confidence="@(Model.ResumeRestoreConfidenceScore?.ToString() ?? string.Empty)"
+         data-resume-restore-match-method="@(Model.ResumeRestoreMatchMethod?.ToString() ?? string.Empty)">
         @if (Model.HasDiff)
         {
             @foreach (var para in Model.DiffParagraphs)

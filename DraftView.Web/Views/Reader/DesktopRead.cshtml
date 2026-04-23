@@ -193,7 +193,13 @@
                      id="scene-@item.Scene.Id"
                      data-section-id="@item.Scene.Id"
                      data-section-version-id="@(item.CurrentSectionVersionId?.ToString() ?? string.Empty)"
-                     data-resume-capture-text="@item.ResumeCaptureText">
+                     data-resume-capture-text="@item.ResumeCaptureText"
+                     data-resume-restore-has-target="@item.HasResumeRestoreTarget.ToString().ToLowerInvariant()"
+                     data-resume-restore-start-offset="@(item.ResumeRestoreStartOffset?.ToString() ?? string.Empty)"
+                     data-resume-restore-end-offset="@(item.ResumeRestoreEndOffset?.ToString() ?? string.Empty)"
+                     data-resume-restore-status="@(item.ResumeRestoreStatus?.ToString() ?? string.Empty)"
+                     data-resume-restore-confidence="@(item.ResumeRestoreConfidenceScore?.ToString() ?? string.Empty)"
+                     data-resume-restore-match-method="@(item.ResumeRestoreMatchMethod?.ToString() ?? string.Empty)">
                     <div class="scene-prose">
                         @if (Model.Chapter.IsLocked)
                         {
@@ -972,4 +978,3 @@
         });
     })();
 </script>
-

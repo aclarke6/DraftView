@@ -864,7 +864,9 @@ Deployable: yes with C1/C2.
 Scope:
 
 - Render inline indicators/highlights for anchored comments.
-- Keep comment list/sidebar available.
+- Hovering on an inline comment shows the truncated comment content.
+- Clicking on the indicator opens the full comment in a modal, with all features of a regular comment (replies, editing, authoring control etc.).
+- Keep comment list/sidebar available for scene and chapter comments.
 - Mark approximate/orphaned anchors clearly.
 
 Definition of done:
