@@ -24,9 +24,6 @@ public sealed class PassageAnchorService(
 {
     private static readonly Regex HtmlTagRegex = new("<[^>]+>", RegexOptions.Compiled);
     private static readonly Regex WhitespaceRegex = new("\\s+", RegexOptions.Compiled);
-    private const int ExactConfidenceScore = 100;
-    private const int ContextConfidenceScore = 80;
-    private const int FuzzyConfidenceThreshold = 65;
 
     /// <summary>
     /// Creates a new passage anchor from a reader-visible selection after enforcing section access.
@@ -99,7 +96,7 @@ public sealed class PassageAnchorService(
             startOffset,
             endOffset,
             readerVisibleText[startOffset..endOffset],
-            100,
+            PassageAnchorConfidence.Exact,
             PassageAnchorMatchMethod.Exact,
             DateTime.UtcNow,
             null,
@@ -140,7 +137,7 @@ public sealed class PassageAnchorService(
             : Canonicalize(section.HtmlContent ?? string.Empty);
 
         var match = FindBestFuzzyMatch(readerVisibleText, anchor.OriginalSnapshot.NormalizedSelectedText);
-        if (match is null || match.Value.ConfidenceScore < FuzzyConfidenceThreshold)
+        if (match is null || !PassageAnchorConfidence.IsFuzzyMatchAcceptable(match.Value.ConfidenceScore))
             return null;
 
         return new PassageAnchorMatchDto(
@@ -388,7 +385,7 @@ public sealed class PassageAnchorService(
                 exactStart,
                 exactEnd,
                 readerVisibleText[exactStart..exactEnd],
-                ExactConfidenceScore,
+                PassageAnchorConfidence.Exact,
                 PassageAnchorMatchMethod.Exact,
                 DateTime.UtcNow,
                 null,
@@ -408,7 +405,7 @@ public sealed class PassageAnchorService(
             contextMatch.Value.StartOffset,
             contextMatch.Value.EndOffset,
             readerVisibleText[contextMatch.Value.StartOffset..contextMatch.Value.EndOffset],
-            ContextConfidenceScore,
+            PassageAnchorConfidence.Context,
             PassageAnchorMatchMethod.Context,
             DateTime.UtcNow,
             null,
@@ -481,7 +478,7 @@ public sealed class PassageAnchorService(
             for (var startOffset = 0; startOffset <= readerVisibleText.Length - candidateLength; startOffset++)
             {
                 var candidate = readerVisibleText[startOffset..(startOffset + candidateLength)];
-                var score = ComputeFuzzyConfidence(normalizedSelectedText, candidate);
+                var score = PassageAnchorConfidence.FromEditDistance(normalizedSelectedText, candidate);
                 if (score > bestScore)
                 {
                     bestScore = score;
@@ -496,49 +493,6 @@ public sealed class PassageAnchorService(
         }
 
         return tieCount == 1 ? best : null;
-    }
-
-    /// <summary>
-    /// Scores the similarity between the anchor text and a candidate window on a 0-100 scale.
-    /// </summary>
-    private static int ComputeFuzzyConfidence(string selectedText, string candidateText)
-    {
-        if (selectedText.Length == 0 && candidateText.Length == 0)
-            return 100;
-
-        var distance = ComputeLevenshteinDistance(selectedText, candidateText);
-        var maxLength = Math.Max(selectedText.Length, candidateText.Length);
-        var rawScore = 100.0 * (1.0 - ((double)distance / maxLength));
-        return (int)Math.Round(Math.Clamp(rawScore, 0, 100));
-    }
-
-    /// <summary>
-    /// Computes a deterministic Levenshtein edit distance.
-    /// </summary>
-    private static int ComputeLevenshteinDistance(string left, string right)
-    {
-        var rows = left.Length + 1;
-        var cols = right.Length + 1;
-        var matrix = new int[rows, cols];
-
-        for (var i = 0; i < rows; i++)
-            matrix[i, 0] = i;
-
-        for (var j = 0; j < cols; j++)
-            matrix[0, j] = j;
-
-        for (var i = 1; i < rows; i++)
-        {
-            for (var j = 1; j < cols; j++)
-            {
-                var cost = left[i - 1] == right[j - 1] ? 0 : 1;
-                matrix[i, j] = Math.Min(
-                    Math.Min(matrix[i - 1, j] + 1, matrix[i, j - 1] + 1),
-                    matrix[i - 1, j - 1] + cost);
-            }
-        }
-
-        return matrix[left.Length, right.Length];
     }
 
     /// <summary>
