@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Contracts;
 using DraftView.Domain.Entities;
+using DraftView.Domain.Enumerations;
 using DraftView.Domain.Exceptions;
 using DraftView.Domain.Interfaces.Services;
 using DraftView.Domain.ValueObjects;
@@ -58,6 +59,48 @@ public sealed class PassageAnchorService(
         await EnsureAuthorizedAsync(section, currentUserId, ct);
 
         return Map(anchor);
+    }
+
+    /// <summary>
+    /// Attempts to resolve an exact relocation target for the anchor against the latest
+    /// reader-visible version. Exact matches are only returned when the normalized text
+    /// appears once in the target content.
+    /// </summary>
+    public async Task<PassageAnchorMatchDto?> TryResolveExactMatchAsync(
+        Guid anchorId,
+        Guid currentUserId,
+        CancellationToken ct = default)
+    {
+        var anchor = await anchorRepo.GetByIdAsync(anchorId, ct)
+            ?? throw new EntityNotFoundException(nameof(PassageAnchor), anchorId);
+        var section = await sectionRepo.GetByIdAsync(anchor.SectionId, ct)
+            ?? throw new EntityNotFoundException(nameof(Section), anchor.SectionId);
+
+        await EnsureAuthorizedAsync(section, currentUserId, ct);
+
+        var latestVersion = await sectionVersionRepo.GetLatestAsync(section.Id, ct);
+        var readerVisibleText = latestVersion is not null
+            ? Canonicalize(latestVersion.HtmlContent)
+            : Canonicalize(section.HtmlContent ?? string.Empty);
+
+        var matches = FindExactMatchOffsets(
+            readerVisibleText,
+            anchor.OriginalSnapshot.NormalizedSelectedText);
+
+        if (matches.Count != 1)
+            return null;
+
+        var (startOffset, endOffset) = matches[0];
+        return new PassageAnchorMatchDto(
+            latestVersion?.Id,
+            startOffset,
+            endOffset,
+            readerVisibleText[startOffset..endOffset],
+            100,
+            PassageAnchorMatchMethod.Exact,
+            DateTime.UtcNow,
+            null,
+            null);
     }
 
     /// <summary>
@@ -228,6 +271,36 @@ public sealed class PassageAnchorService(
         var withoutTags = HtmlTagRegex.Replace(text, " ");
         var decoded = WebUtility.HtmlDecode(withoutTags);
         return WhitespaceRegex.Replace(decoded, " ").Trim();
+    }
+
+    /// <summary>
+    /// Finds all exact occurrences of the normalized selection within canonical text.
+    /// </summary>
+    private static IReadOnlyList<(int StartOffset, int EndOffset)> FindExactMatchOffsets(
+        string readerVisibleText,
+        string normalizedSelectedText)
+    {
+        var matches = new List<(int StartOffset, int EndOffset)>();
+        if (string.IsNullOrWhiteSpace(readerVisibleText) ||
+            string.IsNullOrWhiteSpace(normalizedSelectedText))
+            return matches;
+
+        var searchIndex = 0;
+        while (searchIndex <= readerVisibleText.Length - normalizedSelectedText.Length)
+        {
+            var matchIndex = readerVisibleText.IndexOf(
+                normalizedSelectedText,
+                searchIndex,
+                StringComparison.Ordinal);
+
+            if (matchIndex < 0)
+                break;
+
+            matches.Add((matchIndex, matchIndex + normalizedSelectedText.Length));
+            searchIndex = matchIndex + 1;
+        }
+
+        return matches;
     }
 
     /// <summary>

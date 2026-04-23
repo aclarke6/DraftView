@@ -12,8 +12,9 @@ namespace DraftView.Application.Tests.Services;
 
 /// <summary>
 /// Tests for PassageAnchorService create and retrieve orchestration.
-/// Covers: access checks, selection validation, anchor persistence, and DTO mapping.
-/// Excludes: UI activation, relocation, and reader resume integration.
+/// Covers: access checks, selection validation, anchor persistence, DTO mapping,
+/// and exact-match relocation.
+/// Excludes: UI activation, context/fuzzy relocation, and reader resume integration.
 /// </summary>
 public class PassageAnchorServiceTests
 {
@@ -213,11 +214,107 @@ public class PassageAnchorServiceTests
         Assert.Equal(" gamma", result.OriginalSnapshot.SuffixContext);
     }
 
+    [Fact]
+    public async Task TryResolveExactMatchAsync_WithUniqueMatch_ReturnsExactMatchWithConfidence100()
+    {
+        var author = MakeAuthor();
+        var section = Section.CreateDocument(
+            Guid.NewGuid(),
+            Guid.NewGuid().ToString(),
+            "Scene 1",
+            null,
+            0,
+            "<p>Alpha beta gamma</p>",
+            "section-hash",
+            "Draft");
+        section.PublishAsPartOfChapter("section-hash");
+        var version = SectionVersion.Create(section, author.Id, 1);
+        var anchor = PassageAnchor.Create(
+            section.Id,
+            version.Id,
+            PassageAnchorPurpose.Comment,
+            author.Id,
+            PassageAnchorSnapshot.Create(
+                "Alpha beta",
+                "Alpha beta",
+                "hash",
+                string.Empty,
+                " gamma",
+                0,
+                10,
+                "content-hash"));
+        var sut = CreateSut();
+
+        _anchorRepo.Setup(r => r.GetByIdAsync(anchor.Id, default)).ReturnsAsync(anchor);
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
+        _userRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
+        _authFacade.Setup(f => f.IsAuthor()).Returns(true);
+
+        var result = await sut.TryResolveExactMatchAsync(anchor.Id, author.Id);
+
+        Assert.NotNull(result);
+        Assert.Equal(version.Id, result!.TargetSectionVersionId);
+        Assert.Equal(0, result.StartOffset);
+        Assert.Equal(10, result.EndOffset);
+        Assert.Equal(100, result.ConfidenceScore);
+        Assert.Equal(PassageAnchorMatchMethod.Exact, result.MatchMethod);
+    }
+
+    [Fact]
+    public async Task TryResolveExactMatchAsync_WithDuplicateMatch_ReturnsNull()
+    {
+        var author = MakeAuthor();
+        var section = Section.CreateDocument(
+            Guid.NewGuid(),
+            Guid.NewGuid().ToString(),
+            "Scene 1",
+            null,
+            0,
+            "<p>Alpha beta gamma Alpha beta</p>",
+            "section-hash",
+            "Draft");
+        section.PublishAsPartOfChapter("section-hash");
+        var version = SectionVersion.Create(section, author.Id, 1);
+        var anchor = PassageAnchor.Create(
+            section.Id,
+            version.Id,
+            PassageAnchorPurpose.Comment,
+            author.Id,
+            PassageAnchorSnapshot.Create(
+                "Alpha beta",
+                "Alpha beta",
+                "hash",
+                string.Empty,
+                " gamma",
+                0,
+                10,
+                "content-hash"));
+        var sut = CreateSut();
+
+        _anchorRepo.Setup(r => r.GetByIdAsync(anchor.Id, default)).ReturnsAsync(anchor);
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
+        _userRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
+        _authFacade.Setup(f => f.IsAuthor()).Returns(true);
+
+        var result = await sut.TryResolveExactMatchAsync(anchor.Id, author.Id);
+
+        Assert.Null(result);
+    }
+
     private static User MakeReader()
     {
         var reader = User.Create("reader@example.com", "Reader", Role.BetaReader);
         reader.Activate();
         return reader;
+    }
+
+    private static User MakeAuthor()
+    {
+        var author = User.Create("author@example.com", "Author", Role.Author);
+        author.Activate();
+        return author;
     }
 
     /// <summary>

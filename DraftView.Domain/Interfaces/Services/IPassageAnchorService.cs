@@ -17,6 +17,16 @@ public interface IPassageAnchorService
         Guid currentUserId,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Resolves the current exact relocation target for an anchor against the latest
+    /// reader-visible version of its section. Returns null when exact matching is
+    /// ambiguous or unavailable.
+    /// </summary>
+    Task<PassageAnchorMatchDto?> TryResolveExactMatchAsync(
+        Guid anchorId,
+        Guid currentUserId,
+        CancellationToken ct = default);
+
     Task<PassageAnchorDto> GetByIdAsync(
         Guid anchorId,
         Guid currentUserId,
