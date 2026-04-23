@@ -189,7 +189,17 @@
                     .GroupBy(c => c.Comment.ParentCommentId!.Value)
                     .ToDictionary(g => g.Key, g => g.ToList());
 
-                <div class="scene-block" id="scene-@item.Scene.Id">
+                <div class="scene-block"
+                     id="scene-@item.Scene.Id"
+                     data-section-id="@item.Scene.Id"
+                     data-section-version-id="@(item.CurrentSectionVersionId?.ToString() ?? string.Empty)"
+                     data-resume-capture-text="@item.ResumeCaptureText"
+                     data-resume-restore-has-target="@item.HasResumeRestoreTarget.ToString().ToLowerInvariant()"
+                     data-resume-restore-start-offset="@(item.ResumeRestoreStartOffset?.ToString() ?? string.Empty)"
+                     data-resume-restore-end-offset="@(item.ResumeRestoreEndOffset?.ToString() ?? string.Empty)"
+                     data-resume-restore-status="@(item.ResumeRestoreStatus?.ToString() ?? string.Empty)"
+                     data-resume-restore-confidence="@(item.ResumeRestoreConfidenceScore?.ToString() ?? string.Empty)"
+                     data-resume-restore-match-method="@(item.ResumeRestoreMatchMethod?.ToString() ?? string.Empty)">
                     <div class="scene-prose">
                         @if (Model.Chapter.IsLocked)
                         {
@@ -723,7 +733,105 @@
     (function () {
         var key = 'scroll_chapter_@Model.Chapter.Id';
         var saved = localStorage.getItem(key);
-        if (saved) {
+        var sceneBlocks = Array.prototype.slice.call(document.querySelectorAll('.scene-block[data-section-id]'));
+
+        function parseIntAttribute(element, name) {
+            var value = element.getAttribute(name);
+            if (!value) {
+                return null;
+            }
+
+            var parsed = parseInt(value, 10);
+            return Number.isNaN(parsed) ? null : parsed;
+        }
+
+        function buildCanonicalPoints(container) {
+            var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+            var points = [];
+            var pendingWhitespace = null;
+
+            while (walker.nextNode()) {
+                var node = walker.currentNode;
+                var text = node.nodeValue || '';
+
+                for (var i = 0; i < text.length; i++) {
+                    var character = text.charAt(i);
+                    if (/\s/.test(character)) {
+                        if (points.length > 0 && !pendingWhitespace) {
+                            pendingWhitespace = { node: node, start: i, end: i + 1 };
+                        }
+
+                        continue;
+                    }
+
+                    if (pendingWhitespace) {
+                        points.push(pendingWhitespace);
+                        pendingWhitespace = null;
+                    }
+
+                    points.push({ node: node, start: i, end: i + 1 });
+                }
+            }
+
+            return points;
+        }
+
+        function createCanonicalRange(container, startOffset, endOffset) {
+            if (startOffset === null || endOffset === null || endOffset <= startOffset) {
+                return null;
+            }
+
+            var points = buildCanonicalPoints(container);
+            if (startOffset < 0 || endOffset > points.length) {
+                return null;
+            }
+
+            var startPoint = points[startOffset];
+            var endPoint = points[endOffset - 1];
+            if (!startPoint || !endPoint) {
+                return null;
+            }
+
+            var range = document.createRange();
+            range.setStart(startPoint.node, startPoint.start);
+            range.setEnd(endPoint.node, endPoint.end);
+            return range;
+        }
+
+        function scrollToRange(range, fallbackElement) {
+            var rect = range ? range.getBoundingClientRect() : fallbackElement.getBoundingClientRect();
+            var targetY = window.scrollY + rect.top - (window.innerHeight * 0.33);
+            window.scrollTo(0, Math.max(0, Math.floor(targetY)));
+        }
+
+        function restoreFromAnchor() {
+            if (window.location.hash) {
+                return false;
+            }
+
+            var targetScene = sceneBlocks.find(function (scene) {
+                return scene.getAttribute('data-resume-restore-has-target') === 'true';
+            });
+
+            if (!targetScene) {
+                return false;
+            }
+
+            var prose = targetScene.querySelector('.scene-prose-content');
+            if (!prose) {
+                scrollToRange(null, targetScene);
+                return true;
+            }
+
+            var startOffset = parseIntAttribute(targetScene, 'data-resume-restore-start-offset');
+            var endOffset = parseIntAttribute(targetScene, 'data-resume-restore-end-offset');
+            var range = createCanonicalRange(prose, startOffset, endOffset);
+
+            scrollToRange(range, targetScene);
+            return true;
+        }
+
+        if (!restoreFromAnchor() && saved) {
             setTimeout(function () { window.scrollTo(0, parseInt(saved, 10)); }, 100);
         }
 
@@ -763,6 +871,164 @@
         });
 
         updateActive();
+    })();
+
+    (function () {
+        var antiForgeryInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        var sceneBlocks = Array.prototype.slice.call(document.querySelectorAll('.scene-block[data-section-id]'));
+        if (!antiForgeryInput || sceneBlocks.length === 0) {
+            return;
+        }
+
+        var captureUrl = '/Reader/CaptureResumePosition';
+        var selectionLength = 48;
+        var contextLength = 120;
+        var lastCaptureKey = '';
+        var timer;
+
+        function normalizeText(text) {
+            return (text || '').replace(/\s+/g, ' ').trim();
+        }
+
+        function clamp(value, min, max) {
+            return Math.max(min, Math.min(max, value));
+        }
+
+        async function hashText(text) {
+            if (window.crypto && window.crypto.subtle && window.TextEncoder) {
+                var bytes = new TextEncoder().encode(text);
+                var digest = await window.crypto.subtle.digest('SHA-256', bytes);
+                return Array.from(new Uint8Array(digest)).map(function (b) {
+                    return b.toString(16).padStart(2, '0');
+                }).join('');
+            }
+
+            return String(text.length) + ':' + text.substring(0, 32);
+        }
+
+        function trimSelectionBounds(text, start, end) {
+            while (start < end && text.charAt(start) === ' ') {
+                start++;
+            }
+
+            while (end > start && text.charAt(end - 1) === ' ') {
+                end--;
+            }
+
+            return { start: start, end: end };
+        }
+
+        function buildPayload(sectionId, versionId, canonicalText, ratio, selectorHint) {
+            var normalized = normalizeText(canonicalText);
+            if (!normalized) {
+                return null;
+            }
+
+            var focusIndex = Math.floor(clamp(ratio, 0, 0.9999) * normalized.length);
+            var start = Math.max(0, focusIndex - Math.floor(selectionLength / 2));
+            var end = Math.min(normalized.length, start + selectionLength);
+            var bounds = trimSelectionBounds(normalized, start, end);
+            start = bounds.start;
+            end = bounds.end;
+
+            if (end <= start) {
+                return null;
+            }
+
+            var selectedText = normalized.slice(start, end);
+            if (!selectedText) {
+                return null;
+            }
+
+            var prefixStart = Math.max(0, start - contextLength);
+            var suffixEnd = Math.min(normalized.length, end + contextLength);
+
+            return {
+                sectionId: sectionId,
+                originalSectionVersionId: versionId || null,
+                selectedText: selectedText,
+                normalizedSelectedText: selectedText,
+                prefixContext: normalized.slice(prefixStart, start),
+                suffixContext: normalized.slice(end, suffixEnd),
+                startOffset: start,
+                endOffset: end,
+                canonicalContentHash: '',
+                selectedTextHash: '',
+                htmlSelectorHint: selectorHint
+            };
+        }
+
+        function getCurrentScene() {
+            var focusY = window.scrollY + (window.innerHeight * 0.33);
+            var current = null;
+
+            sceneBlocks.forEach(function (scene) {
+                var rect = scene.getBoundingClientRect();
+                var top = window.scrollY + rect.top;
+                if (top <= focusY) {
+                    current = scene;
+                }
+            });
+
+            return current || sceneBlocks[0];
+        }
+
+        async function capturePosition() {
+            var scene = getCurrentScene();
+            if (!scene) {
+                return;
+            }
+
+            var sectionId = scene.getAttribute('data-section-id');
+            var versionId = scene.getAttribute('data-section-version-id');
+            var canonicalText = scene.getAttribute('data-resume-capture-text') || '';
+            if (!sectionId || !canonicalText) {
+                return;
+            }
+
+            var rect = scene.getBoundingClientRect();
+            var top = window.scrollY + rect.top;
+            var focusY = window.scrollY + (window.innerHeight * 0.33);
+            var ratio = clamp((focusY - top) / Math.max(scene.offsetHeight, 1), 0, 0.9999);
+            var payload = buildPayload(sectionId, versionId, canonicalText, ratio, '#' + scene.id);
+            if (!payload) {
+                return;
+            }
+
+            payload.selectedTextHash = await hashText(payload.normalizedSelectedText);
+            payload.canonicalContentHash = await hashText(canonicalText);
+
+            var captureKey = JSON.stringify([
+                payload.sectionId,
+                payload.originalSectionVersionId,
+                payload.startOffset,
+                payload.endOffset,
+                payload.selectedText
+            ]);
+            if (captureKey === lastCaptureKey) {
+                return;
+            }
+
+            lastCaptureKey = captureKey;
+
+            fetch(captureUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': antiForgeryInput.value
+                },
+                body: JSON.stringify(payload)
+            }).catch(function () {
+                lastCaptureKey = '';
+            });
+        }
+
+        window.addEventListener('scroll', function () {
+            clearTimeout(timer);
+            timer = setTimeout(capturePosition, 250);
+        });
+
+        window.addEventListener('beforeunload', capturePosition);
     })();
 
     (function () {
@@ -810,4 +1076,3 @@
         });
     })();
 </script>
-

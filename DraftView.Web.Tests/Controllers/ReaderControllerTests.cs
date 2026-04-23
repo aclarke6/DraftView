@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using DraftView.Domain.Contracts;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
+using DraftView.Domain.Exceptions;
 using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Interfaces.Services;
 using DraftView.Domain.Notifications;
@@ -207,6 +208,201 @@ public class ReaderControllerTests
         Assert.Equal(3, model.CurrentVersionNumber);
     }
 
+    [Fact]
+    public async Task Read_Desktop_WhenResumeRestoreTargetExists_PopulatesSceneResumeRestoreMetadata()
+    {
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+
+        var project = Project.Create("Project 1", "/Apps/Scrivener/Project1", user.Id, "project-root");
+        var chapter = Section.CreateFolder(project.Id, "chapter-uuid", "Chapter 1", null, 1);
+        chapter.MarkAsPublishedContainer();
+        var scene = Section.CreateDocument(project.Id, "scene-uuid", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "scene-hash", "Draft");
+        scene.PublishAsPartOfChapter("scene-hash");
+        var latestVersion = SectionVersion.Create(
+            Section.CreateDocument(project.Id, "scene-published", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "published-hash", "Published"),
+            Guid.NewGuid(),
+            2);
+
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0");
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, It.IsAny<CancellationToken>())).ReturnsAsync(chapter);
+        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
+        sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(latestVersion);
+        readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ReadEvent.Create(scene.Id, user.Id));
+        sectionDiffService.Setup(s => s.GetDiffForReaderAsync(scene.Id, It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((SectionDiffResult?)null);
+        progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        progressService.Setup(r => r.UpdateLastReadVersionAsync(scene.Id, user.Id, latestVersion.VersionNumber, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        progressService.Setup(r => r.GetResumeRestoreTargetAsync(scene.Id, latestVersion.Id, user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ResumeRestoreTargetDto(
+                Guid.NewGuid(),
+                scene.Id,
+                latestVersion.Id,
+                PassageAnchorStatus.Context,
+                true,
+                12,
+                22,
+                "Alpha beta",
+                84,
+                PassageAnchorMatchMethod.Context));
+        commentService.Setup(r => r.GetThreadsForSectionAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<Comment>());
+
+        var result = await sut.Read(chapter.Id);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<DesktopChapterReadViewModel>(view.Model);
+        var renderedScene = Assert.Single(model.Scenes);
+        Assert.True(renderedScene.HasResumeRestoreTarget);
+        Assert.Equal(12, renderedScene.ResumeRestoreStartOffset);
+        Assert.Equal(22, renderedScene.ResumeRestoreEndOffset);
+        Assert.Equal(PassageAnchorStatus.Context, renderedScene.ResumeRestoreStatus);
+        Assert.Equal(84, renderedScene.ResumeRestoreConfidenceScore);
+        Assert.Equal(PassageAnchorMatchMethod.Context, renderedScene.ResumeRestoreMatchMethod);
+    }
+
+    [Fact]
+    public async Task Read_Mobile_WhenResumeRestoreFallsBack_PopulatesSafeFallbackMetadata()
+    {
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+
+        var project = Project.Create("Project 1", "/Apps/Scrivener/Project1", user.Id, "project-root");
+        var chapter = Section.CreateFolder(project.Id, "chapter-uuid", "Chapter 1", null, 1);
+        chapter.MarkAsPublishedContainer();
+        var scene = Section.CreateDocument(project.Id, "scene-uuid", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "scene-hash", "Draft");
+        scene.PublishAsPartOfChapter("scene-hash");
+        var latestVersion = SectionVersion.Create(
+            Section.CreateDocument(project.Id, "scene-published", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "published-hash", "Published"),
+            Guid.NewGuid(),
+            2);
+
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0 (iPhone)");
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        sectionRepo.Setup(r => r.GetByIdAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(scene);
+        sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, It.IsAny<CancellationToken>())).ReturnsAsync(chapter);
+        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
+        sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(latestVersion);
+        readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ReadEvent.Create(scene.Id, user.Id));
+        sectionDiffService.Setup(s => s.GetDiffForReaderAsync(scene.Id, It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((SectionDiffResult?)null);
+        progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        progressService.Setup(r => r.UpdateLastReadVersionAsync(scene.Id, user.Id, latestVersion.VersionNumber, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        progressService.Setup(r => r.GetResumeRestoreTargetAsync(scene.Id, latestVersion.Id, user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ResumeRestoreTargetDto(
+                Guid.NewGuid(),
+                scene.Id,
+                latestVersion.Id,
+                PassageAnchorStatus.Orphaned,
+                false,
+                null,
+                null,
+                null,
+                null,
+                null));
+        commentService.Setup(r => r.GetThreadsForSectionAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<Comment>());
+
+        var result = await sut.Read(scene.Id);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<MobileReadViewModel>(view.Model);
+        Assert.False(model.HasResumeRestoreTarget);
+        Assert.Null(model.ResumeRestoreStartOffset);
+        Assert.Null(model.ResumeRestoreEndOffset);
+        Assert.Equal(PassageAnchorStatus.Orphaned, model.ResumeRestoreStatus);
+        Assert.Null(model.ResumeRestoreConfidenceScore);
+        Assert.Null(model.ResumeRestoreMatchMethod);
+    }
+
+    [Fact]
+    public async Task CaptureResumePosition_ValidRequest_CallsProgressServiceAndReturnsOk()
+    {
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0");
+        var request = new CaptureResumePositionRequest(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Alpha beta",
+            "Alpha beta",
+            "selected-hash",
+            string.Empty,
+            " gamma",
+            0,
+            10,
+            "content-hash",
+            "#scene");
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        progressService.Setup(r => r.CaptureResumePositionAsync(request, user.Id, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var result = await sut.CaptureResumePosition(request);
+
+        Assert.IsType<OkResult>(result);
+    }
+
+    [Fact]
+    public async Task CaptureResumePosition_InvalidRequest_ReturnsBadRequest()
+    {
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0");
+        var request = new CaptureResumePositionRequest(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            0,
+            0,
+            string.Empty);
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        progressService.Setup(r => r.CaptureResumePositionAsync(request, user.Id, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvariantViolationException("I-ANCHOR-SELECTION", "Invalid position."));
+
+        var result = await sut.CaptureResumePosition(request);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task CaptureResumePosition_InaccessibleContent_ReturnsForbid()
+    {
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0");
+        var request = new CaptureResumePositionRequest(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Alpha beta",
+            "Alpha beta",
+            "selected-hash",
+            string.Empty,
+            " gamma",
+            0,
+            10,
+            "content-hash",
+            "#scene");
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        progressService.Setup(r => r.CaptureResumePositionAsync(request, user.Id, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new UnauthorisedOperationException("Forbidden"));
+
+        var result = await sut.CaptureResumePosition(request);
+
+        Assert.IsType<ForbidResult>(result);
+    }
+
     private ReaderController CreateSut(User user, string userAgent)
     {
         var controller = new ReaderController(
@@ -331,6 +527,54 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
         Assert.Contains("Scenes", html);
         Assert.Contains("v2", html);
         Assert.DoesNotContain("scene-version-label", html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Read_Desktop_RendersAnchorResumeIntegration_WithScrollFallbackScript()
+    {
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = true,
+            BaseAddress = new Uri("https://localhost")
+        });
+
+        client.DefaultRequestHeaders.Add(TestAuthHandler.HeaderName, TestAuthHandler.ReaderMode);
+
+        var response = await client.GetAsync($"/Reader/Read/{factory.ChapterId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Contains("data-resume-restore-has-target=", html);
+        Assert.Contains("data-resume-restore-start-offset=", html);
+        Assert.Contains("data-resume-restore-end-offset=", html);
+        Assert.Contains("scroll_chapter_", html);
+        Assert.Contains("data-resume-restore-has-target", html);
+    }
+
+    [Fact]
+    public async Task Read_Mobile_RendersAnchorResumeIntegration_Metadata()
+    {
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = true,
+            BaseAddress = new Uri("https://localhost")
+        });
+
+        client.DefaultRequestHeaders.Add(TestAuthHandler.HeaderName, TestAuthHandler.ReaderMode);
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (iPhone)");
+
+        var response = await client.GetAsync($"/Reader/Read/{factory.SceneId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Contains("data-resume-restore-has-target=", html);
+        Assert.Contains("data-resume-restore-start-offset=", html);
+        Assert.Contains("data-resume-restore-end-offset=", html);
+        Assert.Contains("data-resume-restore-status=", html);
     }
 
     public sealed class ReaderReadFactory : WebApplicationFactory<Program>
