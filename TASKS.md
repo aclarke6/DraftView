@@ -80,11 +80,11 @@ This is a **platform capability**, not a feature.
   - [DONE] Phase A3 — Persistence (migration, additive only)
   - [DONE] Phase A4 — Application surface (creation/retrieval)
 
-- [ ] **RS-B — Anchored Resume**
-  - [ ] Phase B1 — Capture anchor from reading position
-  - [ ] Phase B2 — Restore using matching pipeline
-  - [ ] Phase B3 — Integration with ReadEvent
-  - [ ] Phase B4 — Tests (cross-version resume)
+- [DONE] **RS-B — Anchored Resume**
+  - [DONE] Phase B1 — Capture anchor from reading position
+  - [DONE] Phase B2 — Restore using matching pipeline
+  - [DONE] Phase B3 — Integration with ReadEvent
+  - [DONE] Phase B4 — Tests (cross-version resume)
 
 - [ ] **RS-C — Inline Comments**
   - [ ] Phase C1 — Selection capture
