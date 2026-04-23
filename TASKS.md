@@ -74,11 +74,11 @@ This is a **platform capability**, not a feature.
 
 **Sprint Series:**
 
-- [ ] **RS-A — Anchor Foundation**
-  - [ ] Phase A1 — Model discovery (Copilot-led inspection and proposal)
-  - [ ] Phase A2 — Domain definition (TDD)
-  - [ ] Phase A3 — Persistence (migration, additive only)
-  - [ ] Phase A4 — Application surface (creation/retrieval)
+- [DONE] **RS-A — Anchor Foundation**
+  - [DONE] Phase A1 — Model discovery (Copilot-led inspection and proposal)
+  - [DONE] Phase A2 — Domain definition (TDD)
+  - [DONE] Phase A3 — Persistence (migration, additive only)
+  - [DONE] Phase A4 — Application surface (creation/retrieval)
 
 - [ ] **RS-B — Anchored Resume**
   - [ ] Phase B1 — Capture anchor from reading position
