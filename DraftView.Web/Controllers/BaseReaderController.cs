@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using DraftView.Domain.Contracts;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
 using DraftView.Domain.Interfaces.Repositories;
@@ -22,6 +23,7 @@ public abstract class BaseReaderController(
     IReadingProgressService progressService,
     IUserRepository userRepository,
     IReaderAccessRepository readerAccessRepo,
+    IPassageAnchorService passageAnchorService,
     ILogger logger) : BaseController(userRepository)
 {
     protected readonly IProjectRepository ProjectRepo      = projectRepo;
@@ -29,6 +31,7 @@ public abstract class BaseReaderController(
     protected readonly ICommentService             CommentService   = commentService;
     protected readonly IReadingProgressService     ProgressService  = progressService;
     protected readonly IReaderAccessRepository     ReaderAccessRepo = readerAccessRepo;
+    protected readonly IPassageAnchorService       PassageAnchorService = passageAnchorService;
 
     // -----------------------------------------------------------------------
     // POST: AddComment
@@ -209,11 +212,31 @@ public abstract class BaseReaderController(
             authorNames[authorId] = author?.DisplayName ?? "Unknown";
         }
 
+        var anchorIds = visibleComments
+            .Where(c => c.PassageAnchorId.HasValue)
+            .Select(c => c.PassageAnchorId!.Value)
+            .Distinct()
+            .ToList();
+
+        var anchorsById = new Dictionary<Guid, PassageAnchorDto?>();
+        foreach (var anchorId in anchorIds)
+        {
+            try
+            {
+                anchorsById[anchorId] = await PassageAnchorService.GetByIdAsync(anchorId, currentUserId);
+            }
+            catch
+            {
+                anchorsById[anchorId] = null;
+            }
+        }
+
         return visibleComments
             .Select(comment =>
             {
                 var hasChildren = commentsByParentId.ContainsKey(comment.Id);
                 var canDelete   = comment.AuthorId == currentUserId && !hasChildren;
+                anchorsById.TryGetValue(comment.PassageAnchorId ?? Guid.Empty, out var passageAnchor);
 
                 return new CommentDisplayViewModel {
                     Comment           = comment,
@@ -221,7 +244,8 @@ public abstract class BaseReaderController(
                     HasChildren       = hasChildren,
                     CanDelete         = canDelete,
                     CanEdit           = comment.AuthorId == currentUserId,
-                    IsModerator       = currentUserIsModerator
+                    IsModerator       = currentUserIsModerator,
+                    PassageAnchor     = passageAnchor
                 };
             })
             .ToList();

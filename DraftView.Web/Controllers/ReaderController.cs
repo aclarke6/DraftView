@@ -27,7 +27,7 @@ public class ReaderController(
     IPassageAnchorService passageAnchorService,
     ILogger<ReaderController> logger)
     : BaseReaderController(projectRepo, sectionRepo, commentService, progressService,
-                           userRepository, readerAccessRepo, logger)
+                           userRepository, readerAccessRepo, passageAnchorService, logger)
 {
     private readonly IUserPreferencesRepository _userPreferencesRepo = userPreferencesRepo;
     private readonly IPassageAnchorService _passageAnchorService = passageAnchorService;

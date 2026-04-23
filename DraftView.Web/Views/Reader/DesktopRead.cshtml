@@ -268,13 +268,37 @@
 
                         @foreach (var c in roots)
                         {
-                            <div class="comment-box @(c.Comment.Visibility == Visibility.Private ? "comment-box--private" : "")">
+                            <div class="comment-box @(c.Comment.Visibility == Visibility.Private ? "comment-box--private" : "") @(c.HasPassageAnchor ? "comment-box--anchored" : "") @(c.IsPassageAnchorMissing ? "comment-box--orphaned-anchor" : "")"
+                                 data-passage-anchor-id="@(c.PassageAnchor?.Id.ToString() ?? string.Empty)"
+                                 data-passage-anchor-selected-text="@(c.PassageAnchor?.OriginalSnapshot.SelectedText ?? string.Empty)"
+                                 data-passage-anchor-section-id="@c.Comment.SectionId"
+                                 data-passage-anchor-prefix="@(c.PassageAnchor?.OriginalSnapshot.PrefixContext ?? string.Empty)"
+                                 data-passage-anchor-suffix="@(c.PassageAnchor?.OriginalSnapshot.SuffixContext ?? string.Empty)"
+                                 data-passage-anchor-preview="@(c.AuthorDisplayName + " · " + c.Comment.CreatedAt.ToString("dd MMM") + " · " + c.Comment.Body)"
+                                 data-passage-anchor-status="@(c.PassageAnchor?.Status.ToString() ?? string.Empty)"
+                                 data-passage-anchor-missing="@c.IsPassageAnchorMissing.ToString().ToLowerInvariant()">
                                 <div class="comment-box__meta">
                                     <strong>@c.AuthorDisplayName</strong>
                                     <span class="comment-box__date">@c.Comment.CreatedAt.ToString("dd MMM")</span>
                                     @if (c.Comment.Visibility == Visibility.Private)
                                     {
                                         <span class="comment-box__private">[Private]</span>
+                                    }
+                                    @if (c.HasPassageAnchor)
+                                    {
+                                        <button type="button"
+                                                class="comment-box__anchor-badge"
+                                                data-inline-anchor-open="true"
+                                                aria-label="Open anchored comment"
+                                                title="@(c.AuthorDisplayName + " · " + c.Comment.CreatedAt.ToString("dd MMM") + " · " + c.Comment.Body)">
+                                            Anchored
+                                        </button>
+                                    }
+                                    else if (c.IsPassageAnchorMissing)
+                                    {
+                                        <span class="comment-box__anchor-badge comment-box__anchor-badge--orphaned">
+                                            Anchor missing
+                                        </span>
                                     }
 
                                     <span class="comment-box__actions">
@@ -728,6 +752,13 @@
         </main>
     </div>
 </div>
+
+<dialog class="inline-comment-modal" id="inlineCommentModal">
+    <div class="inline-comment-modal__shell">
+        <button type="button" class="inline-comment-modal__close" data-inline-comment-close="true">Close</button>
+        <div class="inline-comment-modal__content"></div>
+    </div>
+</dialog>
 
 <script>
     (function () {
@@ -1224,6 +1255,155 @@
             form.addEventListener('submit', function () {
                 applyPendingAnchor(form);
             });
+        });
+    })();
+
+    (function () {
+        var modal = document.getElementById('inlineCommentModal');
+        if (!modal) {
+            return;
+        }
+
+        var modalContent = modal.querySelector('.inline-comment-modal__content');
+
+        function closeModal() {
+            if (typeof modal.close === 'function' && modal.open) {
+                modal.close();
+            } else {
+                modal.removeAttribute('open');
+            }
+        }
+
+        function openModalFromCommentBox(commentBox) {
+            if (!commentBox || !modalContent) {
+                return;
+            }
+
+            modalContent.innerHTML = '';
+            var clone = commentBox.cloneNode(true);
+            clone.classList.add('inline-comment-modal__comment');
+            modalContent.appendChild(clone);
+
+            if (typeof modal.showModal === 'function') {
+                modal.showModal();
+            } else {
+                modal.setAttribute('open', '');
+            }
+        }
+
+        function buildCanonicalMap(root) {
+            var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+            var text = '';
+            var map = [];
+            var seenContent = false;
+            var previousWasSpace = false;
+            var node;
+
+            while ((node = walker.nextNode())) {
+                var raw = node.nodeValue || '';
+                for (var i = 0; i < raw.length; i++) {
+                    var ch = raw[i];
+                    var isSpace = /\s/.test(ch);
+                    if (isSpace) {
+                        if (!seenContent || previousWasSpace) {
+                            continue;
+                        }
+
+                        text += ' ';
+                        map.push({ node: node, offset: i });
+                        previousWasSpace = true;
+                        continue;
+                    }
+
+                    text += ch;
+                    map.push({ node: node, offset: i });
+                    seenContent = true;
+                    previousWasSpace = false;
+                }
+            }
+
+            while (text.endsWith(' ')) {
+                text = text.slice(0, -1);
+                map.pop();
+            }
+
+            return { text: text, map: map };
+        }
+
+        function highlightComment(commentBox) {
+            var selectedText = commentBox.getAttribute('data-passage-anchor-selected-text');
+            if (!selectedText) {
+                return;
+            }
+
+            var sceneBlock = commentBox.closest('.scene-block[data-section-id]');
+            if (!sceneBlock) {
+                return;
+            }
+
+            var prose = sceneBlock.querySelector('.scene-prose-content');
+            if (!prose) {
+                return;
+            }
+
+            var canonical = buildCanonicalMap(prose);
+            var index = canonical.text.indexOf(selectedText);
+            if (index < 0) {
+                commentBox.classList.add('comment-box--orphaned-anchor');
+                return;
+            }
+
+            var start = canonical.map[index];
+            var end = canonical.map[index + selectedText.length - 1];
+            if (!start || !end) {
+                return;
+            }
+
+            var range = document.createRange();
+            range.setStart(start.node, start.offset);
+            range.setEnd(end.node, end.offset + 1);
+
+            var highlight = document.createElement('span');
+            highlight.className = 'inline-comment-highlight';
+            highlight.tabIndex = 0;
+            highlight.setAttribute('role', 'button');
+            highlight.setAttribute('title', commentBox.getAttribute('data-passage-anchor-preview') || '');
+            highlight.dataset.commentId = commentBox.getAttribute('data-passage-anchor-id') || '';
+            highlight.appendChild(range.extractContents());
+            range.insertNode(highlight);
+
+            var openHandler = function () {
+                openModalFromCommentBox(commentBox);
+            };
+
+            highlight.addEventListener('click', openHandler);
+            highlight.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openHandler();
+                }
+            });
+        }
+
+        document.querySelectorAll('.comment-box[data-passage-anchor-id]').forEach(function (commentBox) {
+            highlightComment(commentBox);
+        });
+
+        document.querySelectorAll('[data-inline-anchor-open="true"]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                openModalFromCommentBox(button.closest('.comment-box'));
+            });
+        });
+
+        modal.addEventListener('click', function (event) {
+            if (event.target === modal || event.target.hasAttribute('data-inline-comment-close')) {
+                closeModal();
+            }
+        });
+
+        modal.addEventListener('cancel', function (event) {
+            event.preventDefault();
+            closeModal();
         });
     })();
 

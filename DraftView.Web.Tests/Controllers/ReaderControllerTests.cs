@@ -752,6 +752,8 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
         Assert.Contains("data-resume-restore-has-target", html);
         Assert.Contains("/Reader/CapturePassageAnchorSelection", html);
         Assert.Contains("data-anchor-comment-form=\"true\"", html);
+        Assert.Contains("data-passage-anchor-id=", html);
+        Assert.Contains("inline-comment-highlight", html);
     }
 
     [Fact]
@@ -774,6 +776,8 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
 
         Assert.Contains("/Reader/CapturePassageAnchorSelection", html);
         Assert.Contains("data-anchor-comment-form=\"true\"", html);
+        Assert.Contains("data-passage-anchor-id=", html);
+        Assert.Contains("inline-comment-highlight", html);
     }
 
     [Fact]
@@ -831,6 +835,8 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
         private readonly Section scene;
         private readonly UserPreferences prefs;
         private readonly SectionVersion latestVersion;
+        private readonly Comment anchoredComment;
+        private readonly PassageAnchorDto anchoredCommentAnchor;
 
         public Guid ChapterId => chapter.Id;
         public Guid SceneId => scene.Id;
@@ -850,6 +856,35 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
 
             var publishedScene = Section.CreateDocument(project.Id, "scene-uuid-version", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "scene-hash", "Published");
             latestVersion = SectionVersion.Create(publishedScene, ReaderId, 2);
+
+            var anchoredCommentAnchorId = Guid.Parse("33333333-3333-3333-3333-333333333333");
+            anchoredComment = Comment.CreateRoot(
+                scene.Id,
+                reader.Id,
+                "This scene has an anchored comment.",
+                Visibility.Public,
+                sectionVersionId: latestVersion.Id,
+                passageAnchorId: anchoredCommentAnchorId);
+            anchoredCommentAnchor = new PassageAnchorDto(
+                anchoredCommentAnchorId,
+                scene.Id,
+                latestVersion.Id,
+                PassageAnchorPurpose.Comment,
+                reader.Id,
+                DateTime.UtcNow,
+                PassageAnchorStatus.Original,
+                null,
+                new PassageAnchorSnapshotDto(
+                    "Hello",
+                    "Hello",
+                    "selected-hash",
+                    string.Empty,
+                    string.Empty,
+                    0,
+                    5,
+                    "content-hash",
+                    "#scene-uuid"),
+                null);
 
             prefs = UserPreferences.CreateForBetaReader(reader.Id);
             prefs.UpdateProseFontPreferences(ProseFont.Humanist, ProseFontSize.Large);
@@ -903,8 +938,17 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
                 sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
 
                 var commentService = new Mock<ICommentService>();
-                commentService.Setup(r => r.GetThreadsForSectionAsync(It.IsAny<Guid>(), reader.Id, It.IsAny<CancellationToken>()))
+                commentService.Setup(r => r.GetThreadsForSectionAsync(scene.Id, reader.Id, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync([anchoredComment]);
+                commentService.Setup(r => r.GetThreadsForSectionAsync(chapter.Id, reader.Id, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(Array.Empty<Comment>());
+
+                var passageAnchorService = new Mock<IPassageAnchorService>();
+                passageAnchorService.Setup(s => s.GetByIdAsync(
+                        anchoredComment.PassageAnchorId!.Value,
+                        reader.Id,
+                        It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(anchoredCommentAnchor);
 
                 var progressService = new Mock<IReadingProgressService>();
                 progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), reader.Id, It.IsAny<CancellationToken>()))
@@ -948,6 +992,7 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
                 services.AddSingleton(readEventRepo.Object);
                 services.AddSingleton(sectionDiffService.Object);
                 services.AddSingleton(systemStateMessageService.Object);
+                services.AddSingleton(passageAnchorService.Object);
             });
         }
     }

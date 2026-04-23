@@ -109,6 +109,9 @@ public class CommentDisplayViewModel
     public bool CanDelete { get; set; }
     public bool IsModerator { get; set; }
     public bool CanEdit { get; set; }
+    public PassageAnchorDto? PassageAnchor { get; set; }
+    public bool HasPassageAnchor => Comment.PassageAnchorId.HasValue;
+    public bool IsPassageAnchorMissing => HasPassageAnchor && PassageAnchor is null;
     public bool UseModeratorDelete => !CanDelete && IsModerator;
 }
 
