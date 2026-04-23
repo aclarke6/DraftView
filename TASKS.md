@@ -98,7 +98,7 @@ This is a **platform capability**, not a feature.
   - [DONE] Phase D2 — Context matching
   - [DONE] Phase D3 — Fuzzy matching
   - [DONE] Phase D4 — Confidence scoring
-  - [ ] Phase D5 — Integration and tests
+  - [DONE] Phase D5 — Integration and tests
 
 - [ ] **RS-E — Human Override**
   - [ ] Phase E1 — Permission enforcement (reader + author only)
