@@ -1,7 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
+using System.Net;
+using System.Text.RegularExpressions;
 using DraftView.Domain.Diff;
+using DraftView.Domain.Contracts;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
+using DraftView.Domain.Exceptions;
 using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Interfaces.Services;
 using DraftView.Web.Models;
@@ -25,6 +29,8 @@ public class ReaderController(
                            userRepository, readerAccessRepo, logger)
 {
     private readonly IUserPreferencesRepository _userPreferencesRepo = userPreferencesRepo;
+    private static readonly Regex HtmlTagRegex = new("<[^>]+>", RegexOptions.Compiled);
+    private static readonly Regex WhitespaceRegex = new("\\s+", RegexOptions.Compiled);
 
     // -----------------------------------------------------------------------
     // GET: /Reader/Dashboard
@@ -200,6 +206,32 @@ public class ReaderController(
 
         await ProgressService.DismissBannerAsync(sectionId, user.Id, versionNumber);
         return Ok();
+    }
+
+    /// <summary>
+    /// Captures the reader's latest resume position without changing the active resume behavior.
+    /// </summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CaptureResumePosition([FromBody] CaptureResumePositionRequest request)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return Forbid();
+
+        try
+        {
+            await ProgressService.CaptureResumePositionAsync(request, user.Id);
+            return Ok();
+        }
+        catch (UnauthorisedOperationException)
+        {
+            return Forbid();
+        }
+        catch (InvariantViolationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -422,7 +454,7 @@ public class ReaderController(
 
         await ProgressService.RecordOpenAsync(id, user.Id);
 
-        var (resolvedHtml, currentVersionNumber, aiSummary, diffParagraphs, updatedSinceLastRead, showUpdateBanner) = 
+        var (resolvedHtml, currentSectionVersionId, currentVersionNumber, resumeCaptureText, aiSummary, diffParagraphs, updatedSinceLastRead, showUpdateBanner) =
             await ResolveSceneContentAndDiffAsync(scene, user.Id);
 
         var allSections = await SectionRepo.GetByProjectIdAsync(project.Id);
@@ -444,6 +476,8 @@ public class ReaderController(
             ProseFont              = preferences?.ProseFont ?? ProseFont.SystemSerif,
             ProseFontSize          = preferences?.ProseFontSize ?? ProseFontSize.Medium,
             ResolvedHtmlContent    = resolvedHtml,
+            CurrentSectionVersionId = currentSectionVersionId,
+            ResumeCaptureText      = resumeCaptureText,
             CurrentVersionNumber   = currentVersionNumber,
             AiSummary              = aiSummary,
             DiffParagraphs         = diffParagraphs,
@@ -464,7 +498,7 @@ public class ReaderController(
     {
         await ProgressService.RecordOpenAsync(scene.Id, user.Id, ct);
 
-        var (resolvedHtml, currentVersionNumber, aiSummary, diffParagraphs, updatedSinceLastRead, showUpdateBanner) = 
+        var (resolvedHtml, currentSectionVersionId, currentVersionNumber, resumeCaptureText, aiSummary, diffParagraphs, updatedSinceLastRead, showUpdateBanner) =
             await ResolveSceneContentAndDiffAsync(scene, user.Id, ct);
 
         var comments = await CommentService.GetThreadsForSectionAsync(scene.Id, user.Id, ct);
@@ -475,6 +509,8 @@ public class ReaderController(
             Scene = scene,
             Comments = displayComments,
             ResolvedHtmlContent = resolvedHtml,
+            CurrentSectionVersionId = currentSectionVersionId,
+            ResumeCaptureText = resumeCaptureText,
             AiSummary = aiSummary,
             DiffParagraphs = diffParagraphs,
             UpdatedSinceLastRead = updatedSinceLastRead,
@@ -488,7 +524,7 @@ public class ReaderController(
     /// computes diff if reader has a prior read version, and updates reader progress.
     /// Returns: (resolvedHtml, currentVersionNumber, aiSummary, diffParagraphs, updatedSinceLastRead, showUpdateBanner)
     /// </summary>
-    private async Task<(string? resolvedHtml, int? currentVersionNumber, string? aiSummary, IReadOnlyList<ParagraphDiffResult> diffParagraphs, bool updatedSinceLastRead, bool showUpdateBanner)> 
+    private async Task<(string? resolvedHtml, Guid? currentSectionVersionId, int? currentVersionNumber, string resumeCaptureText, string? aiSummary, IReadOnlyList<ParagraphDiffResult> diffParagraphs, bool updatedSinceLastRead, bool showUpdateBanner)>
         ResolveSceneContentAndDiffAsync(
             Section scene,
             Guid userId,
@@ -496,7 +532,9 @@ public class ReaderController(
     {
         var latestVersion = await sectionVersionRepo.GetLatestAsync(scene.Id, ct);
         var resolvedHtml = latestVersion?.HtmlContent ?? scene.HtmlContent;
+        var currentSectionVersionId = latestVersion?.Id;
         var currentVersionNumber = latestVersion?.VersionNumber;
+        var resumeCaptureText = CanonicalizeForCapture(resolvedHtml);
         var aiSummary = latestVersion?.AiSummary;
 
         var readEvent = await readEventRepo.GetAsync(scene.Id, userId, ct);
@@ -525,7 +563,20 @@ public class ReaderController(
             ? diffResult.Paragraphs
             : Array.Empty<ParagraphDiffResult>();
 
-        return (resolvedHtml, currentVersionNumber, aiSummary, diffParagraphs, updatedSinceLastRead, showUpdateBanner);
+        return (resolvedHtml, currentSectionVersionId, currentVersionNumber, resumeCaptureText, aiSummary, diffParagraphs, updatedSinceLastRead, showUpdateBanner);
+    }
+
+    /// <summary>
+    /// Converts the reader-visible HTML source into canonical plain text for client-side resume capture hints.
+    /// </summary>
+    private static string CanonicalizeForCapture(string? html)
+    {
+        if (string.IsNullOrWhiteSpace(html))
+            return string.Empty;
+
+        var withoutTags = HtmlTagRegex.Replace(html, " ");
+        var decoded = WebUtility.HtmlDecode(withoutTags);
+        return WhitespaceRegex.Replace(decoded, " ").Trim();
     }
 
     /// <summary>

@@ -66,6 +66,8 @@ public class MobileReadViewModel
     /// fallback to Scene.HtmlContent for pre-versioning sections.
     /// </summary>
     public string? ResolvedHtmlContent { get; set; }
+    public Guid? CurrentSectionVersionId { get; set; }
+    public string ResumeCaptureText { get; set; } = string.Empty;
 
     /// <summary>
     /// The VersionNumber of the SectionVersion used to resolve content.

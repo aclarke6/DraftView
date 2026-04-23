@@ -51,6 +51,8 @@ public class SceneWithComments
     /// for pre-versioning published sections.
     /// </summary>
     public string? ResolvedHtmlContent { get; set; }
+    public Guid? CurrentSectionVersionId { get; set; }
+    public string ResumeCaptureText { get; set; } = string.Empty;
 
     /// <summary>
     /// Paragraph-level diff results when the reader has a prior read version
