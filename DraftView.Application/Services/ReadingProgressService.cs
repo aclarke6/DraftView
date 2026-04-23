@@ -142,7 +142,7 @@ public class ReadingProgressService(
         PassageAnchorDto anchor;
         try
         {
-            anchor = await passageAnchorService.GetByIdAsync(resumeAnchorId, userId, ct);
+            anchor = await passageAnchorService.ResolveCurrentMatchAsync(resumeAnchorId, userId, ct);
         }
         catch (EntityNotFoundException)
         {

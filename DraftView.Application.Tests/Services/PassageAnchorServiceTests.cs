@@ -13,8 +13,9 @@ namespace DraftView.Application.Tests.Services;
 /// <summary>
 /// Tests for PassageAnchorService create and retrieve orchestration.
 /// Covers: access checks, selection validation, anchor persistence, DTO mapping,
-/// exact-match relocation, context disambiguation, and fuzzy relocation.
-/// Excludes: UI activation and reader resume integration.
+/// exact-match relocation, context disambiguation, fuzzy relocation, and deterministic
+/// current-match persistence.
+/// Excludes: UI activation and reader resume orchestration.
 /// </summary>
 public class PassageAnchorServiceTests
 {
@@ -479,6 +480,240 @@ public class PassageAnchorServiceTests
         var result = await sut.TryResolveFuzzyMatchAsync(anchor.Id, author.Id);
 
         Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task ResolveCurrentMatchAsync_WithUniqueExactMatch_PersistsExactCurrentMatch()
+    {
+        var author = MakeAuthor();
+        var section = Section.CreateDocument(
+            Guid.NewGuid(),
+            Guid.NewGuid().ToString(),
+            "Scene 1",
+            null,
+            0,
+            "<p>Alpha beta gamma</p>",
+            "section-hash",
+            "Draft");
+        section.PublishAsPartOfChapter("section-hash");
+        var version = SectionVersion.Create(section, author.Id, 1);
+        var anchor = PassageAnchor.Create(
+            section.Id,
+            version.Id,
+            PassageAnchorPurpose.Comment,
+            author.Id,
+            PassageAnchorSnapshot.Create(
+                "Alpha beta",
+                "Alpha beta",
+                "hash",
+                string.Empty,
+                " gamma",
+                0,
+                10,
+                "content-hash"));
+        var sut = CreateSut();
+
+        _anchorRepo.Setup(r => r.GetByIdAsync(anchor.Id, default)).ReturnsAsync(anchor);
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
+        _userRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
+        _authFacade.Setup(f => f.IsAuthor()).Returns(true);
+
+        var result = await sut.ResolveCurrentMatchAsync(anchor.Id, author.Id);
+
+        Assert.Equal(PassageAnchorStatus.Exact, result.Status);
+        Assert.NotNull(result.CurrentMatch);
+        Assert.Equal(PassageAnchorMatchMethod.Exact, result.CurrentMatch!.MatchMethod);
+        Assert.Equal(version.Id, result.CurrentMatch.TargetSectionVersionId);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task ResolveCurrentMatchAsync_WithRepeatedTextAndUniqueContext_PersistsContextCurrentMatch()
+    {
+        var author = MakeAuthor();
+        var section = Section.CreateDocument(
+            Guid.NewGuid(),
+            Guid.NewGuid().ToString(),
+            "Scene 1",
+            null,
+            0,
+            "<p>Alpha beta gamma. Delta Alpha beta omega.</p>",
+            "section-hash",
+            "Draft");
+        section.PublishAsPartOfChapter("section-hash");
+        var version = SectionVersion.Create(section, author.Id, 1);
+        var anchor = PassageAnchor.Create(
+            section.Id,
+            version.Id,
+            PassageAnchorPurpose.Comment,
+            author.Id,
+            PassageAnchorSnapshot.Create(
+                "Alpha beta",
+                "Alpha beta",
+                "hash",
+                "Delta ",
+                " omega",
+                0,
+                10,
+                "content-hash"));
+        var sut = CreateSut();
+
+        _anchorRepo.Setup(r => r.GetByIdAsync(anchor.Id, default)).ReturnsAsync(anchor);
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
+        _userRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
+        _authFacade.Setup(f => f.IsAuthor()).Returns(true);
+
+        var result = await sut.ResolveCurrentMatchAsync(anchor.Id, author.Id);
+
+        Assert.Equal(PassageAnchorStatus.Context, result.Status);
+        Assert.NotNull(result.CurrentMatch);
+        Assert.Equal(PassageAnchorMatchMethod.Context, result.CurrentMatch!.MatchMethod);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task ResolveCurrentMatchAsync_WithMinorVariation_PersistsFuzzyCurrentMatch()
+    {
+        var author = MakeAuthor();
+        var section = Section.CreateDocument(
+            Guid.NewGuid(),
+            Guid.NewGuid().ToString(),
+            "Scene 1",
+            null,
+            0,
+            "<p>Alfa beta gamma</p>",
+            "section-hash",
+            "Draft");
+        section.PublishAsPartOfChapter("section-hash");
+        var version = SectionVersion.Create(section, author.Id, 1);
+        var anchor = PassageAnchor.Create(
+            section.Id,
+            version.Id,
+            PassageAnchorPurpose.Comment,
+            author.Id,
+            PassageAnchorSnapshot.Create(
+                "Alpha beta",
+                "Alpha beta",
+                "hash",
+                string.Empty,
+                string.Empty,
+                0,
+                10,
+                "content-hash"));
+        var sut = CreateSut();
+
+        _anchorRepo.Setup(r => r.GetByIdAsync(anchor.Id, default)).ReturnsAsync(anchor);
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
+        _userRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
+        _authFacade.Setup(f => f.IsAuthor()).Returns(true);
+
+        var result = await sut.ResolveCurrentMatchAsync(anchor.Id, author.Id);
+
+        Assert.Equal(PassageAnchorStatus.Fuzzy, result.Status);
+        Assert.NotNull(result.CurrentMatch);
+        Assert.Equal(PassageAnchorMatchMethod.Fuzzy, result.CurrentMatch!.MatchMethod);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task ResolveCurrentMatchAsync_WithNoTrustworthyMatch_PersistsOrphanState()
+    {
+        var author = MakeAuthor();
+        var section = Section.CreateDocument(
+            Guid.NewGuid(),
+            Guid.NewGuid().ToString(),
+            "Scene 1",
+            null,
+            0,
+            "<p>Zzz qqq rrr</p>",
+            "section-hash",
+            "Draft");
+        section.PublishAsPartOfChapter("section-hash");
+        var version = SectionVersion.Create(section, author.Id, 1);
+        var anchor = PassageAnchor.Create(
+            section.Id,
+            version.Id,
+            PassageAnchorPurpose.Comment,
+            author.Id,
+            PassageAnchorSnapshot.Create(
+                "Alpha beta",
+                "Alpha beta",
+                "hash",
+                string.Empty,
+                string.Empty,
+                0,
+                10,
+                "content-hash"));
+        var sut = CreateSut();
+
+        _anchorRepo.Setup(r => r.GetByIdAsync(anchor.Id, default)).ReturnsAsync(anchor);
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
+        _userRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
+        _authFacade.Setup(f => f.IsAuthor()).Returns(true);
+
+        var result = await sut.ResolveCurrentMatchAsync(anchor.Id, author.Id);
+
+        Assert.Equal(PassageAnchorStatus.Orphaned, result.Status);
+        Assert.Null(result.CurrentMatch);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task ResolveCurrentMatchAsync_WithManualRelink_PreservesManualRelink()
+    {
+        var author = MakeAuthor();
+        var section = Section.CreateDocument(
+            Guid.NewGuid(),
+            Guid.NewGuid().ToString(),
+            "Scene 1",
+            null,
+            0,
+            "<p>Alpha beta gamma</p>",
+            "section-hash",
+            "Draft");
+        section.PublishAsPartOfChapter("section-hash");
+        var version = SectionVersion.Create(section, author.Id, 1);
+        var anchor = PassageAnchor.Create(
+            section.Id,
+            version.Id,
+            PassageAnchorPurpose.Comment,
+            author.Id,
+            PassageAnchorSnapshot.Create(
+                "Alpha beta",
+                "Alpha beta",
+                "hash",
+                string.Empty,
+                " gamma",
+                0,
+                10,
+                "content-hash"));
+        anchor.Relink(
+            PassageAnchorMatch.Create(
+                version.Id,
+                0,
+                10,
+                "Alpha beta",
+                100,
+                PassageAnchorMatchMethod.ManualRelink,
+                author.Id),
+            author.Id);
+        var sut = CreateSut();
+
+        _anchorRepo.Setup(r => r.GetByIdAsync(anchor.Id, default)).ReturnsAsync(anchor);
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _userRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
+        _authFacade.Setup(f => f.IsAuthor()).Returns(true);
+
+        var result = await sut.ResolveCurrentMatchAsync(anchor.Id, author.Id);
+
+        Assert.Equal(PassageAnchorStatus.UserRelinked, result.Status);
+        Assert.NotNull(result.CurrentMatch);
+        Assert.Equal(PassageAnchorMatchMethod.ManualRelink, result.CurrentMatch!.MatchMethod);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Never);
     }
 
     private static User MakeReader()

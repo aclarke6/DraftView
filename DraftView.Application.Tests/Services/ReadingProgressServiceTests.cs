@@ -11,8 +11,9 @@ namespace DraftView.Application.Tests.Services;
 
 /// <summary>
 /// Tests for ReadingProgressService orchestration.
-/// Covers: read-event creation, progress queries, version tracking, banner dismissal, and resume-anchor capture.
-/// Excludes: controller binding, client-side capture JavaScript, and anchor retrieval.
+/// Covers: read-event creation, progress queries, version tracking, banner dismissal,
+/// resume-anchor capture, and resume restore resolution.
+/// Excludes: controller binding and client-side capture JavaScript.
 /// </summary>
 public class ReadingProgressServiceTests
 {
@@ -419,7 +420,7 @@ public class ReadingProgressServiceTests
 
         _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default))
             .ReturnsAsync(readEvent);
-        _passageAnchorService.Setup(s => s.GetByIdAsync(anchorId, userId, default))
+        _passageAnchorService.Setup(s => s.ResolveCurrentMatchAsync(anchorId, userId, default))
             .ReturnsAsync(new PassageAnchorDto(
                 anchorId,
                 sectionId,
@@ -465,7 +466,7 @@ public class ReadingProgressServiceTests
 
         _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default))
             .ReturnsAsync(readEvent);
-        _passageAnchorService.Setup(s => s.GetByIdAsync(anchorId, userId, default))
+        _passageAnchorService.Setup(s => s.ResolveCurrentMatchAsync(anchorId, userId, default))
             .ReturnsAsync(new PassageAnchorDto(
                 anchorId,
                 sectionId,
@@ -521,7 +522,7 @@ public class ReadingProgressServiceTests
 
         _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default))
             .ReturnsAsync(readEvent);
-        _passageAnchorService.Setup(s => s.GetByIdAsync(anchorId, userId, default))
+        _passageAnchorService.Setup(s => s.ResolveCurrentMatchAsync(anchorId, userId, default))
             .ReturnsAsync(new PassageAnchorDto(
                 anchorId,
                 sectionId,
@@ -576,7 +577,7 @@ public class ReadingProgressServiceTests
 
         _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default))
             .ReturnsAsync(readEvent);
-        _passageAnchorService.Setup(s => s.GetByIdAsync(anchorId, userId, default))
+        _passageAnchorService.Setup(s => s.ResolveCurrentMatchAsync(anchorId, userId, default))
             .ReturnsAsync(new PassageAnchorDto(
                 anchorId,
                 sectionId,
@@ -622,7 +623,7 @@ public class ReadingProgressServiceTests
 
         _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default))
             .ReturnsAsync(readEvent);
-        _passageAnchorService.Setup(s => s.GetByIdAsync(anchorId, userId, default))
+        _passageAnchorService.Setup(s => s.ResolveCurrentMatchAsync(anchorId, userId, default))
             .ThrowsAsync(new UnauthorisedOperationException("Forbidden"));
 
         await Assert.ThrowsAsync<UnauthorisedOperationException>(

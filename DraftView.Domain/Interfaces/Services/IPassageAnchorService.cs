@@ -45,6 +45,15 @@ public interface IPassageAnchorService
         Guid currentUserId,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Resolves and persists the current match or orphan state for the anchor against
+    /// the latest reader-visible target version.
+    /// </summary>
+    Task<PassageAnchorDto> ResolveCurrentMatchAsync(
+        Guid anchorId,
+        Guid currentUserId,
+        CancellationToken ct = default);
+
     Task<PassageAnchorDto> GetByIdAsync(
         Guid anchorId,
         Guid currentUserId,

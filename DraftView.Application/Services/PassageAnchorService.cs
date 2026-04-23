@@ -153,6 +153,34 @@ public sealed class PassageAnchorService(
     }
 
     /// <summary>
+    /// Resolves the anchor against the latest reader-visible target version and persists
+    /// either the best current match or an orphaned state.
+    /// </summary>
+    public async Task<PassageAnchorDto> ResolveCurrentMatchAsync(
+        Guid anchorId,
+        Guid currentUserId,
+        CancellationToken ct = default)
+    {
+        var anchor = await anchorRepo.GetByIdAsync(anchorId, ct)
+            ?? throw new EntityNotFoundException(nameof(PassageAnchor), anchorId);
+        var section = await sectionRepo.GetByIdAsync(anchor.SectionId, ct)
+            ?? throw new EntityNotFoundException(nameof(Section), anchor.SectionId);
+
+        await EnsureAuthorizedAsync(section, currentUserId, ct);
+
+        if (anchor.Status is PassageAnchorStatus.UserRelinked or PassageAnchorStatus.Rejected)
+            return Map(anchor);
+
+        var resolvedMatch = await ResolveDeterministicMatchAsync(anchorId, currentUserId, ct);
+        if (resolvedMatch is not null)
+            return await PersistResolvedMatchAsync(anchor, resolvedMatch, ct);
+
+        anchor.MarkOrphaned();
+        await unitOfWork.SaveChangesAsync(ct);
+        return Map(anchor);
+    }
+
+    /// <summary>
     /// Executes create orchestration after the public wrapper delegates to the async implementation.
     /// </summary>
     private async Task<PassageAnchorDto> CreateInternalAsync(
@@ -530,7 +558,57 @@ public sealed class PassageAnchorService(
                     anchor.CurrentMatch.MatchMethod,
                     anchor.CurrentMatch.ResolvedAt,
                     anchor.CurrentMatch.ResolvedByUserId,
-                    anchor.CurrentMatch.Reason));
+                anchor.CurrentMatch.Reason));
+    }
+
+    /// <summary>
+    /// Resolves the best deterministic match in priority order.
+    /// </summary>
+    private async Task<PassageAnchorMatchDto?> ResolveDeterministicMatchAsync(
+        Guid anchorId,
+        Guid currentUserId,
+        CancellationToken ct)
+    {
+        var exactMatch = await TryResolveExactMatchAsync(anchorId, currentUserId, ct);
+        if (exactMatch is not null)
+            return exactMatch;
+
+        var contextMatch = await TryResolveContextMatchAsync(anchorId, currentUserId, ct);
+        if (contextMatch is not null)
+            return contextMatch;
+
+        return await TryResolveFuzzyMatchAsync(anchorId, currentUserId, ct);
+    }
+
+    /// <summary>
+    /// Converts a resolved match DTO into the domain match state on the anchor aggregate.
+    /// </summary>
+    private async Task<PassageAnchorDto> PersistResolvedMatchAsync(
+        PassageAnchor anchor,
+        PassageAnchorMatchDto match,
+        CancellationToken ct)
+    {
+        PersistResolvedMatch(anchor, match);
+        await unitOfWork.SaveChangesAsync(ct);
+        return Map(anchor);
+    }
+
+    /// <summary>
+    /// Converts a resolved match DTO into the domain match state on the anchor aggregate.
+    /// </summary>
+    private static void PersistResolvedMatch(PassageAnchor anchor, PassageAnchorMatchDto match)
+    {
+        var currentMatch = PassageAnchorMatch.Create(
+            match.TargetSectionVersionId,
+            match.StartOffset,
+            match.EndOffset,
+            match.MatchedText,
+            match.ConfidenceScore,
+            match.MatchMethod,
+            match.ResolvedByUserId,
+            match.Reason);
+
+        anchor.UpdateCurrentMatch(currentMatch);
     }
 
     private sealed record ReaderVisibleSource(Guid? OriginalSectionVersionId, string ReaderVisibleText);
