@@ -33,4 +33,10 @@ public interface IReadingProgressService
         CaptureResumePositionRequest request,
         Guid userId,
         CancellationToken ct = default);
+
+    Task<ResumeRestoreTargetDto?> GetResumeRestoreTargetAsync(
+        Guid sectionId,
+        Guid? currentSectionVersionId,
+        Guid userId,
+        CancellationToken ct = default);
 }

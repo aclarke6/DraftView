@@ -454,7 +454,7 @@ public class ReaderController(
 
         await ProgressService.RecordOpenAsync(id, user.Id);
 
-        var (resolvedHtml, currentSectionVersionId, currentVersionNumber, resumeCaptureText, aiSummary, diffParagraphs, updatedSinceLastRead, showUpdateBanner) =
+        var (resolvedHtml, currentSectionVersionId, currentVersionNumber, resumeCaptureText, resumeRestoreTarget, aiSummary, diffParagraphs, updatedSinceLastRead, showUpdateBanner) =
             await ResolveSceneContentAndDiffAsync(scene, user.Id);
 
         var allSections = await SectionRepo.GetByProjectIdAsync(project.Id);
@@ -478,6 +478,12 @@ public class ReaderController(
             ResolvedHtmlContent    = resolvedHtml,
             CurrentSectionVersionId = currentSectionVersionId,
             ResumeCaptureText      = resumeCaptureText,
+            HasResumeRestoreTarget = resumeRestoreTarget?.HasTarget ?? false,
+            ResumeRestoreStartOffset = resumeRestoreTarget?.StartOffset,
+            ResumeRestoreEndOffset = resumeRestoreTarget?.EndOffset,
+            ResumeRestoreStatus = resumeRestoreTarget?.Status,
+            ResumeRestoreConfidenceScore = resumeRestoreTarget?.ConfidenceScore,
+            ResumeRestoreMatchMethod = resumeRestoreTarget?.MatchMethod,
             CurrentVersionNumber   = currentVersionNumber,
             AiSummary              = aiSummary,
             DiffParagraphs         = diffParagraphs,
@@ -498,7 +504,7 @@ public class ReaderController(
     {
         await ProgressService.RecordOpenAsync(scene.Id, user.Id, ct);
 
-        var (resolvedHtml, currentSectionVersionId, currentVersionNumber, resumeCaptureText, aiSummary, diffParagraphs, updatedSinceLastRead, showUpdateBanner) =
+        var (resolvedHtml, currentSectionVersionId, currentVersionNumber, resumeCaptureText, resumeRestoreTarget, aiSummary, diffParagraphs, updatedSinceLastRead, showUpdateBanner) =
             await ResolveSceneContentAndDiffAsync(scene, user.Id, ct);
 
         var comments = await CommentService.GetThreadsForSectionAsync(scene.Id, user.Id, ct);
@@ -511,6 +517,12 @@ public class ReaderController(
             ResolvedHtmlContent = resolvedHtml,
             CurrentSectionVersionId = currentSectionVersionId,
             ResumeCaptureText = resumeCaptureText,
+            HasResumeRestoreTarget = resumeRestoreTarget?.HasTarget ?? false,
+            ResumeRestoreStartOffset = resumeRestoreTarget?.StartOffset,
+            ResumeRestoreEndOffset = resumeRestoreTarget?.EndOffset,
+            ResumeRestoreStatus = resumeRestoreTarget?.Status,
+            ResumeRestoreConfidenceScore = resumeRestoreTarget?.ConfidenceScore,
+            ResumeRestoreMatchMethod = resumeRestoreTarget?.MatchMethod,
             AiSummary = aiSummary,
             DiffParagraphs = diffParagraphs,
             UpdatedSinceLastRead = updatedSinceLastRead,
@@ -524,7 +536,7 @@ public class ReaderController(
     /// computes diff if reader has a prior read version, and updates reader progress.
     /// Returns: (resolvedHtml, currentVersionNumber, aiSummary, diffParagraphs, updatedSinceLastRead, showUpdateBanner)
     /// </summary>
-    private async Task<(string? resolvedHtml, Guid? currentSectionVersionId, int? currentVersionNumber, string resumeCaptureText, string? aiSummary, IReadOnlyList<ParagraphDiffResult> diffParagraphs, bool updatedSinceLastRead, bool showUpdateBanner)>
+    private async Task<(string? resolvedHtml, Guid? currentSectionVersionId, int? currentVersionNumber, string resumeCaptureText, ResumeRestoreTargetDto? resumeRestoreTarget, string? aiSummary, IReadOnlyList<ParagraphDiffResult> diffParagraphs, bool updatedSinceLastRead, bool showUpdateBanner)>
         ResolveSceneContentAndDiffAsync(
             Section scene,
             Guid userId,
@@ -535,6 +547,11 @@ public class ReaderController(
         var currentSectionVersionId = latestVersion?.Id;
         var currentVersionNumber = latestVersion?.VersionNumber;
         var resumeCaptureText = CanonicalizeForCapture(resolvedHtml);
+        var resumeRestoreTarget = await ProgressService.GetResumeRestoreTargetAsync(
+            scene.Id,
+            currentSectionVersionId,
+            userId,
+            ct);
         var aiSummary = latestVersion?.AiSummary;
 
         var readEvent = await readEventRepo.GetAsync(scene.Id, userId, ct);
@@ -563,7 +580,7 @@ public class ReaderController(
             ? diffResult.Paragraphs
             : Array.Empty<ParagraphDiffResult>();
 
-        return (resolvedHtml, currentSectionVersionId, currentVersionNumber, resumeCaptureText, aiSummary, diffParagraphs, updatedSinceLastRead, showUpdateBanner);
+        return (resolvedHtml, currentSectionVersionId, currentVersionNumber, resumeCaptureText, resumeRestoreTarget, aiSummary, diffParagraphs, updatedSinceLastRead, showUpdateBanner);
     }
 
     /// <summary>

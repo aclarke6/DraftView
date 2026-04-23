@@ -406,6 +406,173 @@ public class ReadingProgressServiceTests
         _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Never);
     }
 
+    [Fact]
+    public async Task GetResumeRestoreTargetAsync_OriginalAnchorOnCurrentVersion_ReturnsExactTarget()
+    {
+        var sectionId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var anchorId = Guid.NewGuid();
+        var readEvent = ReadEvent.Create(sectionId, userId);
+        readEvent.UpdateResumeAnchor(anchorId);
+        var sut = CreateSut();
+
+        _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default))
+            .ReturnsAsync(readEvent);
+        _passageAnchorService.Setup(s => s.GetByIdAsync(anchorId, userId, default))
+            .ReturnsAsync(new PassageAnchorDto(
+                anchorId,
+                sectionId,
+                versionId,
+                PassageAnchorPurpose.Resume,
+                userId,
+                DateTime.UtcNow,
+                PassageAnchorStatus.Original,
+                null,
+                new PassageAnchorSnapshotDto(
+                    "Alpha beta",
+                    "Alpha beta",
+                    "selected-hash",
+                    string.Empty,
+                    " gamma",
+                    0,
+                    10,
+                    "content-hash",
+                    "#scene"),
+                null));
+
+        var result = await sut.GetResumeRestoreTargetAsync(sectionId, versionId, userId);
+
+        Assert.NotNull(result);
+        Assert.True(result!.HasTarget);
+        Assert.Equal(PassageAnchorStatus.Original, result.Status);
+        Assert.Equal(0, result.StartOffset);
+        Assert.Equal(10, result.EndOffset);
+        Assert.Equal(100, result.ConfidenceScore);
+        Assert.Equal(PassageAnchorMatchMethod.Exact, result.MatchMethod);
+    }
+
+    [Fact]
+    public async Task GetResumeRestoreTargetAsync_ContextMatchedAnchor_ReturnsCurrentMatchMetadata()
+    {
+        var sectionId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var anchorId = Guid.NewGuid();
+        var readEvent = ReadEvent.Create(sectionId, userId);
+        readEvent.UpdateResumeAnchor(anchorId);
+        var sut = CreateSut();
+
+        _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default))
+            .ReturnsAsync(readEvent);
+        _passageAnchorService.Setup(s => s.GetByIdAsync(anchorId, userId, default))
+            .ReturnsAsync(new PassageAnchorDto(
+                anchorId,
+                sectionId,
+                Guid.NewGuid(),
+                PassageAnchorPurpose.Resume,
+                userId,
+                DateTime.UtcNow,
+                PassageAnchorStatus.Context,
+                DateTime.UtcNow,
+                new PassageAnchorSnapshotDto(
+                    "Alpha beta",
+                    "Alpha beta",
+                    "selected-hash",
+                    string.Empty,
+                    " gamma",
+                    0,
+                    10,
+                    "content-hash",
+                    "#scene"),
+                new PassageAnchorMatchDto(
+                    versionId,
+                    12,
+                    22,
+                    "Alpha beta",
+                    84,
+                    PassageAnchorMatchMethod.Context,
+                    DateTime.UtcNow,
+                    null,
+                    "Context matched.")));
+
+        var result = await sut.GetResumeRestoreTargetAsync(sectionId, versionId, userId);
+
+        Assert.NotNull(result);
+        Assert.True(result!.HasTarget);
+        Assert.Equal(PassageAnchorStatus.Context, result.Status);
+        Assert.Equal(12, result.StartOffset);
+        Assert.Equal(22, result.EndOffset);
+        Assert.Equal(84, result.ConfidenceScore);
+        Assert.Equal(PassageAnchorMatchMethod.Context, result.MatchMethod);
+    }
+
+    [Fact]
+    public async Task GetResumeRestoreTargetAsync_OrphanedAnchor_ReturnsSafeFallback()
+    {
+        var sectionId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var anchorId = Guid.NewGuid();
+        var readEvent = ReadEvent.Create(sectionId, userId);
+        readEvent.UpdateResumeAnchor(anchorId);
+        var sut = CreateSut();
+
+        _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default))
+            .ReturnsAsync(readEvent);
+        _passageAnchorService.Setup(s => s.GetByIdAsync(anchorId, userId, default))
+            .ReturnsAsync(new PassageAnchorDto(
+                anchorId,
+                sectionId,
+                versionId,
+                PassageAnchorPurpose.Resume,
+                userId,
+                DateTime.UtcNow,
+                PassageAnchorStatus.Orphaned,
+                DateTime.UtcNow,
+                new PassageAnchorSnapshotDto(
+                    "Alpha beta",
+                    "Alpha beta",
+                    "selected-hash",
+                    string.Empty,
+                    " gamma",
+                    0,
+                    10,
+                    "content-hash",
+                    "#scene"),
+                null));
+
+        var result = await sut.GetResumeRestoreTargetAsync(sectionId, versionId, userId);
+
+        Assert.NotNull(result);
+        Assert.False(result!.HasTarget);
+        Assert.Equal(PassageAnchorStatus.Orphaned, result.Status);
+        Assert.Null(result.StartOffset);
+        Assert.Null(result.EndOffset);
+        Assert.Null(result.ConfidenceScore);
+        Assert.Null(result.MatchMethod);
+    }
+
+    [Fact]
+    public async Task GetResumeRestoreTargetAsync_InaccessibleAnchor_PropagatesUnauthorisedOperationException()
+    {
+        var sectionId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var anchorId = Guid.NewGuid();
+        var readEvent = ReadEvent.Create(sectionId, userId);
+        readEvent.UpdateResumeAnchor(anchorId);
+        var sut = CreateSut();
+
+        _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default))
+            .ReturnsAsync(readEvent);
+        _passageAnchorService.Setup(s => s.GetByIdAsync(anchorId, userId, default))
+            .ThrowsAsync(new UnauthorisedOperationException("Forbidden"));
+
+        await Assert.ThrowsAsync<UnauthorisedOperationException>(
+            () => sut.GetResumeRestoreTargetAsync(sectionId, versionId, userId));
+    }
+
     private static CaptureResumePositionRequest CreateCaptureRequest(Guid sectionId)
     {
         return new CaptureResumePositionRequest(
