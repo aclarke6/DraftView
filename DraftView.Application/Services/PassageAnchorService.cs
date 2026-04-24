@@ -167,8 +167,11 @@ public sealed class PassageAnchorService(
             ?? throw new EntityNotFoundException(nameof(Section), anchor.SectionId);
 
         await EnsureAuthorizedAsync(section, currentUserId, ct);
+        var latestVersion = await sectionVersionRepo.GetLatestAsync(section.Id, ct);
 
-        if (anchor.Status is PassageAnchorStatus.UserRelinked or PassageAnchorStatus.Rejected)
+        if (anchor.Status == PassageAnchorStatus.UserRelinked ||
+            (anchor.Status == PassageAnchorStatus.UserRejected &&
+             anchor.Rejection?.TargetSectionVersionId == latestVersion?.Id))
             return Map(anchor);
 
         var resolvedMatch = await ResolveDeterministicMatchAsync(anchorId, currentUserId, ct);
@@ -558,7 +561,14 @@ public sealed class PassageAnchorService(
                     anchor.CurrentMatch.MatchMethod,
                     anchor.CurrentMatch.ResolvedAt,
                     anchor.CurrentMatch.ResolvedByUserId,
-                anchor.CurrentMatch.Reason));
+                    anchor.CurrentMatch.Reason),
+            anchor.Rejection is null
+                ? null
+                : new PassageAnchorRejectionDto(
+                    anchor.Rejection.TargetSectionVersionId,
+                    anchor.Rejection.RejectedByUserId,
+                    anchor.Rejection.RejectedAt,
+                    anchor.Rejection.Reason));
     }
 
     /// <summary>
