@@ -11,6 +11,6 @@ public enum PassageAnchorStatus
     Fuzzy = 3,
     AiMatched = 4,
     UserRelinked = 5,
-    Rejected = 6,
+    UserRejected = 6,
     Orphaned = 7
 }

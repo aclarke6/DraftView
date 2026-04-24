@@ -8,7 +8,7 @@ namespace DraftView.Domain.Tests.Entities;
 /// <summary>
 /// Tests for PassageAnchor, PassageAnchorSnapshot, and PassageAnchorMatch.
 /// Covers anchor creation, immutable original snapshot data, confidence validation,
-/// orphaning, human rejection, manual relink, and human-authority precedence.
+/// orphaning, human rejection audit metadata, manual relink, and human-authority precedence.
 /// Excludes persistence and application authorization.
 /// </summary>
 public class PassageAnchorTests
@@ -122,18 +122,35 @@ public class PassageAnchorTests
     public void Reject_WithEmptyActorId_ThrowsInvariantViolationException()
     {
         var anchor = CreateAnchor();
+        var match = CreateMatch(PassageAnchorMatchMethod.Exact);
 
         var ex = Assert.Throws<InvariantViolationException>(() =>
-            anchor.Reject(Guid.Empty, "wrong location"));
+            anchor.Reject(match, Guid.Empty, "wrong location"));
 
         Assert.Equal("I-ANCHOR-ACTOR", ex.InvariantCode);
+    }
+
+    [Fact]
+    public void Reject_WithValidMatch_SetsRejectedStatusAndAuditMetadata()
+    {
+        var anchor = CreateAnchor();
+        var match = CreateMatch(PassageAnchorMatchMethod.Exact);
+
+        anchor.Reject(match, UserId, "wrong location");
+
+        Assert.Equal(PassageAnchorStatus.UserRejected, anchor.Status);
+        Assert.Null(anchor.CurrentMatch);
+        Assert.NotNull(anchor.Rejection);
+        Assert.Equal(match.TargetSectionVersionId, anchor.Rejection!.TargetSectionVersionId);
+        Assert.Equal(UserId, anchor.Rejection.RejectedByUserId);
+        Assert.Equal("wrong location", anchor.Rejection.Reason);
     }
 
     [Fact]
     public void Relink_WithEmptyActorId_ThrowsInvariantViolationException()
     {
         var anchor = CreateAnchor();
-        var match = CreateMatch(PassageAnchorMatchMethod.ManualRelink, UserId);
+        var match = CreateMatch(PassageAnchorMatchMethod.ManualRelink, UserId, UserId);
 
         var ex = Assert.Throws<InvariantViolationException>(() =>
             anchor.Relink(match, Guid.Empty));
@@ -157,12 +174,43 @@ public class PassageAnchorTests
     public void UpdateCurrentMatch_AutomatedMatchCannotOverwriteManualRelink()
     {
         var anchor = CreateAnchor();
-        anchor.Relink(CreateMatch(PassageAnchorMatchMethod.ManualRelink, UserId), UserId);
+        anchor.Relink(CreateMatch(PassageAnchorMatchMethod.ManualRelink, UserId, UserId), UserId);
 
         var ex = Assert.Throws<InvariantViolationException>(() =>
             anchor.UpdateCurrentMatch(CreateMatch(PassageAnchorMatchMethod.Exact)));
 
         Assert.Equal("I-ANCHOR-MANUAL", ex.InvariantCode);
+    }
+
+    [Fact]
+    public void UpdateCurrentMatch_AutomatedMatchCannotOverwriteRejectedMatchForSameVersion()
+    {
+        var anchor = CreateAnchor();
+        var rejectedMatch = CreateMatch(PassageAnchorMatchMethod.Exact);
+        anchor.Reject(rejectedMatch, UserId, "wrong location");
+
+        var ex = Assert.Throws<InvariantViolationException>(() =>
+            anchor.UpdateCurrentMatch(CreateMatch(PassageAnchorMatchMethod.Context)));
+
+        Assert.Equal("I-ANCHOR-REJECTED", ex.InvariantCode);
+    }
+
+    [Fact]
+    public void UpdateCurrentMatch_AutomatedMatchCanResolveNewTargetVersionAfterRejection()
+    {
+        var anchor = CreateAnchor();
+        var rejectedMatch = CreateMatch(PassageAnchorMatchMethod.Exact, targetVersionId: VersionId);
+        anchor.Reject(rejectedMatch, UserId, "wrong location");
+
+        var newerVersionMatch = CreateMatch(
+            PassageAnchorMatchMethod.Context,
+            targetVersionId: Guid.NewGuid());
+
+        anchor.UpdateCurrentMatch(newerVersionMatch);
+
+        Assert.Equal(PassageAnchorStatus.Context, anchor.Status);
+        Assert.Same(newerVersionMatch, anchor.CurrentMatch);
+        Assert.NotNull(anchor.Rejection);
     }
 
     private static PassageAnchor CreateAnchor()
@@ -190,10 +238,11 @@ public class PassageAnchorTests
 
     private static PassageAnchorMatch CreateMatch(
         PassageAnchorMatchMethod method,
+        Guid? targetVersionId = null,
         Guid? resolvedByUserId = null)
     {
         return PassageAnchorMatch.Create(
-            VersionId,
+            targetVersionId ?? VersionId,
             11,
             24,
             "selected text",

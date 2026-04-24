@@ -203,6 +203,81 @@
                 else
                 {
                     <p class="comment-box__body">@c.Comment.Body</p>
+
+                    @if (c.PassageAnchor is not null)
+                    {
+                        <div class="comment-box__anchor-status">
+                            <span class="comment-box__anchor-status-label">
+                                Anchor status: @c.PassageAnchor.Status
+                            </span>
+                            @if (c.PassageAnchor.Rejection is not null)
+                            {
+                                <span class="comment-box__anchor-status-meta">
+                                    Rejected by @(c.PassageAnchorRejectedByDisplayName ?? "Unknown") on @c.PassageAnchor.Rejection.RejectedAt.ToString("dd MMM HH:mm")
+                                </span>
+                                @if (!string.IsNullOrWhiteSpace(c.PassageAnchor.Rejection.Reason))
+                                {
+                                    <span class="comment-box__anchor-status-meta">
+                                        Reason: @c.PassageAnchor.Rejection.Reason
+                                    </span>
+                                }
+                            }
+                            else if (c.PassageAnchor.CurrentMatch?.MatchMethod == PassageAnchorMatchMethod.ManualRelink)
+                            {
+                                <span class="comment-box__anchor-status-meta">
+                                    Relinked by @(c.PassageAnchorResolvedByDisplayName ?? "Unknown") on @c.PassageAnchor.CurrentMatch.ResolvedAt.ToString("dd MMM HH:mm")
+                                </span>
+                            }
+                        </div>
+                    }
+
+                    @if (c.CanOverridePassageAnchor)
+                    {
+                        <div class="comment-box__anchor-controls">
+                            <form asp-action="RejectPassageAnchor" method="post" class="comment-box__override-form">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="anchorId" value="@c.PassageAnchor!.Id" />
+                                <input type="hidden" name="chapterId" value="@Model.Chapter.Id" />
+                                <input type="hidden" name="sceneId" value="@Model.Scene.Id" />
+                                <input type="text" name="reason" placeholder="Wrong place? Optional reason" class="comment-box__override-reason" />
+                                <button type="submit"
+                                        class="comment-action-btn comment-action-btn--danger"
+                                        title="Reject match"
+                                        aria-label="Reject match">
+                                    Reject
+                                </button>
+                            </form>
+
+                            <form asp-action="RelinkPassageAnchor"
+                                  method="post"
+                                  class="comment-box__override-form"
+                                  data-anchor-comment-form="true">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="anchorId" value="@c.PassageAnchor!.Id" />
+                                <input type="hidden" name="chapterId" value="@Model.Chapter.Id" />
+                                <input type="hidden" name="sceneId" value="@Model.Scene.Id" />
+                                <input type="hidden" name="SectionId" value="@Model.Scene.Id" />
+                                <input type="hidden" name="PassageAnchorRequest.SectionId" value="@Model.Scene.Id" />
+                                <input type="hidden" name="PassageAnchorRequest.OriginalSectionVersionId" value="@(Model.CurrentSectionVersionId?.ToString() ?? string.Empty)" />
+                                <input type="hidden" name="PassageAnchorRequest.Purpose" value="@c.PassageAnchor.Purpose" />
+                                <input type="hidden" name="PassageAnchorRequest.SelectedText" value="" />
+                                <input type="hidden" name="PassageAnchorRequest.NormalizedSelectedText" value="" />
+                                <input type="hidden" name="PassageAnchorRequest.SelectedTextHash" value="" />
+                                <input type="hidden" name="PassageAnchorRequest.PrefixContext" value="" />
+                                <input type="hidden" name="PassageAnchorRequest.SuffixContext" value="" />
+                                <input type="hidden" name="PassageAnchorRequest.StartOffset" value="0" />
+                                <input type="hidden" name="PassageAnchorRequest.EndOffset" value="0" />
+                                <input type="hidden" name="PassageAnchorRequest.CanonicalContentHash" value="" />
+                                <input type="hidden" name="PassageAnchorRequest.HtmlSelectorHint" value="" />
+                                <button type="submit"
+                                        class="comment-action-btn comment-action-btn--primary"
+                                        title="Relink to selection"
+                                        aria-label="Relink to selection">
+                                    Relink
+                                </button>
+                            </form>
+                        </div>
+                    }
                     <form asp-action="AddComment" method="post" class="comment-box__reply-form">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="SectionId" value="@Model.Scene.Id" />

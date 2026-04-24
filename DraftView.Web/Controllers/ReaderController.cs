@@ -24,10 +24,11 @@ public class ReaderController(
     ISectionVersionRepository sectionVersionRepo,
     IReadEventRepository readEventRepo,
     ISectionDiffService sectionDiffService,
+    IHumanOverrideService humanOverrideService,
     IPassageAnchorService passageAnchorService,
     ILogger<ReaderController> logger)
     : BaseReaderController(projectRepo, sectionRepo, commentService, progressService,
-                           userRepository, readerAccessRepo, passageAnchorService, logger)
+                           userRepository, readerAccessRepo, humanOverrideService, passageAnchorService, logger)
 {
     private readonly IUserPreferencesRepository _userPreferencesRepo = userPreferencesRepo;
     private readonly IPassageAnchorService _passageAnchorService = passageAnchorService;
@@ -429,12 +430,16 @@ public class ReaderController(
         var scenesWithComments = new List<SceneWithComments>();
         foreach (var scene in scenes)
         {
-            var sceneWithComments = await BuildSceneWithCommentsAsync(scene, user, isModerator);
+            var sceneWithComments = await BuildSceneWithCommentsAsync(
+                scene,
+                user,
+                project?.AuthorId ?? Guid.Empty,
+                isModerator);
             scenesWithComments.Add(sceneWithComments);
         }
 
         var chapterCommentsRaw = await CommentService.GetThreadsForSectionAsync(id, user.Id);
-        var chapterComments    = await BuildCommentDisplayModelsAsync(chapterCommentsRaw, user.Id, isModerator);
+        var chapterComments    = await BuildCommentDisplayModelsAsync(chapterCommentsRaw, user.Id, project?.AuthorId ?? Guid.Empty, isModerator);
         var breadcrumb         = BuildBreadcrumb(chapter, allSections);
         var topAncestor        = GetTopLevelAncestor(chapter, allSections);
         var preferences        = await _userPreferencesRepo.GetByUserIdAsync(user.Id);
@@ -490,7 +495,7 @@ public class ReaderController(
         var (prevSceneId, nextSceneId) = GetPrevNextSceneIds(scene.Id, chapter.Id, allSections);
 
         var commentsRaw = await CommentService.GetThreadsForSectionAsync(id, user.Id);
-        var comments    = await BuildCommentDisplayModelsAsync(commentsRaw, user.Id, isModerator);
+        var comments    = await BuildCommentDisplayModelsAsync(commentsRaw, user.Id, project.AuthorId, isModerator);
         var preferences = await _userPreferencesRepo.GetByUserIdAsync(user.Id);
 
         return View("MobileRead", new MobileReadViewModel {
@@ -528,6 +533,7 @@ public class ReaderController(
     private async Task<SceneWithComments> BuildSceneWithCommentsAsync(
         Section scene,
         Domain.Entities.User user,
+        Guid projectAuthorId,
         bool isModerator,
         CancellationToken ct = default)
     {
@@ -537,7 +543,7 @@ public class ReaderController(
             await ResolveSceneContentAndDiffAsync(scene, user.Id, ct);
 
         var comments = await CommentService.GetThreadsForSectionAsync(scene.Id, user.Id, ct);
-        var displayComments = await BuildCommentDisplayModelsAsync(comments, user.Id, isModerator);
+        var displayComments = await BuildCommentDisplayModelsAsync(comments, user.Id, projectAuthorId, isModerator);
 
         return new SceneWithComments
         {

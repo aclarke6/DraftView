@@ -1,4 +1,5 @@
 using DraftView.Application.Services;
+using DraftView.Domain.Contracts;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
 using DraftView.Domain.Exceptions;
@@ -10,9 +11,10 @@ using Moq;
 namespace DraftView.Application.Tests.Services;
 
 /// <summary>
-/// Tests for HumanOverrideService permission checks.
-/// Covers: comment-owner access, project-author access, and unauthorized override rejection.
-/// Excludes: reject/relink state transitions and UI integration.
+/// Tests for HumanOverrideService permission checks and override orchestration.
+/// Covers: comment-owner access, project-author access, unauthorized override rejection,
+/// human rejection persistence, and manual relink persistence.
+/// Excludes: UI integration.
 /// </summary>
 public class HumanOverrideServiceTests
 {
@@ -21,13 +23,17 @@ public class HumanOverrideServiceTests
     private readonly Mock<ICommentRepository> _commentRepo = new();
     private readonly Mock<IProjectRepository> _projectRepo = new();
     private readonly Mock<IUserRepository> _userRepo = new();
+    private readonly Mock<IPassageAnchorService> _passageAnchorService = new();
+    private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
     private HumanOverrideService CreateSut() => new(
         _anchorRepo.Object,
         _sectionRepo.Object,
         _commentRepo.Object,
         _projectRepo.Object,
-        _userRepo.Object);
+        _userRepo.Object,
+        _passageAnchorService.Object,
+        _unitOfWork.Object);
 
     [Fact]
     public async Task EnsureCanRejectAsync_WithCommentOwner_AllowsOverride()
@@ -47,7 +53,7 @@ public class HumanOverrideServiceTests
             passageAnchorId: anchor.Id);
         var sut = CreateSut();
 
-        SetupAnchorGraph(anchor, section, project, comment);
+        SetupAnchorGraph(anchor, section, project, new[] { comment });
         _userRepo.Setup(r => r.GetByIdAsync(owner.Id, default)).ReturnsAsync(owner);
 
         await sut.EnsureCanRejectAsync(anchor.Id, owner.Id);
@@ -71,7 +77,7 @@ public class HumanOverrideServiceTests
             passageAnchorId: anchor.Id);
         var sut = CreateSut();
 
-        SetupAnchorGraph(anchor, section, project, comment);
+        SetupAnchorGraph(anchor, section, project, new[] { comment });
         _userRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
 
         await sut.EnsureCanRelinkAsync(anchor.Id, author.Id);
@@ -95,7 +101,7 @@ public class HumanOverrideServiceTests
             passageAnchorId: anchor.Id);
         var sut = CreateSut();
 
-        SetupAnchorGraph(anchor, section, project, comment);
+        SetupAnchorGraph(anchor, section, project, new[] { comment });
         _userRepo.Setup(r => r.GetByIdAsync(otherUser.Id, default)).ReturnsAsync(otherUser);
 
         await Assert.ThrowsAsync<UnauthorisedOperationException>(
@@ -120,6 +126,86 @@ public class HumanOverrideServiceTests
             () => sut.EnsureCanRelinkAsync(anchor.Id, support.Id));
     }
 
+    [Fact]
+    public async Task RejectAsync_WithCurrentMatch_PersistsRejectionAudit()
+    {
+        var author = MakeUser("author@example.test", "Author", Role.Author);
+        var owner = MakeUser("owner@example.test", "Owner", Role.BetaReader);
+        var project = Project.Create("Project", "/tmp/project", author.Id, "root");
+        var section = MakePublishedSection(project.Id);
+        var version = SectionVersion.Create(section, author.Id, 1);
+        var anchor = CreateAnchor(section, version, owner.Id);
+        anchor.UpdateCurrentMatch(CreateMatch(version.Id));
+        var comment = Comment.CreateRoot(
+            section.Id,
+            owner.Id,
+            "Anchored comment.",
+            Visibility.Public,
+            sectionVersionId: version.Id,
+            passageAnchorId: anchor.Id);
+        var sut = CreateSut();
+
+        SetupAnchorGraph(anchor, section, project, new[] { comment });
+        _userRepo.Setup(r => r.GetByIdAsync(owner.Id, default)).ReturnsAsync(owner);
+        _unitOfWork.Setup(u => u.SaveChangesAsync(default)).ReturnsAsync(1);
+
+        var result = await sut.RejectAsync(anchor.Id, owner.Id, "wrong place");
+
+        Assert.Equal(PassageAnchorStatus.UserRejected, result.Status);
+        Assert.Null(result.CurrentMatch);
+        Assert.NotNull(result.Rejection);
+        Assert.Equal(version.Id, result.Rejection!.TargetSectionVersionId);
+        Assert.Equal(owner.Id, result.Rejection.RejectedByUserId);
+        Assert.Equal("wrong place", result.Rejection.Reason);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task RelinkAsync_WithValidSelection_PersistsManualRelink()
+    {
+        var author = MakeUser("author@example.test", "Author", Role.Author);
+        var owner = MakeUser("owner@example.test", "Owner", Role.BetaReader);
+        var project = Project.Create("Project", "/tmp/project", author.Id, "root");
+        var section = MakePublishedSection(project.Id);
+        var version = SectionVersion.Create(section, author.Id, 1);
+        var anchor = CreateAnchor(section, version, owner.Id);
+        var comment = Comment.CreateRoot(
+            section.Id,
+            owner.Id,
+            "Anchored comment.",
+            Visibility.Public,
+            sectionVersionId: version.Id,
+            passageAnchorId: anchor.Id);
+        var request = new CreatePassageAnchorRequest(
+            section.Id,
+            version.Id,
+            PassageAnchorPurpose.Comment,
+            "Alpha beta",
+            "Alpha beta",
+            "selected-hash",
+            string.Empty,
+            " gamma",
+            0,
+            10,
+            "content-hash");
+        var sut = CreateSut();
+
+        SetupAnchorGraph(anchor, section, project, new[] { comment });
+        _userRepo.Setup(r => r.GetByIdAsync(owner.Id, default)).ReturnsAsync(owner);
+        _passageAnchorService
+            .Setup(s => s.ValidateSelectionAsync(request, owner.Id, default))
+            .Returns(Task.CompletedTask);
+        _unitOfWork.Setup(u => u.SaveChangesAsync(default)).ReturnsAsync(1);
+
+        var result = await sut.RelinkAsync(anchor.Id, request, owner.Id);
+
+        Assert.Equal(PassageAnchorStatus.UserRelinked, result.Status);
+        Assert.NotNull(result.CurrentMatch);
+        Assert.Equal(PassageAnchorMatchMethod.ManualRelink, result.CurrentMatch!.MatchMethod);
+        Assert.Equal(owner.Id, result.CurrentMatch.ResolvedByUserId);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
     private void SetupAnchorGraph(
         PassageAnchor anchor,
         Section section,
@@ -133,6 +219,15 @@ public class HumanOverrideServiceTests
         _commentRepo.Setup(r => r.GetAllBySectionIdAsync(section.Id, default))
             .ReturnsAsync(comments);
     }
+
+    private static PassageAnchorMatch CreateMatch(Guid targetVersionId) =>
+        PassageAnchorMatch.Create(
+            targetVersionId,
+            0,
+            10,
+            "Alpha beta",
+            95,
+            PassageAnchorMatchMethod.Exact);
 
     private static PassageAnchor CreateAnchor(Section section, SectionVersion version, Guid createdByUserId) =>
         PassageAnchor.Create(

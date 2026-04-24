@@ -17,6 +17,7 @@ public sealed class PassageAnchor
     public DateTime CreatedAt { get; private set; }
     public PassageAnchorSnapshot OriginalSnapshot { get; private set; } = default!;
     public PassageAnchorMatch? CurrentMatch { get; private set; }
+    public PassageAnchorRejection? Rejection { get; private set; }
     public PassageAnchorStatus Status { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
 
@@ -71,6 +72,12 @@ public sealed class PassageAnchor
             throw new InvariantViolationException("I-ANCHOR-MANUAL",
                 "Automated matches cannot overwrite a manual relink.");
 
+        if (Status == PassageAnchorStatus.UserRejected &&
+            Rejection is not null &&
+            Rejection.TargetSectionVersionId == match.TargetSectionVersionId)
+            throw new InvariantViolationException("I-ANCHOR-REJECTED",
+                "Automated matches cannot overwrite a rejected location for the same target version.");
+
         CurrentMatch = match;
         Status = GetStatusForMatchMethod(match.MatchMethod);
         UpdatedAt = DateTime.UtcNow;
@@ -89,14 +96,19 @@ public sealed class PassageAnchor
     /// <summary>
     /// Records a human rejection of the current proposed location.
     /// </summary>
-    public void Reject(Guid actorUserId, string? reason = null)
+    public void Reject(PassageAnchorMatch match, Guid actorUserId, string? reason = null)
     {
         if (actorUserId == Guid.Empty)
             throw new InvariantViolationException("I-ANCHOR-ACTOR",
                 "Rejecting a match requires an actor id.");
 
+        if (match is null)
+            throw new InvariantViolationException("I-ANCHOR-MATCH",
+                "Rejected match is required.");
+
         CurrentMatch = null;
-        Status = PassageAnchorStatus.Rejected;
+        Rejection = PassageAnchorRejection.Create(match, actorUserId, reason);
+        Status = PassageAnchorStatus.UserRejected;
         UpdatedAt = DateTime.UtcNow;
     }
 

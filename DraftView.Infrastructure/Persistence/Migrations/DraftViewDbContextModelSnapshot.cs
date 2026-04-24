@@ -1011,6 +1011,35 @@ namespace DraftView.Infrastructure.Persistence.Migrations
                                 .HasForeignKey("PassageAnchorId");
                         });
 
+                    b.OwnsOne("DraftView.Domain.ValueObjects.PassageAnchorRejection", "Rejection", b1 =>
+                        {
+                            b1.Property<Guid>("PassageAnchorId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<DateTime?>("RejectedAt")
+                                .HasColumnType("timestamp with time zone")
+                                .HasColumnName("RejectedAt");
+
+                            b1.Property<Guid?>("RejectedByUserId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("RejectedByUserId");
+
+                            b1.Property<string>("Reason")
+                                .HasColumnType("TEXT")
+                                .HasColumnName("RejectedReason");
+
+                            b1.Property<Guid?>("TargetSectionVersionId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("RejectedTargetSectionVersionId");
+
+                            b1.HasKey("PassageAnchorId");
+
+                            b1.ToTable("PassageAnchors");
+
+                            b1.WithOwner()
+                                .HasForeignKey("PassageAnchorId");
+                        });
+
                     b.OwnsOne("DraftView.Domain.ValueObjects.PassageAnchorSnapshot", "OriginalSnapshot", b1 =>
                         {
                             b1.Property<Guid>("PassageAnchorId")
@@ -1069,6 +1098,8 @@ namespace DraftView.Infrastructure.Persistence.Migrations
                         });
 
                     b.Navigation("CurrentMatch");
+
+                    b.Navigation("Rejection");
 
                     b.Navigation("OriginalSnapshot")
                         .IsRequired();

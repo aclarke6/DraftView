@@ -123,5 +123,24 @@ public class PassageAnchorConfiguration : IEntityTypeConfiguration<PassageAnchor
                 .HasColumnName("CurrentReason")
                 .HasColumnType("TEXT");
         });
+
+        builder.OwnsOne(a => a.Rejection, rejection =>
+        {
+            rejection.Property(r => r.TargetSectionVersionId)
+                .HasColumnName("RejectedTargetSectionVersionId");
+
+            rejection.Property(r => r.RejectedByUserId)
+                .HasColumnName("RejectedByUserId");
+
+            rejection.Property(r => r.RejectedAt)
+                .HasColumnName("RejectedAt");
+
+            rejection.Property(r => r.Reason)
+                .HasColumnName("RejectedReason")
+                .HasColumnType("TEXT");
+        });
+
+        builder.Navigation(a => a.Rejection)
+            .IsRequired(false);
     }
 }

@@ -15,4 +15,5 @@ public sealed record PassageAnchorDto(
     PassageAnchorStatus Status,
     DateTime? UpdatedAt,
     PassageAnchorSnapshotDto OriginalSnapshot,
-    PassageAnchorMatchDto? CurrentMatch);
+    PassageAnchorMatchDto? CurrentMatch,
+    PassageAnchorRejectionDto? Rejection = null);

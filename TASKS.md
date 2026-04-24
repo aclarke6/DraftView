@@ -93,18 +93,18 @@ This is a **platform capability**, not a feature.
   - [DONE] Phase C3 — Rendering (inline indicators)
   - [DONE] Phase C4 — Tests
 
-- [ ] **RS-D — Deterministic Relocation**
+- [DONE] **RS-D — Deterministic Relocation**
   - [DONE] Phase D1 — Exact matching
   - [DONE] Phase D2 — Context matching
   - [DONE] Phase D3 — Fuzzy matching
   - [DONE] Phase D4 — Confidence scoring
   - [DONE] Phase D5 — Integration and tests
 
-- [In Progress] **RS-E — Human Override**
+- [DONE] **RS-E — Human Override**
   - [DONE] Phase E1 — Permission enforcement (reader + author only)
-  - [ ] Phase E2 — Reject match (“wrong place”)
-  - [ ] Phase E3 — Relink to new passage
-  - [ ] Phase E4 — Status tracking (actor + timestamp)
+  - [DONE] Phase E2 — Reject match (“wrong place”)
+  - [DONE] Phase E3 — Relink to new passage
+  - [DONE] Phase E4 — Status tracking (actor + timestamp)
 
 - [ ] **RS-F — Original Context**
   - [ ] Phase F1 — Retrieve original version content

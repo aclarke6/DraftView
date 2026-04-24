@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using DraftView.Domain.Contracts;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
+using DraftView.Domain.Exceptions;
 using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Interfaces.Services;
 using DraftView.Web.Models;
@@ -23,6 +24,7 @@ public abstract class BaseReaderController(
     IReadingProgressService progressService,
     IUserRepository userRepository,
     IReaderAccessRepository readerAccessRepo,
+    IHumanOverrideService humanOverrideService,
     IPassageAnchorService passageAnchorService,
     ILogger logger) : BaseController(userRepository)
 {
@@ -31,6 +33,7 @@ public abstract class BaseReaderController(
     protected readonly ICommentService             CommentService   = commentService;
     protected readonly IReadingProgressService     ProgressService  = progressService;
     protected readonly IReaderAccessRepository     ReaderAccessRepo = readerAccessRepo;
+    protected readonly IHumanOverrideService       HumanOverrideService = humanOverrideService;
     protected readonly IPassageAnchorService       PassageAnchorService = passageAnchorService;
 
     // -----------------------------------------------------------------------
@@ -187,11 +190,82 @@ public abstract class BaseReaderController(
     }
 
     // -----------------------------------------------------------------------
+    // POST: RejectPassageAnchor
+    // -----------------------------------------------------------------------
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RejectPassageAnchor(Guid anchorId, Guid chapterId, Guid sceneId, string? reason)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return Forbid();
+
+        try
+        {
+            await HumanOverrideService.RejectAsync(anchorId, user.Id, reason);
+        }
+        catch (UnauthorisedOperationException)
+        {
+            return Forbid();
+        }
+        catch (InvariantViolationException ex)
+        {
+            logger.LogError(ex, "Invalid reject request for passage anchor {AnchorId}", anchorId);
+            TempData["Error"] = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to reject passage anchor {AnchorId}", anchorId);
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectBackToReader(chapterId, sceneId);
+    }
+
+    // -----------------------------------------------------------------------
+    // POST: RelinkPassageAnchor
+    // -----------------------------------------------------------------------
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RelinkPassageAnchor(
+        Guid anchorId,
+        Guid chapterId,
+        Guid sceneId,
+        CreatePassageAnchorRequest passageAnchorRequest)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return Forbid();
+
+        try
+        {
+            await HumanOverrideService.RelinkAsync(anchorId, passageAnchorRequest, user.Id);
+        }
+        catch (UnauthorisedOperationException)
+        {
+            return Forbid();
+        }
+        catch (InvariantViolationException ex)
+        {
+            logger.LogError(ex, "Invalid relink request for passage anchor {AnchorId}", anchorId);
+            TempData["Error"] = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to relink passage anchor {AnchorId}", anchorId);
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectBackToReader(chapterId, sceneId);
+    }
+
+    // -----------------------------------------------------------------------
     // Shared helpers
     // -----------------------------------------------------------------------
     protected async Task<IReadOnlyList<CommentDisplayViewModel>> BuildCommentDisplayModelsAsync(
         IReadOnlyList<Comment> comments,
         Guid currentUserId,
+        Guid projectAuthorId,
         bool currentUserIsModerator)
     {
         var visibleComments = comments
@@ -231,6 +305,27 @@ public abstract class BaseReaderController(
             }
         }
 
+        var auditUserIds = anchorsById.Values
+            .Where(anchor => anchor is not null)
+            .SelectMany(anchor => new[]
+            {
+                anchor!.CurrentMatch?.ResolvedByUserId,
+                anchor.Rejection?.RejectedByUserId
+            })
+            .Where(id => id.HasValue && id.Value != Guid.Empty)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+
+        foreach (var auditUserId in auditUserIds)
+        {
+            if (authorNames.ContainsKey(auditUserId))
+                continue;
+
+            var auditUser = await userRepository.GetByIdAsync(auditUserId);
+            authorNames[auditUserId] = auditUser?.DisplayName ?? "Unknown";
+        }
+
         return visibleComments
             .Select(comment =>
             {
@@ -245,7 +340,17 @@ public abstract class BaseReaderController(
                     CanDelete         = canDelete,
                     CanEdit           = comment.AuthorId == currentUserId,
                     IsModerator       = currentUserIsModerator,
-                    PassageAnchor     = passageAnchor
+                    PassageAnchor     = passageAnchor,
+                    CanOverridePassageAnchor = passageAnchor is not null &&
+                        (comment.AuthorId == currentUserId || projectAuthorId == currentUserId),
+                    PassageAnchorResolvedByDisplayName = passageAnchor?.CurrentMatch?.ResolvedByUserId is Guid resolvedById &&
+                        authorNames.TryGetValue(resolvedById, out var resolvedByName)
+                        ? resolvedByName
+                        : null,
+                    PassageAnchorRejectedByDisplayName = passageAnchor?.Rejection?.RejectedByUserId is Guid rejectedById &&
+                        authorNames.TryGetValue(rejectedById, out var rejectedByName)
+                        ? rejectedByName
+                        : null
                 };
             })
             .ToList();
@@ -337,5 +442,20 @@ public abstract class BaseReaderController(
             return true;
         return all.Where(s => s.ParentId == section.Id && !s.IsSoftDeleted)
                   .Any(c => HasPublishedChapter(c, all));
+    }
+
+    /// <summary>
+    /// Redirects back to the appropriate reader view after a human override action.
+    /// </summary>
+    protected IActionResult RedirectBackToReader(Guid chapterId, Guid sceneId)
+    {
+        if (IsMobile())
+        {
+            var targetSceneId = sceneId == Guid.Empty ? chapterId : sceneId;
+            return RedirectToAction("Read", new { id = targetSceneId });
+        }
+
+        var anchor = sceneId == chapterId ? "chapter-comments" : "scene-" + sceneId;
+        return Redirect(Url.Action("Read", new { id = chapterId }) + "#" + anchor);
     }
 }

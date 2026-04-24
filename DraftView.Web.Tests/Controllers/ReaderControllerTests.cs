@@ -40,6 +40,7 @@ public class ReaderControllerTests
     private readonly Mock<ISectionVersionRepository> sectionVersionRepo = new();
     private readonly Mock<IReadEventRepository> readEventRepo = new();
     private readonly Mock<ISectionDiffService> sectionDiffService = new();
+    private readonly Mock<IHumanOverrideService> humanOverrideService = new();
     private readonly Mock<IPassageAnchorService> passageAnchorService = new();
     private readonly Mock<ILogger<ReaderController>> logger = new();
 
@@ -191,6 +192,99 @@ public class ReaderControllerTests
         var renderedComment = Assert.Single(renderedScene.Comments);
         Assert.NotNull(renderedComment.PassageAnchor);
         Assert.Equal(PassageAnchorStatus.Context, renderedComment.PassageAnchor!.Status);
+    }
+
+    [Fact]
+    public async Task RejectPassageAnchor_Mobile_RedirectsBackToScene()
+    {
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0 (iPhone)");
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        humanOverrideService.Setup(s => s.RejectAsync(
+                It.IsAny<Guid>(),
+                user.Id,
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PassageAnchorDto(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                PassageAnchorPurpose.Comment,
+                user.Id,
+                DateTime.UtcNow,
+                PassageAnchorStatus.UserRejected,
+                DateTime.UtcNow,
+                new PassageAnchorSnapshotDto(
+                    "Alpha beta",
+                    "Alpha beta",
+                    "hash",
+                    string.Empty,
+                    string.Empty,
+                    0,
+                    10,
+                    "content-hash",
+                    null),
+                null));
+
+        var result = await sut.RejectPassageAnchor(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "wrong place");
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Read", redirect.ActionName);
+    }
+
+    [Fact]
+    public async Task RelinkPassageAnchor_Mobile_RedirectsBackToScene()
+    {
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0 (iPhone)");
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        humanOverrideService.Setup(s => s.RelinkAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<CreatePassageAnchorRequest>(),
+                user.Id,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PassageAnchorDto(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                PassageAnchorPurpose.Comment,
+                user.Id,
+                DateTime.UtcNow,
+                PassageAnchorStatus.UserRelinked,
+                DateTime.UtcNow,
+                new PassageAnchorSnapshotDto(
+                    "Alpha beta",
+                    "Alpha beta",
+                    "hash",
+                    string.Empty,
+                    string.Empty,
+                    0,
+                    10,
+                    "content-hash",
+                    null),
+                null));
+
+        var request = new CreatePassageAnchorRequest(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            PassageAnchorPurpose.Comment,
+            "Alpha beta",
+            "Alpha beta",
+            "selected-hash",
+            string.Empty,
+            " gamma",
+            0,
+            10,
+            "content-hash");
+
+        var result = await sut.RelinkPassageAnchor(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), request);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Read", redirect.ActionName);
     }
 
     [Fact]
@@ -773,6 +867,7 @@ public class ReaderControllerTests
             sectionVersionRepo.Object,
             readEventRepo.Object,
             sectionDiffService.Object,
+            humanOverrideService.Object,
             passageAnchorService.Object,
             logger.Object);
 
@@ -1109,9 +1204,23 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
                         It.IsAny<CancellationToken>()))
                     .ReturnsAsync(anchoredCommentAnchor);
 
+                var humanOverrideService = new Mock<IHumanOverrideService>();
+
                 var progressService = new Mock<IReadingProgressService>();
                 progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), reader.Id, It.IsAny<CancellationToken>()))
                     .Returns(Task.CompletedTask);
+                progressService.Setup(r => r.UpdateLastReadVersionAsync(
+                        It.IsAny<Guid>(),
+                        reader.Id,
+                        It.IsAny<int>(),
+                        It.IsAny<CancellationToken>()))
+                    .Returns(Task.CompletedTask);
+                progressService.Setup(r => r.GetResumeRestoreTargetAsync(
+                        It.IsAny<Guid>(),
+                        It.IsAny<Guid?>(),
+                        reader.Id,
+                        It.IsAny<CancellationToken>()))
+                    .ReturnsAsync((ResumeRestoreTargetDto?)null);
 
                 var readEventRepo = new Mock<IReadEventRepository>();
                 readEventRepo.Setup(r => r.GetAsync(It.IsAny<Guid>(), reader.Id, It.IsAny<CancellationToken>()))
@@ -1151,6 +1260,7 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
                 services.AddSingleton(readEventRepo.Object);
                 services.AddSingleton(sectionDiffService.Object);
                 services.AddSingleton(systemStateMessageService.Object);
+                services.AddSingleton(humanOverrideService.Object);
                 services.AddSingleton(passageAnchorService.Object);
             });
         }
