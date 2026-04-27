@@ -106,8 +106,8 @@ This is a **platform capability**, not a feature.
   - [DONE] Phase E3 — Relink to new passage
   - [DONE] Phase E4 — Status tracking (actor + timestamp)
 
-- [ ] **RS-F — Original Context**
-  - [ ] Phase F1 — Retrieve original version content
+- [In Progress] **RS-F — Original Context**
+  - [DONE] Phase F1 — Retrieve original version content
   - [ ] Phase F2 — Navigate to original anchor
   - [ ] Phase F3 — UI integration (“View original context”)
 

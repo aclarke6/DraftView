@@ -1,4 +1,5 @@
-# RS-G Phase G1 - Integration (Cloud Execution Phase)
+````markdown
+# RS-G Phase G1 - AI Candidate Integration
 
 ## Execution Mode
 
@@ -6,139 +7,299 @@ Cloud Execution Phase.
 
 Apply the **Test Execution Override - Cloud Phases** rules from `AGENTS.md`.
 
-## Required Reading Order
+This phase is non-deployable and inactive by design.
 
-1. `AGENTS.md`
-2. `.github/Instructions/refactoring.instructions.md`
-3. `.github/Instructions/versioning.instructions.md`
-4. `TASKS.md`
-5. `Passage Anchoring, Reader Continuity, and Inline Commentary.md`
-6. `PRINCIPLES.md`
-7. `REFACTORING.md`
-
-Do not proceed until these documents have been read.
+AI must not influence user-facing behaviour in this phase.
 
 ---
 
 ## Objective
 
-Complete **RS-G Phase G1 - Integration** for the **AI-Assisted Relocation** sprint.
+Integrate AI candidate generation into the relocation pipeline without activating it.
 
-Sprint goal: Use AI only as a last-resort relocation assistant.
+AI must:
 
-**Deployable:** NON-DEPLOYABLE
-**Reason:** AI integration needs confidence handling before activation.
+- receive bounded scene-level comparison data only
+- return a candidate proposal
+- never persist or affect anchor state
+- never influence current match selection
+
+This phase prepares the pipeline only.
+
+---
+
+## Deployability
+
+**Deployable:** No  
 **Must be deployed with:** G2 and G3
 
 ---
 
-## Branching
+## Required Behaviour
 
-1. Checkout `main` and pull latest from `origin/main`.
-2. Create `RS-G-base` from `main` if it does not already exist.
-3. Create `RS-G-base/phase-g1-integration` from `RS-G-base`.
-4. All work for this phase must be committed on `RS-G-base/phase-g1-integration`.
-5. Developer merges: `RS-G-base/phase-g1-integration` -> `RS-G-base` -> `main`.
+### 1. Pipeline Position
 
----
+AI integration must be placed after deterministic relocation failure only.
 
-## Phase Source of Truth
+Deterministic pipeline:
 
-Primary source: `Passage Anchoring, Reader Continuity, and Inline Commentary.md`, Section 10 / RS-G / G1 - Integration.
+1. Exact
+2. Context
+3. Fuzzy
 
-Task index source: `TASKS.md`, RSprint section for **RS-G - AI-Assisted Relocation**.
+AI must only execute when no deterministic match exists, or deterministic confidence is below the configured AI activation threshold.
 
-These instructions are mandatory. If this prompt conflicts with the source document, follow the source document and stop to report the conflict before changing code.
+AI must never run before deterministic steps.
 
----
-
-## Scope
-
-- Integrate with AIScoringService or its established abstraction.
-- AI receives bounded candidate/context data, not entire project content.
-- AI does not activate user-facing behavior yet.
+AI must never run as a fallback for a successful deterministic match.
 
 ---
 
-## Deliverable
+### 2. AI Input Contract
 
-- AI candidate proposal integration.
-- Tests/mocks around bounded input and disabled activation.
+AI input must be limited to the original anchor context and the relevant source/target scene version content required for comparison.
+
+AI must never receive:
+
+- whole project manuscript content
+- unrelated sections
+- comments
+- reader data
+- author metadata
+- project metadata not required for matching
+
+Allowed input:
+
+```csharp
+public sealed class AiRelocationInput
+{
+    public string OriginalSelectedText { get; init; } = string.Empty;
+    public string NormalizedSelectedText { get; init; } = string.Empty;
+    public string PrefixContext { get; init; } = string.Empty;
+    public string SuffixContext { get; init; } = string.Empty;
+
+    public string? OriginalSceneCanonicalText { get; init; }
+    public string TargetSceneCanonicalText { get; init; } = string.Empty;
+
+    public int? OriginalStartOffset { get; init; }
+    public int? OriginalEndOffset { get; init; }
+}
+````
+
+Rules:
+
+* `TargetSceneCanonicalText` must be one relevant target scene version.
+* `OriginalSceneCanonicalText` may be included only when needed to compare old scene context against new scene context.
+* All text must be canonical text.
+* Input must be deterministic and reproducible.
+* No HTML should be passed to AI unless a current implementation proves canonical text is insufficient and the stop condition is reported first.
 
 ---
 
-## Hard Constraints
+### 3. AI Output Contract
 
-### Architecture
+AI must return a proposal only.
 
-- Preserve Domain -> Application -> Infrastructure -> Web layering.
-- Keep Web thin: validate input, resolve identity, call Application, map ViewModels, return responses.
-- Do not call repositories or DbContext from Web.
-- Do not let sync/import create, relocate, or mutate anchors.
-- Reader-facing anchor resolution must use `SectionVersion.HtmlContent` when a `SectionVersion` exists.
-- Existing comments and read events with null/no anchor data must remain valid.
+```csharp
+public sealed class AiRelocationProposal
+{
+    public bool HasCandidate { get; init; }
 
-### Trust and Safety
+    public int? StartOffset { get; init; }
+    public int? EndOffset { get; init; }
 
-- Original anchor snapshots are immutable.
-- Derived/current matches are replaceable except where user relink has higher authority.
-- Orphaned anchors must remain visible where their owning record is visible.
-- Confidence must be explicit and must not imply certainty for approximate matches.
-- Human relink and rejection outrank automated relocation.
+    public string MatchedText { get; init; } = string.Empty;
 
-### TDD Rules
+    public int ConfidenceScore { get; init; }
 
-- Create stubs with NotImplementedException where the phase requires new production types.
-- Write failing tests before production implementation for Domain, Application, and Infrastructure changes.
-- Confirm the tests fail for the expected reason before implementation.
-- Implement the smallest change that satisfies the tests.
-- Run the phase-required tests and any broader suites required by AGENTS.md.
+    public string Rationale { get; init; } = string.Empty;
+}
+```
+
+Rules:
+
+* Offsets must be canonical offsets in `TargetSceneCanonicalText`.
+* `ConfidenceScore` must be between 0 and 100.
+* `MatchedText` must be the proposed canonical target text.
+* `Rationale` must be short and bounded.
+* AI must not claim certainty.
+* AI output must have no side effects.
+
 ---
 
-## Required Implementation Steps
+### 4. Inactive Behaviour
 
-- Read AIScoringService.md and existing AI abstraction.
-- Write failing tests using a fake AI scorer.
-- Add adapter/orchestration for AI candidate proposals after deterministic failure.
-- Keep feature inactive until G3.
+In G1, AI output must not:
+
+* update `PassageAnchor.CurrentMatch`
+* update `PassageAnchor.Status`
+* persist an active match
+* influence returned active match
+* influence UI
+
+AI output may be returned internally as a proposal for tests and future G2/G3 integration.
+
 ---
 
-## Phase-Specific Tests
+### 5. Service Contract
 
-- AI receives bounded anchor/context data.
-- AI is not called before deterministic matching fails.
-- AI proposal does not persist active match before activation.
-- AI failures degrade safely.
+Add an Application-level abstraction unless an equivalent existing abstraction is already present:
+
+```csharp
+public interface IAiRelocationService
+{
+    Task<AiRelocationProposal> ProposeAsync(
+        AiRelocationInput input,
+        CancellationToken cancellationToken = default);
+}
+```
+
+Rules:
+
+* Must be mockable.
+* Must be called only by Application relocation orchestration.
+* Must not be called from Web.
+* Must not be referenced by Domain.
+* Infrastructure may provide the eventual implementation, including Ollama.
+
+Do not hard-code Ollama into Application.
+
+---
+
+### 6. Orchestration Contract
+
+Extend the existing relocation orchestration with an inactive AI proposal path.
+
+Required semantics:
+
+```text
+Run deterministic relocation.
+If deterministic relocation succeeds above threshold, return deterministic result.
+If deterministic relocation fails or is below AI activation threshold, request AI proposal.
+Do not persist the AI proposal in G1.
+Do not convert the AI proposal into CurrentMatch in G1.
+Return existing orphan or deterministic outcome unchanged.
+```
+
+---
+
+## Architecture Constraints
+
+* Domain must not depend on AI.
+* Application owns AI orchestration.
+* Infrastructure owns external AI implementation.
+* Web must not call AI directly.
+* No schema changes.
+* No migrations.
+* No persistence changes.
+* No UI changes.
+* Sync/import code must not call AI.
+
+---
+
+## TDD Requirements
+
+Follow strict TDD:
+
+1. Create stub with `NotImplementedException` where new production types are required.
+2. Write failing tests.
+3. Confirm failure reason.
+4. Implement minimal logic.
+5. Refactor only after tests are green.
+
+---
+
+## Required Tests
+
+### AI is not called before deterministic failure
+
+Given deterministic relocation succeeds above threshold
+When relocation runs
+Then AI is not called.
+
+### AI is called after deterministic failure
+
+Given exact, context, and fuzzy relocation fail
+When relocation runs
+Then AI proposal service is called.
+
+### AI receives bounded scene-level input
+
+Given relocation requires AI
+When AI is invoked
+Then input contains only original anchor context and relevant scene canonical text
+And does not contain project manuscript content, unrelated scenes, comments, reader data, author metadata, or project metadata.
+
+### AI proposal does not persist
+
+Given AI returns a candidate
+When relocation completes in G1
+Then `PassageAnchor.CurrentMatch` is unchanged
+And `PassageAnchor.Status` is unchanged.
+
+### AI proposal is inactive
+
+Given AI returns a candidate
+When relocation completes in G1
+Then the active relocation result remains the same result that would have been returned without AI.
+
+### AI failure degrades safely
+
+Given AI throws or fails
+When relocation runs
+Then no exception escapes
+And the result remains orphan or the existing deterministic outcome.
+
+### Domain remains AI-free
+
+Given the solution is inspected
+Then Domain contains no dependency on `IAiRelocationService`, Ollama, AI scoring clients, or AI prompt types.
+
 ---
 
 ## Stop Conditions
 
-Stop immediately and report if any of the following occur:
+Stop immediately if:
 
-- AI would need entire project content.
-- AI would run before deterministic relocation.
-- No fake/test abstraction exists for AI calls.
-- A phase requires changing reader content resolution away from SectionVersion.
-- A migration would require destructive schema change or mandatory data backfill.
-- A Web controller needs to own business logic to complete the phase.
-- Matching thresholds would cause ambiguous matches to appear certain.
-- AI would need to run before deterministic relocation.
+* AI requires whole project manuscript content.
+* AI requires unrelated scenes.
+* AI requires comments, reader data, author metadata, or project metadata.
+* AI must be called before deterministic relocation completes.
+* AI output would be persisted in G1.
+* AI output would influence active match selection in G1.
+* Domain layer would require an AI dependency.
+* Web layer would need to call AI directly.
+* No mockable/testable abstraction can be introduced.
+* Existing relocation pipeline cannot expose deterministic failure without changing unrelated behaviour.
+
 ---
 
 ## Definition of Done
 
-This phase is done only when:
+This phase is complete only when:
 
-- AI can propose a candidate without activating user-facing behavior.
-- G1 is not deployed alone.
-- `git diff --check` passes for changed files.
-- No unrelated files are changed.
-- Any test suite required by this phase has passed, or the reason it could not be run is documented.
+* AI proposal can be generated after deterministic failure.
+* AI receives bounded scene-level comparison input only.
+* AI does not affect anchor state.
+* AI does not affect active relocation outcome.
+* Domain remains AI-free.
+* Web remains AI-free.
+* No schema changes exist.
+* No UI changes exist.
+* Phase tests pass.
+* Required broader tests pass, or the exact reason they could not be run is documented.
+* `git diff --check` passes.
+* Changes are committed on `RS-G-base/phase-g1-integration`.
 
 ---
 
 ## Final Instruction
 
-Be precise, conservative, and architecture-led.
+AI exists in this phase as a silent advisor only.
 
-This phase is successful only if AI candidate generation is integrated but inactive.
+It must not decide, persist, or influence outcomes.
+
+Only propose.
+
+```
+```
