@@ -6,6 +6,10 @@ namespace DraftView.Infrastructure.Persistence.Repositories;
 
 public class SectionVersionRepository(DraftViewDbContext db) : ISectionVersionRepository
 {
+    public async Task<SectionVersion?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
+        await db.SectionVersions
+            .FirstOrDefaultAsync(v => v.Id == id, ct);
+
     public async Task<int> GetMaxVersionNumberAsync(Guid sectionId, CancellationToken ct = default)
     {
         var maxVersion = await db.SectionVersions

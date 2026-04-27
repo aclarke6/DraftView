@@ -5,6 +5,9 @@ namespace DraftView.Domain.Interfaces.Repositories;
 /// </summary>
 public interface ISectionVersionRepository
 {
+    /// <summary>Returns a SectionVersion by id, or null if not found.</summary>
+    Task<Domain.Entities.SectionVersion?> GetByIdAsync(Guid id, CancellationToken ct = default);
+
     /// <summary>Returns the highest VersionNumber for a section, or 0 if none exist.</summary>
     Task<int> GetMaxVersionNumberAsync(Guid sectionId, CancellationToken ct = default);
 
