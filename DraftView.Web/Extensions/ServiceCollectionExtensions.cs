@@ -99,6 +99,7 @@ namespace DraftView.Web.Extensions
             services.AddScoped<IAuthenticationUserLookupService, AuthenticationUserLookupService>();
             services.AddScoped<IReadingProgressService, ReadingProgressService>();
             services.AddScoped<IPassageAnchorService, PassageAnchorService>();
+            services.AddScoped<IHumanOverrideService, HumanOverrideService>();
             services.AddScoped<INotificationService, NotificationService>();
             services.AddScoped<IDashboardService, DashboardService>();
             services.AddScoped<ISystemStateMessageService, SystemStateMessageService>();
