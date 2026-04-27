@@ -1,10 +1,17 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using DraftView.Domain.Interfaces.Services;
+using DraftView.Application.Services;
 using DraftView.Web.Extensions;
 using Xunit;
-using System.Linq;
 
 namespace DraftView.Web.Tests;
 
+/// <summary>
+/// Tests service registration performed by web-layer service collection extensions.
+/// Covers: authorization policy registration and human override service DI wiring.
+/// Excludes: controller behaviour and application-service logic.
+/// </summary>
 public class AuthorizationPolicyRegistrationTests
 {
     [Fact]
@@ -29,5 +36,24 @@ public class AuthorizationPolicyRegistrationTests
 
         Assert.NotNull(authorPolicy);
         Assert.NotNull(readerPolicy);
+    }
+
+    [Fact]
+    public void AddApplicationServices_RegistersHumanOverrideService()
+    {
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?>
+            {
+                ["EmailProtection:EncryptionKey"] = Convert.ToBase64String(new byte[32]),
+                ["EmailProtection:LookupHmacKey"] = Convert.ToBase64String(new byte[32])
+            }).Build();
+
+        services.AddApplicationServices(configuration);
+
+        var registration = Assert.Single(services, sd => sd.ServiceType == typeof(IHumanOverrideService));
+
+        Assert.Equal(typeof(HumanOverrideService), registration.ImplementationType);
+        Assert.Equal(ServiceLifetime.Scoped, registration.Lifetime);
     }
 }
