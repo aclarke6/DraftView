@@ -67,17 +67,18 @@ public class UserServiceInvitationIssuanceTests
     [Fact]
     public async Task IssueInvitationAsync_WithExpiry_EmailBodyStatesExpiryDate()
     {
-        var expiresAt = new DateTime(2026, 6, 30, 0, 0, 0, DateTimeKind.Utc);
+        var expiresAt = DateTime.UtcNow.AddDays(30);
         var sut = CreateSut();
 
         await sut.IssueInvitationAsync(
             "reader@example.com", "Reader One", ExpiryPolicy.ExpiresAt, expiresAt, Author.Id);
 
+        var expectedDateText = expiresAt.ToString("d MMMM yyyy");
         EmailSender.Verify(e => e.SendAsync(
             "reader@example.com",
             It.IsAny<string>(),
             It.IsAny<string>(),
-            It.Is<string>(body => body.Contains("30 June 2026")),
+            It.Is<string>(body => body.Contains(expectedDateText)),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
