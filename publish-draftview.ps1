@@ -1,7 +1,7 @@
 ﻿# publish-draftview.ps1
 $project = "C:\Users\alast\source\repos\DraftView\DraftView.Web\DraftView.Web.csproj"
 $output  = "C:\Users\alast\publish\draftview"
-$server  = "ubuntu@193.123.182.208"
+$server  = "ubuntu@141.147.71.62"
 $key     = "C:\Users\alast\.ssh\draftview-prod.key"
 $remote  = "/var/www/draftview"
 
