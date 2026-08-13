@@ -124,6 +124,9 @@
     <File Path=".github/Prompts/S-Sprint-Prompts/ssprint8-phase3.prompt.md" />
     <File Path=".github/Prompts/S-Sprint-Prompts/ssprint8-phase4.prompt.md" />
   </Folder>
+  <Folder Name="/Solution Items/Production/">
+    <File Path="appsettings.Production.json" />
+  </Folder>
   <Folder Name="/Solution Items/UAT/">
     <File Path="DraftView-UAT-Plan.md" />
   </Folder>
