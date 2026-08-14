@@ -110,6 +110,8 @@ See `REFACTORING.md` for full detail.
 
 ### Bugs Fixed
 
+- [DONE] BUG-020 — BetaBooksImporter broken by email encryption-at-rest migration; fixed email lookup to use `IUserRepository.GetByEmailAsync` (HMAC-based), and key loading to use configured `EmailProtection__EncryptionKey`/`EmailProtection__LookupHmacKey` env vars instead of random parameterless-ctor keys (2026-08-14)
+- [DONE] BUG-019 — Add Project timed out (Cloudflare 524) on large Scrivener projects; AddProjects POST now fires background `Task.Run` with `IServiceScopeFactory` scope, matching existing Sync pattern, and sets `SyncStatus.Syncing` before redirect (2026-08-14)
 - [DONE] BUG-018 — Reader view did not display scene version number; DesktopRead and MobileRead now render a persistent scene version label from existing `CurrentVersionNumber` (`vN`) independent of update-banner state (2026-04-21)
 - [DONE] BUG-017 — Sections view did not clearly surface pending synced scene changes; added explicit chapter-level “Pending changes” indication for published chapters with changed child scenes (2026-04-21)
 - [DONE] BUG-016 — Publishing page leaked raw Razor token for version label; scene version hint now renders explicitly as text (e.g. `v3`) instead of showing `v@doc.CurrentVersionNumber` (2026-04-21)

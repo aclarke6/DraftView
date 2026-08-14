@@ -1,8 +1,12 @@
 ﻿using System.Diagnostics;
 using System.Text;
+using DraftView.DevTools;
 using DraftView.Domain.Interfaces.Services;
 using DraftView.Infrastructure.Parsing;
-using DraftView.DevTools;
+using DraftView.Infrastructure.Persistence;
+using DraftView.Infrastructure.Persistence.Repositories;
+using DraftView.Infrastructure.Security;
+using Microsoft.EntityFrameworkCore;
 
 // ---------------------------------------------------------------------------
 // email-test mode
@@ -30,7 +34,34 @@ if (args.Length > 0 && args[0] == "--import")
     var connString  = args.Length > 1 ? args[1] : throw new ArgumentException("Connection string required.");
     var jsonPath    = args.Length > 2 ? args[2] : @"C:\Users\alast\source\repos\DraftView\betabooks-export.json";
     var authorEmail = args.Length > 3 ? args[3] : "ajclarke@myyahoo.com";
-    return await BetaBooksImporter.RunAsync(connString, jsonPath, authorEmail);
+
+    var encKeyB64  = Environment.GetEnvironmentVariable("EmailProtection__EncryptionKey")
+                  ?? throw new InvalidOperationException(
+                         "Missing required env var: EmailProtection__EncryptionKey (base64-encoded 32-byte key)");
+    var hmacKeyB64 = Environment.GetEnvironmentVariable("EmailProtection__LookupHmacKey")
+                  ?? throw new InvalidOperationException(
+                         "Missing required env var: EmailProtection__LookupHmacKey (base64-encoded 32-byte key)");
+
+    byte[] encKey, hmacKey;
+    try  { encKey  = Convert.FromBase64String(encKeyB64); }
+    catch (FormatException) { throw new InvalidOperationException("EmailProtection__EncryptionKey is not valid base64."); }
+    try  { hmacKey = Convert.FromBase64String(hmacKeyB64); }
+    catch (FormatException) { throw new InvalidOperationException("EmailProtection__LookupHmacKey is not valid base64."); }
+
+    if (encKey.Length  != 32) throw new InvalidOperationException("EmailProtection__EncryptionKey must decode to exactly 32 bytes.");
+    if (hmacKey.Length != 32) throw new InvalidOperationException("EmailProtection__LookupHmacKey must decode to exactly 32 bytes.");
+
+    var encService  = new UserEmailEncryptionService(encKey);
+    var hmacService = new UserEmailLookupHmacService(hmacKey);
+
+    var dbOptions = new DbContextOptionsBuilder<DraftViewDbContext>()
+        .UseNpgsql(connString)
+        .Options;
+
+    await using var db = new DraftViewDbContext(dbOptions, encService, hmacService);
+    var userRepo       = new UserRepository(db, encService, hmacService);
+
+    return await BetaBooksImporter.RunAsync(db, userRepo, jsonPath, authorEmail);
 }
 
 // ---------------------------------------------------------------------------

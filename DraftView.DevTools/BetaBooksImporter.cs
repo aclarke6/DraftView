@@ -1,16 +1,16 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
+using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Infrastructure.Persistence;
 
 namespace DraftView.DevTools;
 
 public static class BetaBooksImporter
 {
-    public static async Task<int> RunAsync(string connectionString, string jsonPath, string authorEmail, string projectName = "Book 1 - The Fractured Lattice")
+    public static async Task<int> RunAsync(DraftViewDbContext db, IUserRepository userRepo, string jsonPath, string authorEmail, string projectName = "Book 1 - The Fractured Lattice")
     {
         Console.WriteLine("BetaBooks Importer");
         Console.WriteLine("JSON  : " + jsonPath);
@@ -28,13 +28,7 @@ public static class BetaBooksImporter
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
             ?? throw new InvalidOperationException("Failed to deserialize JSON.");
 
-        var options = new DbContextOptionsBuilder<DraftViewDbContext>()
-            .UseNpgsql(connectionString)
-            .Options;
-
-        using var db = new DraftViewDbContext(options);
-
-        var author = await db.AppUsers.FirstOrDefaultAsync(u => u.Email == authorEmail)
+        var author = await userRepo.GetByEmailAsync(authorEmail)
             ?? throw new InvalidOperationException("Author not found: " + authorEmail);
         Console.WriteLine("Author found: " + author.DisplayName + " (" + author.Id + ")");
 
@@ -59,7 +53,7 @@ public static class BetaBooksImporter
         foreach (var name in readerNames)
         {
             var email    = NameToEmail(name);
-            var existing = await db.AppUsers.FirstOrDefaultAsync(u => u.Email == email);
+            var existing = await userRepo.GetByEmailAsync(email);
 
             if (existing != null)
             {
