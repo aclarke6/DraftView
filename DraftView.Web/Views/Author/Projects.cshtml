@@ -1,8 +1,5 @@
-﻿@model IReadOnlyList<DraftView.Domain.Interfaces.Services.DiscoveredProject>
 @{
     ViewData["Title"] = "Add Project";
-    var available = Model.Where(p => !p.AlreadyAdded).ToList();
-    var added     = Model.Where(p => p.AlreadyAdded).ToList();
 }
 
 <div class="page-header">
@@ -14,16 +11,19 @@
 
 <p><a asp-action="Dashboard">&larr; Back to Dashboard</a></p>
 
-@if (!Model.Any())
-{
+<div id="loadingState" style="text-align:center; padding:var(--space-10);">
+    <p style="color:var(--color-ink-muted);">Loading projects from Dropbox&hellip;</p>
+</div>
+
+<div id="errorState" style="display:none;">
     <div class="card">
         <div class="card__body" style="text-align:center; padding:var(--space-10);">
-            <p class="ss-text-muted">No projects found in your Dropbox vault.</p>
+            <p id="errorMessage" style="color:var(--color-ink-muted);"></p>
         </div>
     </div>
-}
-else
-{
+</div>
+
+<div id="projectsContainer" style="display:none;">
     <form asp-action="AddProjects" method="post" id="addProjectsForm">
         @Html.AntiForgeryToken()
 
@@ -33,27 +33,12 @@ else
             <div class="card">
                 <div class="card__header">
                     <span class="card__title">Available</span>
-                    <span style="font-size:var(--text-sm); color:var(--color-ink-muted);">@available.Count vault(s)</span>
+                    <span id="availableCount" style="font-size:var(--text-sm); color:var(--color-ink-muted);">0 vault(s)</span>
                 </div>
                 <div id="availableList" style="min-height:120px; padding:var(--space-2);">
-                    @foreach (var p in available)
-                    {
-                        <div class="project-item" data-uuid="@p.SyncRootId" data-name="@p.Name" data-vault="@System.IO.Path.GetFileName(p.DropboxPath)"
-                             style="display:flex; justify-content:space-between; align-items:center; padding:var(--space-3) var(--space-4); border-radius:6px; margin-bottom:var(--space-2); background:var(--color-surface); border:1px solid var(--color-border); cursor:pointer;"
-                             onclick="moveToSelected(this)">
-                            <div>
-                                <div style="font-weight:500; font-size:var(--text-sm);">@p.Name</div>
-                                <div style="font-size:0.75rem; color:var(--color-ink-muted);">@System.IO.Path.GetFileName(p.DropboxPath)</div>
-                            </div>
-                            <span style="color:var(--color-accent); font-size:1.1em;">&rsaquo;</span>
-                        </div>
-                    }
-                    @if (!available.Any())
-                    {
-                        <p style="color:var(--color-ink-muted); font-size:var(--text-sm); padding:var(--space-4); text-align:center;">
-                            All projects already added
-                        </p>
-                    }
+                    <p id="emptyAvailableMsg" style="color:var(--color-ink-muted); font-size:var(--text-sm); padding:var(--space-4); text-align:center; display:none;">
+                        All projects already added
+                    </p>
                 </div>
             </div>
 
@@ -79,27 +64,15 @@ else
             </div>
         </div>
 
-        <!-- Already added (read-only) -->
-        @if (added.Any())
-        {
-            <div class="card" style="margin-bottom:var(--space-6);">
+        <!-- Already added (populated by JS) -->
+        <div id="alreadyAddedSection" style="display:none; margin-bottom:var(--space-6);">
+            <div class="card">
                 <div class="card__header">
                     <span class="card__title">Already Added</span>
                 </div>
-                <div style="padding:var(--space-2);">
-                    @foreach (var p in added)
-                    {
-                        <div style="display:flex; justify-content:space-between; align-items:center; padding:var(--space-3) var(--space-4); border-radius:6px; margin-bottom:var(--space-2); background:var(--color-surface); border:1px solid var(--color-border); opacity:0.6;">
-                            <div>
-                                <div style="font-weight:500; font-size:var(--text-sm);">@p.Name</div>
-                                <div style="font-size:0.75rem; color:var(--color-ink-muted);">@System.IO.Path.GetFileName(p.DropboxPath)</div>
-                            </div>
-                            <span style="color:var(--color-success); font-size:var(--text-sm);">&#10003; Added</span>
-                        </div>
-                    }
-                </div>
+                <div id="alreadyAddedList" style="padding:var(--space-2);"></div>
             </div>
-        }
+        </div>
 
         <!-- Hidden inputs populated by JS -->
         <div id="hiddenInputs"></div>
@@ -109,14 +82,28 @@ else
             <a asp-action="Dashboard" class="btn btn--secondary">Cancel</a>
         </div>
     </form>
-}
+</div>
 
 <script>
+    function esc(str) {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function makeAvailableItem(p) {
+        const el = document.createElement('div');
+        el.className = 'project-item';
+        el.dataset.uuid = p.syncRootId;
+        el.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:var(--space-3) var(--space-4); border-radius:6px; margin-bottom:var(--space-2); background:var(--color-surface); border:1px solid var(--color-border); cursor:pointer;';
+        el.innerHTML = `<div><div style="font-weight:500; font-size:var(--text-sm);">${esc(p.name)}</div><div style="font-size:0.75rem; color:var(--color-ink-muted);">${esc(p.vaultName)}</div></div><span style="color:var(--color-accent); font-size:1.1em;">&rsaquo;</span>`;
+        el.onclick = function () { moveToSelected(el); };
+        return el;
+    }
+
     function moveToSelected(el) {
         el.onclick = null;
         el.querySelector('span').innerHTML = '&lsaquo;';
         el.querySelector('span').style.color = 'var(--color-danger)';
-        el.onclick = function() { moveToAvailable(el); };
+        el.onclick = function () { moveToAvailable(el); };
         document.getElementById('selectedList').appendChild(el);
         updateState();
     }
@@ -125,47 +112,73 @@ else
         el.onclick = null;
         el.querySelector('span').innerHTML = '&rsaquo;';
         el.querySelector('span').style.color = 'var(--color-accent)';
-        el.onclick = function() { moveToSelected(el); };
+        el.onclick = function () { moveToSelected(el); };
         document.getElementById('availableList').appendChild(el);
         updateState();
     }
 
     function moveAllToSelected() {
-        const items = [...document.getElementById('availableList').querySelectorAll('.project-item')];
-        items.forEach(el => moveToSelected(el));
+        [...document.getElementById('availableList').querySelectorAll('.project-item')].forEach(el => moveToSelected(el));
     }
 
     function moveAllToAvailable() {
-        const items = [...document.getElementById('selectedList').querySelectorAll('.project-item')];
-        items.forEach(el => moveToAvailable(el));
+        [...document.getElementById('selectedList').querySelectorAll('.project-item')].forEach(el => moveToAvailable(el));
     }
 
     function updateState() {
-        const selected = document.getElementById('selectedList').querySelectorAll('.project-item');
+        const selected  = document.getElementById('selectedList').querySelectorAll('.project-item');
         const available = document.getElementById('availableList').querySelectorAll('.project-item');
 
-        // Update count
-        document.getElementById('selectedCount').textContent = selected.length + ' selected';
-
-        // Toggle empty message
-        document.getElementById('emptySelectedMsg').style.display =
-            selected.length === 0 ? 'block' : 'none';
-
-        // Enable/disable submit
+        document.getElementById('selectedCount').textContent  = selected.length + ' selected';
+        document.getElementById('availableCount').textContent = available.length + ' vault(s)';
+        document.getElementById('emptySelectedMsg').style.display  = selected.length  === 0 ? 'block' : 'none';
+        document.getElementById('emptyAvailableMsg').style.display = available.length === 0 ? 'block' : 'none';
         document.getElementById('submitBtn').disabled = selected.length === 0;
 
-        // Rebuild hidden inputs
         const container = document.getElementById('hiddenInputs');
         container.innerHTML = '';
         selected.forEach(el => {
             const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'selectedUuids';
+            input.type  = 'hidden';
+            input.name  = 'selectedUuids';
             input.value = el.dataset.uuid;
             container.appendChild(input);
         });
     }
 
-    // Init
-    updateState();
+    async function loadProjects() {
+        try {
+            const response = await fetch('/Author/DiscoverProjects');
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            const projects = await response.json();
+
+            const available = projects.filter(p => !p.alreadyAdded);
+            const added     = projects.filter(p => p.alreadyAdded);
+
+            const availableList = document.getElementById('availableList');
+            available.forEach(p => availableList.appendChild(makeAvailableItem(p)));
+
+            if (added.length > 0) {
+                const addedList = document.getElementById('alreadyAddedList');
+                added.forEach(p => {
+                    const el = document.createElement('div');
+                    el.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:var(--space-3) var(--space-4); border-radius:6px; margin-bottom:var(--space-2); background:var(--color-surface); border:1px solid var(--color-border); opacity:0.6;';
+                    el.innerHTML = `<div><div style="font-weight:500; font-size:var(--text-sm);">${esc(p.name)}</div><div style="font-size:0.75rem; color:var(--color-ink-muted);">${esc(p.vaultName)}</div></div><span style="color:var(--color-success); font-size:var(--text-sm);">&#10003; Added</span>`;
+                    addedList.appendChild(el);
+                });
+                document.getElementById('alreadyAddedSection').style.display = 'block';
+            }
+
+            document.getElementById('loadingState').style.display   = 'none';
+            document.getElementById('projectsContainer').style.display = 'block';
+            updateState();
+
+        } catch {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('errorMessage').textContent   = 'Failed to load projects from Dropbox. Please try again.';
+            document.getElementById('errorState').style.display   = 'block';
+        }
+    }
+
+    loadProjects();
 </script>

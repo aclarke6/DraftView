@@ -825,13 +825,28 @@ public class AuthorController(
     // ---------------------------------------------------------------------------
     // Projects discovery
     // ---------------------------------------------------------------------------
+    [HttpGet]
     public async Task<IActionResult> Projects()
     {
         var (author, error) = await RequireCurrentAuthorAsync();
         if (error is not null || author is null) return error ?? Forbid();
+        return View();
+    }
 
-        var discovered = await discoveryService.DiscoverAsync(author.Id);
-        return View(discovered);
+    [HttpGet]
+    public async Task<IActionResult> DiscoverProjects(CancellationToken ct)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return Unauthorized();
+
+        var discovered = await discoveryService.DiscoverAsync(author.Id, ct);
+        return Json(discovered.Select(p => new
+        {
+            p.Name,
+            syncRootId = p.SyncRootId,
+            vaultName  = Path.GetFileName(p.DropboxPath),
+            p.AlreadyAdded
+        }));
     }
 
     [HttpPost]
