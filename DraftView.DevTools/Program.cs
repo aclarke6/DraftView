@@ -7,6 +7,7 @@ using DraftView.Infrastructure.Persistence;
 using DraftView.Infrastructure.Persistence.Repositories;
 using DraftView.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 // ---------------------------------------------------------------------------
 // email-test mode
@@ -31,28 +32,24 @@ if (args.Length > 0 && args[0] == "repair-dev-users")
 // ---------------------------------------------------------------------------
 if (args.Length > 0 && args[0] == "--import")
 {
-    var connString  = args.Length > 1 ? args[1] : throw new ArgumentException("Connection string required.");
-    var jsonPath    = args.Length > 2 ? args[2] : @"C:\Users\alast\source\repos\DraftView\betabooks-export.json";
-    var authorEmail = args.Length > 3 ? args[3] : "ajclarke@myyahoo.com";
+    var jsonPath    = args.Length > 1 ? args[1] : @"C:\Users\alast\source\repos\DraftView\betabooks-export.json";
+    var authorEmail = args.Length > 2 ? args[2] : "ajclarke@myyahoo.com";
 
-    var encKeyB64  = Environment.GetEnvironmentVariable("EmailProtection__EncryptionKey")
-                  ?? throw new InvalidOperationException(
-                         "Missing required env var: EmailProtection__EncryptionKey (base64-encoded 32-byte key)");
-    var hmacKeyB64 = Environment.GetEnvironmentVariable("EmailProtection__LookupHmacKey")
-                  ?? throw new InvalidOperationException(
-                         "Missing required env var: EmailProtection__LookupHmacKey (base64-encoded 32-byte key)");
+    const string webSecretsId = "0e437bf4-da42-4cf8-86cd-072126366d5c";
+    var config = new ConfigurationBuilder()
+        .AddUserSecrets(webSecretsId)
+        .AddEnvironmentVariables()
+        .Build();
 
-    byte[] encKey, hmacKey;
-    try  { encKey  = Convert.FromBase64String(encKeyB64); }
-    catch (FormatException) { throw new InvalidOperationException("EmailProtection__EncryptionKey is not valid base64."); }
-    try  { hmacKey = Convert.FromBase64String(hmacKeyB64); }
-    catch (FormatException) { throw new InvalidOperationException("EmailProtection__LookupHmacKey is not valid base64."); }
+    var connString = config.GetConnectionString("DefaultConnection")
+                  ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection not found in DraftView.Web user secrets.");
+    var encKeyB64  = config["EmailProtection:EncryptionKey"]
+                  ?? throw new InvalidOperationException("EmailProtection:EncryptionKey not found in DraftView.Web user secrets.");
+    var hmacKeyB64 = config["EmailProtection:LookupHmacKey"]
+                  ?? throw new InvalidOperationException("EmailProtection:LookupHmacKey not found in DraftView.Web user secrets.");
 
-    if (encKey.Length  != 32) throw new InvalidOperationException("EmailProtection__EncryptionKey must decode to exactly 32 bytes.");
-    if (hmacKey.Length != 32) throw new InvalidOperationException("EmailProtection__LookupHmacKey must decode to exactly 32 bytes.");
-
-    var encService  = new UserEmailEncryptionService(encKey);
-    var hmacService = new UserEmailLookupHmacService(hmacKey);
+    var encService  = new UserEmailEncryptionService(Convert.FromBase64String(encKeyB64));
+    var hmacService = new UserEmailLookupHmacService(Convert.FromBase64String(hmacKeyB64));
 
     var dbOptions = new DbContextOptionsBuilder<DraftViewDbContext>()
         .UseNpgsql(connString)
