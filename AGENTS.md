@@ -159,9 +159,9 @@ Examples: changing a redirect target, switching from awaited to fire-and-forget 
 
 ---
 
-### Wiring changes — tests only when there is a serious need
+### Wiring changes — do not write tests
 
-For pure wiring changes, do not write tests by default.
+For pure wiring changes, do not write tests.
 
 A wiring change is one where:
 
@@ -169,9 +169,9 @@ A wiring change is one where:
 - the change delegates entirely to existing, tested components
 - no new invariant is introduced
 
-Write tests for a wiring change only when there is a specific, concrete reason — for example, a regression has occurred in this area before, the wiring is non-obvious and easy to break silently, or the change crosses a boundary that is otherwise untested.
+The bar for adding a test to a wiring change is very high. A prior regression in the area is not sufficient justification — it may itself have been added reflexively. The only valid reason is a documented, specific fragility that cannot be protected any other way.
 
-Do not add tests to satisfy a general preference for coverage. Agents must not write wiring tests by default and must not justify doing so by citing "good practice".
+Agents must not add wiring tests by default, on preference, or citing prior regressions. If a wiring test is genuinely warranted, state the exact reason explicitly before writing it.
 
 
 ## Test Execution Override — Cloud Phases
