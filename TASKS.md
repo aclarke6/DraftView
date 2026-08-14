@@ -234,6 +234,7 @@ See `REFACTORING.md` for full detail.
 
 ### Bugs Fixed
 
+- [DONE] BUG-019 — "Add Project" Cloudflare 524 timeout on large Scrivener projects; `ParseProjectAsync` was awaited on the HTTP request thread in `AddProjects`; fixed by calling `MarkSyncing()`, saving, then firing `Task.Run` with `IServiceScopeFactory` scope (matching the existing `Sync` action pattern); Dashboard progress bar now activates automatically on redirect
 - [DONE] Production database migration drift — reader page failed because PassageAnchor rejection audit columns were missing; root cause was earlier real migration not applied and later empty migration recorded, causing EF snapshot/history drift; resolved with corrective migration `20260427123533_ApplyMissingPassageAnchorRejectionAudit`; production verified via `__EFMigrationsHistory` entry and `PassageAnchors` columns `RejectedAt`, `RejectedByUserId`, `RejectedReason`, `RejectedTargetSectionVersionId`
 - [DONE] Empty EF migration guard — added Roslyn-based infrastructure test for empty `Up(MigrationBuilder)` methods; allows only legacy exception `20260427121437_AddPassageAnchorFields.cs` with explicit comment because it was superseded by `20260427123533_ApplyMissingPassageAnchorRejectionAudit`; full suite verified green: 860 total, 859 passed, 1 skipped, 0 failed
 - [DONE] BUG-018 — Reader view did not display scene version number; DesktopRead and MobileRead now render a persistent scene version label from existing `CurrentVersionNumber` (`vN`) independent of update-banner state (2026-04-21)
