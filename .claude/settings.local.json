@@ -8,7 +8,25 @@
       "Bash(dotnet ef:*)",
       "Bash(git checkout:*)",
       "mcp__bf7c680d-5fdc-5ef4-b4a0-abadb619bf0a__delete_trigger",
-      "mcp__bf7c680d-5fdc-5ef4-b4a0-abadb619bf0a__send_later"
+      "mcp__bf7c680d-5fdc-5ef4-b4a0-abadb619bf0a__send_later",
+      "Bash(journalctl *)",
+      "Read(//var/www/draftview/**)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(d.get\\('ConnectionStrings'\\)\\)\")",
+      "Bash(python3 *)",
+      "Bash(psql -h localhost -U draftview -d draftview -c ' *)",
+      "Bash(psql -h localhost -U draftview -d draftview -c '\\\\d \"AppUsers\"')",
+      "Bash(gh auth *)",
+      "Read(//home/ubuntu/**)",
+      "Bash(pg_dump --version)",
+      "Bash(systemctl is-active *)",
+      "Bash(pg_isready)",
+      "Read(//var/backups/**)",
+      "Read(//etc/cron.d/**)",
+      "Bash(find / -name \"appsettings.Production.json\")",
+      "Bash(getent passwd *)",
+      "Bash(git -C /home/ubuntu/DraftView remote -v)",
+      "Bash(systemctl cat *)",
+      "Read(//etc/systemd/system/**)"
     ]
   }
 }
