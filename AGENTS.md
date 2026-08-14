@@ -128,15 +128,48 @@ Sequence:
 
 ## TDD
 
-For Domain, Application, and Infrastructure:
+### Where TDD is mandatory
+
+**Domain, Application, and Infrastructure changes always require TDD.**
+
+No exceptions. The red/green cycle must be followed:
 
 1. Create stub with NotImplementedException
-2. Write failing tests
-3. Implement until tests pass
-4. Run full test suite
-5. Refactor safely
+2. Write failing tests — confirm RED
+3. Implement until tests pass — confirm GREEN
+4. Run full test suite and report count
+5. Refactor safely under green
 
-Agents must not write production code without tests where required.
+Agents must not write production code in these layers without tests.
+
+---
+
+### Where TDD is not required
+
+**Web layer routing changes do not require TDD.**
+
+A routing change is one where:
+
+- no new application logic is introduced
+- no new domain behaviour is introduced
+- the change wires existing, already-tested services differently
+- the change mirrors an established pattern already present in the same file or controller
+
+Examples: changing a redirect target, switching from awaited to fire-and-forget using an existing pattern, reordering controller actions, adding a new action that delegates entirely to an application service.
+
+---
+
+### Preferred but not mechanically forced
+
+TDD is preferred over skipping tests entirely, but must not be applied mechanically where it adds no value.
+
+A pure wiring change does not benefit from a stub-first flow when:
+
+- the behaviour being wired is already covered by tests in the layer that owns it
+- the only thing a controller test would assert is that a mock was called — which tests the mock, not the behaviour
+- the test would be structurally identical to an existing test, with no new invariant being protected
+
+In these cases, agents should note that tests were considered and explain why they were not required, rather than silently omitting them.
 
 
 ## Test Execution Override — Cloud Phases
