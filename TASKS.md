@@ -49,6 +49,7 @@ Last updated: 2026-04-23
 
 ### 2(a) Bugs
 
+- [ ] BUG-019 — "Add Project" appears to fail on large Scrivener projects due to Cloudflare timeout. Symptom: adding a large project (~5000+ files including snapshots) via "+ Add Project" returns a Cloudflare timeout in the browser, but the project is created server-side and sync continues to completion in the background. Impact: misleading UX — user believes the operation failed when it succeeded. Fix: move the initial sync off the request thread (background job / fire-and-forget), return immediately with a "sync in progress" response, and surface progress via the existing dashboard progress indicator.
 
 ### 2(b) Changes
 
