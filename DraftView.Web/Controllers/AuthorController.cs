@@ -875,17 +875,52 @@ public class AuthorController(
 
         await GetUnitOfWork().SaveChangesAsync();
 
+        var projectsToSync = new List<Guid>();
         foreach (var d in toAdd)
         {
             var projects = await projectRepo.GetAllAsync();
             var project  = projects.FirstOrDefault(p => p.SyncRootId == d.SyncRootId);
             if (project is null) continue;
+            project.MarkSyncing();
+            projectsToSync.Add(project.Id);
+        }
 
-            try { await syncService.ParseProjectAsync(project.Id); }
-            catch (Exception ex)
+        if (projectsToSync.Count > 0)
+            await GetUnitOfWork().SaveChangesAsync();
+
+        foreach (var projectId in projectsToSync)
+        {
+            _ = Task.Run(async () =>
             {
-                logger.LogWarning(ex, "Initial sync failed for {Name}", d.Name);
-            }
+                using var scope   = scopeFactory.CreateScope();
+                var bgSyncService = scope.ServiceProvider.GetRequiredService<ISyncService>();
+                var bgProjectRepo = scope.ServiceProvider.GetRequiredService<IProjectRepository>();
+                var bgUnitOfWork  = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+                try
+                {
+                    await bgSyncService.ParseProjectAsync(projectId);
+                    logger.LogInformation("Background sync completed for project {ProjectId}", projectId);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Background sync failed for project {ProjectId}: {Message}",
+                        projectId, ex.Message);
+                    try
+                    {
+                        var failedProject = await bgProjectRepo.GetByIdAsync(projectId);
+                        if (failedProject is not null && failedProject.SyncStatus == SyncStatus.Syncing)
+                        {
+                            failedProject.UpdateSyncStatus(SyncStatus.Error, DateTime.UtcNow,
+                                ex.Message.Length > 200 ? ex.Message[..200] : ex.Message);
+                            await bgUnitOfWork.SaveChangesAsync();
+                        }
+                    }
+                    catch (Exception innerEx)
+                    {
+                        logger.LogError(innerEx, "Failed to update sync error status for {ProjectId}", projectId);
+                    }
+                }
+            });
         }
 
         TempData["Success"] = addedCount == 1
