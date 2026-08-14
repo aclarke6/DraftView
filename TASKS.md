@@ -43,6 +43,8 @@ Last updated: 2026-04-21
 
 ## 2. Open Bugs
 
+- **BUG-021** — Add Projects page stalls/times out waiting for a foreground Dropbox project listing; users who click multiple times during the wait create duplicate pending operations. Fix: make the Dropbox project discovery call asynchronous (background task or AJAX) so the POST returns immediately. (Discovered 2026-08-14)
+
 ---
 
 ## 3. Active Projects
