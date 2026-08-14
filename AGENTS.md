@@ -159,19 +159,13 @@ Examples: changing a redirect target, switching from awaited to fire-and-forget 
 
 ---
 
-### Wiring changes — do not write tests
+### Wiring changes — tests only at identifiable risk
 
-For pure wiring changes, do not write tests.
+For pure wiring changes, do not write tests by default.
 
-A wiring change is one where:
+Write a test only when there is an identifiable risk — a specific, concrete way the wiring could silently fail or be misread, that is not already protected by tests in the layer that owns the behaviour.
 
-- the behaviour is already covered by tests in the layer that owns it
-- the change delegates entirely to existing, tested components
-- no new invariant is introduced
-
-The bar for adding a test to a wiring change is very high. A prior regression in the area is not sufficient justification — it may itself have been added reflexively. The only valid reason is a documented, specific fragility that cannot be protected any other way.
-
-Agents must not add wiring tests by default, on preference, or citing prior regressions. If a wiring test is genuinely warranted, state the exact reason explicitly before writing it.
+Agents must not add wiring tests on preference, habit, or citing prior regressions. If a test is written, state the identifiable risk it protects against before writing it.
 
 
 ## Test Execution Override — Cloud Phases
