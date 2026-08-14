@@ -1,8 +1,13 @@
 ﻿using System.Diagnostics;
 using System.Text;
+using DraftView.DevTools;
 using DraftView.Domain.Interfaces.Services;
 using DraftView.Infrastructure.Parsing;
-using DraftView.DevTools;
+using DraftView.Infrastructure.Persistence;
+using DraftView.Infrastructure.Persistence.Repositories;
+using DraftView.Infrastructure.Security;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 // ---------------------------------------------------------------------------
 // email-test mode
@@ -27,10 +32,34 @@ if (args.Length > 0 && args[0] == "repair-dev-users")
 // ---------------------------------------------------------------------------
 if (args.Length > 0 && args[0] == "--import")
 {
-    var connString  = args.Length > 1 ? args[1] : throw new ArgumentException("Connection string required.");
-    var jsonPath    = args.Length > 2 ? args[2] : @"C:\Users\alast\source\repos\DraftView\betabooks-export.json";
-    var authorEmail = args.Length > 3 ? args[3] : "ajclarke@myyahoo.com";
-    return await BetaBooksImporter.RunAsync(connString, jsonPath, authorEmail);
+    var jsonPath     = args.Length > 1 ? args[1] : @"C:\Users\alast\source\repos\DraftView\betabooks-export.json";
+    var authorEmail  = args.Length > 2 ? args[2] : "ajclarke@myyahoo.com";
+    var projectName  = args.Length > 3 ? args[3] : "Book 1 - The Fractured Lattice";
+
+    const string webSecretsId = "0e437bf4-da42-4cf8-86cd-072126366d5c";
+    var config = new ConfigurationBuilder()
+        .AddUserSecrets(webSecretsId)
+        .AddEnvironmentVariables()
+        .Build();
+
+    var connString = config.GetConnectionString("DefaultConnection")
+                  ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection not found in DraftView.Web user secrets.");
+    var encKeyB64  = config["EmailProtection:EncryptionKey"]
+                  ?? throw new InvalidOperationException("EmailProtection:EncryptionKey not found in DraftView.Web user secrets.");
+    var hmacKeyB64 = config["EmailProtection:LookupHmacKey"]
+                  ?? throw new InvalidOperationException("EmailProtection:LookupHmacKey not found in DraftView.Web user secrets.");
+
+    var encService  = new UserEmailEncryptionService(Convert.FromBase64String(encKeyB64));
+    var hmacService = new UserEmailLookupHmacService(Convert.FromBase64String(hmacKeyB64));
+
+    var dbOptions = new DbContextOptionsBuilder<DraftViewDbContext>()
+        .UseNpgsql(connString)
+        .Options;
+
+    await using var db = new DraftViewDbContext(dbOptions, encService, hmacService);
+    var userRepo       = new UserRepository(db, encService, hmacService);
+
+    return await BetaBooksImporter.RunAsync(db, userRepo, jsonPath, authorEmail, projectName);
 }
 
 // ---------------------------------------------------------------------------
