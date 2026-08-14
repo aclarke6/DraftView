@@ -49,12 +49,16 @@ Last updated: 2026-04-23
 
 ### 2(a) Bugs
 
+- [DONE] BUG-019 — Add Project timed out (Cloudflare 524) on large Scrivener projects; AddProjects POST now fires background `Task.Run` with `IServiceScopeFactory` scope, sets `SyncStatus.Syncing` before redirect (2026-08-14)
+- [DONE] BUG-021 — Add Projects page stalled on foreground Dropbox vault listing; GET now returns page shell immediately, vault list fetched via AJAX from new `DiscoverProjects` endpoint (2026-08-14)
 
 ### 2(b) Changes
 
 - [DONE] CHANGE-001 — `Views/Reader/DesktopRead.cshtml` & `MobileRead.cshtml`: moved scene version labels from main title area to left-hand navigation (desktop) and top nav metadata (mobile) for reduced reading noise (2026-04-21)
 - [DONE] CHANGE-002 — `Views/Author/Publishing.cshtml`: align scene version labels beside scene titles using CSS Grid layout (2026-04-21)
 - [ ] CHANGE-003 — `Views/Reader/DesktopRead.cshtml`: allow the left and right reader panels to collapse and expand for a wider reading surface
+
+- **BUG-021** — Add Projects page stalls/times out waiting for a foreground Dropbox project listing; users who click multiple times during the wait create duplicate pending operations. Fix: make the Dropbox project discovery call asynchronous (background task or AJAX) so the POST returns immediately. (Discovered 2026-08-14)
 
 ---
 ## 3. Active Projects
@@ -234,6 +238,7 @@ See `REFACTORING.md` for full detail.
 
 ### Bugs Fixed
 
+- [DONE] BUG-020 — BetaBooksImporter broken by email encryption-at-rest migration; fixed email lookup to use `IUserRepository.GetByEmailAsync` (HMAC-based), and key loading to use configured `EmailProtection__EncryptionKey`/`EmailProtection__LookupHmacKey` env vars instead of random parameterless-ctor keys (2026-08-14)
 - [DONE] BUG-019 — "Add Project" Cloudflare 524 timeout on large Scrivener projects; `ParseProjectAsync` was awaited on the HTTP request thread in `AddProjects`; fixed by calling `MarkSyncing()`, saving, then firing `Task.Run` with `IServiceScopeFactory` scope (matching the existing `Sync` action pattern); Dashboard progress bar now activates automatically on redirect
 - [DONE] Production database migration drift — reader page failed because PassageAnchor rejection audit columns were missing; root cause was earlier real migration not applied and later empty migration recorded, causing EF snapshot/history drift; resolved with corrective migration `20260427123533_ApplyMissingPassageAnchorRejectionAudit`; production verified via `__EFMigrationsHistory` entry and `PassageAnchors` columns `RejectedAt`, `RejectedByUserId`, `RejectedReason`, `RejectedTargetSectionVersionId`
 - [DONE] Empty EF migration guard — added Roslyn-based infrastructure test for empty `Up(MigrationBuilder)` methods; allows only legacy exception `20260427121437_AddPassageAnchorFields.cs` with explicit comment because it was superseded by `20260427123533_ApplyMissingPassageAnchorRejectionAudit`; full suite verified green: 860 total, 859 passed, 1 skipped, 0 failed
