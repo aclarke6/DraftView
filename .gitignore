@@ -70,3 +70,6 @@ tmp.sql
 appsettings.Development.json
 
 TASKS.old
+
+# Local Dropbox discovery cache — generated files, change on every sync
+_discovery/

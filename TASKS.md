@@ -49,6 +49,8 @@ Last updated: 2026-04-23
 
 ### 2(a) Bugs
 
+- [DONE] BUG-019 — Add Project timed out (Cloudflare 524) on large Scrivener projects; AddProjects POST now fires background `Task.Run` with `IServiceScopeFactory` scope, sets `SyncStatus.Syncing` before redirect (2026-08-14)
+- [DONE] BUG-021 — Add Projects page stalled on foreground Dropbox vault listing; GET now returns page shell immediately, vault list fetched via AJAX from new `DiscoverProjects` endpoint (2026-08-14)
 
 ### 2(b) Changes
 
