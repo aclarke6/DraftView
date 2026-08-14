@@ -32,8 +32,9 @@ if (args.Length > 0 && args[0] == "repair-dev-users")
 // ---------------------------------------------------------------------------
 if (args.Length > 0 && args[0] == "--import")
 {
-    var jsonPath    = args.Length > 1 ? args[1] : @"C:\Users\alast\source\repos\DraftView\betabooks-export.json";
-    var authorEmail = args.Length > 2 ? args[2] : "ajclarke@myyahoo.com";
+    var jsonPath     = args.Length > 1 ? args[1] : @"C:\Users\alast\source\repos\DraftView\betabooks-export.json";
+    var authorEmail  = args.Length > 2 ? args[2] : "ajclarke@myyahoo.com";
+    var projectName  = args.Length > 3 ? args[3] : "Book 1 - The Fractured Lattice";
 
     const string webSecretsId = "0e437bf4-da42-4cf8-86cd-072126366d5c";
     var config = new ConfigurationBuilder()
@@ -58,7 +59,7 @@ if (args.Length > 0 && args[0] == "--import")
     await using var db = new DraftViewDbContext(dbOptions, encService, hmacService);
     var userRepo       = new UserRepository(db, encService, hmacService);
 
-    return await BetaBooksImporter.RunAsync(db, userRepo, jsonPath, authorEmail);
+    return await BetaBooksImporter.RunAsync(db, userRepo, jsonPath, authorEmail, projectName);
 }
 
 // ---------------------------------------------------------------------------
