@@ -1,9 +1,9 @@
 ---
 mode: agent
-description: BUG-019 — BetaBooksImporter dev tool broken by email encryption-at-rest migration
+description: BUG-020 — BetaBooksImporter dev tool broken by email encryption-at-rest migration
 ---
 
-# BUG-019 — BetaBooksImporter dev tool broken by email encryption-at-rest migration
+# BUG-020 — BetaBooksImporter dev tool broken by email encryption-at-rest migration
 
 ## Scope Note — Read First
 This prompt covers **fixing the tool only**. It must be executed on the **Dev PC**,
@@ -19,14 +19,14 @@ this task.
 2. `.github/Instructions/refactoring.instructions.md` — always required per AGENTS.md
 3. `CLAUDE.md` — non-negotiable project rules (TDD, `dotnet test` after every
    red/green cycle, CSS version rules N/A here, PowerShell `param()` rule N/A here)
-4. `TASKS.md` — current sprint/bug numbering context, to confirm BUG-019 is next
+4. `TASKS.md` — current sprint/bug numbering context, to confirm BUG-020 is next
 
 ## Branching
 1. Checkout `BugFix-PC` and pull latest from `main`
-2. Create and checkout `bugfix/BUG-019-betabooks-importer-email-encryption` from `BugFix-PC`
-3. All work is done on `bugfix/BUG-019-betabooks-importer-email-encryption`
+2. Create and checkout `bugfix/BUG-020-betabooks-importer-email-encryption` from `BugFix-PC`
+3. All work is done on `bugfix/BUG-020-betabooks-importer-email-encryption`
 4. When all Success Gates pass, present the merge commands to the developer — do not execute them
-5. Developer merges: `bugfix/BUG-019-betabooks-importer-email-encryption` → `BugFix-PC` → `main`
+5. Developer merges: `bugfix/BUG-020-betabooks-importer-email-encryption` → `BugFix-PC` → `main`
 
 ## Symptoms
 1. `DraftView.DevTools` `--import` mode (`BetaBooksImporter.RunAsync`, invoked from
@@ -157,17 +157,17 @@ Describe the fix in plain English before touching any code. State:
 - [ ] Confirm no plaintext email or key material is logged to console output
 
 **Gate 5 — Committed to GitHub**
-- [ ] Committed to `bugfix/BUG-019-betabooks-importer-email-encryption` with message:
-      `bugfix: BUG-019 — fix BetaBooksImporter email lookup and key loading after encryption-at-rest migration`
+- [ ] Committed to `bugfix/BUG-020-betabooks-importer-email-encryption` with message:
+      `bugfix: BUG-020 — fix BetaBooksImporter email lookup and key loading after encryption-at-rest migration`
 - [ ] `git status` is clean
 
 **Gate 6 — TASKS.md updated**
-- [ ] `TASKS.md` updated to mark BUG-019 as `[DONE]` with date and resolution summary, in the same style/section as BUG-017/BUG-018
+- [ ] `TASKS.md` updated to mark BUG-020 as `[DONE]` with date and resolution summary, in the same style/section as BUG-017/BUG-018
 - [ ] Included in same commit batch
 
 **Gate 7 — Present merge commands**
 - [ ] Present for manual execution — do not execute:
-      `git checkout BugFix-PC && git merge bugfix/BUG-019-betabooks-importer-email-encryption`
+      `git checkout BugFix-PC && git merge bugfix/BUG-020-betabooks-importer-email-encryption`
       (and the subsequent `BugFix-PC` → `main` merge), for the developer to run manually
 
 ## Rules
