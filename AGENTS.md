@@ -159,17 +159,19 @@ Examples: changing a redirect target, switching from awaited to fire-and-forget 
 
 ---
 
-### Preferred but not mechanically forced
+### Wiring changes — tests only when there is a serious need
 
-TDD is preferred over skipping tests entirely, but must not be applied mechanically where it adds no value.
+For pure wiring changes, do not write tests by default.
 
-A pure wiring change does not benefit from a stub-first flow when:
+A wiring change is one where:
 
-- the behaviour being wired is already covered by tests in the layer that owns it
-- the only thing a controller test would assert is that a mock was called — which tests the mock, not the behaviour
-- the test would be structurally identical to an existing test, with no new invariant being protected
+- the behaviour is already covered by tests in the layer that owns it
+- the change delegates entirely to existing, tested components
+- no new invariant is introduced
 
-In these cases, agents should note that tests were considered and explain why they were not required, rather than silently omitting them.
+Write tests for a wiring change only when there is a specific, concrete reason — for example, a regression has occurred in this area before, the wiring is non-obvious and easy to break silently, or the change crosses a boundary that is otherwise untested.
+
+Do not add tests to satisfy a general preference for coverage. Agents must not write wiring tests by default and must not justify doing so by citing "good practice".
 
 
 ## Test Execution Override — Cloud Phases
