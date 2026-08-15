@@ -168,11 +168,11 @@ public class AccountController(
 
             var inviteeEmail = user.Email;
 
-            // Ensure Identity user exists FIRST
-            var existingIdentity = await userManager.FindByEmailAsync(inviteeEmail);
-            if (existingIdentity is null)
+            // Ensure Identity user exists with the correct role
+            var identityUser = await userManager.FindByEmailAsync(inviteeEmail);
+            if (identityUser is null)
             {
-                var identityUser = new IdentityUser
+                identityUser = new IdentityUser
                 {
                     UserName       = inviteeEmail,
                     Email          = inviteeEmail,
@@ -187,6 +187,8 @@ public class AccountController(
                     return View(model);
                 }
             }
+
+            await userManager.AddToRoleAsync(identityUser, user.Role.ToString());
 
             // Now activate the domain user + invitation
             await userService.AcceptInvitationAsync(

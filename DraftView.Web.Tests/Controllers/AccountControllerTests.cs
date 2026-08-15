@@ -585,6 +585,41 @@ public class AccountControllerTests
     }
 
     [Fact]
+    public async Task AcceptInvitation_Post_AssignsIdentityRoleToNewUser()
+    {
+        var sut = CreateSut();
+        var invitedUser = User.Create("reader@example.test", "Pending", Role.BetaReader);
+        var invitation = Invitation.CreateAlwaysOpen(invitedUser.Id);
+
+        invitationRepo.Setup(r => r.GetByTokenAsync(invitation.Token, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(invitation);
+        userRepo.Setup(r => r.GetByIdAsync(invitedUser.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(invitedUser);
+        userManager.Setup(m => m.FindByEmailAsync(invitedUser.Email))
+            .ReturnsAsync((IdentityUser?)null);
+        userManager.Setup(m => m.CreateAsync(
+                It.Is<IdentityUser>(u => u.Email == invitedUser.Email),
+                "Password1!"))
+            .ReturnsAsync(IdentityResult.Success);
+        userManager.Setup(m => m.AddToRoleAsync(It.IsAny<IdentityUser>(), "BetaReader"))
+            .ReturnsAsync(IdentityResult.Success);
+        userService.Setup(s => s.AcceptInvitationAsync(invitation.Token, "Reader Name", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(invitedUser);
+        signInManager.Setup(m => m.PasswordSignInAsync(invitedUser.Email, "Password1!", false, false))
+            .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.Success);
+
+        await sut.AcceptInvitation(new AcceptInvitationViewModel
+        {
+            Token = invitation.Token,
+            DisplayName = "Reader Name",
+            Password = "Password1!",
+            ConfirmPassword = "Password1!"
+        });
+
+        userManager.Verify(m => m.AddToRoleAsync(It.IsAny<IdentityUser>(), "BetaReader"), Times.Once);
+    }
+
+    [Fact]
     public async Task AcceptInvitation_Post_InvalidToken_RedirectsToInvitationInvalid()
     {
         var sut = CreateSut();
