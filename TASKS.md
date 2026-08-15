@@ -51,7 +51,51 @@ No open bugs.
 
 ### 2(b) Changes
 
-- [ ] CHANGE-003 — `Views/Reader/DesktopRead.cshtml`: allow the left and right reader panels to collapse and expand for a wider reading surface
+- [SUPERSEDED] CHANGE-003 — replaced by CHANGE-006 and CHANGE-007 below
+
+- [ ] CHANGE-006 — Reader left nav: collapsible act tree + panel pin/unpin
+
+  **Goal:** Replace the static "Other Chapters" flat list with a collapsible act tree, and make the whole left panel pin/unpin like OneNote.
+
+  **Nav tree structure:**
+  - Book title shown as the panel header (unchanged)
+  - Each intermediate folder (Act, Part, or whatever the author named it) becomes a collapsible row, labelled with the author's own title, with a `›` chevron toggle
+  - The act containing the current chapter starts expanded; all others start collapsed
+  - "Other Chapters" heading and section are removed — all chapter navigation lives inside the act tree
+  - "This Chapter" scene list remains at the top, unchanged
+
+  **Data model — no changes needed:**
+  `ContentGroup.Heading` already carries the author's folder title. `BuildContentGroups` already produces the recursive `SubGroups` structure. The view just needs to render these as toggles instead of static headings.
+
+  **Panel pin/unpin behaviour:**
+  - Desktop (≥ 992 px): panel starts pinned open
+  - Mobile/tablet: panel starts collapsed; a `☰` button opens it as an overlay
+  - Unpinned: panel auto-collapses after a chapter link is clicked
+  - Pinned: panel stays open after selection
+  - A pin icon (📌 / thumb-tack SVG) toggles pin state
+  - Pin state and per-act collapsed state persisted in `localStorage`
+
+  **Files affected:**
+  - `DraftView.Web/Views/Reader/DesktopRead.cshtml` — replace static headings with `<button>` toggles; add pin button; remove "Other Chapters" block
+  - `DraftView.Web/wwwroot/css/DraftView.Reader.css` — panel slide transition, collapsed state, pin icon, overlay backdrop
+  - `DraftView.Web/wwwroot/js/reader-nav.js` *(new)* — toggle logic, pin state, localStorage, auto-collapse on nav
+
+- [ ] CHANGE-007 — Reader right comments bar: collapsible panel with pin/unpin
+
+  **Goal:** Make the RHS comments sidebar collapsible using the same OneNote-style pattern as CHANGE-006.
+
+  **Panel behaviour:**
+  - Desktop: starts pinned open (matches current behaviour)
+  - Mobile: starts collapsed
+  - A `💬` / comment icon button opens the panel as an overlay when collapsed
+  - Unpinned: auto-collapses after a comment is submitted or dismissed
+  - Pinned: stays open
+  - Pin state persisted in `localStorage` separately from the left nav
+
+  **Files affected:**
+  - `DraftView.Web/Views/Reader/DesktopRead.cshtml` — add collapse/pin toggle button to comments bar header
+  - `DraftView.Web/wwwroot/css/DraftView.Reader.css` — reuse panel slide/pin classes from CHANGE-006 on the right panel
+  - `DraftView.Web/wwwroot/js/reader-nav.js` — extend with right-panel toggle logic
 
 ---
 
