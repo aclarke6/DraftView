@@ -30,6 +30,34 @@ public sealed class InvitationProvisioningRegressionTests :
     }
 
     [Fact]
+    public async Task InviteReader_Post_WithExpiry_SucceedsAndPersistsExpiryDate()
+    {
+        await factory.InitializeDatabaseAsync();
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            BaseAddress = new Uri("https://localhost")
+        });
+
+        await LogInAsAuthorAsync(client);
+
+        var expiresAt = DateTime.UtcNow.AddDays(30);
+        await PostInviteWithExpiryAsync(client, InvitationProvisioningWebFactory.ExpiryReaderEmail, "Expiry Reader", expiresAt);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<DraftViewDbContext>();
+
+        var invitedUser = await db.AppUsers
+            .SingleAsync(u => u.DisplayName == "Expiry Reader" && u.Role == Role.BetaReader);
+
+        var invitation = await db.Invitations.SingleAsync(i => i.UserId == invitedUser.Id);
+        Assert.Equal(DraftView.Domain.Enumerations.ExpiryPolicy.ExpiresAt, invitation.ExpiryPolicy);
+        Assert.NotNull(invitation.ExpiresAt);
+        Assert.True(invitation.ExpiresAt > DateTime.UtcNow);
+    }
+
+    [Fact]
     public async Task InviteReader_Post_Twice_SupersedesOlderPendingInvite_And_PersistsProtectedEmailFields()
     {
         await factory.InitializeDatabaseAsync();
@@ -95,6 +123,39 @@ public sealed class InvitationProvisioningRegressionTests :
         Assert.Equal("/Author/Dashboard", loginPost.Headers.Location?.OriginalString);
     }
 
+    private static async Task PostInviteWithExpiryAsync(HttpClient client, string email, string displayName, DateTime expiresAt)
+    {
+        var inviteGet = await client.GetAsync("/Author/InviteReader");
+        Assert.Equal(HttpStatusCode.OK, inviteGet.StatusCode);
+
+        var inviteHtml = await inviteGet.Content.ReadAsStringAsync();
+        var antiforgeryToken = ExtractAntiforgeryToken(inviteHtml);
+
+        var expiresAtLocal = expiresAt.ToLocalTime();
+        var formData = new List<KeyValuePair<string, string>>
+        {
+            new("DisplayName", displayName),
+            new("Email", email),
+            new("NeverExpires", "false"),
+            new("ExpiresAt", expiresAtLocal.ToString("yyyy-MM-ddTHH:mm")),
+            new("__RequestVerificationToken", antiforgeryToken)
+        };
+
+        var invitePost = await client.PostAsync(
+            "/Author/InviteReader",
+            new FormUrlEncodedContent(formData));
+
+        if (invitePost.StatusCode != HttpStatusCode.Redirect)
+        {
+            var invitePostHtml = await invitePost.Content.ReadAsStringAsync();
+            Assert.Fail(
+                $"Expected redirect after posting invitation form with expiry, but got {(int)invitePost.StatusCode} {invitePost.StatusCode}.{Environment.NewLine}{invitePostHtml}");
+        }
+
+        Assert.Equal(HttpStatusCode.Redirect, invitePost.StatusCode);
+        Assert.Equal("/Author/Readers", invitePost.Headers.Location?.OriginalString);
+    }
+
     private static async Task PostInviteAsync(HttpClient client, string email, string displayName)
     {
         var inviteGet = await client.GetAsync("/Author/InviteReader");
@@ -143,6 +204,7 @@ public sealed class InvitationProvisioningRegressionTests :
         public const string AuthorEmail = "invite.regression.author@example.test";
         public const string AuthorPassword = "Password1!";
         public const string ReaderEmail = "invite.regression.reader@example.test";
+        public const string ExpiryReaderEmail = "invite.regression.expiry.reader@example.test";
 
         private const string DatabaseName = "draftview_webtests_invitation_provisioning";
         private bool initialized;

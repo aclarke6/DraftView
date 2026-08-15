@@ -48,6 +48,11 @@ Write-Host "Copying to server..." -ForegroundColor Cyan
 scp -i $key -r "$output/*" "${server}:${remote}"
 if ($LASTEXITCODE -ne 0) { Write-Host "SCP failed." -ForegroundColor Red; exit 1 }
 
+Write-Host "Copying production appsettings to server..." -ForegroundColor Cyan
+$prodConfig = "C:\Users\alast\source\repos\DraftView\appsettings.Production.json"
+scp -i $key "$prodConfig" "${server}:${remote}/appsettings.Production.json"
+if ($LASTEXITCODE -ne 0) { Write-Host "SCP of production appsettings failed." -ForegroundColor Red; exit 1 }
+
 Write-Host "Restarting service..." -ForegroundColor Cyan
 ssh -i $key $server "sudo systemctl restart draftview"
 if ($LASTEXITCODE -ne 0) { Write-Host "Restart failed." -ForegroundColor Red; exit 1 }
