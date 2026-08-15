@@ -48,6 +48,17 @@ Write-Host "Copying to server..." -ForegroundColor Cyan
 scp -i $key -r "$output/*" "${server}:${remote}"
 if ($LASTEXITCODE -ne 0) { Write-Host "SCP failed." -ForegroundColor Red; exit 1 }
 
+# ---------------------------------------------------------------------------
+# scp creates new remote directories with a restrictive default mode (no
+# real umask on the Windows client), which leaves wwwroot untraversable by
+# the www-data service account and breaks all static file serving (CSS,
+# images). Re-normalize perms after every deploy rather than relying on
+# whatever scp happened to create.
+# ---------------------------------------------------------------------------
+Write-Host "Fixing static file permissions..." -ForegroundColor Cyan
+ssh -i $key $server "sudo find $remote -type d -exec chmod 755 {} \; ; sudo find $remote -type f -exec chmod 644 {} \; ; sudo chown www-data:www-data $remote/appsettings.Production.json ; sudo chmod 640 $remote/appsettings.Production.json"
+if ($LASTEXITCODE -ne 0) { Write-Host "Permission fix failed." -ForegroundColor Red; exit 1 }
+
 Write-Host "Restarting service..." -ForegroundColor Cyan
 ssh -i $key $server "sudo systemctl restart draftview"
 if ($LASTEXITCODE -ne 0) { Write-Host "Restart failed." -ForegroundColor Red; exit 1 }
