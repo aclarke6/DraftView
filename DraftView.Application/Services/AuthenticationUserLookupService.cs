@@ -14,12 +14,4 @@ public sealed class AuthenticationUserLookupService(IUserRepository userReposito
         return await userRepository.GetByEmailAsync(emailInput, ct);
     }
 
-    public async Task<User?> FindByDisplayNameAsync(string displayName, CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(displayName))
-            return null;
-
-        var matches = await userRepository.FindByDisplayNameAsync(displayName.Trim(), ct);
-        return matches.Count == 1 ? matches[0] : null;
-    }
 }

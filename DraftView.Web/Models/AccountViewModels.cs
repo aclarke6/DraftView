@@ -5,7 +5,6 @@ namespace DraftView.Web.Models;
 public class LoginViewModel
 {
     [Required]
-    [EmailAddress]
     public string Email { get; set; } = string.Empty;
 
     [Required]
@@ -18,6 +17,12 @@ public class LoginViewModel
 public class AcceptInvitationViewModel
 {
     public string Token { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Please choose a username.")]
+    [StringLength(50, MinimumLength = 3, ErrorMessage = "Username must be between 3 and 50 characters.")]
+    [RegularExpression(@"^[a-zA-Z0-9._-]+$",
+        ErrorMessage = "Username may only contain letters, numbers, dots, underscores, and hyphens.")]
+    public string Username { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Please enter your name.")]
     [StringLength(100, MinimumLength = 2, ErrorMessage = "Name must be at least 2 characters.")]

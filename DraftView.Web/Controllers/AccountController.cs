@@ -43,21 +43,18 @@ public class AccountController(
             return View(model);
 
         var loginInput = model.Email;
-        var resolvedEmail = loginInput;
 
         var result = await signInManager.PasswordSignInAsync(
             loginInput, model.Password, model.RememberMe, lockoutOnFailure: true);
 
-        // If the input has no '@' and the initial attempt failed, try it as a display name.
-        if (result == Microsoft.AspNetCore.Identity.SignInResult.Failed && !loginInput.Contains('@'))
+        // If the input looks like an email but login failed, the user may have a chosen
+        // username — resolve the username via Identity email lookup and retry.
+        if (result == Microsoft.AspNetCore.Identity.SignInResult.Failed && loginInput.Contains('@'))
         {
-            var byName = await authenticationUserLookupService.FindByDisplayNameAsync(loginInput);
-            if (byName?.Email is { Length: > 0 })
-            {
-                resolvedEmail = byName.Email;
+            var idUser = await userManager.FindByEmailAsync(loginInput);
+            if (idUser?.UserName is { Length: > 0 })
                 result = await signInManager.PasswordSignInAsync(
-                    resolvedEmail, model.Password, model.RememberMe, lockoutOnFailure: true);
-            }
+                    idUser.UserName, model.Password, model.RememberMe, lockoutOnFailure: true);
         }
 
         switch (result)
@@ -68,7 +65,12 @@ public class AccountController(
                     return Redirect(returnUrl);
                 try
                 {
-                    var domainUser = await authenticationUserLookupService.FindByLoginEmailAsync(resolvedEmail);
+                    // Resolve the actual email for domain user lookup regardless of whether
+                    // the user logged in with their username or their email address.
+                    var idUser = await userManager.FindByNameAsync(loginInput)
+                        ?? await userManager.FindByEmailAsync(loginInput);
+                    var emailForLookup = idUser?.Email ?? loginInput;
+                    var domainUser = await authenticationUserLookupService.FindByLoginEmailAsync(emailForLookup);
                     if (domainUser?.Role == Domain.Enumerations.Role.Author)
                         return RedirectToAction("Dashboard", "Author");
                     if (domainUser?.Role == Domain.Enumerations.Role.SystemSupport)
@@ -174,7 +176,7 @@ public class AccountController(
             {
                 identityUser = new IdentityUser
                 {
-                    UserName       = inviteeEmail,
+                    UserName       = model.Username,
                     Email          = inviteeEmail,
                     EmailConfirmed = true
                 };
@@ -194,9 +196,9 @@ public class AccountController(
             await userService.AcceptInvitationAsync(
                 model.Token, model.DisplayName);
 
-            // Sign them in immediately
+            // Sign them in with the chosen username
             await signInManager.PasswordSignInAsync(
-                inviteeEmail, model.Password, isPersistent: false, lockoutOnFailure: false);
+                identityUser.UserName!, model.Password, isPersistent: false, lockoutOnFailure: false);
 
             logger.LogInformation("Invitation accepted and user signed in for user {UserId}", user.Id);
 

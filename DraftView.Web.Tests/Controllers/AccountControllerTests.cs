@@ -178,24 +178,21 @@ public class AccountControllerTests
     }
 
     [Fact]
-    public async Task Login_WithDisplayName_UniqueMatch_SignsInAndRedirects()
+    public async Task Login_WithChosenUsername_SignsInDirectly()
     {
         var reader = User.Create("reader@example.test", "Alastair Dunlop", Role.BetaReader);
         reader.Activate();
         var sut = CreateSut();
 
-        signInManager.Setup(m => m.PasswordSignInAsync("Alastair Dunlop", "Password1!", false, true))
-            .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.Failed);
-        authenticationUserLookupService
-            .Setup(s => s.FindByDisplayNameAsync("Alastair Dunlop", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(reader);
-        signInManager.Setup(m => m.PasswordSignInAsync("reader@example.test", "Password1!", false, true))
+        signInManager.Setup(m => m.PasswordSignInAsync("alastair_d", "Password1!", false, true))
             .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.Success);
+        userManager.Setup(m => m.FindByNameAsync("alastair_d"))
+            .ReturnsAsync(new IdentityUser { UserName = "alastair_d", Email = "reader@example.test" });
         authenticationUserLookupService
             .Setup(s => s.FindByLoginEmailAsync("reader@example.test", It.IsAny<CancellationToken>()))
             .ReturnsAsync(reader);
 
-        var result = await sut.Login(new LoginViewModel { Email = "Alastair Dunlop", Password = "Password1!" });
+        var result = await sut.Login(new LoginViewModel { Email = "alastair_d", Password = "Password1!" });
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal("Dashboard", redirect.ActionName);
@@ -203,35 +200,29 @@ public class AccountControllerTests
     }
 
     [Fact]
-    public async Task Login_WithDisplayName_NoMatch_ReturnsInvalidCredentials()
+    public async Task Login_WithEmail_WhenIdentityUserNameIsChosenUsername_FindsByEmailAndSignsIn()
     {
+        var reader = User.Create("reader@example.test", "Alastair Dunlop", Role.BetaReader);
+        reader.Activate();
         var sut = CreateSut();
 
-        signInManager.Setup(m => m.PasswordSignInAsync("Unknown Name", "bad", false, true))
+        signInManager.Setup(m => m.PasswordSignInAsync("reader@example.test", "Password1!", false, true))
             .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.Failed);
+        userManager.Setup(m => m.FindByEmailAsync("reader@example.test"))
+            .ReturnsAsync(new IdentityUser { UserName = "alastair_d", Email = "reader@example.test" });
+        signInManager.Setup(m => m.PasswordSignInAsync("alastair_d", "Password1!", false, true))
+            .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.Success);
+        userManager.Setup(m => m.FindByNameAsync("alastair_d"))
+            .ReturnsAsync(new IdentityUser { UserName = "alastair_d", Email = "reader@example.test" });
         authenticationUserLookupService
-            .Setup(s => s.FindByDisplayNameAsync("Unknown Name", It.IsAny<CancellationToken>()))
-            .ReturnsAsync((User?)null);
+            .Setup(s => s.FindByLoginEmailAsync("reader@example.test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(reader);
 
-        var result = await sut.Login(new LoginViewModel { Email = "Unknown Name", Password = "bad" });
+        var result = await sut.Login(new LoginViewModel { Email = "reader@example.test", Password = "Password1!" });
 
-        Assert.IsType<ViewResult>(result);
-        Assert.False(sut.ModelState.IsValid);
-    }
-
-    [Fact]
-    public async Task Login_WithEmailInput_DoesNotAttemptDisplayNameLookup()
-    {
-        var sut = CreateSut();
-
-        signInManager.Setup(m => m.PasswordSignInAsync("reader@example.test", "bad", false, true))
-            .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.Failed);
-
-        await sut.Login(new LoginViewModel { Email = "reader@example.test", Password = "bad" });
-
-        authenticationUserLookupService.Verify(
-            s => s.FindByDisplayNameAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Dashboard", redirect.ActionName);
+        Assert.Equal("Reader", redirect.ControllerName);
     }
 
     // ---------------------------------------------------------------------------
@@ -548,7 +539,7 @@ public class AccountControllerTests
     }
 
     [Fact]
-    public async Task AcceptInvitation_Post_UsesInvitationUserEmail_ForIdentityCreationAndSignIn()
+    public async Task AcceptInvitation_Post_UsesChosenUsernameForIdentityUserName()
     {
         var sut = CreateSut();
         var invitedUser = User.Create("reader@example.test", "Pending", Role.BetaReader);
@@ -561,17 +552,20 @@ public class AccountControllerTests
         userManager.Setup(m => m.FindByEmailAsync(invitedUser.Email))
             .ReturnsAsync((IdentityUser?)null);
         userManager.Setup(m => m.CreateAsync(
-                It.Is<IdentityUser>(u => u.Email == invitedUser.Email && u.UserName == invitedUser.Email),
+                It.Is<IdentityUser>(u => u.UserName == "alastair_d" && u.Email == invitedUser.Email),
                 "Password1!"))
+            .ReturnsAsync(IdentityResult.Success);
+        userManager.Setup(m => m.AddToRoleAsync(It.IsAny<IdentityUser>(), "BetaReader"))
             .ReturnsAsync(IdentityResult.Success);
         userService.Setup(s => s.AcceptInvitationAsync(invitation.Token, "Reader Name", It.IsAny<CancellationToken>()))
             .ReturnsAsync(invitedUser);
-        signInManager.Setup(m => m.PasswordSignInAsync(invitedUser.Email, "Password1!", false, false))
+        signInManager.Setup(m => m.PasswordSignInAsync("alastair_d", "Password1!", false, false))
             .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.Success);
 
         var result = await sut.AcceptInvitation(new AcceptInvitationViewModel
         {
             Token = invitation.Token,
+            Username = "alastair_d",
             DisplayName = "Reader Name",
             Password = "Password1!",
             ConfirmPassword = "Password1!"
@@ -580,8 +574,10 @@ public class AccountControllerTests
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal("Dashboard", redirect.ActionName);
         Assert.Equal("Reader", redirect.ControllerName);
-        userManager.Verify(m => m.FindByEmailAsync(invitedUser.Email), Times.Once);
-        signInManager.Verify(m => m.PasswordSignInAsync(invitedUser.Email, "Password1!", false, false), Times.Once);
+        userManager.Verify(m => m.CreateAsync(
+            It.Is<IdentityUser>(u => u.UserName == "alastair_d" && u.Email == invitedUser.Email),
+            "Password1!"), Times.Once);
+        signInManager.Verify(m => m.PasswordSignInAsync("alastair_d", "Password1!", false, false), Times.Once);
     }
 
     [Fact]
@@ -605,12 +601,13 @@ public class AccountControllerTests
             .ReturnsAsync(IdentityResult.Success);
         userService.Setup(s => s.AcceptInvitationAsync(invitation.Token, "Reader Name", It.IsAny<CancellationToken>()))
             .ReturnsAsync(invitedUser);
-        signInManager.Setup(m => m.PasswordSignInAsync(invitedUser.Email, "Password1!", false, false))
+        signInManager.Setup(m => m.PasswordSignInAsync("reader_one", "Password1!", false, false))
             .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.Success);
 
         await sut.AcceptInvitation(new AcceptInvitationViewModel
         {
             Token = invitation.Token,
+            Username = "reader_one",
             DisplayName = "Reader Name",
             Password = "Password1!",
             ConfirmPassword = "Password1!"

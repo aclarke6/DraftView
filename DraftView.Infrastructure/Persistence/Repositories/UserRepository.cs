@@ -40,10 +40,6 @@ public class UserRepository(
         await db.AppUsers.AnyAsync(
             u => u.EmailLookupHmac == ComputeLookupHmac(email), ct);
 
-    public async Task<IReadOnlyList<User>> FindByDisplayNameAsync(string displayName, CancellationToken ct = default) =>
-        HydrateEmails(await db.AppUsers
-            .Where(u => u.DisplayName == displayName)
-            .ToListAsync(ct));
 
     private string ComputeLookupHmac(string email) =>
         emailLookupHmacService.Compute(DraftViewDbContext.NormalizeEmail(email));
