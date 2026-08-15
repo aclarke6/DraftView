@@ -128,7 +128,7 @@
 
         @foreach (var c in roots)
         {
-            <div class="comment-box @(c.Comment.Visibility == Visibility.Private ? "comment-box--private" : "") @(c.HasPassageAnchor ? "comment-box--anchored" : "") @(c.IsPassageAnchorMissing ? "comment-box--orphaned-anchor" : "")"
+            <div class="comment-box @(c.Comment.Visibility == Visibility.Private ? "comment-box--private" : "") @(c.HasActivePassageAnchor ? "comment-box--anchored" : "") @(c.IsPassageAnchorMissing ? "comment-box--orphaned-anchor" : "")"
                  data-passage-anchor-id="@(c.PassageAnchor?.Id.ToString() ?? string.Empty)"
                  data-passage-anchor-selected-text="@(c.PassageAnchor?.OriginalSnapshot.SelectedText ?? string.Empty)"
                  data-passage-anchor-section-id="@c.Comment.SectionId"
@@ -144,7 +144,7 @@
                     {
                         <span class="comment-box__private">[Private]</span>
                     }
-                    @if (c.HasPassageAnchor)
+                    @if (c.HasActivePassageAnchor)
                     {
                         <button type="button"
                                 class="comment-box__anchor-badge"
@@ -153,6 +153,13 @@
                                 title="@(c.AuthorDisplayName + " · " + c.Comment.CreatedAt.ToString("dd MMM") + " · " + c.Comment.Body)">
                             Anchored
                         </button>
+                    }
+                    else if (c.IsPassageAnchorOrphaned)
+                    {
+                        <span class="comment-box__anchor-badge comment-box__anchor-badge--scene"
+                              title="The passage this comment was written on could not be located in the current version">
+                            Originally on a passage
+                        </span>
                     }
                     else if (c.IsPassageAnchorMissing)
                     {
@@ -204,7 +211,7 @@
                 {
                     <p class="comment-box__body">@c.Comment.Body</p>
 
-                    @if (c.PassageAnchor is not null)
+                    @if (c.PassageAnchor is not null && !c.IsPassageAnchorOrphaned)
                     {
                         <div class="comment-box__anchor-status">
                             <span class="comment-box__anchor-status-label">
@@ -938,6 +945,7 @@
         }
 
         document.querySelectorAll('.comment-box[data-passage-anchor-id]').forEach(function (commentBox) {
+            if (commentBox.getAttribute('data-passage-anchor-status') === 'Orphaned') return;
             highlightComment(commentBox);
         });
 

@@ -14,21 +14,21 @@ Solution: `DraftView.slnx` at `C:\Users\alast\source\repos\DraftView`
 - Full CSS rule blocks only — never partial `{}` fragments
 
 ## Current task
-File: `CLAUDE_TASK_Notifications.md` in this directory.
-Read that file and implement it phase by phase.
+No active task file. Consult `TASKS.md` for the current state of all work tracks
+and choose the highest-priority open item. `CLAUDE_TASK_Notifications.md` is
+complete — all seven phases are implemented and merged to main.
 
 ## How to work
-1. Read `CLAUDE_TASK_Notifications.md` fully before writing any code
-2. Implement one phase at a time
-3. Within each phase, follow the red/green cycle strictly:
+1. Read `TASKS.md` fully before starting any task
+2. For implementation tasks, follow the red/green cycle strictly:
    - Write the stub (NotImplementedException) first
    - Write the failing tests
    - Confirm RED with `dotnet test --filter <TestClass>`
    - Implement
    - Confirm GREEN with `dotnet test --filter <TestClass>`
    - Run full `dotnet test` and report count before moving to next phase
-4. Do not proceed to the next phase until all tests in the current phase are GREEN
-5. Do not modify any file outside the scope described in the task file
+3. Do not proceed to the next phase until all tests in the current phase are GREEN
+4. Do not modify any file outside the scope described in the task
 
 ## Key files (read these before starting)
 

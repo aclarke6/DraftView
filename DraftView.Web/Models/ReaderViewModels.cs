@@ -112,6 +112,8 @@ public class CommentDisplayViewModel
     public PassageAnchorDto? PassageAnchor { get; set; }
     public bool HasPassageAnchor => Comment.PassageAnchorId.HasValue;
     public bool IsPassageAnchorMissing => HasPassageAnchor && PassageAnchor is null;
+    public bool IsPassageAnchorOrphaned => HasPassageAnchor && PassageAnchor?.Status == PassageAnchorStatus.Orphaned;
+    public bool HasActivePassageAnchor => HasPassageAnchor && PassageAnchor is not null && PassageAnchor.Status != PassageAnchorStatus.Orphaned;
     public bool CanOverridePassageAnchor { get; set; }
     public string? PassageAnchorResolvedByDisplayName { get; set; }
     public string? PassageAnchorRejectedByDisplayName { get; set; }

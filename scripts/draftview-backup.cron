@@ -1,0 +1,3 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+0 2 * * * postgres /usr/local/bin/draftview-backup.sh >> /var/log/draftview-backup.log 2>&1
