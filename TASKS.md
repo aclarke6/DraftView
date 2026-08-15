@@ -51,12 +51,18 @@ Last updated: 2026-08-15
 
 - [DONE] BUG-019 — Add Project timed out (Cloudflare 524) on large Scrivener projects; AddProjects POST now fires background `Task.Run` with `IServiceScopeFactory` scope, sets `SyncStatus.Syncing` before redirect (2026-08-14)
 - [DONE] BUG-021 — Add Projects page stalled on foreground Dropbox vault listing; GET now returns page shell immediately, vault list fetched via AJAX from new `DiscoverProjects` endpoint (2026-08-14)
+- [DONE] BUG-022 — Inviting a reader always crashed with the controlled error page; `App:BaseUrl` was absent from production config, causing `GetConfiguredAppBaseUrl()` to throw on every invitation attempt. Added `App:BaseUrl` to `appsettings.Production.json` and updated the publish script to deploy it alongside the app (2026-08-15)
+- [DONE] BUG-023 — ASP.NET Core DataProtection used an ephemeral in-memory key ring that regenerated on every service restart, silently invalidating antiforgery tokens from pre-restart sessions and causing unhandled 500 errors on all form POSTs around a restart. Fixed by persisting keys to `/var/www/draftview-keys`; path is configurable via `DataProtection:KeysPath` (falls back to ephemeral when unset, e.g. in development) (2026-08-15)
+- [DONE] BUG-024 — Reader was not assigned the `BetaReader` Identity role on invitation acceptance; `AcceptInvitation` POST created the Identity user but never called `AddToRoleAsync`, so the session cookie had no role claim and all reader pages returned 403 Access Denied. Fixed by calling `AddToRoleAsync` immediately after `CreateAsync` (2026-08-15)
+- [DONE] BUG-025 — `InvitationRepository.GetByUserIdAsync` had no ORDER BY; with multiple invitations per user (cancelled + pending), it could return the cancelled one, making an invited reader appear as Inactive rather than Invited in the Readers list. Fixed by switching the Readers action to `GetPendingByUserIdAsync` (2026-08-15)
 
 ### 2(b) Changes
 
 - [DONE] CHANGE-001 — `Views/Reader/DesktopRead.cshtml` & `MobileRead.cshtml`: moved scene version labels from main title area to left-hand navigation (desktop) and top nav metadata (mobile) for reduced reading noise (2026-04-21)
 - [DONE] CHANGE-002 — `Views/Author/Publishing.cshtml`: align scene version labels beside scene titles using CSS Grid layout (2026-04-21)
 - [ ] CHANGE-003 — `Views/Reader/DesktopRead.cshtml`: allow the left and right reader panels to collapse and expand for a wider reading surface
+- [DONE] CHANGE-004 — Readers list: Resend Invitation button (paper-plane icon) for readers in Invited state, and for Active readers who still have a pending invitation (manually activated before completing setup). `ResendInvitation` action deactivates the reader first if needed, then re-issues the invitation preserving the original expiry policy (2026-08-15)
+- [DONE] CHANGE-005 — Username login: `AcceptInvitation` form now includes a "Choose a username" field (`autocomplete="username"`, stored as `IdentityUser.UserName`). Login accepts username or email — if the input contains `@` and the initial attempt fails, Identity looks up the user by email and retries with their `UserName`. Display name is not a valid login identifier (2026-08-15)
 
 ---
 ## 3. Active Projects
