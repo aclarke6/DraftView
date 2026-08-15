@@ -22,6 +22,7 @@ public class ContentGroup
 {
     public string Heading { get; set; } = string.Empty;
     public int Depth { get; set; }
+    public Guid? ActSectionId { get; set; }
     public Section? ChapterSection { get; set; }
     public IReadOnlyList<Section> Scenes { get; set; } = new List<Section>();
     public IReadOnlyList<ContentGroup> SubGroups { get; set; } = new List<ContentGroup>();

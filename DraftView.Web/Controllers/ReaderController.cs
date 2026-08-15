@@ -173,9 +173,14 @@ public class ReaderController(
         if (topSection is null)
             return NotFound();
 
+        // Walk up to the book root so Browse shows all acts, not just one act's chapters.
+        var browseRoot = topSection.ParentId.HasValue
+            ? allSections.FirstOrDefault(s => s.Id == topSection.ParentId.Value) ?? topSection
+            : topSection;
+
         return View("DesktopBrowse", new DesktopSectionContentsViewModel {
-            TopLevelSection = topSection,
-            Groups          = BuildContentGroups(topSection, allSections),
+            TopLevelSection = browseRoot,
+            Groups          = BuildContentGroups(browseRoot, allSections),
             ProjectName     = project.Name
         });
     }
@@ -447,9 +452,15 @@ public class ReaderController(
         DesktopSectionContentsViewModel? bookContents = null;
         if (topAncestor is not null)
         {
+            // topAncestor is the act/part (one level below the book root).
+            // Walk up one more level so BuildContentGroups covers all sibling acts.
+            var bookRoot = topAncestor.ParentId.HasValue
+                ? allSections.FirstOrDefault(s => s.Id == topAncestor.ParentId.Value) ?? topAncestor
+                : topAncestor;
+
             bookContents = new DesktopSectionContentsViewModel {
                 TopLevelSection = topAncestor,
-                Groups          = BuildContentGroups(topAncestor, allSections),
+                Groups          = BuildContentGroups(bookRoot, allSections),
                 ProjectName     = project?.Name ?? string.Empty
             };
         }
