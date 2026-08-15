@@ -11,16 +11,6 @@
         editCommentId = parsedEditCommentId;
     }
 
-    bool GroupContainsCurrent(ContentGroup g, Guid currentId)
-    {
-        if (g.ChapterSection?.Id == currentId) return true;
-        foreach (var sub in g.SubGroups)
-        {
-            if (GroupContainsCurrent(sub, currentId)) return true;
-        }
-        return false;
-    }
-
 @Html.AntiForgeryToken()
 }
 
@@ -64,42 +54,37 @@
         {
             <hr class="reader__contents-divider" />
             <div class="reader__contents-section">
+                <div class="reader__contents-label">Other chapters</div>
+
                 @foreach (var group in Model.BookContents.Groups)
                 {
                     @if (!string.IsNullOrEmpty(group.Heading))
                     {
-                        var mobileActContainsCurrent = GroupContainsCurrent(group, Model.Chapter.Id);
-                        <button class="reader__contents-act-btn"
-                                data-act-heading="@group.Heading"
-                                data-act-contains-current="@mobileActContainsCurrent.ToString().ToLowerInvariant()"
-                                aria-expanded="@(mobileActContainsCurrent ? "true" : "false")"
-                                type="button">
-                            <span class="reader__contents-act-chevron">›</span>
-                            @group.Heading
-                        </button>
-                        <div class="reader__contents-act-chapters">
-                            @foreach (var sub in group.SubGroups)
-                            {
-                                @if (!string.IsNullOrEmpty(sub.Heading))
-                                {
-                                    <div class="reader__contents-subheading reader__contents-subheading--nested">@sub.Heading</div>
-                                }
-                                @if (sub.ChapterSection is not null)
-                                {
-                                    <a asp-action="Read"
-                                       asp-route-id="@sub.ChapterSection.Id"
-                                       class="reader__contents-link @(sub.ChapterSection.Id == Model.Chapter.Id ? "reader__contents-link--active" : "") reader__contents-link--indented">
-                                        @sub.ChapterSection.Title
-                                    </a>
-                                }
-                            }
-                        </div>
+                        <div class="reader__contents-subheading">@group.Heading</div>
                     }
-                    else if (group.ChapterSection is not null)
+
+                    @foreach (var sub in group.SubGroups)
+                    {
+                        @if (!string.IsNullOrEmpty(sub.Heading))
+                        {
+                            <div class="reader__contents-subheading reader__contents-subheading--nested">@sub.Heading</div>
+                        }
+
+                        @if (sub.ChapterSection is not null)
+                        {
+                            <a asp-action="Read"
+                                   asp-route-id="@sub.ChapterSection.Id"
+                                   class="reader__contents-link @(sub.ChapterSection.Id == Model.Chapter.Id ? "reader__contents-link--active" : "") reader__contents-link--indented">
+                                @sub.ChapterSection.Title
+                            </a>
+                        }
+                    }
+
+                    @if (group.ChapterSection is not null)
                     {
                         <a asp-action="Read"
-                           asp-route-id="@group.ChapterSection.Id"
-                           class="reader__contents-link @(group.ChapterSection.Id == Model.Chapter.Id ? "reader__contents-link--active" : "")">
+                               asp-route-id="@group.ChapterSection.Id"
+                               class="reader__contents-link @(group.ChapterSection.Id == Model.Chapter.Id ? "reader__contents-link--active" : "")">
                             @group.ChapterSection.Title
                         </a>
                     }
@@ -109,95 +94,71 @@
     </div>
 
     <div class="chapter-layout">
-        <aside class="chapter-sidebar" id="chapterSidebar">
-            <button class="chapter-sidebar__collapse-btn"
-                    id="sidebarCollapseBtn"
-                    type="button"
-                    aria-label="Collapse navigation">&#8249;</button>
-            <div class="chapter-sidebar__inner">
-                @if (Model.BookContents is not null)
+        <aside class="chapter-sidebar">
+            @if (Model.BookContents is not null)
+            {
+                <div class="chapter-sidebar__header">
+                    <a asp-action="Index" class="chapter-sidebar__link chapter-sidebar__link--chapter">@Model.ProjectName</a>
+                    <a asp-action="Browse"
+                       asp-route-id="@Model.BookContents.TopLevelSection.Id"
+                       class="chapter-sidebar__link chapter-sidebar__link--chapter">&rsaquo; @Model.BookContents.TopLevelSection.Title</a>
+                </div>
+                <hr class="chapter-sidebar__divider" />
+            }
+
+            <div class="chapter-sidebar__label">This chapter</div>
+            @foreach (var item in Model.Scenes)
+            {
+                <a href="#scene-@item.Scene.Id" class="chapter-sidebar__link">@item.Scene.Title@(item.CurrentVersionNumber.HasValue ? $" (v{item.CurrentVersionNumber.Value})" : string.Empty)</a>
+            }
+
+            <a href="#chapter-comments"
+                   class="chapter-sidebar__link chapter-sidebar__link--muted chapter-sidebar__link--comments">
+                @Icons.Edit() Chapter Comments
+            </a>
+
+            @if (Model.BookContents is not null && Model.BookContents.Groups.Any())
+            {
+                <hr class="chapter-sidebar__divider" />
+                <div class="chapter-sidebar__label">Other chapters</div>
+
+                @foreach (var group in Model.BookContents.Groups)
                 {
-                    <div class="chapter-sidebar__header">
-                        <div class="chapter-sidebar__header-links">
-                            <a asp-action="Index" class="chapter-sidebar__link chapter-sidebar__link--chapter">@Model.ProjectName</a>
-                            <a asp-action="Browse"
-                               asp-route-id="@Model.BookContents.TopLevelSection.Id"
-                               class="chapter-sidebar__link chapter-sidebar__link--chapter">&rsaquo; @Model.BookContents.TopLevelSection.Title</a>
-                        </div>
-                        <button class="chapter-sidebar__pin-btn"
-                                id="sidebarPinBtn"
-                                type="button"
-                                title="Pin open"
-                                aria-label="Pin navigation open">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>
-                        </button>
-                    </div>
-                    <hr class="chapter-sidebar__divider" />
-                }
-
-                <div class="chapter-sidebar__label">This chapter</div>
-                @foreach (var item in Model.Scenes)
-                {
-                    <a href="#scene-@item.Scene.Id" class="chapter-sidebar__link">@item.Scene.Title@(item.CurrentVersionNumber.HasValue ? $" (v{item.CurrentVersionNumber.Value})" : string.Empty)</a>
-                }
-
-                <a href="#chapter-comments"
-                       class="chapter-sidebar__link chapter-sidebar__link--muted chapter-sidebar__link--comments">
-                    @Icons.Edit() Chapter Comments
-                </a>
-
-                @if (Model.BookContents is not null && Model.BookContents.Groups.Any())
-                {
-                    <hr class="chapter-sidebar__divider" />
-
-                    @foreach (var group in Model.BookContents.Groups)
+                    @if (!string.IsNullOrEmpty(group.Heading))
                     {
-                        @if (!string.IsNullOrEmpty(group.Heading))
+                        <div class="chapter-sidebar__subheading">@group.Heading</div>
+                    }
+
+                    @foreach (var sub in group.SubGroups)
+                    {
+                        @if (!string.IsNullOrEmpty(sub.Heading))
                         {
-                            var actContainsCurrent = GroupContainsCurrent(group, Model.Chapter.Id);
-                            <button class="chapter-sidebar__act-btn"
-                                    data-act-heading="@group.Heading"
-                                    data-act-contains-current="@actContainsCurrent.ToString().ToLowerInvariant()"
-                                    aria-expanded="@(actContainsCurrent ? "true" : "false")"
-                                    type="button">
-                                <span class="chapter-sidebar__act-chevron">›</span>
-                                @group.Heading
-                            </button>
-                            <div class="chapter-sidebar__act-chapters">
-                                @foreach (var sub in group.SubGroups)
-                                {
-                                    @if (!string.IsNullOrEmpty(sub.Heading))
-                                    {
-                                        <div class="chapter-sidebar__subheading chapter-sidebar__subheading--nested">@sub.Heading</div>
-                                    }
-                                    @if (sub.ChapterSection is not null)
-                                    {
-                                        <a asp-action="Read"
-                                           asp-route-id="@sub.ChapterSection.Id"
-                                           class="chapter-sidebar__link chapter-sidebar__link--indented @(sub.ChapterSection.Id == Model.Chapter.Id ? "chapter-sidebar__link--active" : "")">
-                                            @sub.ChapterSection.Title
-                                        </a>
-                                    }
-                                }
-                            </div>
+                            <div class="chapter-sidebar__subheading chapter-sidebar__subheading--nested">@sub.Heading</div>
                         }
-                        else if (group.ChapterSection is not null)
+
+                        @if (sub.ChapterSection is not null)
                         {
                             <a asp-action="Read"
-                               asp-route-id="@group.ChapterSection.Id"
-                               class="chapter-sidebar__link @(group.ChapterSection.Id == Model.Chapter.Id ? "chapter-sidebar__link--active" : "")">
-                                @group.ChapterSection.Title
+                                   asp-route-id="@sub.ChapterSection.Id"
+                                   class="chapter-sidebar__link chapter-sidebar__link--indented @(sub.ChapterSection.Id == Model.Chapter.Id ? "chapter-sidebar__link--active" : "")">
+                                @sub.ChapterSection.Title
                             </a>
                         }
                     }
+
+                    @if (group.ChapterSection is not null)
+                    {
+                        <a asp-action="Read"
+                               asp-route-id="@group.ChapterSection.Id"
+                               class="chapter-sidebar__link @(group.ChapterSection.Id == Model.Chapter.Id ? "chapter-sidebar__link--active" : "")">
+                            @group.ChapterSection.Title
+                        </a>
+                    }
                 }
-            </div>
+            }
         </aside>
 
         <main class="chapter-main">
-            <div class="chapter-main__toolbar">
-                <button class="chapter-comments-toggle" id="commentsToggleBtn" type="button">Hide comments</button>
-            </div>
             @if (TempData["Error"] is string errorMessage && !string.IsNullOrWhiteSpace(errorMessage))
             {
                 <div class="validation-summary-errors" role="alert">
@@ -1530,124 +1491,24 @@
     })();
 
     (function () {
-        // ── Mobile reader contents panel ─────────────────────────────────────
         var toggle = document.getElementById('readerContentsToggle');
         var panel = document.getElementById('readerContentsPanel');
 
-        if (toggle && panel) {
-            toggle.addEventListener('click', function () {
-                var isOpen = panel.classList.toggle('is-open');
-                toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-            });
-
-            panel.querySelectorAll('a[href]').forEach(function (link) {
-                link.addEventListener('click', function () {
-                    panel.classList.remove('is-open');
-                    toggle.setAttribute('aria-expanded', 'false');
-                });
-            });
+        if (!toggle || !panel) {
+            return;
         }
 
-        // ── Act expand/collapse (both panels) ────────────────────────────────
-        function actStorageKey(heading) {
-            return 'dv-act-' + heading.replace(/[^a-z0-9]/gi, '-').toLowerCase();
-        }
-
-        document.querySelectorAll('[data-act-heading]').forEach(function (btn) {
-            var heading = btn.getAttribute('data-act-heading');
-            var chapters = btn.nextElementSibling;
-            if (!chapters) return;
-
-            var containsCurrent = btn.getAttribute('data-act-contains-current') === 'true';
-            var key = actStorageKey(heading);
-            var stored = localStorage.getItem(key);
-            var collapsed = stored !== null ? stored === 'collapsed' : !containsCurrent;
-
-            function applyActState(isCollapsed, persist) {
-                chapters.classList.toggle('is-collapsed', isCollapsed);
-                var chevron = btn.querySelector('.chapter-sidebar__act-chevron, .reader__contents-act-chevron');
-                if (chevron) chevron.textContent = isCollapsed ? '›' : '⌄';
-                btn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
-                if (persist) localStorage.setItem(key, isCollapsed ? 'collapsed' : 'expanded');
-            }
-
-            applyActState(collapsed, false);
-
-            btn.addEventListener('click', function () {
-                applyActState(!chapters.classList.contains('is-collapsed'), true);
-            });
+        toggle.addEventListener('click', function () {
+            var isOpen = panel.classList.toggle('is-open');
+            toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
         });
 
-        // ── Desktop sidebar collapse/pin ─────────────────────────────────────
-        var sidebar = document.getElementById('chapterSidebar');
-        var collapseBtn = document.getElementById('sidebarCollapseBtn');
-        var pinBtn = document.getElementById('sidebarPinBtn');
-
-        if (sidebar && collapseBtn) {
-            var pinned = localStorage.getItem('dv-nav-pinned') !== 'unpinned';
-
-            function setSidebarCollapsed(collapsed, persist) {
-                sidebar.classList.toggle('is-collapsed', collapsed);
-                collapseBtn.textContent = collapsed ? '›' : '‹';
-                collapseBtn.setAttribute('aria-label', collapsed ? 'Open navigation' : 'Collapse navigation');
-                if (persist) localStorage.setItem('dv-nav-collapsed', collapsed ? '1' : '0');
-            }
-
-            function updatePin() {
-                if (!pinBtn) return;
-                pinBtn.classList.toggle('is-pinned', pinned);
-                pinBtn.setAttribute('title', pinned ? 'Unpin navigation' : 'Pin open');
-            }
-
-            // Restore saved states without transition
-            if (localStorage.getItem('dv-nav-collapsed') === '1') {
-                setSidebarCollapsed(true, false);
-            }
-            updatePin();
-
-            // Enable transitions after initial state is applied
-            requestAnimationFrame(function () {
-                sidebar.classList.add('transitions-enabled');
+        panel.querySelectorAll('a[href^="#"]').forEach(function (link) {
+            link.addEventListener('click', function () {
+                panel.classList.remove('is-open');
+                toggle.setAttribute('aria-expanded', 'false');
             });
-
-            collapseBtn.addEventListener('click', function () {
-                setSidebarCollapsed(!sidebar.classList.contains('is-collapsed'), true);
-            });
-
-            if (pinBtn) {
-                pinBtn.addEventListener('click', function () {
-                    pinned = !pinned;
-                    localStorage.setItem('dv-nav-pinned', pinned ? 'pinned' : 'unpinned');
-                    updatePin();
-                });
-            }
-
-            // Auto-collapse on chapter navigation when unpinned
-            sidebar.querySelectorAll('a[href]').forEach(function (link) {
-                if (link.getAttribute('href') && !link.getAttribute('href').startsWith('#')) {
-                    link.addEventListener('click', function () {
-                        if (!pinned) setSidebarCollapsed(true, true);
-                    });
-                }
-            });
-        }
-
-        // ── Comments column toggle ───────────────────────────────────────────
-        var layout = document.querySelector('.chapter-layout');
-        var commentsBtn = document.getElementById('commentsToggleBtn');
-
-        if (layout && commentsBtn) {
-            if (localStorage.getItem('dv-comments-visible') === 'hidden') {
-                layout.classList.add('comments-hidden');
-                commentsBtn.textContent = 'Show comments';
-            }
-
-            commentsBtn.addEventListener('click', function () {
-                var hidden = layout.classList.toggle('comments-hidden');
-                commentsBtn.textContent = hidden ? 'Show comments' : 'Hide comments';
-                localStorage.setItem('dv-comments-visible', hidden ? 'hidden' : 'visible');
-            });
-        }
+        });
     })();
 
     (function () {

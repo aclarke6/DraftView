@@ -299,35 +299,3 @@
     border-top: 1px solid var(--color-border);
     margin: var(--space-3) 0;
 }
-
-.reader__contents-act-btn {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    width: 100%;
-    background: none;
-    border: none;
-    padding: var(--space-1) 0;
-    font-size: var(--text-xs);
-    font-weight: var(--font-bold);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--color-text-muted);
-    cursor: pointer;
-    text-align: left;
-    margin-top: var(--space-2);
-}
-
-.reader__contents-act-btn:hover {
-    color: var(--color-text);
-}
-
-.reader__contents-act-chevron {
-    display: inline-block;
-    width: 10px;
-    color: var(--color-text-subtle);
-}
-
-.reader__contents-act-chapters.is-collapsed {
-    display: none;
-}
