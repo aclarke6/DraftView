@@ -11,4 +11,5 @@ public interface IUserRepository
     Task<int> CountActiveBetaReadersAsync(CancellationToken ct = default);
     Task AddAsync(User user, CancellationToken ct = default);
     Task<bool> EmailExistsAsync(string email, CancellationToken ct = default);
+    Task<IReadOnlyList<User>> FindByDisplayNameAsync(string displayName, CancellationToken ct = default);
 }

@@ -42,8 +42,23 @@ public class AccountController(
         if (!ModelState.IsValid)
             return View(model);
 
+        var loginInput = model.Email;
+        var resolvedEmail = loginInput;
+
         var result = await signInManager.PasswordSignInAsync(
-            model.Email, model.Password, model.RememberMe, lockoutOnFailure: true);
+            loginInput, model.Password, model.RememberMe, lockoutOnFailure: true);
+
+        // If the input has no '@' and the initial attempt failed, try it as a display name.
+        if (result == Microsoft.AspNetCore.Identity.SignInResult.Failed && !loginInput.Contains('@'))
+        {
+            var byName = await authenticationUserLookupService.FindByDisplayNameAsync(loginInput);
+            if (byName?.Email is { Length: > 0 })
+            {
+                resolvedEmail = byName.Email;
+                result = await signInManager.PasswordSignInAsync(
+                    resolvedEmail, model.Password, model.RememberMe, lockoutOnFailure: true);
+            }
+        }
 
         switch (result)
         {
@@ -53,7 +68,7 @@ public class AccountController(
                     return Redirect(returnUrl);
                 try
                 {
-                    var domainUser = await authenticationUserLookupService.FindByLoginEmailAsync(model.Email);
+                    var domainUser = await authenticationUserLookupService.FindByLoginEmailAsync(resolvedEmail);
                     if (domainUser?.Role == Domain.Enumerations.Role.Author)
                         return RedirectToAction("Dashboard", "Author");
                     if (domainUser?.Role == Domain.Enumerations.Role.SystemSupport)

@@ -177,6 +177,63 @@ public class AccountControllerTests
             "author@example.test");
     }
 
+    [Fact]
+    public async Task Login_WithDisplayName_UniqueMatch_SignsInAndRedirects()
+    {
+        var reader = User.Create("reader@example.test", "Alastair Dunlop", Role.BetaReader);
+        reader.Activate();
+        var sut = CreateSut();
+
+        signInManager.Setup(m => m.PasswordSignInAsync("Alastair Dunlop", "Password1!", false, true))
+            .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.Failed);
+        authenticationUserLookupService
+            .Setup(s => s.FindByDisplayNameAsync("Alastair Dunlop", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(reader);
+        signInManager.Setup(m => m.PasswordSignInAsync("reader@example.test", "Password1!", false, true))
+            .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.Success);
+        authenticationUserLookupService
+            .Setup(s => s.FindByLoginEmailAsync("reader@example.test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(reader);
+
+        var result = await sut.Login(new LoginViewModel { Email = "Alastair Dunlop", Password = "Password1!" });
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Dashboard", redirect.ActionName);
+        Assert.Equal("Reader", redirect.ControllerName);
+    }
+
+    [Fact]
+    public async Task Login_WithDisplayName_NoMatch_ReturnsInvalidCredentials()
+    {
+        var sut = CreateSut();
+
+        signInManager.Setup(m => m.PasswordSignInAsync("Unknown Name", "bad", false, true))
+            .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.Failed);
+        authenticationUserLookupService
+            .Setup(s => s.FindByDisplayNameAsync("Unknown Name", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        var result = await sut.Login(new LoginViewModel { Email = "Unknown Name", Password = "bad" });
+
+        Assert.IsType<ViewResult>(result);
+        Assert.False(sut.ModelState.IsValid);
+    }
+
+    [Fact]
+    public async Task Login_WithEmailInput_DoesNotAttemptDisplayNameLookup()
+    {
+        var sut = CreateSut();
+
+        signInManager.Setup(m => m.PasswordSignInAsync("reader@example.test", "bad", false, true))
+            .ReturnsAsync(Microsoft.AspNetCore.Identity.SignInResult.Failed);
+
+        await sut.Login(new LoginViewModel { Email = "reader@example.test", Password = "bad" });
+
+        authenticationUserLookupService.Verify(
+            s => s.FindByDisplayNameAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
     // ---------------------------------------------------------------------------
     // Settings
     // ---------------------------------------------------------------------------
