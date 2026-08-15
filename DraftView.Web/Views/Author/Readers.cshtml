@@ -59,6 +59,15 @@ else
                             <div class="actions-cell">
                                 @if (r.Status == ReaderStatus.Active)
                                 {
+                                    @if (r.HasPendingInvitation)
+                                    {
+                                        <form asp-action="ResendInvitation" method="post">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="userId" value="@r.Id" />
+                                            <button type="submit" class="comment-action-btn"
+                                                    title="Resend invitation">@Html.Raw(Icons.Send())</button>
+                                        </form>
+                                    }
                                     <form asp-action="DeactivateReader" method="post">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="userId" value="@r.Id" />

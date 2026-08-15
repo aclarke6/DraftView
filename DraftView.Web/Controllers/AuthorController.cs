@@ -635,23 +635,23 @@ public class AuthorController(
         var rows = new List<ReaderRowViewModel>();
         foreach (var r in readers.Where(r => !r.IsSoftDeleted))
         {
-            var invitation = await invitationRepo.GetByUserIdAsync(r.Id);
-            var isPending  = invitation is not null
-                          && invitation.Status == Domain.Enumerations.InvitationStatus.Pending;
+            var pending = await invitationRepo.GetPendingByUserIdAsync(r.Id);
+            var hasPending = pending.Count > 0;
 
             var status = r.IsActive
                 ? ReaderStatus.Active
-                : isPending
+                : hasPending
                     ? ReaderStatus.Invited
                     : ReaderStatus.Inactive;
 
             rows.Add(new ReaderRowViewModel
             {
-                Id          = r.Id,
-                DisplayName = string.IsNullOrWhiteSpace(r.DisplayName) ? "Pending reader" : r.DisplayName,
-                Email       = string.Empty,
-                Status      = status,
-                ActivatedAt = r.ActivatedAt
+                Id                   = r.Id,
+                DisplayName          = string.IsNullOrWhiteSpace(r.DisplayName) ? "Pending reader" : r.DisplayName,
+                Email                = string.Empty,
+                Status               = status,
+                ActivatedAt          = r.ActivatedAt,
+                HasPendingInvitation = hasPending
             });
         }
 
@@ -725,6 +725,11 @@ public class AuthorController(
 
         var reader = await userRepo.GetByIdAsync(userId, ct);
         if (reader is null) return NotFound();
+
+        // Reader was manually activated without completing the invitation flow —
+        // deactivate first so IssueInvitationAsync can accept the re-invite.
+        if (reader.IsActive)
+            await userService.DeactivateUserAsync(userId, author.Id, ct);
 
         var pending = (await invitationRepo.GetPendingByUserIdAsync(userId, ct)).FirstOrDefault();
         var policy = pending?.ExpiryPolicy ?? DraftView.Domain.Enumerations.ExpiryPolicy.AlwaysOpen;

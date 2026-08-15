@@ -154,6 +154,8 @@ public class GoverningRenderedEmailExposureTests :
                     .ReturnsAsync(Invitation);
                 invitationRepo.Setup(r => r.GetByUserIdAsync(invitedReader.Id, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(Invitation);
+                invitationRepo.Setup(r => r.GetPendingByUserIdAsync(invitedReader.Id, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync([Invitation]);
 
                 var prefsRepo = new Mock<IUserPreferencesRepository>();
                 prefsRepo.Setup(r => r.GetByUserIdAsync(authorUser.Id, It.IsAny<CancellationToken>()))
