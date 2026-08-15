@@ -10,7 +10,7 @@ Last updated: 2026-08-15
 **Repository:** https://github.com/aclarke6/DraftView
 
 ### Current Test State
-- 860 total, 859 passed, 1 skipped, 0 failed
+- 883 total, 882 passed, 1 skipped, 0 failed
 - 1 skipped — `SmtpEmailSenderIntegrationTests` (sends real email, manual only)
 
 ### Active Work
