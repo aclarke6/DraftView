@@ -10,19 +10,17 @@ Last updated: 2026-08-15
 **Repository:** https://github.com/aclarke6/DraftView
 
 ### Current Test State
-- 860 total, 859 passed, 1 skipped, 0 failed (post empty-migration guard work)
+- 860 total, 859 passed, 1 skipped, 0 failed
 - 1 skipped — `SmtpEmailSenderIntegrationTests` (sends real email, manual only)
 
 ### Active Work
 | Track | Status |
 |-------|--------|
-| V-Sprints 1–10 | ✅ All complete |
-| RSprint-1 | 🔵 Planned — reader and author experience improvements |
-| MT-Sprint Series | 🔵 Pre-planning — see `MultiTenancy.md` |
+| RSprint Series | 🟡 In progress — RS-A to RS-E complete, RS-F next |
 | S-Sprint Series | 🟡 In progress — S-Sprint-1 complete, S-Sprint-2 next |
-| BugFix-Mac | 🟢 Synced with main, awaiting next bug |
-| BugFix-PC | 🟢 Merged to main |
-| UAT | 🟡 In progress — 2026-04-20 |
+| MT-Sprint Series | 🔵 Pre-planning — see `MultiTenancy.md` |
+| Go-Live Prerequisites | 🔴 Blocking — items below must complete before launch |
+| UAT | 🟡 In progress |
 
 ---
 
@@ -42,82 +40,31 @@ Last updated: 2026-08-15
 | `PowerShell.md` | PowerShell scripting standards for safe file modification and verification |
 | `DraftView Git Rules.md` | Branching strategy, merge gates, and commit standards |
 | `.github/copilot-instructions.md` | Supplemental agent guidance for repository-integrated coding agents |
+| `HISTORY.md` | Completed bugs, changes, sprints, and phases |
 
 ---
 
 ## 2. Open Minor Work
 
 ### 2(a) Bugs
-
-- [DONE] BUG-019 — Add Project timed out (Cloudflare 524) on large Scrivener projects; AddProjects POST now fires background `Task.Run` with `IServiceScopeFactory` scope, sets `SyncStatus.Syncing` before redirect (2026-08-14)
-- [DONE] BUG-021 — Add Projects page stalled on foreground Dropbox vault listing; GET now returns page shell immediately, vault list fetched via AJAX from new `DiscoverProjects` endpoint (2026-08-14)
-- [DONE] BUG-022 — Inviting a reader always crashed with the controlled error page; `App:BaseUrl` was absent from production config, causing `GetConfiguredAppBaseUrl()` to throw on every invitation attempt. Added `App:BaseUrl` to `appsettings.Production.json` and updated the publish script to deploy it alongside the app (2026-08-15)
-- [DONE] BUG-023 — ASP.NET Core DataProtection used an ephemeral in-memory key ring that regenerated on every service restart, silently invalidating antiforgery tokens from pre-restart sessions and causing unhandled 500 errors on all form POSTs around a restart. Fixed by persisting keys to `/var/www/draftview-keys`; path is configurable via `DataProtection:KeysPath` (falls back to ephemeral when unset, e.g. in development) (2026-08-15)
-- [DONE] BUG-024 — Reader was not assigned the `BetaReader` Identity role on invitation acceptance; `AcceptInvitation` POST created the Identity user but never called `AddToRoleAsync`, so the session cookie had no role claim and all reader pages returned 403 Access Denied. Fixed by calling `AddToRoleAsync` immediately after `CreateAsync` (2026-08-15)
-- [DONE] BUG-025 — `InvitationRepository.GetByUserIdAsync` had no ORDER BY; with multiple invitations per user (cancelled + pending), it could return the cancelled one, making an invited reader appear as Inactive rather than Invited in the Readers list. Fixed by switching the Readers action to `GetPendingByUserIdAsync` (2026-08-15)
+No open bugs.
 
 ### 2(b) Changes
 
-- [DONE] CHANGE-001 — `Views/Reader/DesktopRead.cshtml` & `MobileRead.cshtml`: moved scene version labels from main title area to left-hand navigation (desktop) and top nav metadata (mobile) for reduced reading noise (2026-04-21)
-- [DONE] CHANGE-002 — `Views/Author/Publishing.cshtml`: align scene version labels beside scene titles using CSS Grid layout (2026-04-21)
 - [ ] CHANGE-003 — `Views/Reader/DesktopRead.cshtml`: allow the left and right reader panels to collapse and expand for a wider reading surface
-- [DONE] CHANGE-004 — Readers list: Resend Invitation button (paper-plane icon) for readers in Invited state, and for Active readers who still have a pending invitation (manually activated before completing setup). `ResendInvitation` action deactivates the reader first if needed, then re-issues the invitation preserving the original expiry policy (2026-08-15)
-- [DONE] CHANGE-005 — Username login: `AcceptInvitation` form now includes a "Choose a username" field (`autocomplete="username"`, stored as `IdentityUser.UserName`). Login accepts username or email — if the input contains `@` and the initial attempt fails, Identity looks up the user by email and retries with their `UserName`. Display name is not a valid login identifier (2026-08-15)
 
 ---
+
 ## 3. Active Projects
 
 ### 3.1 RSprint — Passage Anchoring, Reader Continuity, and Inline Commentary
 
-**Status:** 🔵 Planned — foundation capability
-
-Establish a **core passage anchoring capability** that supports:
-
-- Inline (selected text) comments  
-- Cross-version comment relocation  
-- Reader resume position across versions  
-- Human correction (relink / reject)  
-- Original context integrity  
-
-This is a **platform capability**, not a feature.
-
-**Sprint Series:**
-
-- [DONE] **RS-A — Anchor Foundation**
-  - [DONE] Phase A1 — Model discovery (Copilot-led inspection and proposal)
-  - [DONE] Phase A2 — Domain definition (TDD)
-  - [DONE] Phase A3 — Persistence (migration, additive only)
-  - [DONE] Phase A4 — Application surface (creation/retrieval)
-
-- [DONE] **RS-B — Anchored Resume**
-  - [DONE] Phase B1 — Capture anchor from reading position
-  - [DONE] Phase B2 — Restore using matching pipeline
-  - [DONE] Phase B3 — Integration with ReadEvent
-  - [DONE] Phase B4 — Tests (cross-version resume)
-
-- [DONE] **RS-C — Inline Comments**
-  - [DONE] Phase C1 — Selection capture
-  - [DONE] Phase C2 — Comment creation with anchor
-  - [DONE] Phase C3 — Rendering (inline indicators)
-  - [DONE] Phase C4 — Tests
-
-- [DONE] **RS-D — Deterministic Relocation**
-  - [DONE] Phase D1 — Exact matching
-  - [DONE] Phase D2 — Context matching
-  - [DONE] Phase D3 — Fuzzy matching
-  - [DONE] Phase D4 — Confidence scoring
-  - [DONE] Phase D5 — Integration and tests
-
-- [DONE] **RS-E — Human Override**
-  - [DONE] Phase E1 — Permission enforcement (reader + author only)
-  - [DONE] Phase E2 — Reject match (“wrong place”)
-  - [DONE] Phase E3 — Relink to new passage
-  - [DONE] Phase E4 — Status tracking (actor + timestamp)
+**Status:** 🟡 In progress — RS-A through RS-E complete (see `HISTORY.md`), RS-F next
 
 - [ ] **RS-F — Original Context**
   - [ ] Phase F1 — Retrieve original version content
   - [ ] Phase F2 — Navigate to original anchor
-  - [ ] Phase F3 — UI integration (“View original context”)
+  - [ ] Phase F3 — UI integration ("View original context")
 
 - [ ] **RS-G — AI-Assisted Relocation**
   - [ ] Phase G1 — Integration via AIScoringService
@@ -170,12 +117,8 @@ See `MultiTenancy.md` for full design, migration strategy, and sprint plan.
 
 ### 3.5 Dropbox Webhook Sync Sprint Series
 See `DropBox Synchronisation Using WebHooks.md` for full architecture, control model, and sprint plan.
+S-Sprint-1 complete — see `HISTORY.md`.
 
-- [Started] **S-Sprint-1 — Foundation for background Dropbox sync**
-  - [DONE] Phase 1: Architecture and task alignment
-  - [DONE] Phase 2: Domain model for sync control
-  - [DONE] Phase 3: Domain tests for control rules
-  - [DONE] Phase 4: Infrastructure mapping and migration
 - [ ] **S-Sprint-2 — Webhook receipt and durable request recording**
   - [ ] Phase 1: Webhook endpoint surface
   - [ ] Phase 2: Signature validation and request parsing
@@ -215,9 +158,8 @@ See `DropBox Synchronisation Using WebHooks.md` for full architecture, control m
 ---
 
 ### 3.6 Incremental Refactor Roadmap
-See `REFACTORING.md` for full detail.
+See `REFACTORING.md` for full detail. Phase 1 complete — see `HISTORY.md`.
 
-- [DONE] Phase 1 — Centralise controller user/role resolution
 - [ ] Phase 2 — Extract procedural controller workflows
 - [ ] Phase 3 — Decompose startup/seeding
 - [ ] Phase 4 — Standardise inheritance and shared utilities
@@ -235,54 +177,3 @@ See `REFACTORING.md` for full detail.
 - Author/Comments view (mobile)
 - Author Chapter Page (`Author/Chapter/{id}`)
 - Publishing cascades (part-level, book-level)
-
----
-
-## 4. Done
-
-### Bugs Fixed
-
-- [DONE] BUG-020 — BetaBooksImporter broken by email encryption-at-rest migration; fixed email lookup to use `IUserRepository.GetByEmailAsync` (HMAC-based), and key loading to use configured `EmailProtection__EncryptionKey`/`EmailProtection__LookupHmacKey` env vars instead of random parameterless-ctor keys (2026-08-14)
-- [DONE] BUG-019 — "Add Project" Cloudflare 524 timeout on large Scrivener projects; `ParseProjectAsync` was awaited on the HTTP request thread in `AddProjects`; fixed by calling `MarkSyncing()`, saving, then firing `Task.Run` with `IServiceScopeFactory` scope (matching the existing `Sync` action pattern); Dashboard progress bar now activates automatically on redirect
-- [DONE] Production database migration drift — reader page failed because PassageAnchor rejection audit columns were missing; root cause was earlier real migration not applied and later empty migration recorded, causing EF snapshot/history drift; resolved with corrective migration `20260427123533_ApplyMissingPassageAnchorRejectionAudit`; production verified via `__EFMigrationsHistory` entry and `PassageAnchors` columns `RejectedAt`, `RejectedByUserId`, `RejectedReason`, `RejectedTargetSectionVersionId`
-- [DONE] Empty EF migration guard — added Roslyn-based infrastructure test for empty `Up(MigrationBuilder)` methods; allows only legacy exception `20260427121437_AddPassageAnchorFields.cs` with explicit comment because it was superseded by `20260427123533_ApplyMissingPassageAnchorRejectionAudit`; full suite verified green: 860 total, 859 passed, 1 skipped, 0 failed
-- [DONE] BUG-018 — Reader view did not display scene version number; DesktopRead and MobileRead now render a persistent scene version label from existing `CurrentVersionNumber` (`vN`) independent of update-banner state (2026-04-21)
-- [DONE] BUG-017 — Sections view did not clearly surface pending synced scene changes; added explicit chapter-level “Pending changes” indication for published chapters with changed child scenes (2026-04-21)
-- [DONE] BUG-016 — Publishing page leaked raw Razor token for version label; scene version hint now renders explicitly as text (e.g. `v3`) instead of showing `v@doc.CurrentVersionNumber` (2026-04-21)
-- [DONE] BUG-001 — Reader removal not reflected in UI; repository now filters `!IsSoftDeleted` (2026-04-20)
-- [DONE] BUG-003 — Settings surfaced ciphertext errors; now logs and redirects to error page instead of exposing exceptions (2026-04-21)
-- [DONE] BUG-015 — Reader showed unpublished content and inconsistent banner version; now pinned to latest `SectionVersion` with stable versioned banner rendering (2026-04-21)
-- [DONE] BUG-014 — Republishing a chapter created new versions for all scenes unconditionally; fixed to only create versions for scenes with `ContentChangedSincePublish = true` or no existing version (2026-04-20)
-- [DONE] BUG-013 — Reader Account Settings missing font/size preferences; `AccountController.Settings` now uses `BaseController` role helpers to correctly identify BetaReader users (2026-04-20)
-- [DONE] BUG-012 — New scene added in Scrivener did not trigger republish prompt; reconciliation now marks published parent chapter changed on new child scene creation (2026-04-20)
-- [DONE] BUG-002 — System Support had no readers page; added `GET /Support/Readers` listing readers by display name and status only (2026-04-20)
-- [DONE] BUG-007 — Activating a project now atomically deactivates the current active project (2026-04-20)
-- [DONE] BUG-010 — Publishing page has no navigation link from Sections view or Dashboard
-- [DONE] BUG-008 — Author/Section view had unreadable light-on-light prose and inconsistent visual design; removed inline styling, applied dark-theme token-based styling, and aligned breadcrumb/metadata/comments with author UI patterns (2026-04-20)
-- [DONE] BUG-009 — New scene added in Scrivener did not appear after incremental sync; fixed by running `ReconcileProjectFromScrivxAsync` in the incremental path so new binder UUIDs are created from the cached local `.scrivx` without additional Dropbox API round-trips (2026-04-20)
-- [DONE] BUG-006 — Unable to sync projects — seeder author lookup now Identity-ID-first; invalid ciphertext repaired on startup; duplicate author row repair added (2026-04-20)
-- [DONE] BUG-005 — Password reset link immediately expired — reset flow now resolves Identity user by email fallback (2026-04-19)
-- [DONE] BUG-004 — ForgotPassword returns HTTP 405 in production — two missing migrations applied; status code routing fixed
-- [DONE] Cross-platform local cache path resolution — `IPlatformPathService`, platform-aware fallback (BugFix-Mac, 2026-04-19)
-- [DONE] `/Author/InviteReader` submit production crash — operational failures route to `Home/Error` (BugFix-Mac, 2026-04-19)
-- [DONE] MailKit NU1902 vulnerability — upgraded to 4.16.0 (BugFix-PC, 2026-04-19)
-- [DONE] Reader view does not apply saved Reading Preferences (2026-04-17)
-- [DONE] CS9107 in `AccountController` primary constructor (2026-04-17)
-- [DONE] Reader/Read mobile view 404
-- [DONE] Reader/Read comment box overflows page boundary on RHS
-- [DONE] AddComment POST redirects to top of page — fixed with `#scene-{id}` anchors
-- [DONE] Author/Dashboard Recent Activity truncation — replaced with persisted `AuthorNotification`
-- [DONE] Login always redirected to Reader/Dashboard — fixed role-based redirect
-- [DONE] Reader diff UX for removed paragraphs — thin markers instead of strikethrough
-
-### Sprints Complete
-- [DONE] V-Sprints 1–10 — Publishing and Versioning Series (636 tests). See `Publishing And Versioning Architecture.md`
-- [DONE] Sprint 4 — Email Privacy and Controlled Access. See `Sprint4-EmailPrivacy.md`
-- [DONE] Sprint 3 — Reader Font Preferences
-- [DONE] Sprint 2 — Reader Experience
-- [DONE] Sprint 1 — Pre-Beta Push
-- [DONE] Email Sprint — Oracle Email Delivery, MailKit, DKIM, SPF
-- [DONE] Role Migration — Identity roles, SystemSupport, SystemStateMessage, mobile reader flow
-- [DONE] ScrivenerProject → Project rename
-- [DONE] UserNotificationPreferences → UserPreferences rename
-- [DONE] Incremental Refactor Phase 1

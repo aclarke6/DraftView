@@ -1,0 +1,115 @@
+# DraftView — Completed Work History
+Last updated: 2026-08-15
+
+---
+
+## Completed Sprints
+
+| Sprint | Deliverable | Date |
+|--------|-------------|------|
+| V-Sprints 1–10 | Publishing and Versioning Series (636 tests). See `Publishing And Versioning Architecture.md` | pre-2026-04 |
+| Sprint 4 | Email Privacy and Controlled Access. See `Sprint4-EmailPrivacy.md` | pre-2026-04 |
+| Sprint 3 | Reader Font Preferences | pre-2026-04 |
+| Sprint 2 | Reader Experience | pre-2026-04 |
+| Sprint 1 | Pre-Beta Push | pre-2026-04 |
+| Email Sprint | Oracle Email Delivery, MailKit, DKIM, SPF | pre-2026-04 |
+| Role Migration | Identity roles, SystemSupport, SystemStateMessage, mobile reader flow | pre-2026-04 |
+| ScrivenerProject → Project rename | — | pre-2026-04 |
+| UserNotificationPreferences → UserPreferences rename | — | pre-2026-04 |
+| Incremental Refactor Phase 1 | Centralise controller user/role resolution | pre-2026-04 |
+
+---
+
+## Completed RSprint Phases
+
+- **RS-A — Anchor Foundation**
+  - Phase A1 — Model discovery (Copilot-led inspection and proposal)
+  - Phase A2 — Domain definition (TDD)
+  - Phase A3 — Persistence (migration, additive only)
+  - Phase A4 — Application surface (creation/retrieval)
+
+- **RS-B — Anchored Resume**
+  - Phase B1 — Capture anchor from reading position
+  - Phase B2 — Restore using matching pipeline
+  - Phase B3 — Integration with ReadEvent
+  - Phase B4 — Tests (cross-version resume)
+
+- **RS-C — Inline Comments**
+  - Phase C1 — Selection capture
+  - Phase C2 — Comment creation with anchor
+  - Phase C3 — Rendering (inline indicators)
+  - Phase C4 — Tests
+
+- **RS-D — Deterministic Relocation**
+  - Phase D1 — Exact matching
+  - Phase D2 — Context matching
+  - Phase D3 — Fuzzy matching
+  - Phase D4 — Confidence scoring
+  - Phase D5 — Integration and tests
+
+- **RS-E — Human Override**
+  - Phase E1 — Permission enforcement (reader + author only)
+  - Phase E2 — Reject match ("wrong place")
+  - Phase E3 — Relink to new passage
+  - Phase E4 — Status tracking (actor + timestamp)
+
+---
+
+## Completed S-Sprint Phases
+
+- **S-Sprint-1 — Foundation for background Dropbox sync**
+  - Phase 1: Architecture and task alignment
+  - Phase 2: Domain model for sync control
+  - Phase 3: Domain tests for control rules
+  - Phase 4: Infrastructure mapping and migration
+
+---
+
+## Bugs Fixed
+
+- BUG-025 — `InvitationRepository.GetByUserIdAsync` had no ORDER BY; with multiple invitations per user (cancelled + pending), it could return the cancelled one, making an invited reader appear as Inactive rather than Invited in the Readers list. Fixed by switching the Readers action to `GetPendingByUserIdAsync` (2026-08-15)
+- BUG-024 — Reader was not assigned the `BetaReader` Identity role on invitation acceptance; `AcceptInvitation` POST created the Identity user but never called `AddToRoleAsync`, so the session cookie had no role claim and all reader pages returned 403 Access Denied. Fixed by calling `AddToRoleAsync` immediately after `CreateAsync` (2026-08-15)
+- BUG-023 — ASP.NET Core DataProtection used an ephemeral in-memory key ring that regenerated on every service restart, silently invalidating antiforgery tokens from pre-restart sessions and causing unhandled 500 errors on all form POSTs around a restart. Fixed by persisting keys to `/var/www/draftview-keys`; path is configurable via `DataProtection:KeysPath` (falls back to ephemeral when unset, e.g. in development) (2026-08-15)
+- BUG-022 — Inviting a reader always crashed with the controlled error page; `App:BaseUrl` was absent from production config, causing `GetConfiguredAppBaseUrl()` to throw on every invitation attempt. Added `App:BaseUrl` to `appsettings.Production.json` and updated the publish script to deploy it alongside the app (2026-08-15)
+- BUG-021 — Add Projects page stalled on foreground Dropbox vault listing; GET now returns page shell immediately, vault list fetched via AJAX from new `DiscoverProjects` endpoint (2026-08-14)
+- BUG-020 — BetaBooksImporter broken by email encryption-at-rest migration; fixed email lookup to use `IUserRepository.GetByEmailAsync` (HMAC-based), and key loading to use configured `EmailProtection__EncryptionKey`/`EmailProtection__LookupHmacKey` env vars instead of random parameterless-ctor keys (2026-08-14)
+- BUG-019 — Add Project timed out (Cloudflare 524) on large Scrivener projects; `ParseProjectAsync` was awaited on the HTTP request thread in `AddProjects`; fixed by calling `MarkSyncing()`, saving, then firing `Task.Run` with `IServiceScopeFactory` scope (matching the existing `Sync` action pattern); Dashboard progress bar now activates automatically on redirect (2026-08-14)
+- BUG-018 — Reader view did not display scene version number; DesktopRead and MobileRead now render a persistent scene version label from existing `CurrentVersionNumber` (`vN`) independent of update-banner state (2026-04-21)
+- BUG-017 — Sections view did not clearly surface pending synced scene changes; added explicit chapter-level "Pending changes" indication for published chapters with changed child scenes (2026-04-21)
+- BUG-016 — Publishing page leaked raw Razor token for version label; scene version hint now renders explicitly as text (e.g. `v3`) instead of showing `v@doc.CurrentVersionNumber` (2026-04-21)
+- BUG-015 — Reader showed unpublished content and inconsistent banner version; now pinned to latest `SectionVersion` with stable versioned banner rendering (2026-04-21)
+- BUG-014 — Republishing a chapter created new versions for all scenes unconditionally; fixed to only create versions for scenes with `ContentChangedSincePublish = true` or no existing version (2026-04-20)
+- BUG-013 — Reader Account Settings missing font/size preferences; `AccountController.Settings` now uses `BaseController` role helpers to correctly identify BetaReader users (2026-04-20)
+- BUG-012 — New scene added in Scrivener did not trigger republish prompt; reconciliation now marks published parent chapter changed on new child scene creation (2026-04-20)
+- BUG-010 — Publishing page has no navigation link from Sections view or Dashboard (2026-04-20)
+- BUG-009 — New scene added in Scrivener did not appear after incremental sync; fixed by running `ReconcileProjectFromScrivxAsync` in the incremental path so new binder UUIDs are created from the cached local `.scrivx` without additional Dropbox API round-trips (2026-04-20)
+- BUG-008 — Author/Section view had unreadable light-on-light prose and inconsistent visual design; removed inline styling, applied dark-theme token-based styling, and aligned breadcrumb/metadata/comments with author UI patterns (2026-04-20)
+- BUG-007 — Activating a project now atomically deactivates the current active project (2026-04-20)
+- BUG-006 — Unable to sync projects — seeder author lookup now Identity-ID-first; invalid ciphertext repaired on startup; duplicate author row repair added (2026-04-20)
+- BUG-005 — Password reset link immediately expired — reset flow now resolves Identity user by email fallback (2026-04-19)
+- BUG-004 — ForgotPassword returns HTTP 405 in production — two missing migrations applied; status code routing fixed (2026-04-19)
+- BUG-003 — Settings surfaced ciphertext errors; now logs and redirects to error page instead of exposing exceptions (2026-04-21)
+- BUG-002 — System Support had no readers page; added `GET /Support/Readers` listing readers by display name and status only (2026-04-20)
+- BUG-001 — Reader removal not reflected in UI; repository now filters `!IsSoftDeleted` (2026-04-20)
+- Production database migration drift — reader page failed because PassageAnchor rejection audit columns were missing; resolved with corrective migration `20260427123533_ApplyMissingPassageAnchorRejectionAudit` (2026-04-27)
+- Empty EF migration guard — added Roslyn-based infrastructure test for empty `Up(MigrationBuilder)` methods; allows only legacy exception `20260427121437_AddPassageAnchorFields.cs` (2026-04-27)
+- Cross-platform local cache path resolution — `IPlatformPathService`, platform-aware fallback (BugFix-Mac, 2026-04-19)
+- `/Author/InviteReader` submit production crash — operational failures route to `Home/Error` (BugFix-Mac, 2026-04-19)
+- MailKit NU1902 vulnerability — upgraded to 4.16.0 (BugFix-PC, 2026-04-19)
+- Reader view does not apply saved Reading Preferences (2026-04-17)
+- CS9107 in `AccountController` primary constructor (2026-04-17)
+- Reader/Read mobile view 404
+- Reader/Read comment box overflows page boundary on RHS
+- AddComment POST redirects to top of page — fixed with `#scene-{id}` anchors
+- Author/Dashboard Recent Activity truncation — replaced with persisted `AuthorNotification`
+- Login always redirected to Reader/Dashboard — fixed role-based redirect
+- Reader diff UX for removed paragraphs — thin markers instead of strikethrough
+
+---
+
+## Completed Changes
+
+- CHANGE-005 — Username login: `AcceptInvitation` form now includes a "Choose a username" field (`autocomplete="username"`, stored as `IdentityUser.UserName`). Login accepts username or email — if the input contains `@` and the initial attempt fails, Identity looks up the user by email and retries with their `UserName`. Display name is not a valid login identifier (2026-08-15)
+- CHANGE-004 — Readers list: Resend Invitation button (paper-plane icon) for readers in Invited state, and for Active readers who still have a pending invitation (manually activated before completing setup). `ResendInvitation` action deactivates the reader first if needed, then re-issues the invitation preserving the original expiry policy (2026-08-15)
+- CHANGE-002 — `Views/Author/Publishing.cshtml`: align scene version labels beside scene titles using CSS Grid layout (2026-04-21)
+- CHANGE-001 — `Views/Reader/DesktopRead.cshtml` & `MobileRead.cshtml`: moved scene version labels from main title area to left-hand navigation (desktop) and top nav metadata (mobile) for reduced reading noise (2026-04-21)
