@@ -1,16 +1,16 @@
 # DraftView — Task List
-Last updated: 2026-04-23
+Last updated: 2026-08-15
 
 ---
 
 ## 0. Summary
 
 **Live at:** https://draftview.co.uk
-**Production:** Oracle Cloud VM `193.123.182.208`, .NET 10, PostgreSQL, Nginx, Cloudflare SSL
+**Production:** Oracle Cloud VM `141.147.71.62`, .NET 10, PostgreSQL, Nginx, Cloudflare SSL
 **Repository:** https://github.com/aclarke6/DraftView
 
 ### Current Test State
-- 770 total, 769 passed, 1 skipped, 0 failed (post BUG-018 work)
+- 860 total, 859 passed, 1 skipped, 0 failed (post empty-migration guard work)
 - 1 skipped — `SmtpEmailSenderIntegrationTests` (sends real email, manual only)
 
 ### Active Work
@@ -19,7 +19,7 @@ Last updated: 2026-04-23
 | V-Sprints 1–10 | ✅ All complete |
 | RSprint-1 | 🔵 Planned — reader and author experience improvements |
 | MT-Sprint Series | 🔵 Pre-planning — see `MultiTenancy.md` |
-| S-Sprint Series | 🟡 In progress — S-Sprint-1 Phase 1 |
+| S-Sprint Series | 🟡 In progress — S-Sprint-1 complete, S-Sprint-2 next |
 | BugFix-Mac | 🟢 Synced with main, awaiting next bug |
 | BugFix-PC | 🟢 Merged to main |
 | UAT | 🟡 In progress — 2026-04-20 |
@@ -57,8 +57,6 @@ Last updated: 2026-04-23
 - [DONE] CHANGE-001 — `Views/Reader/DesktopRead.cshtml` & `MobileRead.cshtml`: moved scene version labels from main title area to left-hand navigation (desktop) and top nav metadata (mobile) for reduced reading noise (2026-04-21)
 - [DONE] CHANGE-002 — `Views/Author/Publishing.cshtml`: align scene version labels beside scene titles using CSS Grid layout (2026-04-21)
 - [ ] CHANGE-003 — `Views/Reader/DesktopRead.cshtml`: allow the left and right reader panels to collapse and expand for a wider reading surface
-
-- **BUG-021** — Add Projects page stalls/times out waiting for a foreground Dropbox project listing; users who click multiple times during the wait create duplicate pending operations. Fix: make the Dropbox project discovery call asynchronous (background task or AJAX) so the POST returns immediately. (Discovered 2026-08-14)
 
 ---
 ## 3. Active Projects
