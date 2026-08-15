@@ -194,8 +194,41 @@
    -------------------------------------------------------------------------- */
 .chapter-layout {
     display: flex;
-    gap: var(--space-8);
+    flex-direction: column;
     height: calc(100vh - 56px);
+    overflow: hidden;
+}
+
+.chapter-toolbar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-2) var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.chapter-panel-btn {
+    background: none;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-1) var(--space-3);
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: color var(--transition), border-color var(--transition);
+}
+
+.chapter-panel-btn:hover {
+    color: var(--color-text);
+    border-color: var(--color-accent);
+}
+
+.chapter-content-row {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    gap: var(--space-8);
     overflow: hidden;
 }
 
@@ -213,43 +246,7 @@
 }
 
 .chapter-sidebar.is-collapsed {
-    width: 36px;
-}
-
-.chapter-sidebar__top-bar {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 36px;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.chapter-sidebar.is-collapsed .chapter-sidebar__top-bar {
-    justify-content: center;
-}
-
-.chapter-sidebar.is-collapsed .chapter-sidebar__pin-btn {
-    display: none;
-}
-
-.chapter-sidebar__collapse-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    flex-shrink: 0;
-    background: none;
-    border: none;
-    color: var(--color-text-muted);
-    font-size: var(--text-lg);
-    cursor: pointer;
-    line-height: 1;
-}
-
-.chapter-sidebar__collapse-btn:hover {
-    color: var(--color-accent);
+    width: 0;
 }
 
 .chapter-sidebar__inner {
@@ -257,47 +254,12 @@
     overflow-y: auto;
     padding-top: var(--space-4);
     padding-bottom: var(--space-6);
-    min-width: 184px;
+    min-width: 220px;
 }
 
 .chapter-sidebar.is-collapsed .chapter-sidebar__inner {
     visibility: hidden;
     overflow: hidden;
-}
-
-.chapter-sidebar__header {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-1);
-    margin-bottom: var(--space-2);
-}
-
-.chapter-sidebar__header-links {
-    flex: 1;
-    min-width: 0;
-}
-
-.chapter-sidebar__pin-btn {
-    flex-shrink: 0;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: var(--space-1);
-    color: var(--color-text-subtle);
-    opacity: 0.4;
-    line-height: 1;
-    border-radius: var(--radius-sm);
-    transition: opacity var(--transition), color var(--transition);
-}
-
-.chapter-sidebar__pin-btn:hover {
-    opacity: 1;
-    color: var(--color-accent);
-}
-
-.chapter-sidebar__pin-btn.is-pinned {
-    opacity: 1;
-    color: var(--color-accent);
 }
 
 .chapter-sidebar__act-btn {
@@ -341,34 +303,28 @@
     padding-bottom: var(--space-6);
 }
 
-.chapter-main__toolbar {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: var(--space-3);
-}
 
-.chapter-comments-toggle {
-    background: none;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    padding: var(--space-1) var(--space-3);
-    font-size: var(--text-xs);
-    color: var(--color-text-muted);
-    cursor: pointer;
-    transition: color var(--transition), border-color var(--transition);
-}
-
-.chapter-comments-toggle:hover {
-    color: var(--color-text);
-    border-color: var(--color-accent);
-}
-
-.chapter-layout.comments-hidden .scene-block {
+.chapter-content-row.comments-hidden .scene-block {
     grid-template-columns: 1fr;
 }
 
-.chapter-layout.comments-hidden .scene-comments {
+.chapter-content-row.comments-hidden .scene-comments {
     display: none;
+}
+
+.chapter-sidebar__book-link {
+    display: block;
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--color-text-muted);
+    text-decoration: none;
+    padding: var(--space-3) var(--space-2) var(--space-2);
+    line-height: 1.3;
+}
+
+.chapter-sidebar__book-link:hover {
+    color: var(--color-accent);
+    text-decoration: none;
 }
 
 .chapter-sidebar__label {

@@ -98,21 +98,20 @@
     </div>
 
     <div class="chapter-layout">
+        <div class="chapter-toolbar">
+            <button class="chapter-panel-btn" id="sidebarCollapseBtn" type="button">Hide Navigation</button>
+            <button class="chapter-panel-btn" id="commentsToggleBtn" type="button">Hide Comments</button>
+        </div>
+        <div class="chapter-content-row">
         <aside class="chapter-sidebar" id="chapterSidebar">
-            <div class="chapter-sidebar__top-bar">
-                <button class="chapter-sidebar__collapse-btn"
-                        id="sidebarCollapseBtn"
-                        type="button"
-                        aria-label="Collapse navigation">&#8249;</button>
-                <button class="chapter-sidebar__pin-btn"
-                        id="sidebarPinBtn"
-                        type="button"
-                        title="Pin open"
-                        aria-label="Pin navigation open">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>
-                </button>
-            </div>
             <div class="chapter-sidebar__inner">
+                @if (Model.BookContents is not null)
+                {
+                    <a asp-action="Browse"
+                       asp-route-id="@Model.BookContents.TopLevelSection.Id"
+                       class="chapter-sidebar__book-link">@Model.ProjectName</a>
+                    <hr class="chapter-sidebar__divider" />
+                }
                 <div class="chapter-sidebar__label">This chapter</div>
                 @foreach (var item in Model.Scenes)
                 {
@@ -173,9 +172,6 @@
         </aside>
 
         <main class="chapter-main">
-            <div class="chapter-main__toolbar">
-                <button class="chapter-comments-toggle" id="commentsToggleBtn" type="button">Hide comments</button>
-            </div>
             @if (TempData["Error"] is string errorMessage && !string.IsNullOrWhiteSpace(errorMessage))
             {
                 <div class="validation-summary-errors" role="alert">
@@ -849,6 +845,7 @@
                 </div>
             </div>
         </main>
+        </div>
     </div>
 </div>
 
@@ -1556,34 +1553,21 @@
             });
         });
 
-        // ── Desktop sidebar collapse/pin ─────────────────────────────────────
+        // ── Desktop sidebar collapse ─────────────────────────────────────────
         var sidebar = document.getElementById('chapterSidebar');
         var collapseBtn = document.getElementById('sidebarCollapseBtn');
-        var pinBtn = document.getElementById('sidebarPinBtn');
 
         if (sidebar && collapseBtn) {
-            var pinned = localStorage.getItem('dv-nav-pinned') !== 'unpinned';
-
             function setSidebarCollapsed(collapsed, persist) {
                 sidebar.classList.toggle('is-collapsed', collapsed);
-                collapseBtn.textContent = collapsed ? '›' : '‹';
-                collapseBtn.setAttribute('aria-label', collapsed ? 'Open navigation' : 'Collapse navigation');
+                collapseBtn.textContent = collapsed ? 'Show Navigation' : 'Hide Navigation';
                 if (persist) localStorage.setItem('dv-nav-collapsed', collapsed ? '1' : '0');
             }
 
-            function updatePin() {
-                if (!pinBtn) return;
-                pinBtn.classList.toggle('is-pinned', pinned);
-                pinBtn.setAttribute('title', pinned ? 'Unpin navigation' : 'Pin open');
-            }
-
-            // Restore saved states without transition
             if (localStorage.getItem('dv-nav-collapsed') === '1') {
                 setSidebarCollapsed(true, false);
             }
-            updatePin();
 
-            // Enable transitions after initial state is applied
             requestAnimationFrame(function () {
                 sidebar.classList.add('transitions-enabled');
             });
@@ -1591,38 +1575,21 @@
             collapseBtn.addEventListener('click', function () {
                 setSidebarCollapsed(!sidebar.classList.contains('is-collapsed'), true);
             });
-
-            if (pinBtn) {
-                pinBtn.addEventListener('click', function () {
-                    pinned = !pinned;
-                    localStorage.setItem('dv-nav-pinned', pinned ? 'pinned' : 'unpinned');
-                    updatePin();
-                });
-            }
-
-            // Auto-collapse on chapter navigation when unpinned
-            sidebar.querySelectorAll('a[href]').forEach(function (link) {
-                if (link.getAttribute('href') && !link.getAttribute('href').startsWith('#')) {
-                    link.addEventListener('click', function () {
-                        if (!pinned) setSidebarCollapsed(true, true);
-                    });
-                }
-            });
         }
 
         // ── Comments column toggle ───────────────────────────────────────────
-        var layout = document.querySelector('.chapter-layout');
+        var contentRow = document.querySelector('.chapter-content-row');
         var commentsBtn = document.getElementById('commentsToggleBtn');
 
-        if (layout && commentsBtn) {
+        if (contentRow && commentsBtn) {
             if (localStorage.getItem('dv-comments-visible') === 'hidden') {
-                layout.classList.add('comments-hidden');
-                commentsBtn.textContent = 'Show comments';
+                contentRow.classList.add('comments-hidden');
+                commentsBtn.textContent = 'Show Comments';
             }
 
             commentsBtn.addEventListener('click', function () {
-                var hidden = layout.classList.toggle('comments-hidden');
-                commentsBtn.textContent = hidden ? 'Show comments' : 'Hide comments';
+                var hidden = contentRow.classList.toggle('comments-hidden');
+                commentsBtn.textContent = hidden ? 'Show Comments' : 'Hide Comments';
                 localStorage.setItem('dv-comments-visible', hidden ? 'hidden' : 'visible');
             });
         }
