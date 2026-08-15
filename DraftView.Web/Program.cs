@@ -54,9 +54,16 @@ builder.Services.AddApplicationServices(builder.Configuration);
 // ---------------------------------------------------------------------------
 // Data Protection — persist keys across restarts so antiforgery tokens survive
 // ---------------------------------------------------------------------------
-builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo(
-        Path.Combine(builder.Environment.ContentRootPath, "keys")));
+var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"];
+if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
+{
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));
+}
+else
+{
+    builder.Services.AddDataProtection();
+}
 
 // ---------------------------------------------------------------------------
 // Build and configure pipeline
