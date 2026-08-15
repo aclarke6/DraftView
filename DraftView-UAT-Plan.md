@@ -31,7 +31,7 @@ Manuscript
 
 **Step 1** — On Windows, connect to production:
 
-`ssh -i C:\Users\alast\.ssh\draftview-prod.key ubuntu@193.123.182.208`
+`ssh -i C:\Users\alast\.ssh\draftview-prod.key ubuntu@141.147.71.62`
 
 **Step 2** — On the server, find the Test project ID:
 ```bash
