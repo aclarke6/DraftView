@@ -66,6 +66,15 @@ else
                                                 title="Deactivate reader">@Html.Raw(Icons.NoSymbol())</button>
                                     </form>
                                 }
+                                else if (r.Status == ReaderStatus.Invited)
+                                {
+                                    <form asp-action="ResendInvitation" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="userId" value="@r.Id" />
+                                        <button type="submit" class="comment-action-btn"
+                                                title="Resend invitation">@Html.Raw(Icons.Send())</button>
+                                    </form>
+                                }
                                 else if (r.Status == ReaderStatus.Inactive)
                                 {
                                     <form asp-action="ReactivateReader" method="post">

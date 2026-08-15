@@ -718,6 +718,33 @@ public class AuthorController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ResendInvitation(Guid userId, CancellationToken ct = default)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        var reader = await userRepo.GetByIdAsync(userId, ct);
+        if (reader is null) return NotFound();
+
+        var pending = (await invitationRepo.GetPendingByUserIdAsync(userId, ct)).FirstOrDefault();
+        var policy = pending?.ExpiryPolicy ?? DraftView.Domain.Enumerations.ExpiryPolicy.AlwaysOpen;
+        var expiresAt = pending?.ExpiresAt;
+
+        try
+        {
+            await userService.IssueInvitationAsync(reader.Email, reader.DisplayName, policy, expiresAt, author.Id, ct);
+            TempData["Success"] = "Invitation resent.";
+            return RedirectToAction("Readers");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "ResendInvitation operational failure for reader {ReaderId}", userId);
+            return RedirectToAction("Error", "Home");
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeactivateReader(Guid userId)
     {
         var (author, error) = await RequireCurrentAuthorAsync();
