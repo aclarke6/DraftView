@@ -58,14 +58,25 @@
                     @if (!string.IsNullOrEmpty(group.Heading))
                     {
                         var mobileActContainsCurrent = GroupContainsCurrent(group, Model.Chapter.Id);
-                        <button class="reader__contents-act-btn"
-                                data-act-heading="@group.Heading"
-                                data-act-contains-current="@mobileActContainsCurrent.ToString().ToLowerInvariant()"
-                                aria-expanded="@(mobileActContainsCurrent ? "true" : "false")"
-                                type="button">
-                            <span class="reader__contents-act-chevron">›</span>
-                            @group.Heading
-                        </button>
+                        <div class="reader__contents-act-header"
+                             data-act-heading="@group.Heading"
+                             data-act-contains-current="@mobileActContainsCurrent.ToString().ToLowerInvariant()">
+                            <button class="reader__contents-act-toggle"
+                                    type="button"
+                                    aria-expanded="@(mobileActContainsCurrent ? "true" : "false")">
+                                <span class="reader__contents-act-chevron">›</span>
+                            </button>
+                            @if (group.ActSectionId.HasValue)
+                            {
+                                <a asp-action="Browse"
+                                   asp-route-id="@group.ActSectionId"
+                                   class="reader__contents-act-link">@group.Heading</a>
+                            }
+                            else
+                            {
+                                <span class="reader__contents-act-link">@group.Heading</span>
+                            }
+                        </div>
                         <div class="reader__contents-act-chapters">
                             @foreach (var sub in group.SubGroups)
                             {
@@ -132,14 +143,25 @@
                         @if (!string.IsNullOrEmpty(group.Heading))
                         {
                             var actContainsCurrent = GroupContainsCurrent(group, Model.Chapter.Id);
-                            <button class="chapter-sidebar__act-btn"
-                                    data-act-heading="@group.Heading"
-                                    data-act-contains-current="@actContainsCurrent.ToString().ToLowerInvariant()"
-                                    aria-expanded="@(actContainsCurrent ? "true" : "false")"
-                                    type="button">
-                                <span class="chapter-sidebar__act-chevron">›</span>
-                                @group.Heading
-                            </button>
+                            <div class="chapter-sidebar__act-header"
+                                 data-act-heading="@group.Heading"
+                                 data-act-contains-current="@actContainsCurrent.ToString().ToLowerInvariant()">
+                                <button class="chapter-sidebar__act-toggle"
+                                        type="button"
+                                        aria-expanded="@(actContainsCurrent ? "true" : "false")">
+                                    <span class="chapter-sidebar__act-chevron">›</span>
+                                </button>
+                                @if (group.ActSectionId.HasValue)
+                                {
+                                    <a asp-action="Browse"
+                                       asp-route-id="@group.ActSectionId"
+                                       class="chapter-sidebar__act-link">@group.Heading</a>
+                                }
+                                else
+                                {
+                                    <span class="chapter-sidebar__act-link">@group.Heading</span>
+                                }
+                            </div>
                             <div class="chapter-sidebar__act-chapters">
                                 @foreach (var sub in group.SubGroups)
                                 {
@@ -1528,27 +1550,28 @@
             return 'dv-act-' + heading.replace(/[^a-z0-9]/gi, '-').toLowerCase();
         }
 
-        document.querySelectorAll('[data-act-heading]').forEach(function (btn) {
-            var heading = btn.getAttribute('data-act-heading');
-            var chapters = btn.nextElementSibling;
-            if (!chapters) return;
+        document.querySelectorAll('[data-act-heading]').forEach(function (header) {
+            var heading = header.getAttribute('data-act-heading');
+            var chapters = header.nextElementSibling;
+            var toggleBtn = header.querySelector('button[aria-expanded]');
+            if (!chapters || !toggleBtn) return;
 
-            var containsCurrent = btn.getAttribute('data-act-contains-current') === 'true';
+            var containsCurrent = header.getAttribute('data-act-contains-current') === 'true';
             var key = actStorageKey(heading);
             var stored = localStorage.getItem(key);
             var collapsed = stored !== null ? stored === 'collapsed' : !containsCurrent;
 
             function applyActState(isCollapsed, persist) {
                 chapters.classList.toggle('is-collapsed', isCollapsed);
-                var chevron = btn.querySelector('.chapter-sidebar__act-chevron, .reader__contents-act-chevron');
+                var chevron = header.querySelector('.chapter-sidebar__act-chevron, .reader__contents-act-chevron');
                 if (chevron) chevron.textContent = isCollapsed ? '›' : '⌄';
-                btn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+                toggleBtn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
                 if (persist) localStorage.setItem(key, isCollapsed ? 'collapsed' : 'expanded');
             }
 
             applyActState(collapsed, false);
 
-            btn.addEventListener('click', function () {
+            toggleBtn.addEventListener('click', function () {
                 applyActState(!chapters.classList.contains('is-collapsed'), true);
             });
         });

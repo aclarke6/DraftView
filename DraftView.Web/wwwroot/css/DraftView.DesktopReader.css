@@ -262,24 +262,42 @@
     overflow: hidden;
 }
 
-.chapter-sidebar__act-btn {
+.chapter-sidebar__act-header {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
-    width: 100%;
-    background: none;
-    border: none;
-    padding: var(--space-2) var(--space-1) var(--space-2) var(--space-2);
-    font-size: var(--text-sm);
-    font-weight: var(--font-medium);
-    color: var(--color-text);
-    cursor: pointer;
-    text-align: left;
     margin-top: var(--space-2);
 }
 
-.chapter-sidebar__act-btn:hover {
+.chapter-sidebar__act-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    color: var(--color-text-subtle);
+}
+
+.chapter-sidebar__act-link {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
     color: var(--color-text);
+    text-decoration: none;
+    padding: var(--space-1) var(--space-1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chapter-sidebar__act-link:hover {
+    color: var(--color-accent);
+    text-decoration: none;
 }
 
 .chapter-sidebar__act-chevron {

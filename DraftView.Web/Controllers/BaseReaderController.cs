@@ -405,7 +405,7 @@ public abstract class BaseReaderController(
             {
                 var subGroups = BuildContentGroups(child, all);
                 if (subGroups.Any())
-                    groups.Add(new ContentGroup { Heading = child.Title, Depth = 0, SubGroups = subGroups });
+                    groups.Add(new ContentGroup { Heading = child.Title, ActSectionId = child.Id, Depth = 0, SubGroups = subGroups });
             }
             else if (child.IsPublished)
             {
