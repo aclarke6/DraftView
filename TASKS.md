@@ -80,22 +80,32 @@ No open bugs.
   - `DraftView.Web/wwwroot/css/DraftView.Reader.css` — panel slide transition, collapsed state, pin icon, overlay backdrop
   - `DraftView.Web/wwwroot/js/reader-nav.js` *(new)* — toggle logic, pin state, localStorage, auto-collapse on nav
 
-- [ ] CHANGE-007 — Reader right comments bar: collapsible panel with pin/unpin
+- [DONE] CHANGE-006 + CHANGE-007 — Collapsible reader nav and comments toggle — merged to main 2026-08-15. See `HISTORY.md`.
 
-  **Goal:** Make the RHS comments sidebar collapsible using the same OneNote-style pattern as CHANGE-006.
+- [ ] CHANGE-008 — Mobile reader: comments on a dedicated page
 
-  **Panel behaviour:**
-  - Desktop: starts pinned open (matches current behaviour)
-  - Mobile: starts collapsed
-  - A `💬` / comment icon button opens the panel as an overlay when collapsed
-  - Unpinned: auto-collapses after a comment is submitted or dismissed
-  - Pinned: stays open
-  - Pin state persisted in `localStorage` separately from the left nav
+  **Goal:** On mobile the inline comment columns are too cramped. Move commenting to a separate page so the reading surface stays clean.
+
+  **Scope — mobile only:**
+  - Desktop reading experience unchanged
+  - Inline passage-anchored comments are desktop-only (text selection is unreliable on touch); mobile supports chapter-level and scene-level comments only
+
+  **Trigger options (to be decided before implementation):**
+  - Option A: Floating `💬` button fixed to the bottom-right of the screen; taps navigate to `/Reader/MobileComments/{chapterId}`
+  - Option B: "Comments" link in the mobile contents panel (already toggled by the existing Contents button)
+  - Option C: Scene footer link per scene ("Comment on [Scene Title] →") plus a chapter comments link at the bottom
+
+  **Comments page (`/Reader/MobileComments/{chapterId}`):**
+  - Shows existing chapter-level comments and scene-level comments grouped by scene
+  - Add chapter comment form at top
+  - Add scene comment form per scene (simple textarea, no anchor capture)
+  - Back link returns to the chapter read page
 
   **Files affected:**
-  - `DraftView.Web/Views/Reader/DesktopRead.cshtml` — add collapse/pin toggle button to comments bar header
-  - `DraftView.Web/wwwroot/css/DraftView.Reader.css` — reuse panel slide/pin classes from CHANGE-006 on the right panel
-  - `DraftView.Web/wwwroot/js/reader-nav.js` — extend with right-panel toggle logic
+  - NEW: `DraftView.Web/Controllers/MobileReaderController.cs` (or extend `ReaderController`) — `MobileComments(Guid id)` action
+  - NEW: `DraftView.Web/Views/Reader/MobileComments.cshtml` — comments page view
+  - MODIFY: `DraftView.Web/Views/Reader/MobileRead.cshtml` — add trigger (floating button or link)
+  - MODIFY: `DraftView.Web/wwwroot/css/DraftView.MobileReader.css` — floating button + comments page styles
 
 ---
 

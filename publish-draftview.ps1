@@ -50,6 +50,9 @@ if ($LASTEXITCODE -ne 0) { Write-Host "SCP failed." -ForegroundColor Red; exit 1
 
 Write-Host "Copying production appsettings to server..." -ForegroundColor Cyan
 $prodConfig = "C:\Users\alast\source\repos\DraftView\appsettings.Production.json"
+# The file is owned by www-data (640) from the previous deploy's permission fix,
+# so ubuntu cannot overwrite it directly via scp. Open it first, then restore below.
+ssh -i $key $server "sudo chmod 666 $remote/appsettings.Production.json 2>/dev/null; true"
 scp -i $key "$prodConfig" "${server}:${remote}/appsettings.Production.json"
 if ($LASTEXITCODE -ne 0) { Write-Host "SCP of production appsettings failed." -ForegroundColor Red; exit 1 }
 
