@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using DraftView.Domain.Enumerations;
 using Microsoft.AspNetCore.Identity;
@@ -49,6 +50,13 @@ builder.Services.AddApplicationServices(builder.Configuration);
 
 // (Parsing, Dropbox, email sender, path resolver and background services
 // are registered by AddWebServices above to keep Program.cs concise.)
+
+// ---------------------------------------------------------------------------
+// Data Protection — persist keys across restarts so antiforgery tokens survive
+// ---------------------------------------------------------------------------
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(
+        Path.Combine(builder.Environment.ContentRootPath, "keys")));
 
 // ---------------------------------------------------------------------------
 // Build and configure pipeline

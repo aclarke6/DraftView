@@ -5,6 +5,9 @@
 bin/
 obj/
 
+# ASP.NET Core Data Protection keys (generated at runtime, must not be committed)
+keys/
+
 # Visual Studio
 .vs/
 *.user
