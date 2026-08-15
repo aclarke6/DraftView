@@ -354,6 +354,66 @@
     margin-left: var(--space-4);
 }
 
+.comment-box__anchor-badge {
+    display: inline-block;
+    font-size: var(--text-xs);
+    padding: 1px var(--space-2);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-accent);
+    color: var(--color-accent);
+    background: transparent;
+    cursor: pointer;
+    line-height: 1.4;
+}
+
+.comment-box__anchor-badge--orphaned {
+    border-color: var(--color-border);
+    color: var(--color-text-subtle);
+    cursor: default;
+}
+
+.comment-box__anchor-badge--scene {
+    border-color: var(--color-border);
+    color: var(--color-text-subtle);
+    cursor: default;
+    font-style: italic;
+}
+
+.comment-box__anchor-status {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-1);
+    margin-bottom: var(--space-2);
+}
+
+.comment-box__anchor-status-label,
+.comment-box__anchor-status-meta {
+    color: var(--color-text-subtle);
+}
+
+.comment-box__anchor-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+.comment-box__override-form {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.comment-box__override-reason {
+    font-size: var(--text-xs);
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+}
+
 .comment-box__meta {
     display: flex;
     align-items: center;
