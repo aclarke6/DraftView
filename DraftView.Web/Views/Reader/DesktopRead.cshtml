@@ -37,17 +37,6 @@
     </button>
 
     <div id="readerContentsPanel" class="reader__contents">
-        @if (Model.BookContents is not null)
-        {
-            <div class="reader__contents-header">
-                <a asp-action="Index" class="reader__contents-link reader__contents-link--chapter">@Model.ProjectName</a>
-                <a asp-action="Browse"
-                   asp-route-id="@Model.BookContents.TopLevelSection.Id"
-                   class="reader__contents-link reader__contents-link--chapter">&rsaquo; @Model.BookContents.TopLevelSection.Title</a>
-            </div>
-            <hr class="reader__contents-divider" />
-        }
-
         <div class="reader__contents-section">
             <div class="reader__contents-label">This chapter</div>
             @foreach (var item in Model.Scenes)
@@ -110,31 +99,20 @@
 
     <div class="chapter-layout">
         <aside class="chapter-sidebar" id="chapterSidebar">
-            <button class="chapter-sidebar__collapse-btn"
-                    id="sidebarCollapseBtn"
-                    type="button"
-                    aria-label="Collapse navigation">&#8249;</button>
+            <div class="chapter-sidebar__top-bar">
+                <button class="chapter-sidebar__collapse-btn"
+                        id="sidebarCollapseBtn"
+                        type="button"
+                        aria-label="Collapse navigation">&#8249;</button>
+                <button class="chapter-sidebar__pin-btn"
+                        id="sidebarPinBtn"
+                        type="button"
+                        title="Pin open"
+                        aria-label="Pin navigation open">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>
+                </button>
+            </div>
             <div class="chapter-sidebar__inner">
-                @if (Model.BookContents is not null)
-                {
-                    <div class="chapter-sidebar__header">
-                        <div class="chapter-sidebar__header-links">
-                            <a asp-action="Index" class="chapter-sidebar__link chapter-sidebar__link--chapter">@Model.ProjectName</a>
-                            <a asp-action="Browse"
-                               asp-route-id="@Model.BookContents.TopLevelSection.Id"
-                               class="chapter-sidebar__link chapter-sidebar__link--chapter">&rsaquo; @Model.BookContents.TopLevelSection.Title</a>
-                        </div>
-                        <button class="chapter-sidebar__pin-btn"
-                                id="sidebarPinBtn"
-                                type="button"
-                                title="Pin open"
-                                aria-label="Pin navigation open">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>
-                        </button>
-                    </div>
-                    <hr class="chapter-sidebar__divider" />
-                }
-
                 <div class="chapter-sidebar__label">This chapter</div>
                 @foreach (var item in Model.Scenes)
                 {
