@@ -104,6 +104,7 @@ namespace DraftView.Web.Extensions
             services.AddScoped<INotificationService, NotificationService>();
             services.AddScoped<IDashboardService, DashboardService>();
             services.AddScoped<ISystemStateMessageService, SystemStateMessageService>();
+            services.AddScoped<IAccessRequestService, AccessRequestService>();
             services.AddScoped<IVersioningService, VersioningService>();
             services.AddScoped<IChangeClassificationService, ChangeClassificationService>();
             services.AddHttpClient<IAiSummaryService, AiSummaryService>();
