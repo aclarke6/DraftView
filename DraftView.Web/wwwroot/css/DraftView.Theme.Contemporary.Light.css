@@ -1,0 +1,51 @@
+/* ==========================================================================
+   DraftView Theme: Contemporary — Light
+
+   A warm, neutral, editorial palette. Linen whites, natural canvas,
+   warm stone. Easy on the eyes for long reading sessions.
+   Terracotta accent: present and warm without demanding attention.
+   No strong saturation, no dramatic shadows — readable above all else.
+
+   Ratio: ~70% warm neutral / 20% terracotta accent / 10% status colour.
+   ========================================================================== */
+
+:root {
+    /* Core surfaces — warm linen, soft white, natural canvas */
+    --color-bg:           #F3F1EC;   /* Warm Linen */
+    --color-surface:      #FCFBF8;   /* Soft White */
+    --color-surface-alt:  #EAE7DF;   /* Natural Canvas */
+
+    /* Borders — pale putty to warm stone */
+    --color-border:       #DDD9D0;   /* Pale Putty */
+    --color-border-strong:#BBB5AA;   /* Warm Stone */
+
+    /* Text — soft charcoal over linen; lower contrast than Adventure */
+    --color-text:         #292D2C;   /* Soft Charcoal */
+    --color-text-muted:   #6E7470;   /* Quiet Grey */
+    --color-text-subtle:  #999D97;   /* Soft Sage Grey */
+
+    /* Accent — Terracotta; warm, familiar, unshowy */
+    --color-accent:       #A45F48;   /* Terracotta */
+    --color-accent-hover: #874B39;   /* Burnt Terracotta */
+    --color-accent-light: #F3E5DF;   /* Blush Clay */
+    --color-accent-text:  #FFFFFF;   /* Clean White */
+
+    /* Status — functional; kept consistent across themes */
+    --color-success:      #3F704B;   /* Garden Green */
+    --color-success-bg:   #E1F0E3;   /* Pale Garden Green */
+    --color-danger:       #A13D3D;   /* Muted Brick Red */
+    --color-danger-bg:    #F6E1DF;   /* Pale Brick */
+    --color-warning:      #9A6728;   /* Ochre */
+    --color-warning-bg:   #F8EFD8;   /* Pale Ochre */
+
+    /* Private comment — clay brown; earthy and unobtrusive */
+    --color-private:      #9B684D;   /* Clay Brown */
+
+    /* Status indicators */
+    --color-status-info:     #557A8A;   /* Dusty Blue */
+    --color-status-warning:  #A46C2A;   /* Warm Ochre */
+    --color-status-critical: #B24D45;   /* Muted Coral Red */
+
+    /* Background tile — warm linen or natural weave texture */
+    --background-tile: url('/images/DraftView.Theme.Contemporary.Tile.Light.web.jpg');
+}

@@ -1,0 +1,51 @@
+/* ==========================================================================
+   DraftView Theme: Historic / Georgian — Light
+
+   Napoleonic-era balls, officers' mess rooms, candlelit drawing rooms.
+   Regency ivory, aged silk, walnut ink, claret accent.
+   The world is warm but formal: cream, mahogany, crimson, gilt.
+   Claret is the accent — the colour of dress uniforms, wine and wax seals.
+
+   Ratio: ~65% warm ivory / 25% claret accent / 10% status colour.
+   ========================================================================== */
+
+:root {
+    /* Core surfaces — Regency ivory, drawing room cream, aged silk */
+    --color-bg:           #F2EBDD;   /* Regency Ivory */
+    --color-surface:      #FBF7EE;   /* Drawing Room Cream */
+    --color-surface-alt:  #E9DFCE;   /* Aged Silk */
+
+    /* Borders — faded parchment to antique taupe */
+    --color-border:       #D5C8B5;   /* Faded Parchment */
+    --color-border-strong:#B7A58E;   /* Antique Taupe */
+
+    /* Text — walnut ink on cream; period-appropriate warmth */
+    --color-text:         #28221F;   /* Walnut Ink */
+    --color-text-muted:   #71635C;   /* Mahogany Grey */
+    --color-text-subtle:  #9B8D82;   /* Faded Sepia */
+
+    /* Accent — Claret; dress uniform red, port wine, wax seals */
+    --color-accent:       #783847;   /* Claret */
+    --color-accent-hover: #612C39;   /* Deep Claret */
+    --color-accent-light: #F0E1E4;   /* Faded Rose */
+    --color-accent-text:  #FFFFFF;   /* Ballroom White */
+
+    /* Status — functional; kept consistent across themes */
+    --color-success:      #3D6747;   /* Bottle Green */
+    --color-success-bg:   #E2ECE2;   /* Pale Bottle Green */
+    --color-danger:       #912F35;   /* Officer Scarlet */
+    --color-danger-bg:    #F4DFDF;   /* Faded Scarlet */
+    --color-warning:      #926729;   /* Antique Gold */
+    --color-warning-bg:   #F6ECD5;   /* Pale Antique Gold */
+
+    /* Private comment — sealing wax brown; correspondence kept private */
+    --color-private:      #8B5942;   /* Sealing Wax Brown */
+
+    /* Status indicators */
+    --color-status-info:     #495F78;   /* Naval Blue */
+    --color-status-warning:  #A06D28;   /* Brass Gold */
+    --color-status-critical: #A53B3B;   /* Scarlet Red */
+
+    /* Background tile — aged cream or faded damask wallpaper texture */
+    --background-tile: url('/images/DraftView.Theme.Historic.Tile.Light.web.jpg');
+}

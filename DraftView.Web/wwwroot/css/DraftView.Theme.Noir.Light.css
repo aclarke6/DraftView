@@ -1,0 +1,51 @@
+/* ==========================================================================
+   DraftView Theme: Noir / Cold War Spy — Light
+
+   A mid-century intelligence world: institutional olive, faded dossiers,
+   government-issue paper, smoked pewter and tarnished brass.
+   Think GCHQ corridors, classified files, carbon-copy type.
+   The accent is institutional olive — not dramatic, deliberately so.
+
+   Ratio: ~70% faded neutral / 20% olive-brass accent / 10% status colour.
+   ========================================================================== */
+
+:root {
+    /* Core surfaces — dossier paper, office paper, institutional grey */
+    --color-bg:           #EAE9E1;   /* Faded Dossier */
+    --color-surface:      #F4F2E9;   /* Old Office Paper */
+    --color-surface-alt:  #DDDCD2;   /* Institutional Grey */
+
+    /* Borders — file cabinet grey to smoked pewter */
+    --color-border:       #CBC9BD;   /* File Cabinet Grey */
+    --color-border-strong:#A6A69A;   /* Smoked Pewter */
+
+    /* Text — ink black over faded paper */
+    --color-text:         #171A17;   /* Ink Black */
+    --color-text-muted:   #62665E;   /* Bureau Grey */
+    --color-text-subtle:  #898C82;   /* Faded Type */
+
+    /* Accent — Institutional Olive; the colour of government-issue everything */
+    --color-accent:       #53614C;   /* Institutional Olive */
+    --color-accent-hover: #414D3B;   /* Deep Olive */
+    --color-accent-light: #E1E5DC;   /* Pale Office Green */
+    --color-accent-text:  #FFFFFF;   /* Clean White */
+
+    /* Status — functional; kept consistent across themes */
+    --color-success:      #32633E;   /* Signal Green */
+    --color-success-bg:   #DFEEE1;   /* Pale Signal Green */
+    --color-danger:       #8F2929;   /* Darkroom Red */
+    --color-danger-bg:    #F5DFDD;   /* Pale Darkroom Red */
+    --color-warning:      #856E21;   /* Tarnished Brass */
+    --color-warning-bg:   #F4EDD0;   /* Faded Brass Wash */
+
+    /* Private comment — tobacco brown, the analogue world's mark */
+    --color-private:      #74643A;   /* Tobacco Brown */
+
+    /* Status indicators */
+    --color-status-info:     #526A73;   /* Intelligence Blue Grey */
+    --color-status-warning:  #8A7528;   /* Tarnished Gold */
+    --color-status-critical: #A43D36;   /* Alarm Red */
+
+    /* Background tile — aged paper or manila folder texture */
+    --background-tile: url('/images/DraftView.Theme.Noir.Tile.Light.web.jpg');
+}
