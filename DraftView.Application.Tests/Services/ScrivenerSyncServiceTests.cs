@@ -790,6 +790,77 @@ public class ScrivenerSyncServiceTests
             Times.Never);
     }
 
+    [Fact]
+    public async Task ParseProjectAsync_DoesNotWriteNotification_WhenNothingChanges()
+    {
+        var project = MakeProject();
+        project.UpdateDropboxCursor("cursor-old");
+        var existingFolder = Section.CreateFolder(project.Id, "ROOT-001", "Manuscript", null, 0);
+        var sut = CreateSut();
+
+        SetupPathResolver(project);
+        SetupParserWithTree(project, new ParsedBinderNode
+        {
+            Uuid = "ROOT-001", Title = "Manuscript",
+            NodeType = ParsedNodeType.Folder, Children = new()
+        });
+
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "ROOT-001", default))
+            .ReturnsAsync(existingFolder);
+        _sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, default))
+            .ReturnsAsync(new List<Section> { existingFolder });
+        _fileDownloader.Setup(x => x.ListChangedEntriesAsync(project.AuthorId, "cursor-old", default))
+            .ReturnsAsync((new List<DropboxChangedEntry>(), "cursor-new"));
+
+        await sut.ParseProjectAsync(project.Id);
+
+        _notificationRepo.Verify(
+            r => r.AddAsync(It.IsAny<AuthorNotification>(), default),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task ParseProjectAsync_WritesNotification_WhenContentHashChanges()
+    {
+        var project = MakeProject();
+        project.UpdateDropboxCursor("cursor-old");
+        var author = User.Create("author@example.com", "Author", Role.Author);
+        var existingScene = Section.CreateDocument(project.Id, "SCEN-001", "Scene 1", null, 0, "<p>Old</p>", "oldhash", "First Draft");
+        var sut = CreateSut();
+
+        SetupPathResolver(project);
+        SetupParserWithTree(project, new ParsedBinderNode
+        {
+            Uuid = "ROOT-001", Title = "Manuscript",
+            NodeType = ParsedNodeType.Folder,
+            Children = new List<ParsedBinderNode>
+            {
+                new() { Uuid = "SCEN-001", Title = "Scene 1", NodeType = ParsedNodeType.Document, SortOrder = 0, Children = new() }
+            }
+        });
+
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "ROOT-001", default))
+            .ReturnsAsync((Section?)null);
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "SCEN-001", default))
+            .ReturnsAsync(existingScene);
+        _sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, default))
+            .ReturnsAsync(new List<Section> { existingScene });
+        _converter.Setup(c => c.ConvertAsync(It.IsAny<string>(), "SCEN-001", default))
+            .ReturnsAsync(new RtfConversionResult { Html = "<p>New</p>", Hash = "newhash" });
+        _fileDownloader.Setup(x => x.ListChangedEntriesAsync(project.AuthorId, "cursor-old", default))
+            .ReturnsAsync((new List<DropboxChangedEntry>(), "cursor-new"));
+        _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
+
+        await sut.ParseProjectAsync(project.Id);
+
+        _notificationRepo.Verify(
+            r => r.AddAsync(It.Is<AuthorNotification>(n =>
+                n.AuthorId == author.Id &&
+                n.EventType == NotificationEventType.SyncCompleted),
+                default),
+            Times.Once);
+    }
+
     // ---------------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------------

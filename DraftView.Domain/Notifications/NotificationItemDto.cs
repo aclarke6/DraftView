@@ -5,7 +5,10 @@ public enum NotificationEventType
     NewComment,
     ReplyToAuthor,
     ReaderJoined,
-    SyncCompleted
+    SyncCompleted,
+    ReaderReadNewScene,
+    ReaderReturned,
+    ReaderFinishedManuscript
 }
 
 public sealed class NotificationItemDto

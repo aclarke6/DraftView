@@ -4,6 +4,7 @@ using DraftView.Domain.Enumerations;
 using DraftView.Domain.Exceptions;
 using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Interfaces.Services;
+using DraftView.Domain.Notifications;
 
 namespace DraftView.Application.Services;
 
@@ -11,8 +12,12 @@ public class ReadingProgressService(
     IReadEventRepository readEventRepo,
     ISectionRepository sectionRepo,
     IPassageAnchorService passageAnchorService,
-    IUnitOfWork unitOfWork) : IReadingProgressService
+    IUnitOfWork unitOfWork,
+    IUserRepository userRepo,
+    IAuthorNotificationRepository notificationRepo) : IReadingProgressService
 {
+    private static readonly TimeSpan ReturnThreshold = TimeSpan.FromDays(7);
+
     public async Task RecordOpenAsync(
         Guid sectionId, Guid userId, CancellationToken ct = default)
     {
@@ -20,8 +25,13 @@ public class ReadingProgressService(
 
         if (existing is null)
         {
+            var previousEvents = (await readEventRepo.GetByUserIdAsync(userId, ct))
+                ?? Array.Empty<ReadEvent>();
+
             var readEvent = ReadEvent.Create(sectionId, userId);
             await readEventRepo.AddAsync(readEvent, ct);
+
+            await WriteReaderNotificationsAsync(sectionId, userId, previousEvents, ct);
         }
         else
         {
@@ -29,6 +39,63 @@ public class ReadingProgressService(
         }
 
         await unitOfWork.SaveChangesAsync(ct);
+    }
+
+    private async Task WriteReaderNotificationsAsync(
+        Guid sectionId, Guid userId,
+        IReadOnlyList<ReadEvent> previousEvents, CancellationToken ct)
+    {
+        var section = await sectionRepo.GetByIdAsync(sectionId, ct);
+        if (section?.NodeType != NodeType.Document)
+            return;
+
+        var author = await userRepo.GetAuthorAsync(ct);
+        var reader = await userRepo.GetByIdAsync(userId, ct);
+        if (author is null || reader is null)
+            return;
+
+        var now = DateTime.UtcNow;
+
+        await notificationRepo.AddAsync(
+            AuthorNotification.Create(
+                author.Id,
+                NotificationEventType.ReaderReadNewScene,
+                $"{reader.DisplayName} read \"{section.Title}\" for the first time",
+                null,
+                $"/Author/Section/{sectionId}",
+                now),
+            ct);
+
+        if (previousEvents.Count > 0)
+        {
+            var lastActive = previousEvents.Max(e => e.LastOpenedAt);
+            if (now - lastActive >= ReturnThreshold)
+            {
+                var daysAway = (int)(now - lastActive).TotalDays;
+                await notificationRepo.AddAsync(
+                    AuthorNotification.Create(
+                        author.Id,
+                        NotificationEventType.ReaderReturned,
+                        $"{reader.DisplayName} is reading again — last active {daysAway} days ago",
+                        null,
+                        null,
+                        now),
+                    ct);
+            }
+        }
+
+        if (await IsCaughtUpAsync(userId, section.ProjectId, ct))
+        {
+            await notificationRepo.AddAsync(
+                AuthorNotification.Create(
+                    author.Id,
+                    NotificationEventType.ReaderFinishedManuscript,
+                    $"{reader.DisplayName} has finished reading the manuscript",
+                    null,
+                    "/Author/Readers",
+                    now),
+                ct);
+        }
     }
 
     public async Task<bool> IsCaughtUpAsync(
