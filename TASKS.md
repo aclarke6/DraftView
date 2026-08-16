@@ -82,30 +82,28 @@ No open bugs.
 
 - [DONE] CHANGE-006 + CHANGE-007 — Collapsible reader nav and comments toggle — merged to main 2026-08-15. See `HISTORY.md`.
 
-- [ ] CHANGE-008 — Mobile reader: comments on a dedicated page
+- [x] CHANGE-008 — Mobile reader: chapter comments page + disable passage-anchor capture on touch
 
-  **Goal:** On mobile the inline comment columns are too cramped. Move commenting to a separate page so the reading surface stays clean.
+  **Implemented:** branch `change/CHANGE-008-mobile-chapter-comments`
 
-  **Scope — mobile only:**
-  - Desktop reading experience unchanged
-  - Inline passage-anchored comments are desktop-only (text selection is unreliable on touch); mobile supports chapter-level and scene-level comments only
+  **Scope — mobile only (desktop unchanged):**
+  - Passage-anchor *creation* (selection capture) disabled on mobile — unreliable on touch. Existing
+    anchored comments still display with highlight + modal. Two IIFEs removed from `MobileRead.cshtml`:
+    `CapturePassageAnchorSelection` and `applyPendingAnchor`.
+  - Scene-level comments stay inline in `MobileRead`. Add-comment form moved to **top** of comments
+    section so it appears before the list.
+  - Chapter-level comments get a dedicated page:
+    `GET /Reader/ChapterComments/{chapterId}` → `MobileChapterComments.cshtml`
+  - "Chapter Comments →" link added at the bottom of `MobileRead` and `MobileScenes` views.
 
-  **Trigger options (to be decided before implementation):**
-  - Option A: Floating `💬` button fixed to the bottom-right of the screen; taps navigate to `/Reader/MobileComments/{chapterId}`
-  - Option B: "Comments" link in the mobile contents panel (already toggled by the existing Contents button)
-  - Option C: Scene footer link per scene ("Comment on [Scene Title] →") plus a chapter comments link at the bottom
-
-  **Comments page (`/Reader/MobileComments/{chapterId}`):**
-  - Shows existing chapter-level comments and scene-level comments grouped by scene
-  - Add chapter comment form at top
-  - Add scene comment form per scene (simple textarea, no anchor capture)
-  - Back link returns to the chapter read page
-
-  **Files affected:**
-  - NEW: `DraftView.Web/Controllers/MobileReaderController.cs` (or extend `ReaderController`) — `MobileComments(Guid id)` action
-  - NEW: `DraftView.Web/Views/Reader/MobileComments.cshtml` — comments page view
-  - MODIFY: `DraftView.Web/Views/Reader/MobileRead.cshtml` — add trigger (floating button or link)
-  - MODIFY: `DraftView.Web/wwwroot/css/DraftView.MobileReader.css` — floating button + comments page styles
+  **Files modified:**
+  - MODIFY: `DraftView.Web/Views/Reader/MobileRead.cshtml` — remove two selection-capture IIFEs; move
+    add-comment form to top of comments section; add chapter-comments link
+  - MODIFY: `DraftView.Web/Views/Reader/MobileScenes.cshtml` — add chapter-comments link
+  - MODIFY: `DraftView.Web/Models/MobileReaderViewModels.cs` — add `MobileChapterCommentsViewModel`
+  - MODIFY: `DraftView.Web/Controllers/ReaderController.cs` — add `ChapterComments(Guid chapterId)` action
+  - NEW: `DraftView.Web/Views/Reader/MobileChapterComments.cshtml` — chapter comments page view
+  - MODIFY: `DraftView.Web/wwwroot/css/DraftView.MobileReader.css` — chapter-comments link + page styles
 
 ---
 
