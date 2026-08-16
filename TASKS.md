@@ -1,5 +1,5 @@
 # DraftView — Task List
-Last updated: 2026-08-16 (evening)
+Last updated: 2026-08-16 (late evening)
 
 ---
 
@@ -19,7 +19,8 @@ Last updated: 2026-08-16 (evening)
 | RSprint Series | 🟡 In progress — RS-A to RS-E complete, RS-F next |
 | S-Sprint Series | 🟡 In progress — S-Sprint-1 complete, S-Sprint-2 next |
 | MT-Sprint Series | 🔴 HIGH PRIORITY — second author interest accelerates timeline; see `MultiTenancy.md` |
-| RD-Sprint Series | 🔵 Pre-planning — Reader Dashboard; see section 3.8 |
+| RD-Sprint Series | 🔵 Pre-planning — Reader Dashboard; see section 3.7 |
+| DR-Sprint Series | 🔵 Design complete — Open Book Discovery & Access Requests; see section 3.8 |
 | Go-Live Prerequisites | 🔴 Blocking — items below must complete before launch |
 | UAT | 🟡 In progress |
 
@@ -329,7 +330,179 @@ Plan RD-Sprint-1 after MT-Sprint-1 lands.
 
 ---
 
-### 3.8 Post Go-Live Backlog
+### 3.8 DR-Sprint — Open Book Discovery & Access Requests
+
+**Status:** 🔵 Design complete — ready to implement
+
+**Goal:** Allow authors to open a project for discovery by readers. Readers browse open books,
+submit access requests with an optional cover note and contact email. Authors review requests and
+accept or decline. Accepted readers are added to the book directly; an email confirms acceptance.
+The feature integrates with the existing AuthorNotification system and reader email pipeline.
+
+---
+
+#### Model summary
+
+**`ScrivenerProject` extensions**
+- `IsOpen: bool` — author toggles on Publishing page
+- `Brief: string?` — pitch visible to readers (genre, word count, feedback wanted, content notes)
+- `OpenedAt: DateTime?` — updated every time `IsOpen` is set to `true`; acts as the "clean slate" stamp
+
+**`AccessRequest` (new entity)**
+- `Id: Guid`
+- `ReaderId: Guid` → User
+- `ProjectId: Guid` → ScrivenerProject
+- `CoverNote: string?` — optional, max 500 chars
+- `ContactEmail: string?` — optional off-platform contact email
+- `Status: Pending | Approved | Declined`
+- `RequestedAt: DateTime`
+- `RespondedAt: DateTime?`
+- `SeenByReaderAt: DateTime?` — set when reader views a declined request on their dashboard
+
+**`UserPreferences` extensions** (all nullable, all optional)
+- `ReaderBio: string?`
+- `ReaderGenreInterests: string?`
+- `ReaderPace: enum? (Slow | Steady | Fast)`
+
+**`NotificationEventType`** — add `AccessRequest`
+
+---
+
+#### Business rules
+
+**Requesting**
+- Book must be `IsOpen = true`
+- Reader may not have an existing `Pending` request for the same project
+- Reader shown at submission: "You'll be notified by email if the author accepts."
+
+**Discovery page filter (per reader)**
+Show the "Request access" button if:
+- No `Declined` request exists for (reader, book)
+- OR most recent `Declined` has `RespondedAt ≤ project.OpenedAt` (book reinstated since decline → fresh state)
+
+**Declined entry visibility on reader dashboard**
+```
+Show if: Status = Pending
+      OR (Status = Declined AND SeenByReaderAt IS NULL)
+      OR (Status = Declined AND SeenByReaderAt.Date >= UtcNow.Date)
+```
+On dashboard load, set `SeenByReaderAt = UtcNow` for any visible Declined entry where it is null.
+The following calendar day the entry vanishes permanently from all reader-facing queries.
+
+**Accepting**
+- Adds reader to project via existing grant-access mechanism
+- Sends approval email to reader
+- Marks request `Approved`, sets `RespondedAt`
+- Other pending requests for the same book remain open (author can accept multiple readers)
+
+**Declining**
+- Marks request `Declined`, sets `RespondedAt`
+- No email sent; reader sees "Not accepted" on their dashboard for one day, then vanished
+
+**Revoking (`IsOpen → false`)**
+- All `Pending` requests bulk-declined (`RespondedAt = now`)
+- `OpenedAt` is NOT updated on revoke
+- Existing approved readers keep their access
+
+**Reinstating (`IsOpen → true`)**
+- `OpenedAt` updated to now
+- All previously declined readers may re-request (their `RespondedAt < new OpenedAt`)
+- This includes readers declined in the original run — it is a fully fresh state
+
+---
+
+#### Phase 1 — Domain & Infrastructure
+
+- [ ] **Phase 1.1** — Add `IsOpen`, `Brief`, `OpenedAt` to `ScrivenerProject`
+- [ ] **Phase 1.2** — Add optional `ReaderBio`, `ReaderGenreInterests`, `ReaderPace` to `UserPreferences`
+- [ ] **Phase 1.3** — New `AccessRequest` entity + `AccessRequestStatus` enum
+- [ ] **Phase 1.4** — Add `NotificationEventType.AccessRequest` to existing enum
+- [ ] **Phase 1.5** — `IAccessRequestRepository` interface:
+  - `GetByIdAsync(id)`
+  - `GetPendingByProjectIdAsync(projectId)` — for author's requests page + count
+  - `GetVisibleByReaderIdAsync(readerId, today)` — Pending + visible Declined (per dashboard rule)
+  - `GetPendingCountByProjectIdAsync(projectId)` — for book list badge
+  - `AddAsync(request)`
+  - `SaveAsync(request)` — for status updates
+  - `BulkDeclineByProjectAsync(projectId, respondedAt)` — on revoke
+  - `MarkDeclinedAsSeenAsync(readerId, today)` — sets SeenByReaderAt for unseen declined entries
+- [ ] **Phase 1.6** — `AccessRequestRepository` implementation (InMemory tests)
+- [ ] **Phase 1.7** — `DraftViewDbContext`: add `DbSet<AccessRequest>`; update `ScrivenerProject` config; update `UserPreferences` config
+- [ ] **Phase 1.8** — EF migration: `AddOpenBookDiscovery`
+- [ ] **Phase 1.9** — Register repository in DI (`ServiceCollectionExtensions`)
+- [ ] Tests: `AccessRequestTests.cs`, `AccessRequestRepositoryTests.cs`
+
+#### Phase 2 — Application Layer
+
+- [ ] **Phase 2.1** — `IAccessRequestService` / `AccessRequestService`:
+  - `SubmitRequestAsync(readerId, projectId, coverNote?, contactEmail?)` — validates open + no dupe, creates request, fires `AuthorNotification`
+  - `ApproveRequestAsync(requestId, authorId)` — validates ownership, grants access, marks Approved, sends email
+  - `DeclineRequestAsync(requestId, authorId)` — validates ownership, marks Declined, no email
+  - `BulkDeclineOnRevokeAsync(projectId)` — called when `IsOpen` → false
+- [ ] **Phase 2.2** — Extend project update logic: when `IsOpen` toggled off → call `BulkDeclineOnRevokeAsync`; when toggled on → update `OpenedAt`
+- [ ] **Phase 2.3** — Email template: "Your request to read [Book Title] has been accepted" (existing email pipeline)
+- [ ] **Phase 2.4** — Register service in DI
+- [ ] Tests: `AccessRequestServiceTests.cs`
+
+#### Phase 3 — Author UI
+
+- [ ] **Phase 3.1** — Publishing page (`Author/Publishing.cshtml`):
+  - Toggle: "Open for beta readers"
+  - Textarea: "Brief for readers" (required when opening; hidden when closed)
+  - Save triggers open/close logic via updated controller action
+- [ ] **Phase 3.2** — Book list (existing author pages): pending request count badge per open book, links to Requests page
+- [ ] **Phase 3.3** — New page `Author/BookRequests.cshtml` (route: `/author/projects/{projectId}/requests`):
+  - Lists all Pending requests: reader display name, bio snippet, pace, cover note, contact email, date
+  - **Accept** and **Decline** buttons per row
+  - Accepted/declined rows disappear from the active list
+  - If book is no longer Open: banner noting all requests have been declined
+- [ ] **Phase 3.4** — `AuthorController` actions: `BookRequests(projectId)`, `ApproveRequest(requestId, projectId)`, `DeclineRequest(requestId, projectId)`
+- [ ] Tests: controller unit tests for all three actions
+
+#### Phase 4 — Reader/Discovery UI
+
+- [ ] **Phase 4.1** — New public page `Discovery/Index.cshtml` (route: `/discover`):
+  - Anonymous: book cards with "Sign in to request access" CTA
+  - Logged-in reader, no existing request: "Request access" button
+  - Logged-in reader, pending request: "Requested — awaiting response" (no button)
+  - Logged-in reader, visible declined: "Not accepted" (no button)
+  - Logged-in reader, approved: "You have access" (no button)
+  - No open books: warm holding message
+- [ ] **Phase 4.2** — Request form (modal or inline):
+  - Optional cover note (textarea, 500 char limit shown)
+  - Optional contact email (pre-fills from account email, editable)
+  - Informational note shown before submitting
+- [ ] **Phase 4.3** — Reader dashboard (pending requests section):
+  - "Your requests" list: Pending + visible Declined entries
+  - Declined shows "Not accepted" label
+  - `MarkDeclinedAsSeenAsync` called on load
+- [ ] **Phase 4.4** — Reader profile card in Account Settings:
+  - Bio (textarea)
+  - Genre interests (text input)
+  - Reading pace (dropdown: Slow / Steady / Fast)
+  - All optional, saved to `UserPreferences`
+- [ ] **Phase 4.5** — Safe landing: reader with no active books redirected to `/discover`
+- [ ] **Phase 4.6** — "Browse" nav link updated to point to `/discover`
+- [ ] **Phase 4.7** — `DiscoveryController` (or new actions on `HomeController`):
+  - `Index()` — public; populates per-reader request state if authenticated
+  - `SubmitRequest(projectId, coverNote?, contactEmail?)` — authenticated reader only
+- [ ] Tests: discovery integration tests (anonymous access, authenticated request, duplicate guard)
+
+#### Phase 5 — CSS & version bump
+
+- [ ] Discovery cards: `.discovery-card`, `.discovery-card__brief`, `.discovery-card__cta`, `.discovery-card__status`
+- [ ] Requests page: `.request-list`, `.request-list__item`, `.request-list__meta`, `.request-list__actions`
+- [ ] Reader profile section: `.reader-profile-card`
+- [ ] CSS version bump
+
+---
+
+**Note:** RD-Sprint-3 ("Discover Authors") is superseded by DR-Sprint. RD-Sprint-3 can be marked
+complete once DR-Sprint ships.
+
+---
+
+### 3.9 Post Go-Live Backlog
 
 - Reader notification emails (new chapter published)
 - Dropbox OAuth2 token refresh
