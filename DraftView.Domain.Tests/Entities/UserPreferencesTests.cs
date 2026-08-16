@@ -178,4 +178,28 @@ public class UserPreferencesTests
 
         Assert.Equal("I-19-INTERVAL", ex.InvariantCode);
     }
+
+    // ---------------------------------------------------------------------------
+    // UpdateDisplayTheme
+    // ---------------------------------------------------------------------------
+
+    [Theory]
+    [InlineData(DisplayTheme.Light)]
+    [InlineData(DisplayTheme.Dark)]
+    [InlineData(DisplayTheme.CrimeLight)]
+    [InlineData(DisplayTheme.CrimeDark)]
+    [InlineData(DisplayTheme.NoirLight)]
+    [InlineData(DisplayTheme.NoirDark)]
+    [InlineData(DisplayTheme.ContemporaryLight)]
+    [InlineData(DisplayTheme.ContemporaryDark)]
+    [InlineData(DisplayTheme.HistoricLight)]
+    [InlineData(DisplayTheme.HistoricDark)]
+    public void UpdateDisplayTheme_CanSetEveryThemeValue(DisplayTheme theme)
+    {
+        var prefs = UserPreferences.CreateForBetaReader(UserId);
+
+        prefs.UpdateDisplayTheme(theme);
+
+        Assert.Equal(theme, prefs.DisplayTheme);
+    }
 }

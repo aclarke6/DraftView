@@ -45,9 +45,18 @@ All css files are included here to ensure consistent styling across the site.
         }
     }
 
-    var themeCss = theme == "Dark"
-        ? "/css/DraftView.Dark.css"
-        : "/css/DraftView.Light.css";
+    var themeCss = theme switch {
+        "Dark"              => "/css/DraftView.Dark.css",
+        "CrimeLight"        => "/css/DraftView.Theme.Crime.Light.css",
+        "CrimeDark"         => "/css/DraftView.Theme.Crime.Dark.css",
+        "NoirLight"         => "/css/DraftView.Theme.Noir.Light.css",
+        "NoirDark"          => "/css/DraftView.Theme.Noir.Dark.css",
+        "ContemporaryLight" => "/css/DraftView.Theme.Contemporary.Light.css",
+        "ContemporaryDark"  => "/css/DraftView.Theme.Contemporary.Dark.css",
+        "HistoricLight"     => "/css/DraftView.Theme.Historic.Light.css",
+        "HistoricDark"      => "/css/DraftView.Theme.Historic.Dark.css",
+        _                   => "/css/DraftView.Light.css",   // "Light" + unknown → Adventure Light
+    };
 
     ViewData["ProseFont"] = proseFont;
     ViewData["ProseFontSize"] = proseFontSize;

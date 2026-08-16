@@ -35,8 +35,26 @@
                             <div class="settings-form-field">
                                 <label class="form-label">Display theme</label>
                                 <select name="DisplayTheme" class="form-input" required>
-                                    <option value="Light" selected="@(Model.DisplayTheme == "Light")">Light</option>
-                                    <option value="Dark" selected="@(Model.DisplayTheme == "Dark")">Dark</option>
+                                    <optgroup label="Adventure">
+                                        <option value="Light"             selected="@(Model.DisplayTheme == "Light")">Adventure — Light</option>
+                                        <option value="Dark"              selected="@(Model.DisplayTheme == "Dark")">Adventure — Dark</option>
+                                    </optgroup>
+                                    <optgroup label="Crime / Glasgow Rain">
+                                        <option value="CrimeLight"        selected="@(Model.DisplayTheme == "CrimeLight")">Crime — Light</option>
+                                        <option value="CrimeDark"         selected="@(Model.DisplayTheme == "CrimeDark")">Crime — Dark</option>
+                                    </optgroup>
+                                    <optgroup label="Noir / Cold War Spy">
+                                        <option value="NoirLight"         selected="@(Model.DisplayTheme == "NoirLight")">Noir — Light</option>
+                                        <option value="NoirDark"          selected="@(Model.DisplayTheme == "NoirDark")">Noir — Dark</option>
+                                    </optgroup>
+                                    <optgroup label="Contemporary">
+                                        <option value="ContemporaryLight" selected="@(Model.DisplayTheme == "ContemporaryLight")">Contemporary — Light</option>
+                                        <option value="ContemporaryDark"  selected="@(Model.DisplayTheme == "ContemporaryDark")">Contemporary — Dark</option>
+                                    </optgroup>
+                                    <optgroup label="Historic / Georgian">
+                                        <option value="HistoricLight"     selected="@(Model.DisplayTheme == "HistoricLight")">Historic — Light</option>
+                                        <option value="HistoricDark"      selected="@(Model.DisplayTheme == "HistoricDark")">Historic — Dark</option>
+                                    </optgroup>
                                 </select>
                             </div>
                             <button type="submit" class="btn btn--primary settings-form-button">Save</button>
