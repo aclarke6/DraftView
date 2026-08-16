@@ -48,4 +48,11 @@
 
     /* Background tile — aged cream or faded damask wallpaper texture */
     --background-tile: url('/images/DraftView.Theme.Historic.Tile.Light.web.jpg');
+
+    /* Hero and error images — pending; Georgian / Napoleonic visual world */
+    --hero-image:         url('/images/DraftView.Theme.Historic.Hero.web.jpg');
+    --error-image-403:    url('/images/DraftView.Theme.Historic.Error.403.web.jpg');
+    --error-image-404:    url('/images/DraftView.Theme.Historic.Error.404.web.jpg');
+    --error-image-405:    url('/images/DraftView.Theme.Historic.Error.405.web.jpg');
+    --error-image-500:    url('/images/DraftView.Theme.Historic.Error.500.web.jpg');
 }

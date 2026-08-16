@@ -48,4 +48,11 @@
 
     /* Background tile — aged paper or manila folder texture */
     --background-tile: url('/images/DraftView.Theme.Noir.Tile.Light.web.jpg');
+
+    /* Hero and error images — pending; Cold War Spy visual world */
+    --hero-image:         url('/images/DraftView.Theme.Noir.Hero.web.jpg');
+    --error-image-403:    url('/images/DraftView.Theme.Noir.Error.403.web.jpg');
+    --error-image-404:    url('/images/DraftView.Theme.Noir.Error.404.web.jpg');
+    --error-image-405:    url('/images/DraftView.Theme.Noir.Error.405.web.jpg');
+    --error-image-500:    url('/images/DraftView.Theme.Noir.Error.500.web.jpg');
 }

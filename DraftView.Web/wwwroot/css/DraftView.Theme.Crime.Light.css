@@ -48,4 +48,11 @@
 
     /* Background tile — wet slate or sandstone texture */
     --background-tile: url('/images/DraftView.Theme.Crime.Tile.Light.web.jpg');
+
+    /* Hero and error images — cinematic Glasgow crime world; shared across light/dark variants */
+    --hero-image:         url('/images/DraftView.Theme.Crime.Hero.web.jpg');        /* Figure reading by the Clyde */
+    --error-image-403:    url('/images/DraftView.Theme.Crime.Error.403.web.jpg');   /* Strathclyde Police corridor */
+    --error-image-404:    url('/images/DraftView.Theme.Crime.Error.404.web.jpg');   /* Argyle Street crossroads */
+    --error-image-405:    url('/images/DraftView.Theme.Crime.Error.405.web.jpg');   /* Hotel corridor, room 405 */
+    --error-image-500:    url('/images/DraftView.Theme.Crime.Error.500.web.jpg');   /* Incident room, cascading errors */
 }

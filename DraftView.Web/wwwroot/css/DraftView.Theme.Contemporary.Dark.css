@@ -48,4 +48,11 @@
 
     /* Background tile — warm dark linen or subtle woven texture */
     --background-tile: url('/images/DraftView.Theme.Contemporary.Tile.Dark.web.jpg');
+
+    /* Hero and error images — pending; Contemporary editorial visual world */
+    --hero-image:         url('/images/DraftView.Theme.Contemporary.Hero.web.jpg');
+    --error-image-403:    url('/images/DraftView.Theme.Contemporary.Error.403.web.jpg');
+    --error-image-404:    url('/images/DraftView.Theme.Contemporary.Error.404.web.jpg');
+    --error-image-405:    url('/images/DraftView.Theme.Contemporary.Error.405.web.jpg');
+    --error-image-500:    url('/images/DraftView.Theme.Contemporary.Error.500.web.jpg');
 }
