@@ -46,13 +46,15 @@
     --color-status-warning:  #C5AD59;   /* Tarnished Brass */
     --color-status-critical: #D06C62;   /* Alarm Red */
 
-    /* Background tile — old carbon paper or worn baize texture */
-    --background-tile: url('/images/DraftView.Theme.Noir.Tile.Dark.web.jpg');
+    /* Background tile — near-black charcoal stone */
+    --background-tile: url('/images/Noir-Dark-Background-Tile.png');
 
-    /* Hero and error images — pending; Cold War Spy visual world */
-    --hero-image:         url('/images/DraftView.Theme.Noir.Hero.web.jpg');
-    --error-image-403:    url('/images/DraftView.Theme.Noir.Error.403.web.jpg');
-    --error-image-404:    url('/images/DraftView.Theme.Noir.Error.404.web.jpg');
-    --error-image-405:    url('/images/DraftView.Theme.Noir.Error.405.web.jpg');
-    --error-image-500:    url('/images/DraftView.Theme.Noir.Error.500.web.jpg');
+    /* Hero and error images — Cold War Spy visual world; shared across light/dark variants */
+    --header-image:       url('/images/Noir.Header.png');                  /* Thames embankment, DraftView sign, St Paul's + Big Ben */
+    --atmosphere-image:   url('/images/Noir-Atmosphere.png');              /* London establishing shot */
+    --hero-image:         url('/images/Noir-Reader-Dashboard-Hero.png');   /* Intelligence Section desk, confidential files */
+    --error-image-403:    url('/images/Noir-403.png');                     /* Section 7 Intelligence door, red ACCESS REQUEST light */
+    --error-image-404:    url('/images/Noir-404.png');                     /* Northfield Platform 7, empty platform */
+    --error-image-405:    url('/images/Noir-405a.png');                    /* Berlin Wall, Achtung Staatsgrenze — alt: Noir-405b.png */
+    --error-image-500:    url('/images/Noir-500.png');                     /* Telephone Exchange, Direct Line Not Available */
 }
