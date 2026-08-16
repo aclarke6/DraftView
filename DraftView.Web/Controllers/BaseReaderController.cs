@@ -95,7 +95,7 @@ public abstract class BaseReaderController(
 
             var targetSceneId = model.ReturnSceneId ?? section?.Id;
             if (targetSceneId.HasValue)
-                return RedirectToAction("Read", new { id = targetSceneId.Value });
+                return await RedirectToReaderAsync(targetSceneId.Value);
 
             return RedirectToAction("Scenes", new { chapterId });
         }
@@ -453,6 +453,8 @@ public abstract class BaseReaderController(
             var section = await SectionRepo.GetByIdAsync(sectionId);
             if (section?.NodeType == NodeType.Folder)
                 return RedirectToAction("ChapterComments", new { chapterId = sectionId });
+            if (section?.NodeType == NodeType.Document)
+                return RedirectToAction("SceneComments", new { sceneId = sectionId });
         }
 
         return RedirectToAction("Read", new { id = sectionId });
