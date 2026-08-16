@@ -50,6 +50,7 @@
     --background-tile: url('/images/DraftView.Theme.Crime.Tile.png');
 
     /* Hero and error images — cinematic Glasgow crime world; shared across light/dark variants */
+    --header-image:       url('/images/DraftView.Theme.Crime.Header.png');          /* Clydeside embankment banner — lamps, wet stone, Clyde Arc */
     --atmosphere-image:   url('/images/DraftView.Theme.Crime.Atmosphere.png');      /* Clydeside skyline — Armadillo, Finnieston Crane, Clyde Arc */
     --hero-image:         url('/images/DraftView.Theme.Crime.Hero.web.jpg');        /* Figure reading by the Clyde */
     --bg-image:           url('/images/DraftView.Theme.Crime.Bg.web.jpg');          /* Empty desk, case files, lamp */
