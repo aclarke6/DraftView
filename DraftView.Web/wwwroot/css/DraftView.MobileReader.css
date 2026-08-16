@@ -354,3 +354,40 @@
     align-items: center;
     gap: var(--space-1);
 }
+
+.mobile-comment-form--top {
+    margin-top: 0;
+    margin-bottom: var(--space-6);
+}
+
+/* --------------------------------------------------------------------------
+   Chapter comments link (MobileRead + MobileScenes)
+   -------------------------------------------------------------------------- */
+.mobile-chapter-comments-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    margin-top: var(--space-6);
+    font-size: var(--text-sm);
+    color: var(--color-accent);
+    text-decoration: none;
+    transition: color var(--transition);
+}
+
+.mobile-chapter-comments-link:hover {
+    color: var(--color-text);
+    text-decoration: none;
+}
+
+/* --------------------------------------------------------------------------
+   Chapter comments page (MobileChapterComments)
+   -------------------------------------------------------------------------- */
+.mobile-chapter-comments {
+    padding-bottom: var(--space-10);
+}
+
+.mobile-chapter-comments__empty {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    margin-top: var(--space-4);
+}

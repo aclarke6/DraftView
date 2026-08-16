@@ -43,6 +43,20 @@ public class MobileSceneRowViewModel
 }
 
 /// <summary>
+/// Chapter-level comments page for mobile.
+/// Shows all comments posted against the chapter folder itself.
+/// </summary>
+public class MobileChapterCommentsViewModel
+{
+    public Section Chapter { get; set; } = default!;
+    public string ProjectName { get; set; } = string.Empty;
+    public Guid ProjectId { get; set; }
+    public IReadOnlyList<CommentDisplayViewModel> Comments { get; set; } = new List<CommentDisplayViewModel>();
+    public Guid CurrentUserId { get; set; }
+    public bool CurrentUserIsModerator { get; set; }
+}
+
+/// <summary>
 /// Single scene read view for mobile.
 /// Includes prev/next navigation and comments.
 /// </summary>

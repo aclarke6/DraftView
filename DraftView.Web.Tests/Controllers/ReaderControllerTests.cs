@@ -1011,7 +1011,7 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
     }
 
     [Fact]
-    public async Task Read_Mobile_RendersPassageAnchorSelectionCaptureScript()
+    public async Task Read_Mobile_DoesNotRenderPassageAnchorSelectionCapture_ButPreservesHighlightAndModal()
     {
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
@@ -1028,8 +1028,11 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
 
         var html = await response.Content.ReadAsStringAsync();
 
-        Assert.Contains("/Reader/CapturePassageAnchorSelection", html);
-        Assert.Contains("data-anchor-comment-form=\"true\"", html);
+        // Selection capture is intentionally disabled on mobile (unreliable on touch)
+        Assert.DoesNotContain("/Reader/CapturePassageAnchorSelection", html);
+        Assert.DoesNotContain("__draftViewPendingPassageAnchorPayload", html);
+
+        // Existing anchored comments still display with highlight + modal
         Assert.Contains("data-passage-anchor-id=", html);
         Assert.Contains("inline-comment-highlight", html);
     }

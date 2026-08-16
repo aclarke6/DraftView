@@ -160,6 +160,38 @@ public class ReaderController(
     }
 
     // -----------------------------------------------------------------------
+    // GET: /Reader/ChapterComments/{chapterId}  (mobile)
+    // -----------------------------------------------------------------------
+    public async Task<IActionResult> ChapterComments(Guid chapterId)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return Forbid();
+
+        var chapter = await SectionRepo.GetByIdAsync(chapterId);
+        if (chapter is null || !chapter.IsPublished || chapter.NodeType != NodeType.Folder)
+            return NotFound();
+
+        var project = await ProjectRepo.GetByIdAsync(chapter.ProjectId);
+        if (project is null)
+            return NotFound();
+
+        var isModerator = user.Role == Role.Author;
+
+        var commentsRaw = await CommentService.GetThreadsForSectionAsync(chapterId, user.Id);
+        var comments    = await BuildCommentDisplayModelsAsync(commentsRaw, user.Id, project.AuthorId, isModerator);
+
+        return View("MobileChapterComments", new MobileChapterCommentsViewModel {
+            Chapter                = chapter,
+            ProjectName            = project.Name,
+            ProjectId              = project.Id,
+            Comments               = comments,
+            CurrentUserId          = user.Id,
+            CurrentUserIsModerator = isModerator
+        });
+    }
+
+    // -----------------------------------------------------------------------
     // GET: /Reader/Browse/{id}  (desktop)
     // -----------------------------------------------------------------------
     public async Task<IActionResult> Browse(Guid id)

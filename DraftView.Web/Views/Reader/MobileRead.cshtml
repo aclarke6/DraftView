@@ -117,7 +117,27 @@
     </div>
 
     <div class="mobile-comments" id="comments">
-        <div class="mobile-comments__heading">Comments</div>
+        <div class="mobile-comments__heading">Scene Comments</div>
+
+        <div class="mobile-comment-form mobile-comment-form--top">
+            <form asp-action="AddComment" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="SectionId" value="@Model.Scene.Id" />
+                <input type="hidden" name="ReturnSceneId" value="@Model.Scene.Id" />
+                <textarea name="Body" rows="3"
+                          placeholder="Comment on this scene..."
+                          class="mobile-comment-form__textarea"></textarea>
+                <div class="mobile-comment-form__actions">
+                    <label class="mobile-comment-form__private">
+                        <input type="checkbox" name="IsPrivate" /> Private
+                    </label>
+                    <button type="submit" class="comment-action-btn comment-action-btn--primary"
+                            title="Post comment" aria-label="Post comment">
+                        @Icons.Send()
+                    </button>
+                </div>
+            </form>
+        </div>
 
         @{
             var roots   = Model.Comments.Where(c => c.Comment.ParentCommentId == null).ToList();
@@ -364,25 +384,10 @@
             }
         }
 
-        <div class="mobile-comment-form">
-            <form asp-action="AddComment" method="post" data-anchor-comment-form="true">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="SectionId" value="@Model.Scene.Id" />
-                <input type="hidden" name="ReturnSceneId" value="@Model.Scene.Id" />
-                <textarea name="Body" rows="3"
-                          placeholder="Comment on this scene..."
-                          class="mobile-comment-form__textarea"></textarea>
-                <div class="mobile-comment-form__actions">
-                    <label class="mobile-comment-form__private">
-                        <input type="checkbox" name="IsPrivate" /> Private
-                    </label>
-                    <button type="submit" class="comment-action-btn comment-action-btn--primary"
-                            title="Post comment" aria-label="Post comment">
-                        @Icons.Send()
-                    </button>
-                </div>
-            </form>
-        </div>
+        <a asp-action="ChapterComments" asp-route-chapterId="@Model.Chapter.Id"
+           class="mobile-chapter-comments-link">
+            Chapter Comments &#8250;
+        </a>
     </div>
 
         <nav class="mobile-read__nav mobile-read__nav--bottom">
@@ -651,175 +656,6 @@
         });
 
         window.addEventListener('beforeunload', capturePosition);
-    })();
-
-    (function () {
-        var antiForgeryInput = document.querySelector('input[name="__RequestVerificationToken"]');
-        var prose = document.querySelector('.mobile-read__prose[data-section-id]');
-        if (!antiForgeryInput || !prose) {
-            return;
-        }
-
-        var captureUrl = '/Reader/CapturePassageAnchorSelection';
-        var contextLength = 120;
-        var lastCaptureKey = '';
-        var timer;
-        window.__draftViewPendingPassageAnchorPayload = null;
-
-        function normalizeText(text) {
-            return (text || '').replace(/\s+/g, ' ').trim();
-        }
-
-        async function hashText(text) {
-            if (window.crypto && window.crypto.subtle && window.TextEncoder) {
-                var bytes = new TextEncoder().encode(text);
-                var digest = await window.crypto.subtle.digest('SHA-256', bytes);
-                return Array.from(new Uint8Array(digest)).map(function (b) {
-                    return b.toString(16).padStart(2, '0');
-                }).join('');
-            }
-
-            return String(text.length) + ':' + text.substring(0, 32);
-        }
-
-        async function captureSelection() {
-            var selection = window.getSelection();
-            if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
-                return;
-            }
-
-            if (!prose.contains(selection.anchorNode) || !prose.contains(selection.focusNode)) {
-                return;
-            }
-
-            var selectedText = normalizeText(selection.toString());
-            var canonicalText = prose.getAttribute('data-resume-capture-text') || '';
-            if (!selectedText || !canonicalText) {
-                return;
-            }
-
-            var startOffset = canonicalText.indexOf(selectedText);
-            if (startOffset < 0) {
-                return;
-            }
-
-            var endOffset = startOffset + selectedText.length;
-            var prefixStart = Math.max(0, startOffset - contextLength);
-            var suffixEnd = Math.min(canonicalText.length, endOffset + contextLength);
-            var sectionId = prose.getAttribute('data-section-id');
-            var versionId = prose.getAttribute('data-section-version-id');
-            var captureKey = JSON.stringify([
-                sectionId,
-                versionId,
-                startOffset,
-                endOffset,
-                selectedText
-            ]);
-
-            if (captureKey === lastCaptureKey) {
-                return;
-            }
-
-            var payload = {
-                sectionId: sectionId,
-                originalSectionVersionId: versionId || null,
-                purpose: 0,
-                selectedText: selectedText,
-                normalizedSelectedText: selectedText,
-                selectedTextHash: await hashText(selectedText),
-                prefixContext: canonicalText.slice(prefixStart, startOffset),
-                suffixContext: canonicalText.slice(endOffset, suffixEnd),
-                startOffset: startOffset,
-                endOffset: endOffset,
-                canonicalContentHash: await hashText(canonicalText),
-                htmlSelectorHint: '#mobile-scene-' + sectionId
-            };
-
-            lastCaptureKey = captureKey;
-
-            fetch(captureUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'RequestVerificationToken': antiForgeryInput.value
-                },
-                body: JSON.stringify(payload)
-            }).then(function (response) {
-                if (response.ok) {
-                    window.__draftViewPendingPassageAnchorPayload = payload;
-                    return;
-                }
-
-                window.__draftViewPendingPassageAnchorPayload = null;
-                lastCaptureKey = '';
-            }).catch(function () {
-                window.__draftViewPendingPassageAnchorPayload = null;
-                lastCaptureKey = '';
-            });
-        }
-
-        document.addEventListener('selectionchange', function () {
-            clearTimeout(timer);
-            timer = setTimeout(captureSelection, 120);
-        });
-
-        document.addEventListener('mouseup', function () {
-            clearTimeout(timer);
-            timer = setTimeout(captureSelection, 60);
-        });
-    })();
-
-    (function () {
-        function applyPendingAnchor(form) {
-            var pending = window.__draftViewPendingPassageAnchorPayload;
-            if (!pending) {
-                return;
-            }
-
-            var sectionIdInput = form.querySelector('input[name="SectionId"]');
-            if (!sectionIdInput || sectionIdInput.value !== pending.sectionId) {
-                return;
-            }
-
-            if (form.querySelector('input[name="ParentCommentId"]')) {
-                return;
-            }
-
-            var fields = {
-                'PassageAnchorRequest.SectionId': pending.sectionId,
-                'PassageAnchorRequest.OriginalSectionVersionId': pending.originalSectionVersionId || '',
-                'PassageAnchorRequest.Purpose': pending.purpose,
-                'PassageAnchorRequest.SelectedText': pending.selectedText,
-                'PassageAnchorRequest.NormalizedSelectedText': pending.normalizedSelectedText,
-                'PassageAnchorRequest.SelectedTextHash': pending.selectedTextHash,
-                'PassageAnchorRequest.PrefixContext': pending.prefixContext,
-                'PassageAnchorRequest.SuffixContext': pending.suffixContext,
-                'PassageAnchorRequest.StartOffset': pending.startOffset,
-                'PassageAnchorRequest.EndOffset': pending.endOffset,
-                'PassageAnchorRequest.CanonicalContentHash': pending.canonicalContentHash,
-                'PassageAnchorRequest.HtmlSelectorHint': pending.htmlSelectorHint || ''
-            };
-
-            Object.keys(fields).forEach(function (name) {
-                var input = form.querySelector('input[name="' + name + '"]');
-                if (!input) {
-                    input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = name;
-                    form.appendChild(input);
-                }
-
-                input.value = fields[name];
-            });
-
-            window.__draftViewPendingPassageAnchorPayload = null;
-        }
-
-        document.querySelectorAll('form[data-anchor-comment-form="true"]').forEach(function (form) {
-            form.addEventListener('submit', function () {
-                applyPendingAnchor(form);
-            });
-        });
     })();
 
     (function () {
