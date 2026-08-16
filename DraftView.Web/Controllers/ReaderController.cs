@@ -192,6 +192,45 @@ public class ReaderController(
     }
 
     // -----------------------------------------------------------------------
+    // GET: /Reader/SceneComments/{sceneId}  (mobile)
+    // -----------------------------------------------------------------------
+    public async Task<IActionResult> SceneComments(Guid sceneId)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return Forbid();
+
+        var scene = await SectionRepo.GetByIdAsync(sceneId);
+        if (scene is null || !scene.IsPublished || scene.NodeType != NodeType.Document)
+            return NotFound();
+
+        var chapter = scene.ParentId.HasValue
+            ? await SectionRepo.GetByIdAsync(scene.ParentId.Value)
+            : null;
+        if (chapter is null)
+            return NotFound();
+
+        var project = await ProjectRepo.GetByIdAsync(scene.ProjectId);
+        if (project is null)
+            return NotFound();
+
+        var isModerator = user.Role == Role.Author;
+
+        var commentsRaw = await CommentService.GetThreadsForSectionAsync(sceneId, user.Id);
+        var comments    = await BuildCommentDisplayModelsAsync(commentsRaw, user.Id, project.AuthorId, isModerator);
+
+        return View("MobileSceneComments", new MobileSceneCommentsViewModel {
+            Scene                  = scene,
+            Chapter                = chapter,
+            ProjectName            = project.Name,
+            ProjectId              = project.Id,
+            Comments               = comments,
+            CurrentUserId          = user.Id,
+            CurrentUserIsModerator = isModerator
+        });
+    }
+
+    // -----------------------------------------------------------------------
     // GET: /Reader/Browse/{id}  (desktop)
     // -----------------------------------------------------------------------
     public async Task<IActionResult> Browse(Guid id)
@@ -537,35 +576,33 @@ public class ReaderController(
         var allSections = await SectionRepo.GetByProjectIdAsync(project.Id);
         var (prevSceneId, nextSceneId) = GetPrevNextSceneIds(scene.Id, chapter.Id, allSections);
 
-        var commentsRaw = await CommentService.GetThreadsForSectionAsync(id, user.Id);
-        var comments    = await BuildCommentDisplayModelsAsync(commentsRaw, user.Id, project.AuthorId, isModerator);
-        var preferences = await _userPreferencesRepo.GetByUserIdAsync(user.Id);
+        var commentsRaw       = await CommentService.GetThreadsForSectionAsync(id, user.Id);
+        var sceneCommentCount = commentsRaw.Count(c => !c.IsSoftDeleted);
+        var preferences       = await _userPreferencesRepo.GetByUserIdAsync(user.Id);
 
         return View("MobileRead", new MobileReadViewModel {
-            Scene                  = scene,
-            Chapter                = chapter,
-            ProjectName            = project.Name,
-            Comments               = comments,
-            PrevSceneId            = prevSceneId,
-            NextSceneId            = nextSceneId,
-            CurrentUserId          = user.Id,
-            CurrentUserIsModerator = isModerator,
-            ProseFont              = preferences?.ProseFont ?? ProseFont.SystemSerif,
-            ProseFontSize          = preferences?.ProseFontSize ?? ProseFontSize.Medium,
-            ResolvedHtmlContent    = resolvedHtml,
-            CurrentSectionVersionId = currentSectionVersionId,
-            ResumeCaptureText      = resumeCaptureText,
-            HasResumeRestoreTarget = resumeRestoreTarget?.HasTarget ?? false,
+            Scene                    = scene,
+            Chapter                  = chapter,
+            ProjectName              = project.Name,
+            SceneCommentCount        = sceneCommentCount,
+            PrevSceneId              = prevSceneId,
+            NextSceneId              = nextSceneId,
+            ProseFont                = preferences?.ProseFont ?? ProseFont.SystemSerif,
+            ProseFontSize            = preferences?.ProseFontSize ?? ProseFontSize.Medium,
+            ResolvedHtmlContent      = resolvedHtml,
+            CurrentSectionVersionId  = currentSectionVersionId,
+            ResumeCaptureText        = resumeCaptureText,
+            HasResumeRestoreTarget   = resumeRestoreTarget?.HasTarget ?? false,
             ResumeRestoreStartOffset = resumeRestoreTarget?.StartOffset,
-            ResumeRestoreEndOffset = resumeRestoreTarget?.EndOffset,
-            ResumeRestoreStatus = resumeRestoreTarget?.Status,
+            ResumeRestoreEndOffset   = resumeRestoreTarget?.EndOffset,
+            ResumeRestoreStatus      = resumeRestoreTarget?.Status,
             ResumeRestoreConfidenceScore = resumeRestoreTarget?.ConfidenceScore,
             ResumeRestoreMatchMethod = resumeRestoreTarget?.MatchMethod,
-            CurrentVersionNumber   = currentVersionNumber,
-            AiSummary              = aiSummary,
-            DiffParagraphs         = diffParagraphs,
-            UpdatedSinceLastRead   = updatedSinceLastRead,
-            ShowUpdateBanner       = showUpdateBanner
+            CurrentVersionNumber     = currentVersionNumber,
+            AiSummary                = aiSummary,
+            DiffParagraphs           = diffParagraphs,
+            UpdatedSinceLastRead     = updatedSinceLastRead,
+            ShowUpdateBanner         = showUpdateBanner
         });
     }
 
