@@ -23,6 +23,29 @@
     </div>
 </div>
 
+@if (Model.AccessRequests.Any())
+{
+    <div class="reader-dashboard-requests">
+        <h3 class="reader-dashboard-requests__heading">Your requests</h3>
+        <ul class="request-list">
+            @foreach (var row in Model.AccessRequests)
+            {
+                <li class="request-list__item">
+                    <span class="request-list__name">@row.ProjectName</span>
+                    @if (row.Request.Status == DraftView.Domain.Enumerations.AccessRequestStatus.Pending)
+                    {
+                        <span class="request-list__status request-list__status--pending">Awaiting response</span>
+                    }
+                    else if (row.Request.Status == DraftView.Domain.Enumerations.AccessRequestStatus.Declined)
+                    {
+                        <span class="request-list__status request-list__status--declined">Not accepted</span>
+                    }
+                </li>
+            }
+        </ul>
+    </div>
+}
+
 @if (!Model.HasProjects)
 {
     <div class="reader-dashboard">

@@ -1,0 +1,77 @@
+@model DiscoveryViewModel
+@{
+    ViewData["Title"] = "Discover Books";
+}
+
+<h2>Discover Books</h2>
+<p class="page-subtitle">Browse manuscripts open for beta readers.</p>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert--success">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert--error">@error</div>
+}
+
+@if (!Model.Projects.Any())
+{
+    <div class="discovery-empty">
+        <p>No books are currently open for beta readers. Check back soon.</p>
+    </div>
+}
+else
+{
+    <ul class="discovery-list">
+        @foreach (var row in Model.Projects)
+        {
+            <li class="discovery-card">
+                <div class="discovery-card__body">
+                    <h3 class="discovery-card__title">@row.Project.Name</h3>
+                    @if (!string.IsNullOrWhiteSpace(row.Project.Brief))
+                    {
+                        <p class="discovery-card__brief">@row.Project.Brief</p>
+                    }
+                </div>
+                <div class="discovery-card__cta">
+                    @if (!Model.IsAuthenticated)
+                    {
+                        <a asp-controller="Account" asp-action="Login" class="btn btn--primary btn--sm">Sign in to request access</a>
+                    }
+                    else if (row.RequestStatus == DiscoveryRequestStatus.None)
+                    {
+                        <form asp-action="SubmitRequest" asp-controller="Discovery" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="projectId" value="@row.Project.Id" />
+                            <div class="form-group">
+                                <label class="form-label" for="coverNote_@row.Project.Id">Cover note <span class="form-hint">(optional, max 500 characters)</span></label>
+                                <textarea id="coverNote_@row.Project.Id" name="coverNote" class="form-control form-control--sm" rows="3" maxlength="500"
+                                          placeholder="Tell the author why you'd like to read this..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="email_@row.Project.Id">Contact email <span class="form-hint">(optional)</span></label>
+                                <input type="email" id="email_@row.Project.Id" name="contactEmail" class="form-control form-control--sm"
+                                       placeholder="Off-platform email (optional)" />
+                            </div>
+                            <p class="discovery-card__note">You'll be notified by email if the author accepts your request.</p>
+                            <button type="submit" class="btn btn--primary btn--sm">Request access</button>
+                        </form>
+                    }
+                    else if (row.RequestStatus == DiscoveryRequestStatus.Pending)
+                    {
+                        <span class="discovery-card__status discovery-card__status--pending">Requested — awaiting response</span>
+                    }
+                    else if (row.RequestStatus == DiscoveryRequestStatus.Approved)
+                    {
+                        <span class="discovery-card__status discovery-card__status--approved">You have access</span>
+                    }
+                    else if (row.RequestStatus == DiscoveryRequestStatus.Declined)
+                    {
+                        <span class="discovery-card__status discovery-card__status--declined">Not accepted</span>
+                    }
+                </div>
+            </li>
+        }
+    </ul>
+}

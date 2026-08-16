@@ -62,6 +62,20 @@ public class SettingsViewModel
     public string DisplayTheme { get; set; } = "Light";
     public string ProseFont { get; set; } = "SystemSerif";
     public string ProseFontSize { get; set; } = "Medium";
+    public string? ReaderBio { get; set; }
+    public string? ReaderGenreInterests { get; set; }
+    public string? ReaderPace { get; set; }
+}
+
+public class UpdateReaderProfileViewModel
+{
+    [StringLength(1000)]
+    public string? ReaderBio { get; set; }
+
+    [StringLength(500)]
+    public string? ReaderGenreInterests { get; set; }
+
+    public string? ReaderPace { get; set; }
 }
 
 public class ChangeDisplayThemeViewModel

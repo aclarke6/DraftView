@@ -116,3 +116,18 @@
             width: 100%;
         }
 }
+
+/* ==========================================================================
+   Reader profile card
+   ========================================================================== */
+
+.reader-profile-card textarea.form-input {
+    resize: vertical;
+    min-height: 5rem;
+}
+
+.settings-hint {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    margin: 0 0 var(--space-4);
+}

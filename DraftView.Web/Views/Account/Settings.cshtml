@@ -98,6 +98,39 @@
                     </div>
                 </div>
             }
+
+            @if (Model.IsReader)
+            {
+                <div class="card settings-card reader-profile-card">
+                    <div class="card__header"><span class="card__title">Reader Profile</span></div>
+                    <div class="card__body">
+                        <p class="settings-hint">This information helps authors understand who is requesting access to their books. All fields are optional.</p>
+                        <form asp-action="UpdateReaderProfile" method="post">
+                            @Html.AntiForgeryToken()
+                            <div class="settings-form-stack">
+                                <div class="settings-form-group">
+                                    <label class="form-label">About me</label>
+                                    <textarea name="ReaderBio" class="form-input" rows="3" maxlength="1000" placeholder="A short bio for authors to see...">@Model.ReaderBio</textarea>
+                                </div>
+                                <div class="settings-form-group">
+                                    <label class="form-label">Genre interests</label>
+                                    <input type="text" name="ReaderGenreInterests" class="form-input" value="@Model.ReaderGenreInterests" maxlength="500" placeholder="e.g. Fantasy, Sci-fi, Historical fiction" />
+                                </div>
+                                <div class="settings-form-group">
+                                    <label class="form-label">Reading pace</label>
+                                    <select name="ReaderPace" class="form-input">
+                                        <option value="" selected="@(Model.ReaderPace == null)">Not specified</option>
+                                        <option value="Slow" selected="@(Model.ReaderPace == "Slow")">Slow</option>
+                                        <option value="Steady" selected="@(Model.ReaderPace == "Steady")">Steady</option>
+                                        <option value="Fast" selected="@(Model.ReaderPace == "Fast")">Fast</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn--primary settings-form-button-inline">Save Profile</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            }
         </div>
 
         <div class="settings-layout__side">

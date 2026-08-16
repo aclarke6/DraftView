@@ -441,7 +441,10 @@ public class AccountController(
             IsReader = await IsReaderAsync(),
             DisplayTheme = prefs?.DisplayTheme.ToString() ?? "Light",
             ProseFont = prefs?.ProseFont.ToString() ?? "SystemSerif",
-            ProseFontSize = prefs?.ProseFontSize.ToString() ?? "Medium"
+            ProseFontSize = prefs?.ProseFontSize.ToString() ?? "Medium",
+            ReaderBio = prefs?.ReaderBio,
+            ReaderGenreInterests = prefs?.ReaderGenreInterests,
+            ReaderPace = prefs?.ReaderPace?.ToString()
         };
 
         if (vm.IsAuthor)
@@ -662,6 +665,34 @@ public class AccountController(
 
         await signInManager.RefreshSignInAsync(identityUser);
         TempData["Success"] = "Password changed successfully.";
+        return RedirectToAction("Settings");
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateReaderProfile(UpdateReaderProfileViewModel model)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return RedirectToAction("Login");
+
+        DraftView.Domain.Enumerations.ReaderPace? pace = null;
+        if (!string.IsNullOrWhiteSpace(model.ReaderPace) &&
+            Enum.TryParse<DraftView.Domain.Enumerations.ReaderPace>(model.ReaderPace, out var parsedPace))
+        {
+            pace = parsedPace;
+        }
+
+        try
+        {
+            await userService.UpdateReaderProfileAsync(user.Id, model.ReaderBio, model.ReaderGenreInterests, pace);
+            TempData["Success"] = "Reader profile updated.";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
         return RedirectToAction("Settings");
     }
 
