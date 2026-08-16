@@ -40,6 +40,8 @@ public class AuthorControllerTests
     private readonly Mock<IConfiguration> configuration = new();
     private readonly Mock<ILogger<AuthorController>> logger = new();
     private readonly Mock<IAccessRequestService> accessRequestService = new();
+    private readonly Mock<IAccessRequestRepository> accessRequestRepo = new();
+    private readonly Mock<IUserPreferencesRepository> userPreferencesRepo = new();
 
     private AuthorController CreateSut(string email = "author@example.test")
     {
@@ -64,7 +66,9 @@ public class AuthorControllerTests
             sectionTreeService.Object,
             configuration.Object,
             logger.Object,
-            accessRequestService.Object);
+            accessRequestService.Object,
+            accessRequestRepo.Object,
+            userPreferencesRepo.Object);
 
         controller.ControllerContext = new ControllerContext
         {
@@ -817,5 +821,87 @@ public class AuthorControllerTests
         var result = await sut.CloseBook(Guid.NewGuid());
 
         Assert.IsType<NotFoundResult>(result);
+    }
+
+    // -----------------------------------------------------------------------
+    // BookRequests / ApproveRequest / DeclineRequest
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task BookRequests_WhenAuthorOwnsProject_ReturnsViewWithPendingRequests()
+    {
+        var author = User.Create("author@example.test", "Author", Role.Author);
+        var project = Project.Create("My Novel", "/dropbox/test.scriv", author.Id);
+        project.Open("A thriller.");
+        var readerId = Guid.NewGuid();
+        var request = AccessRequest.Create(readerId, project.Id, "I love thrillers", null);
+        var reader = User.Create("reader@example.com", "Test Reader", Role.BetaReader);
+
+        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(author);
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
+        accessRequestRepo.Setup(r => r.GetPendingByProjectIdAsync(project.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([request]);
+        userRepo.Setup(r => r.GetByIdAsync(readerId, It.IsAny<CancellationToken>())).ReturnsAsync(reader);
+        userPreferencesRepo.Setup(r => r.GetByUserIdAsync(readerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserPreferences?)null);
+
+        var sut = CreateSut();
+        var result = await sut.BookRequests(project.Id);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<BookRequestsViewModel>(view.Model);
+        Assert.Equal(project.Id, model.Project.Id);
+        Assert.Single(model.Requests);
+        Assert.Equal("Test Reader", model.Requests[0].ReaderDisplayName);
+    }
+
+    [Fact]
+    public async Task BookRequests_WhenProjectNotFound_ReturnsNotFound()
+    {
+        var author = User.Create("author@example.test", "Author", Role.Author);
+        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(author);
+        projectRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Project?)null);
+
+        var sut = CreateSut();
+        var result = await sut.BookRequests(Guid.NewGuid());
+
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task ApproveRequest_WhenAuthorOwnsProject_CallsServiceAndRedirects()
+    {
+        var author = User.Create("author@example.test", "Author", Role.Author);
+        var projectId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(author);
+
+        var sut = CreateSut();
+        var result = await sut.ApproveRequest(requestId, projectId);
+
+        accessRequestService.Verify(s => s.ApproveRequestAsync(requestId, author.Id, It.IsAny<CancellationToken>()), Times.Once);
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("BookRequests", redirect.ActionName);
+    }
+
+    [Fact]
+    public async Task DeclineRequest_WhenAuthorOwnsProject_CallsServiceAndRedirects()
+    {
+        var author = User.Create("author@example.test", "Author", Role.Author);
+        var projectId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
+        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(author);
+
+        var sut = CreateSut();
+        var result = await sut.DeclineRequest(requestId, projectId);
+
+        accessRequestService.Verify(s => s.DeclineRequestAsync(requestId, author.Id, It.IsAny<CancellationToken>()), Times.Once);
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("BookRequests", redirect.ActionName);
     }
 }

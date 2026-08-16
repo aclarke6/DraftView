@@ -11,6 +11,49 @@
     Republish chapters or individual documents. Revoke rolls back to the previous version.
 </p>
 
+<div class="discovery-panel">
+    <h3 class="discovery-panel__heading">Open for Beta Readers</h3>
+    @if (Model.Project.IsOpen)
+    {
+        <p class="discovery-panel__status discovery-panel__status--open">
+            This book is open for discovery.
+            @if (Model.PendingRequestCount > 0)
+            {
+                <a asp-action="BookRequests" asp-route-projectId="@Model.Project.Id"
+                   class="badge badge--requests">@Model.PendingRequestCount pending request@(Model.PendingRequestCount == 1 ? "" : "s")</a>
+            }
+            else
+            {
+                <span class="badge badge--requests badge--zero">No pending requests</span>
+            }
+        </p>
+        <p class="discovery-panel__brief"><em>Brief:</em> @Model.Project.Brief</p>
+        <form asp-action="CloseBook" method="post" style="display:inline"
+              onsubmit="return confirm('Close this book? All pending access requests will be declined.');">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="projectId" value="@Model.Project.Id" />
+            <button type="submit" class="btn btn--danger btn--sm">Close book to new readers</button>
+        </form>
+    }
+    else
+    {
+        <p class="discovery-panel__status discovery-panel__status--closed">
+            This book is not currently open for reader discovery.
+        </p>
+        <form asp-action="OpenBook" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="projectId" value="@Model.Project.Id" />
+            <div class="form-group">
+                <label class="form-label" for="brief">Brief for readers <span class="form-required">*</span></label>
+                <textarea id="brief" name="brief" class="form-control" rows="4" maxlength="2000"
+                          placeholder="Describe your book — genre, themes, word count, what feedback you need, content notes..."
+                          required></textarea>
+            </div>
+            <button type="submit" class="btn btn--primary btn--sm">Open for discovery</button>
+        </form>
+    }
+</div>
+
 @if (!Model.Chapters.Any())
 {
     <p>No published chapters found. Publish a chapter from the Sections view first.</p>
