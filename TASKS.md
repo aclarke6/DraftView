@@ -106,35 +106,9 @@ No open bugs.
   - NEW: `DraftView.Web/Views/Reader/MobileChapterComments.cshtml` — chapter comments page view
   - MODIFY: `DraftView.Web/wwwroot/css/DraftView.MobileReader.css` — chapter-comments link + page styles
 
-- [ ] CHANGE-009 — Mobile reader: read-first scene comments
+- [x] CHANGE-009 — Mobile reader: read-first scene comments
 
-  **Goal:** Remove inline scene comments from `MobileRead` entirely. The reading surface should be
-  prose only. Comment activity is accessed deliberately via a count link after reading.
-
-  **Design:**
-  - `MobileRead` becomes prose + bottom nav only. The `.mobile-comments` section is removed.
-  - A "Scene Comments (N) ›" link sits at the bottom of the prose (below the bottom nav).
-    If there are no comments, shows "Scene Comments ›" with no count.
-  - Tapping the link navigates to a new `GET /Reader/SceneComments/{sceneId}` page.
-  - `MobileSceneComments.cshtml` mirrors `MobileChapterComments.cshtml` — full add/edit/delete/reply,
-    back link returns to `Read` (the prose page).
-  - `MobileReadViewModel` no longer carries the full comment list — only a `SceneCommentCount` int,
-    avoiding the expensive `BuildCommentDisplayModelsAsync` call on every scene page load.
-  - Post-comment redirects updated: `AddComment` / `DeleteComment` / `EditComment` from the scene
-    comments page redirect back to `SceneComments`, not `Read`.
-
-  **Files affected:**
-  - MODIFY: `DraftView.Web/Models/MobileReaderViewModels.cs` — replace Comments list with
-    `SceneCommentCount`; add `MobileSceneCommentsViewModel`
-  - MODIFY: `DraftView.Web/Controllers/ReaderController.cs` — update `MobileRead` private method;
-    add `SceneComments(Guid sceneId)` action
-  - MODIFY: `DraftView.Web/Controllers/BaseReaderController.cs` — extend `RedirectToReaderAsync`
-    to route Document IDs to `SceneComments` on mobile
-  - MODIFY: `DraftView.Web/Views/Reader/MobileRead.cshtml` — remove comments section; add count link
-  - NEW: `DraftView.Web/Views/Reader/MobileSceneComments.cshtml`
-  - MODIFY: `DraftView.Web/wwwroot/css/DraftView.MobileReader.css` — count link style; rename
-    generic `.mobile-comments-link` to replace per-type classes
-  - MODIFY: `DraftView.Web/wwwroot/css/DraftView.Core.css` — CSS version bump
+  **Implemented:** branch `change/CHANGE-009-scene-comments-read-first` — merged to main 2026-08-16. See `HISTORY.md`.
 
 ---
 
