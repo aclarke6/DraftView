@@ -9,7 +9,7 @@
                 <div class="not-found__header">
                     <h1 class="not-found__title">Page not found</h1>
                     <p class="not-found__message">
-                        The trail you’ve chosen slips beyond the borders of any realm we can enter.
+                        @(ViewData["NotFoundMessage"] as string ?? "The trail you’ve chosen slips beyond the borders of any realm we can enter.")
                     </p>
                 </div>
                 <div class="not-found__actions">
