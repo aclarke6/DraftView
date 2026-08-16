@@ -44,6 +44,7 @@ namespace DraftView.Web.Extensions
             services.AddScoped<IReaderAccessRepository, ReaderAccessRepository>();
             services.AddScoped<ISystemStateMessageRepository, SystemStateMessageRepository>();
             services.AddScoped<IAuthorNotificationRepository, AuthorNotificationRepository>();
+            services.AddScoped<IAccessRequestRepository, AccessRequestRepository>();
 
             return services;
         }

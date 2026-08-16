@@ -39,6 +39,16 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
         builder.Property(p => p.IsReaderActive)
             .IsRequired();
 
+        builder.Property(p => p.IsOpen)
+            .IsRequired();
+
+        builder.Property(p => p.Brief)
+            .IsRequired(false)
+            .HasMaxLength(2000);
+
+        builder.Property(p => p.OpenedAt)
+            .IsRequired(false);
+
         builder.Property(p => p.IsSoftDeleted)
             .IsRequired();
 

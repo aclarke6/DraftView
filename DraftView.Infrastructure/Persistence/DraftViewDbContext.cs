@@ -50,6 +50,7 @@ public class DraftViewDbContext : IdentityDbContext<IdentityUser>, IUnitOfWork
     public DbSet<ReaderAccess> ReaderAccess { get; set; } = default!;
     public DbSet<SystemStateMessage> SystemStateMessages { get; set; } = default!;
     public DbSet<AuthorNotification> AuthorNotifications => Set<AuthorNotification>();
+    public DbSet<AccessRequest> AccessRequests => Set<AccessRequest>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

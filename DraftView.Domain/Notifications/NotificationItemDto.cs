@@ -8,7 +8,8 @@ public enum NotificationEventType
     SyncCompleted,
     ReaderReadNewScene,
     ReaderReturned,
-    ReaderFinishedManuscript
+    ReaderFinishedManuscript,
+    AccessRequest
 }
 
 public sealed class NotificationItemDto

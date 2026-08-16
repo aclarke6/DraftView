@@ -180,6 +180,58 @@ public class UserPreferencesTests
     }
 
     // ---------------------------------------------------------------------------
+    // Reader profile (ReaderBio, ReaderGenreInterests, ReaderPace)
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateForBetaReader_DefaultsReaderProfileFieldsToNull()
+    {
+        var prefs = UserPreferences.CreateForBetaReader(UserId);
+
+        Assert.Null(prefs.ReaderBio);
+        Assert.Null(prefs.ReaderGenreInterests);
+        Assert.Null(prefs.ReaderPace);
+    }
+
+    [Fact]
+    public void UpdateReaderProfile_SetsAllFields()
+    {
+        var prefs = UserPreferences.CreateForBetaReader(UserId);
+
+        prefs.UpdateReaderProfile("I love fantasy.", "Fantasy, Sci-Fi", ReaderPace.Steady);
+
+        Assert.Equal("I love fantasy.", prefs.ReaderBio);
+        Assert.Equal("Fantasy, Sci-Fi", prefs.ReaderGenreInterests);
+        Assert.Equal(ReaderPace.Steady, prefs.ReaderPace);
+    }
+
+    [Fact]
+    public void UpdateReaderProfile_AllowsAllNullValues()
+    {
+        var prefs = UserPreferences.CreateForBetaReader(UserId);
+        prefs.UpdateReaderProfile("Bio", "Fantasy", ReaderPace.Fast);
+
+        prefs.UpdateReaderProfile(null, null, null);
+
+        Assert.Null(prefs.ReaderBio);
+        Assert.Null(prefs.ReaderGenreInterests);
+        Assert.Null(prefs.ReaderPace);
+    }
+
+    [Theory]
+    [InlineData(ReaderPace.Slow)]
+    [InlineData(ReaderPace.Steady)]
+    [InlineData(ReaderPace.Fast)]
+    public void UpdateReaderProfile_CanSetEveryPaceValue(ReaderPace pace)
+    {
+        var prefs = UserPreferences.CreateForBetaReader(UserId);
+
+        prefs.UpdateReaderProfile(null, null, pace);
+
+        Assert.Equal(pace, prefs.ReaderPace);
+    }
+
+    // ---------------------------------------------------------------------------
     // UpdateDisplayTheme
     // ---------------------------------------------------------------------------
 

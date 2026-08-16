@@ -365,4 +365,98 @@ public class ProjectTests
 
         Assert.Equal("cursor-002", project.DropboxCursor);
     }
+
+    // ---------------------------------------------------------------------------
+    // IsOpen / Brief / OpenedAt
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void Create_DefaultsIsOpenToFalse()
+    {
+        var project = Project.Create("My Novel", "/dropbox/MyNovel.scriv", ValidAuthorId);
+
+        Assert.False(project.IsOpen);
+        Assert.Null(project.Brief);
+        Assert.Null(project.OpenedAt);
+    }
+
+    [Fact]
+    public void Open_SetsIsOpenTrueAndUpdatesOpenedAt()
+    {
+        var project = Project.Create("My Novel", "/dropbox/MyNovel.scriv", ValidAuthorId);
+        var before = DateTime.UtcNow;
+
+        project.Open("A thrilling adventure novel.");
+
+        Assert.True(project.IsOpen);
+        Assert.Equal("A thrilling adventure novel.", project.Brief);
+        Assert.NotNull(project.OpenedAt);
+        Assert.True(project.OpenedAt >= before);
+    }
+
+    [Fact]
+    public void Open_CalledTwice_UpdatesOpenedAt()
+    {
+        var project = Project.Create("My Novel", "/dropbox/MyNovel.scriv", ValidAuthorId);
+        project.Open("Brief v1");
+        var firstOpenedAt = project.OpenedAt;
+
+        project.Open("Brief v2");
+
+        Assert.True(project.IsOpen);
+        Assert.Equal("Brief v2", project.Brief);
+        Assert.NotNull(project.OpenedAt);
+        Assert.True(project.OpenedAt >= firstOpenedAt);
+    }
+
+    [Fact]
+    public void Open_WhenSoftDeleted_ThrowsInvariantViolationException()
+    {
+        var project = Project.Create("My Novel", "/dropbox/MyNovel.scriv", ValidAuthorId);
+        project.SoftDelete();
+
+        var ex = Assert.Throws<InvariantViolationException>(() =>
+            project.Open("Brief"));
+
+        Assert.Equal("I-PROJ-OPEN-DELETED", ex.InvariantCode);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Open_WithNullOrWhitespaceBrief_ThrowsInvariantViolationException(string? brief)
+    {
+        var project = Project.Create("My Novel", "/dropbox/MyNovel.scriv", ValidAuthorId);
+
+#pragma warning disable CS8604
+        var ex = Assert.Throws<InvariantViolationException>(() =>
+            project.Open(brief));
+#pragma warning restore CS8604
+
+        Assert.Equal("I-PROJ-BRIEF", ex.InvariantCode);
+    }
+
+    [Fact]
+    public void Close_SetsIsOpenFalseAndDoesNotUpdateOpenedAt()
+    {
+        var project = Project.Create("My Novel", "/dropbox/MyNovel.scriv", ValidAuthorId);
+        project.Open("A great novel.");
+        var openedAt = project.OpenedAt;
+
+        project.Close();
+
+        Assert.False(project.IsOpen);
+        Assert.Equal(openedAt, project.OpenedAt);
+    }
+
+    [Fact]
+    public void Close_WhenAlreadyClosed_DoesNotThrow()
+    {
+        var project = Project.Create("My Novel", "/dropbox/MyNovel.scriv", ValidAuthorId);
+
+        var ex = Record.Exception(() => project.Close());
+
+        Assert.Null(ex);
+    }
 }
