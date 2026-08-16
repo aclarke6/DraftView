@@ -1,0 +1,71 @@
+@model BookRequestsViewModel
+@{
+    ViewData["Title"] = "Access Requests — " + Model.Project.Name;
+}
+
+<h2>@Model.Project.Name — Access Requests</h2>
+<p>
+    <a asp-action="Publishing" asp-route-projectId="@Model.Project.Id">&larr; Back to Publishing</a>
+</p>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert--success">@success</div>
+}
+
+@if (!Model.Project.IsOpen)
+{
+    <div class="alert alert--info">
+        This book is currently closed. All pending requests have been declined.
+    </div>
+}
+
+@if (!Model.Requests.Any())
+{
+    <p class="empty-state">No pending access requests.</p>
+}
+else
+{
+    <ul class="request-list">
+        @foreach (var row in Model.Requests)
+        {
+            <li class="request-list__item">
+                <div class="request-list__meta">
+                    <strong class="request-list__name">@row.ReaderDisplayName</strong>
+                    @if (row.ReaderPace.HasValue)
+                    {
+                        <span class="request-list__pace">Reading pace: @row.ReaderPace.Value</span>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(row.ReaderBio))
+                    {
+                        <p class="request-list__bio">@row.ReaderBio</p>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(row.Request.CoverNote))
+                    {
+                        <blockquote class="request-list__cover-note">@row.Request.CoverNote</blockquote>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(row.Request.ContactEmail))
+                    {
+                        <p class="request-list__contact">Contact: @row.Request.ContactEmail</p>
+                    }
+                    <p class="request-list__date">Requested @row.Request.RequestedAt.ToString("d MMM yyyy")</p>
+                </div>
+                <div class="request-list__actions">
+                    <form asp-action="ApproveRequest" method="post" style="display:inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="requestId" value="@row.Request.Id" />
+                        <input type="hidden" name="projectId" value="@Model.Project.Id" />
+                        <button type="submit" class="btn btn--primary btn--sm">Accept</button>
+                    </form>
+                    <form asp-action="DeclineRequest" method="post" style="display:inline"
+                          onsubmit="return confirm('Decline this request?');">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="requestId" value="@row.Request.Id" />
+                        <input type="hidden" name="projectId" value="@Model.Project.Id" />
+                        <button type="submit" class="btn btn--ghost btn--sm">Decline</button>
+                    </form>
+                </div>
+            </li>
+        }
+    </ul>
+}

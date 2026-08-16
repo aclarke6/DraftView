@@ -34,7 +34,9 @@ public class AuthorController(
     ISectionTreeService sectionTreeService,
     IConfiguration configuration,
     ILogger<AuthorController> logger,
-    IAccessRequestService accessRequestService) : BaseController(userRepo)
+    IAccessRequestService accessRequestService,
+    IAccessRequestRepository accessRequestRepo,
+    IUserPreferencesRepository userPreferencesRepo) : BaseController(userRepo)
 {
     // ---------------------------------------------------------------------------
     // Dashboard
@@ -222,6 +224,60 @@ public class AuthorController(
     }
 
     // ---------------------------------------------------------------------------
+    // Book requests — view / approve / decline
+    // ---------------------------------------------------------------------------
+    [HttpGet]
+    public async Task<IActionResult> BookRequests(Guid projectId)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        var project = await projectRepo.GetByIdAsync(projectId);
+        if (project is null) return NotFound();
+
+        var pending = await accessRequestRepo.GetPendingByProjectIdAsync(projectId);
+        var rows = new List<AccessRequestRowViewModel>();
+        foreach (var req in pending)
+        {
+            var reader = await userRepo.GetByIdAsync(req.ReaderId);
+            var prefs  = await userPreferencesRepo.GetByUserIdAsync(req.ReaderId);
+            rows.Add(new AccessRequestRowViewModel
+            {
+                Request           = req,
+                ReaderDisplayName = reader?.DisplayName ?? "Unknown",
+                ReaderBio         = prefs?.ReaderBio,
+                ReaderPace        = prefs?.ReaderPace
+            });
+        }
+
+        return View(new BookRequestsViewModel { Project = project, Requests = rows });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ApproveRequest(Guid requestId, Guid projectId)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        await accessRequestService.ApproveRequestAsync(requestId, author.Id);
+        TempData["Success"] = "Request approved and reader notified.";
+        return RedirectToAction("BookRequests", new { projectId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeclineRequest(Guid requestId, Guid projectId)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        await accessRequestService.DeclineRequestAsync(requestId, author.Id);
+        TempData["Success"] = "Request declined.";
+        return RedirectToAction("BookRequests", new { projectId });
+    }
+
+    // ---------------------------------------------------------------------------
     // Sections list
     // ---------------------------------------------------------------------------
     public async Task<IActionResult> Sections(Guid projectId)
@@ -381,11 +437,15 @@ public class AuthorController(
         var sections = await sectionRepo.GetByProjectIdAsync(projectId);
         var sorted = SortDepthFirst(sections);
         var chapters = await BuildPublishingChapterViewModelsAsync(sorted, project.ProjectType);
+        var pendingCount = project.IsOpen
+            ? await accessRequestRepo.GetPendingCountByProjectIdAsync(projectId)
+            : 0;
 
         return View(new PublishingPageViewModel
         {
             Project = project,
-            Chapters = chapters
+            Chapters = chapters,
+            PendingRequestCount = pendingCount
         });
     }
 

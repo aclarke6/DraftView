@@ -3,6 +3,7 @@ using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
 using DraftView.Domain.Notifications;
 using Microsoft.AspNetCore.Http;
+using DraftView.Domain.Interfaces.Repositories;
 
 namespace DraftView.Web.Models;
 
@@ -83,6 +84,21 @@ public class PublishingPageViewModel
 {
     public Project Project { get; init; } = default!;
     public IReadOnlyList<PublishingChapterViewModel> Chapters { get; init; } = [];
+    public int PendingRequestCount { get; init; }
+}
+
+public class AccessRequestRowViewModel
+{
+    public AccessRequest Request { get; init; } = default!;
+    public string ReaderDisplayName { get; init; } = string.Empty;
+    public string? ReaderBio { get; init; }
+    public ReaderPace? ReaderPace { get; init; }
+}
+
+public class BookRequestsViewModel
+{
+    public Project Project { get; init; } = default!;
+    public IReadOnlyList<AccessRequestRowViewModel> Requests { get; init; } = [];
 }
 
 /// <summary>
