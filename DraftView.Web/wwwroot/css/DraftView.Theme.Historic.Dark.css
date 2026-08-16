@@ -47,12 +47,14 @@
     --color-status-critical: #DD766E;   /* Officer Scarlet */
 
     /* Background tile — dark damask or aged velvet texture */
-    --background-tile: url('/images/DraftView.Theme.Historic.Tile.Dark.web.jpg');
+    --background-tile: url('/images/Historic-Dark-Background-Tile.png');
 
-    /* Hero and error images — pending; Georgian / Napoleonic visual world */
-    --hero-image:         url('/images/DraftView.Theme.Historic.Hero.web.jpg');
-    --error-image-403:    url('/images/DraftView.Theme.Historic.Error.403.web.jpg');
-    --error-image-404:    url('/images/DraftView.Theme.Historic.Error.404.web.jpg');
-    --error-image-405:    url('/images/DraftView.Theme.Historic.Error.405.web.jpg');
-    --error-image-500:    url('/images/DraftView.Theme.Historic.Error.500.web.jpg');
+    /* Hero and error images — Georgian / Napoleonic visual world; shared across light/dark variants */
+    --header-image:       url('/images/Historic-Banner.png');                        /* Header banner */
+    --atmosphere-image:   url('/images/Historic-Atmosphere.png');                   /* Letter with wax seal, gloves, fan — candlelit ballroom beyond */
+    --hero-image:         url('/images/Historic-Reader-Dashboard-Hero.png');        /* Regency woman reading by ballroom window */
+    --error-image-403:    url('/images/Historic-403-Access-Denied.png');            /* Redcoat soldier blocking door, 403 ACCESS DENIED plaque */
+    --error-image-404:    url('/images/Historic-404-Not-Found.png');                /* Naval officer over maps, 404 NOT FOUND plaque */
+    --error-image-405:    url('/images/Historic-405-Method-Not-Allowed.png');       /* Press gang alley, man fleeing — 405 METHOD NOT ALLOWED */
+    --error-image-500:    url('/images/Historic-500-Internal-Server-Error.png');    /* Internal server error */
 }
