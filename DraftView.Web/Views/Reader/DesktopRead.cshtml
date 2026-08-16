@@ -1587,7 +1587,9 @@
                 if (persist) localStorage.setItem('dv-nav-collapsed', collapsed ? '1' : '0');
             }
 
-            if (localStorage.getItem('dv-nav-collapsed') === '1') {
+            var navPref = localStorage.getItem('dv-nav-collapsed');
+            var startNavCollapsed = navPref !== null ? navPref === '1' : false;
+            if (startNavCollapsed) {
                 setSidebarCollapsed(true, false);
             }
 
@@ -1605,7 +1607,9 @@
         var commentsBtn = document.getElementById('commentsToggleBtn');
 
         if (contentRow && commentsBtn) {
-            if (localStorage.getItem('dv-comments-visible') === 'hidden') {
+            var commentsPref = localStorage.getItem('dv-comments-visible');
+            var startCommentsHidden = commentsPref !== null ? commentsPref === 'hidden' : window.innerWidth < 900;
+            if (startCommentsHidden) {
                 contentRow.classList.add('comments-hidden');
                 commentsBtn.textContent = 'Show Comments';
             }
