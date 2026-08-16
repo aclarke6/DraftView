@@ -458,7 +458,7 @@
 .access-denied-hero {
     position: relative;
     min-height: calc(100vh - 56px - 72px);
-    background-image: url('/images/DraftView.403AccessDenied.png');
+    background-image: var(--error-image-403);
     background-size: cover;
     background-position: center center;
     display: flex;
@@ -529,7 +529,7 @@
 .not-found-hero {
     position: relative;
     min-height: calc(100vh - 56px - 72px);
-    background-image: url('/images/DraftView.404LostHero.png');
+    background-image: var(--error-image-404);
     background-size: cover;
     background-position: center center;
     display: flex;
@@ -600,7 +600,7 @@
 .error-hero {
     position: relative;
     min-height: calc(100vh - 56px - 72px);
-    background-image: url('/images/DraftView.500ErrorHero.png');
+    background-image: var(--error-image-500);
     background-size: cover;
     background-position: center center;
     display: flex;
@@ -620,7 +620,7 @@
 .method-not-allowed-hero {
     position: relative;
     min-height: calc(100vh - 56px - 72px);
-    background-image: url('/images/DraftView.405.MethodNotAllowed.jpg');
+    background-image: var(--error-image-405);
     background-size: cover;
     background-position: center center;
     display: flex;

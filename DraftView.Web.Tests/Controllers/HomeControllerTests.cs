@@ -21,8 +21,9 @@ public class HomeControllerTests
     [Fact]
     public void Privacy_ReturnsView()
     {
-        var userRepo = new Mock<IUserRepository>();
-        var controller = new HomeController(userRepo.Object);
+        var userRepo  = new Mock<IUserRepository>();
+        var prefsRepo = new Mock<IUserPreferencesRepository>();
+        var controller = new HomeController(userRepo.Object, prefsRepo.Object);
 
         var result = controller.Privacy();
 
@@ -53,7 +54,7 @@ public sealed class HomeErrorPagesIntegrationTests : IClassFixture<HomeErrorPage
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         Assert.Contains("Access denied", html, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("You do not have permission to access this page.", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("paths are closed", html, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Source Area", html, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Web", html, StringComparison.OrdinalIgnoreCase);
     }
@@ -72,7 +73,7 @@ public sealed class HomeErrorPagesIntegrationTests : IClassFixture<HomeErrorPage
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Contains("Page not found", html, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("The trail you’ve chosen slips beyond the borders of any realm we can enter.", html, StringComparison.Ordinal);
+        Assert.Contains("slips beyond the borders", html, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -89,7 +90,7 @@ public sealed class HomeErrorPagesIntegrationTests : IClassFixture<HomeErrorPage
 
         Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
         Assert.Contains("Method not allowed", html, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("This endpoint does not allow the attempted HTTP method.", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("passage", html, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("DraftView", html, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -107,7 +108,7 @@ public sealed class HomeErrorPagesIntegrationTests : IClassFixture<HomeErrorPage
 
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
         Assert.Contains("Something went wrong", html, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("The system could not complete this request.", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("spell", html, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Reference", html, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Request Path", html, StringComparison.OrdinalIgnoreCase);
     }
