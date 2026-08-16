@@ -242,7 +242,7 @@
     position: relative;
     width: 100%;
     min-height: 260px;
-    background-image: url('/images/DraftView.Atmosphere.web.jpg');
+    background-image: var(--atmosphere-image);
     background-size: cover;
     background-position: center 30%;
     display: flex;

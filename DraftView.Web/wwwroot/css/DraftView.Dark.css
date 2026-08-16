@@ -45,7 +45,7 @@
 
     /* Hero and error images — Adventure theme; shared across light/dark variants */
     --header-image:       url('/images/DraftView.Header.png');
-    --atmosphere-image:   url('/images/DraftView.Atmosphere.png');
+    --atmosphere-image:   url('/images/DraftView.Atmosphere.web.jpg');
     --error-image-403:    url('/images/DraftView.403AccessDenied.png');
     --error-image-404:    url('/images/DraftView.404LostHero.png');
     --error-image-405:    url('/images/DraftView.405.MethodNotAllowed.png');
