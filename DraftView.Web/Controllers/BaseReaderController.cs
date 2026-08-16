@@ -428,7 +428,6 @@ public abstract class BaseReaderController(
             ua.Contains("Mobile",      StringComparison.OrdinalIgnoreCase) ||
             ua.Contains("Android",     StringComparison.OrdinalIgnoreCase) ||
             ua.Contains("iPhone",      StringComparison.OrdinalIgnoreCase) ||
-            ua.Contains("iPad",        StringComparison.OrdinalIgnoreCase) ||
             ua.Contains("iPod",        StringComparison.OrdinalIgnoreCase) ||
             ua.Contains("BlackBerry",  StringComparison.OrdinalIgnoreCase) ||
             ua.Contains("IEMobile",    StringComparison.OrdinalIgnoreCase) ||

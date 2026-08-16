@@ -416,6 +416,10 @@ public class ReaderController(
         if (chapter is null || !chapter.IsPublished)
             return NotFound();
 
+        // Scene (Document) URL — redirect to its parent chapter so the desktop layout loads correctly
+        if (chapter.NodeType == NodeType.Document && chapter.ParentId.HasValue)
+            return RedirectToAction("Read", new { id = chapter.ParentId.Value });
+
         var isModerator = user.Role == Role.Author;
 
         await ProgressService.RecordOpenAsync(id, user.Id);
