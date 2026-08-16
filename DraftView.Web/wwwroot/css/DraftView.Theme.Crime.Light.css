@@ -55,7 +55,7 @@
     --hero-image:         url('/images/DraftView.Theme.Crime.Hero.web.jpg');        /* Figure reading by the Clyde */
     --bg-image:           url('/images/DraftView.Theme.Crime.Bg.web.jpg');          /* Empty desk, case files, lamp */
     --error-image-403:    url('/images/DraftView.Theme.Crime.Error.403.web.jpg');   /* Strathclyde Police corridor */
-    --error-image-404:    url('/images/DraftView.Theme.Crime.Error.404.web.jpg');   /* Argyle Street crossroads */
+    --error-image-404:    url('/images/DraftView.Theme.Crime.Error.404.png');        /* Argyle Street crossroads */
     --error-image-405:    url('/images/DraftView.Theme.Crime.Error.405.web.jpg');   /* Hotel corridor, room 405 — pending */
     --error-image-500:    url('/images/DraftView.Theme.Crime.Error.500.web.jpg');   /* Incident room, cascading errors */
 }
