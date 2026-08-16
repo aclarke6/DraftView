@@ -26,6 +26,7 @@ public class ReaderController(
     ISectionDiffService sectionDiffService,
     IHumanOverrideService humanOverrideService,
     IPassageAnchorService passageAnchorService,
+    IAccessRequestRepository accessRequestRepo,
     ILogger<ReaderController> logger)
     : BaseReaderController(projectRepo, sectionRepo, commentService, progressService,
                            userRepository, readerAccessRepo, humanOverrideService, passageAnchorService, logger)
@@ -382,7 +383,19 @@ public class ReaderController(
             }
         }
 
-        var viewModel = new DesktopDashboardViewModel();
+        var visibleRequests = await accessRequestRepo.GetVisibleByReaderIdAsync(user.Id, DateTime.UtcNow.Date);
+        var requestRows = new List<ReaderDashboardRequestViewModel>();
+        foreach (var req in visibleRequests)
+        {
+            var reqProject = await ProjectRepo.GetByIdAsync(req.ProjectId);
+            requestRows.Add(new ReaderDashboardRequestViewModel
+            {
+                Request     = req,
+                ProjectName = reqProject?.Name ?? "Unknown book"
+            });
+        }
+
+        var viewModel = new DesktopDashboardViewModel { AccessRequests = requestRows };
 
         foreach (var projectId in projectIds)
         {

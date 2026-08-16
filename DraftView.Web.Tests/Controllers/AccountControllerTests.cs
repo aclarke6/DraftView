@@ -637,6 +637,75 @@ public class AccountControllerTests
     }
 
 
+    [Fact]
+    public async Task UpdateReaderProfile_UnauthenticatedUser_RedirectsToLogin()
+    {
+        var sut = CreateSut();
+        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
+
+        var result = await sut.UpdateReaderProfile(new UpdateReaderProfileViewModel
+        {
+            ReaderBio = "I love reading.",
+            ReaderGenreInterests = "Fantasy, Sci-fi",
+            ReaderPace = "Steady"
+        });
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Login", redirect.ActionName);
+    }
+
+    [Fact]
+    public async Task UpdateReaderProfile_ValidModel_CallsServiceAndRedirectsToSettings()
+    {
+        var user = Domain.Entities.User.Create("reader@example.test", "Reader", Domain.Enumerations.Role.BetaReader);
+        var sut = CreateSut(AuthenticatedUserWithRole("reader@example.test", Domain.Enumerations.Role.BetaReader.ToString()));
+        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
+
+        userRepo.Setup(r => r.GetByEmailAsync("reader@example.test"))
+            .ReturnsAsync(user);
+
+        var result = await sut.UpdateReaderProfile(new UpdateReaderProfileViewModel
+        {
+            ReaderBio = "I love reading.",
+            ReaderGenreInterests = "Fantasy, Sci-fi",
+            ReaderPace = "Steady"
+        });
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Settings", redirect.ActionName);
+        userService.Verify(s => s.UpdateReaderProfileAsync(
+            user.Id,
+            "I love reading.",
+            "Fantasy, Sci-fi",
+            Domain.Enumerations.ReaderPace.Steady,
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateReaderProfile_NullPace_PassesNullToService()
+    {
+        var user = Domain.Entities.User.Create("reader@example.test", "Reader", Domain.Enumerations.Role.BetaReader);
+        var sut = CreateSut(AuthenticatedUserWithRole("reader@example.test", Domain.Enumerations.Role.BetaReader.ToString()));
+        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
+
+        userRepo.Setup(r => r.GetByEmailAsync("reader@example.test"))
+            .ReturnsAsync(user);
+
+        await sut.UpdateReaderProfile(new UpdateReaderProfileViewModel
+        {
+            ReaderBio = null,
+            ReaderGenreInterests = null,
+            ReaderPace = null
+        });
+
+        userService.Verify(s => s.UpdateReaderProfileAsync(
+            user.Id,
+            null,
+            null,
+            null,
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     private void VerifyLoggedWithoutPlaintextEmail(
         LogLevel expectedLevel,
         string expectedMessage,

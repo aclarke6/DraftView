@@ -283,4 +283,40 @@ public class UserServiceTests
         Assert.Equal(DisplayTheme.Dark, prefs.DisplayTheme);
         UnitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
     }
+
+    [Fact]
+    public async Task UpdateReaderProfileAsync_ValidUser_UpdatesProfileAndSaves()
+    {
+        var user = User.Create("reader@example.com", "Reader", Role.BetaReader);
+        var prefs = UserPreferences.CreateForBetaReader(user.Id);
+        var sut = CreateSut();
+
+        PrefsRepo.Setup(r => r.GetByUserIdAsync(user.Id, default))
+            .ReturnsAsync(prefs);
+
+        await sut.UpdateReaderProfileAsync(user.Id, "I love sci-fi.", "Sci-fi, Fantasy", ReaderPace.Fast);
+
+        Assert.Equal("I love sci-fi.", prefs.ReaderBio);
+        Assert.Equal("Sci-fi, Fantasy", prefs.ReaderGenreInterests);
+        Assert.Equal(ReaderPace.Fast, prefs.ReaderPace);
+        UnitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateReaderProfileAsync_NullValues_ClearsProfileFields()
+    {
+        var user = User.Create("reader@example.com", "Reader", Role.BetaReader);
+        var prefs = UserPreferences.CreateForBetaReader(user.Id);
+        var sut = CreateSut();
+
+        PrefsRepo.Setup(r => r.GetByUserIdAsync(user.Id, default))
+            .ReturnsAsync(prefs);
+
+        await sut.UpdateReaderProfileAsync(user.Id, null, null, null);
+
+        Assert.Null(prefs.ReaderBio);
+        Assert.Null(prefs.ReaderGenreInterests);
+        Assert.Null(prefs.ReaderPace);
+        UnitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
 }

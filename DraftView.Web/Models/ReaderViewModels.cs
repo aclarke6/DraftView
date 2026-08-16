@@ -152,10 +152,31 @@ public class DesktopDashboardViewModel
     public bool HasProjects => Projects.Any();
     public int TotalReadChapters => Projects.Sum(p => p.ReadChapters);
     public int TotalChapters => Projects.Sum(p => p.TotalChapters);
+    public IReadOnlyList<ReaderDashboardRequestViewModel> AccessRequests { get; init; } = [];
 }
 
 public class DesktopChapterProgressViewModel
 {
     public Section Chapter { get; set; } = default!;
     public bool HasRead { get; set; }
+}
+
+public enum DiscoveryRequestStatus { None, Pending, Approved, Declined }
+
+public class DiscoveryProjectViewModel
+{
+    public Project Project { get; init; } = default!;
+    public DiscoveryRequestStatus RequestStatus { get; init; }
+}
+
+public class DiscoveryViewModel
+{
+    public IReadOnlyList<DiscoveryProjectViewModel> Projects { get; init; } = [];
+    public bool IsAuthenticated { get; init; }
+}
+
+public class ReaderDashboardRequestViewModel
+{
+    public AccessRequest Request { get; init; } = default!;
+    public string ProjectName { get; init; } = string.Empty;
 }

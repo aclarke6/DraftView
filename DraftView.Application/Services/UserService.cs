@@ -213,6 +213,15 @@ public class UserService(
         await unitOfWork.SaveChangesAsync(ct);
     }
 
+    public async Task UpdateReaderProfileAsync(Guid userId, string? bio, string? genreInterests, ReaderPace? pace, CancellationToken ct = default)
+    {
+        var prefs = await prefsRepo.GetByUserIdAsync(userId, ct)
+            ?? throw new EntityNotFoundException(nameof(UserPreferences), userId);
+
+        prefs.UpdateReaderProfile(bio, genreInterests, pace);
+        await unitOfWork.SaveChangesAsync(ct);
+    }
+
     public async Task UpdateEmailAsync(Guid userId, string email, CancellationToken ct = default)
     {
         var user = await userRepo.GetByIdAsync(userId, ct)

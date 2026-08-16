@@ -42,6 +42,7 @@ public class ReaderControllerTests
     private readonly Mock<ISectionDiffService> sectionDiffService = new();
     private readonly Mock<IHumanOverrideService> humanOverrideService = new();
     private readonly Mock<IPassageAnchorService> passageAnchorService = new();
+    private readonly Mock<IAccessRequestRepository> accessRequestRepo = new();
     private readonly Mock<ILogger<ReaderController>> logger = new();
 
     [Fact]
@@ -869,6 +870,7 @@ public class ReaderControllerTests
             sectionDiffService.Object,
             humanOverrideService.Object,
             passageAnchorService.Object,
+            accessRequestRepo.Object,
             logger.Object);
 
         controller.ControllerContext = new ControllerContext
