@@ -89,17 +89,15 @@ public abstract class BaseReaderController(
 
         if (IsMobile())
         {
+            // Chapter-level comment posted from ChapterComments page → redirect back there
+            if (section?.NodeType == NodeType.Folder)
+                return RedirectToAction("ChapterComments", new { chapterId = section.Id });
+
             var targetSceneId = model.ReturnSceneId ?? section?.Id;
             if (targetSceneId.HasValue)
-                return RedirectToAction("Read", new
-                {
-                    id = targetSceneId.Value
-                });
+                return await RedirectToReaderAsync(targetSceneId.Value);
 
-            return RedirectToAction("Scenes", new
-            {
-                chapterId
-            });
+            return RedirectToAction("Scenes", new { chapterId });
         }
 
         var url = Url.Action("Read", new
@@ -156,7 +154,7 @@ public abstract class BaseReaderController(
             TempData["Error"] = "Failed to update comment.";
         }
 
-        return RedirectToAction("Read", new { id = chapterId });
+        return await RedirectToReaderAsync(chapterId);
     }
 
     // -----------------------------------------------------------------------
@@ -171,7 +169,7 @@ public abstract class BaseReaderController(
             return Forbid();
 
         await CommentService.SoftDeleteCommentAsync(commentId, user.Id);
-        return RedirectToAction("Read", new { id = chapterId });
+        return await RedirectToReaderAsync(chapterId);
     }
 
     // -----------------------------------------------------------------------
@@ -186,7 +184,7 @@ public abstract class BaseReaderController(
             return Forbid();
 
         await CommentService.ModerateDeleteCommentAsync(commentId, user.Id);
-        return RedirectToAction("Read", new { id = chapterId });
+        return await RedirectToReaderAsync(chapterId);
     }
 
     // -----------------------------------------------------------------------
@@ -441,6 +439,25 @@ public abstract class BaseReaderController(
             return true;
         return all.Where(s => s.ParentId == section.Id && !s.IsSoftDeleted)
                   .Any(c => HasPublishedChapter(c, all));
+    }
+
+    /// <summary>
+    /// Redirects to the right reader view for a given chapter or scene ID, mobile-aware.
+    /// On mobile, folder IDs go to ChapterComments; document IDs go to Read.
+    /// On desktop, always redirects to Read.
+    /// </summary>
+    protected async Task<IActionResult> RedirectToReaderAsync(Guid sectionId)
+    {
+        if (IsMobile())
+        {
+            var section = await SectionRepo.GetByIdAsync(sectionId);
+            if (section?.NodeType == NodeType.Folder)
+                return RedirectToAction("ChapterComments", new { chapterId = sectionId });
+            if (section?.NodeType == NodeType.Document)
+                return RedirectToAction("SceneComments", new { sceneId = sectionId });
+        }
+
+        return RedirectToAction("Read", new { id = sectionId });
     }
 
     /// <summary>

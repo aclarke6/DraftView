@@ -1,5 +1,5 @@
 # DraftView — Task List
-Last updated: 2026-08-15
+Last updated: 2026-08-16 (evening)
 
 ---
 
@@ -18,7 +18,8 @@ Last updated: 2026-08-15
 |-------|--------|
 | RSprint Series | 🟡 In progress — RS-A to RS-E complete, RS-F next |
 | S-Sprint Series | 🟡 In progress — S-Sprint-1 complete, S-Sprint-2 next |
-| MT-Sprint Series | 🔵 Pre-planning — see `MultiTenancy.md` |
+| MT-Sprint Series | 🔴 HIGH PRIORITY — second author interest accelerates timeline; see `MultiTenancy.md` |
+| RD-Sprint Series | 🔵 Pre-planning — Reader Dashboard; see section 3.8 |
 | Go-Live Prerequisites | 🔴 Blocking — items below must complete before launch |
 | UAT | 🟡 In progress |
 
@@ -82,30 +83,58 @@ No open bugs.
 
 - [DONE] CHANGE-006 + CHANGE-007 — Collapsible reader nav and comments toggle — merged to main 2026-08-15. See `HISTORY.md`.
 
-- [ ] CHANGE-008 — Mobile reader: comments on a dedicated page
+- [x] CHANGE-008 — Mobile reader: chapter comments page + disable passage-anchor capture on touch
 
-  **Goal:** On mobile the inline comment columns are too cramped. Move commenting to a separate page so the reading surface stays clean.
+  **Implemented:** branch `change/CHANGE-008-mobile-chapter-comments`
 
-  **Scope — mobile only:**
-  - Desktop reading experience unchanged
-  - Inline passage-anchored comments are desktop-only (text selection is unreliable on touch); mobile supports chapter-level and scene-level comments only
+  **Scope — mobile only (desktop unchanged):**
+  - Passage-anchor *creation* (selection capture) disabled on mobile — unreliable on touch. Existing
+    anchored comments still display with highlight + modal. Two IIFEs removed from `MobileRead.cshtml`:
+    `CapturePassageAnchorSelection` and `applyPendingAnchor`.
+  - Scene-level comments stay inline in `MobileRead`. Add-comment form moved to **top** of comments
+    section so it appears before the list.
+  - Chapter-level comments get a dedicated page:
+    `GET /Reader/ChapterComments/{chapterId}` → `MobileChapterComments.cshtml`
+  - "Chapter Comments →" link added at the bottom of `MobileRead` and `MobileScenes` views.
 
-  **Trigger options (to be decided before implementation):**
-  - Option A: Floating `💬` button fixed to the bottom-right of the screen; taps navigate to `/Reader/MobileComments/{chapterId}`
-  - Option B: "Comments" link in the mobile contents panel (already toggled by the existing Contents button)
-  - Option C: Scene footer link per scene ("Comment on [Scene Title] →") plus a chapter comments link at the bottom
+  **Files modified:**
+  - MODIFY: `DraftView.Web/Views/Reader/MobileRead.cshtml` — remove two selection-capture IIFEs; move
+    add-comment form to top of comments section; add chapter-comments link
+  - MODIFY: `DraftView.Web/Views/Reader/MobileScenes.cshtml` — add chapter-comments link
+  - MODIFY: `DraftView.Web/Models/MobileReaderViewModels.cs` — add `MobileChapterCommentsViewModel`
+  - MODIFY: `DraftView.Web/Controllers/ReaderController.cs` — add `ChapterComments(Guid chapterId)` action
+  - NEW: `DraftView.Web/Views/Reader/MobileChapterComments.cshtml` — chapter comments page view
+  - MODIFY: `DraftView.Web/wwwroot/css/DraftView.MobileReader.css` — chapter-comments link + page styles
 
-  **Comments page (`/Reader/MobileComments/{chapterId}`):**
-  - Shows existing chapter-level comments and scene-level comments grouped by scene
-  - Add chapter comment form at top
-  - Add scene comment form per scene (simple textarea, no anchor capture)
-  - Back link returns to the chapter read page
+- [x] CHANGE-009 — Mobile reader: read-first scene comments — merged to main 2026-08-16. See `HISTORY.md`.
+
+  **Goal:** Remove inline scene comments from `MobileRead` entirely. The reading surface should be
+  prose only. Comment activity is accessed deliberately via a count link after reading.
+
+  **Design:**
+  - `MobileRead` becomes prose + bottom nav only. The `.mobile-comments` section is removed.
+  - A "Scene Comments (N) ›" link sits at the bottom of the prose (below the bottom nav).
+    If there are no comments, shows "Scene Comments ›" with no count.
+  - Tapping the link navigates to a new `GET /Reader/SceneComments/{sceneId}` page.
+  - `MobileSceneComments.cshtml` mirrors `MobileChapterComments.cshtml` — full add/edit/delete/reply,
+    back link returns to `Read` (the prose page).
+  - `MobileReadViewModel` no longer carries the full comment list — only a `SceneCommentCount` int,
+    avoiding the expensive `BuildCommentDisplayModelsAsync` call on every scene page load.
+  - Post-comment redirects updated: `AddComment` / `DeleteComment` / `EditComment` from the scene
+    comments page redirect back to `SceneComments`, not `Read`.
 
   **Files affected:**
-  - NEW: `DraftView.Web/Controllers/MobileReaderController.cs` (or extend `ReaderController`) — `MobileComments(Guid id)` action
-  - NEW: `DraftView.Web/Views/Reader/MobileComments.cshtml` — comments page view
-  - MODIFY: `DraftView.Web/Views/Reader/MobileRead.cshtml` — add trigger (floating button or link)
-  - MODIFY: `DraftView.Web/wwwroot/css/DraftView.MobileReader.css` — floating button + comments page styles
+  - MODIFY: `DraftView.Web/Models/MobileReaderViewModels.cs` — replace Comments list with
+    `SceneCommentCount`; add `MobileSceneCommentsViewModel`
+  - MODIFY: `DraftView.Web/Controllers/ReaderController.cs` — update `MobileRead` private method;
+    add `SceneComments(Guid sceneId)` action
+  - MODIFY: `DraftView.Web/Controllers/BaseReaderController.cs` — extend `RedirectToReaderAsync`
+    to route Document IDs to `SceneComments` on mobile
+  - MODIFY: `DraftView.Web/Views/Reader/MobileRead.cshtml` — remove comments section; add count link
+  - NEW: `DraftView.Web/Views/Reader/MobileSceneComments.cshtml`
+  - MODIFY: `DraftView.Web/wwwroot/css/DraftView.MobileReader.css` — count link style; rename
+    generic `.mobile-comments-link` to replace per-type classes
+  - MODIFY: `DraftView.Web/wwwroot/css/DraftView.Core.css` — CSS version bump
 
 ---
 
@@ -155,6 +184,19 @@ No open bugs.
 ---
 
 ### 3.4 Multi-Tenancy Sprint Series
+
+**🔴 HIGH PRIORITY** — A second author has expressed interest in the platform. Readers may read
+books from multiple authors. Authors may also be beta readers for other authors. Multi-tenancy
+is now a near-term requirement, not a post-revenue concern.
+
+**Key cross-cutting implications:**
+- `ReaderAccess` is currently scoped per-project. Reader Dashboard and future features need
+  cross-project queries (all books for a reader, last read across all projects).
+- Authors who are also beta readers need role-switching or a dual-role model.
+- The Reader Dashboard (RD-Sprint, see section 3.8) depends on multi-tenancy for its
+  "Books available" and "Discover authors" sections.
+- `IProjectRepository` needs a `GetAllForReaderAsync(Guid userId)` method.
+
 See `MultiTenancy.md` for full design, migration strategy, and sprint plan.
 
 | Sprint | Deliverable |
@@ -222,7 +264,72 @@ See `REFACTORING.md` for full detail. Phase 1 complete — see `HISTORY.md`.
 
 ---
 
-### 3.7 Post Go-Live Backlog
+### 3.7 RD-Sprint — Reader Dashboard
+
+**Status:** 🔵 Pre-planning
+
+**Goal:** Replace the current reader entry point (`MobileChapters` for a single project) with a
+proper Reader Dashboard that works across multiple authors' books and gives readers a clear
+re-engagement surface.
+
+**Routing (role-based home):**
+- `Role.Author` → `/Author/Dashboard` (existing)
+- `Role.BetaReader` → `/Reader/Dashboard` (new cold landing)
+- Authors who are also beta readers need a role-switcher or a secondary dashboard link
+
+**Dashboard URL:** `draftview.co.uk/Reader/Dashboard`
+
+**Page sections (in order):**
+
+1. **Comment Replies** *(conditional hero — only shown when unread replies exist)*
+   - Shows all comments where `ParentComment.AuthorId == currentUserId`, ordered by most
+     recent reply first, capped at ~10
+   - Each card: who replied, which book + chapter/scene, snippet of original comment +
+     snippet of reply, timestamp, "View in context" link
+   - When empty: section is hidden entirely — book list takes the full page
+
+2. **Continue Reading** *(single CTA)*
+   - Most recent read position across all books, surfaced as a prominent button
+   - Needs cross-project `IReadingProgressService.GetLastReadEventAcrossProjectsAsync(userId)`
+
+3. **My Books** *(list)*
+   - Every project the reader has `ReaderAccess` to, ordered by most recently read
+   - Each card: book title, author name, unread chapter count ("2 new chapters" / "up to date"),
+     reply count badge if any replies exist for that book
+   - Links into `MobileChapters` filtered to that project
+
+4. **Discover Authors** *(link → `/Reader/Discovery`)*
+   - Discovery page shows authors who have opted in (`IsOpenToReaders` flag on project/tenancy)
+   - Each listing: author name, book title, brief synopsis, "Request access" button
+   - `IsOpenToReaders` is a small addition to the Project (or future Tenancy) entity
+
+**Infrastructure needed (new — not yet built):**
+- `ICommentRepository.GetRepliesToUserCommentsAsync(Guid userId)` — joins reply → parent,
+  filters `parent.AuthorId == userId`, includes section + project context
+- `IReadingProgressService.GetLastReadEventAcrossProjectsAsync(Guid userId)`
+- `IProjectRepository.GetAllForReaderAsync(Guid userId)` — cross-project reader query
+- `Project.IsOpenToReaders` flag (Domain entity + EF migration)
+- `ReaderController.Dashboard()` action + `ReaderDashboardViewModel`
+- `ReaderController.Discovery()` action + `ReaderDiscoveryViewModel`
+- `DraftView.Web/Views/Reader/ReaderDashboard.cshtml`
+- `DraftView.Web/Views/Reader/ReaderDiscovery.cshtml`
+- Home controller role-based redirect: `/` → author or reader dashboard by role
+
+**Assets:**
+- `DraftViewReaderDash.Hero.png` — hero image for the dashboard cold landing. Added to main 2026-08-16.
+
+**Dependency:** Shares infrastructure with MT-Sprint (cross-project queries, tenancy model).
+Plan RD-Sprint-1 after MT-Sprint-1 lands.
+
+| Sprint | Deliverable |
+|--------|-------------|
+| RD-Sprint-1 | Dashboard shell + Comment replies section (single-author, single-project) |
+| RD-Sprint-2 | Continue reading + My Books (cross-project, requires MT-Sprint-1) |
+| RD-Sprint-3 | Discover Authors page + `IsOpenToReaders` opt-in |
+
+---
+
+### 3.8 Post Go-Live Backlog
 
 - Reader notification emails (new chapter published)
 - Dropbox OAuth2 token refresh

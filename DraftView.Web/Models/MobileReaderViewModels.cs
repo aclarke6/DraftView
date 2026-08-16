@@ -43,19 +43,46 @@ public class MobileSceneRowViewModel
 }
 
 /// <summary>
-/// Single scene read view for mobile.
-/// Includes prev/next navigation and comments.
+/// Chapter-level comments page for mobile.
+/// Shows all comments posted against the chapter folder itself.
+/// </summary>
+public class MobileChapterCommentsViewModel
+{
+    public Section Chapter { get; set; } = default!;
+    public string ProjectName { get; set; } = string.Empty;
+    public Guid ProjectId { get; set; }
+    public IReadOnlyList<CommentDisplayViewModel> Comments { get; set; } = new List<CommentDisplayViewModel>();
+    public Guid CurrentUserId { get; set; }
+    public bool CurrentUserIsModerator { get; set; }
+}
+
+/// <summary>
+/// Scene-level comments page for mobile.
+/// Shows all comments posted against a specific scene.
+/// </summary>
+public class MobileSceneCommentsViewModel
+{
+    public Section Scene { get; set; } = default!;
+    public Section Chapter { get; set; } = default!;
+    public string ProjectName { get; set; } = string.Empty;
+    public Guid ProjectId { get; set; }
+    public IReadOnlyList<CommentDisplayViewModel> Comments { get; set; } = new List<CommentDisplayViewModel>();
+    public Guid CurrentUserId { get; set; }
+    public bool CurrentUserIsModerator { get; set; }
+}
+
+/// <summary>
+/// Single scene read view for mobile — prose only.
+/// Comments are accessed via SceneComments page; only the count is carried here.
 /// </summary>
 public class MobileReadViewModel
 {
     public Section Scene { get; set; } = default!;
     public Section Chapter { get; set; } = default!;
     public string ProjectName { get; set; } = string.Empty;
-    public IReadOnlyList<CommentDisplayViewModel> Comments { get; set; } = new List<CommentDisplayViewModel>();
+    public int SceneCommentCount { get; set; }
     public Guid? PrevSceneId { get; set; }
     public Guid? NextSceneId { get; set; }
-    public Guid CurrentUserId { get; set; }
-    public bool CurrentUserIsModerator { get; set; }
     public ProseFont ProseFont { get; set; } = ProseFont.SystemSerif;
     public ProseFontSize ProseFontSize { get; set; } = ProseFontSize.Medium;
     public bool HasPrev => PrevSceneId.HasValue;

@@ -1011,7 +1011,7 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
     }
 
     [Fact]
-    public async Task Read_Mobile_RendersPassageAnchorSelectionCaptureScript()
+    public async Task Read_Mobile_DoesNotRenderInlineComments_ShowsSceneCommentsCountLink()
     {
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
@@ -1028,10 +1028,16 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
 
         var html = await response.Content.ReadAsStringAsync();
 
-        Assert.Contains("/Reader/CapturePassageAnchorSelection", html);
-        Assert.Contains("data-anchor-comment-form=\"true\"", html);
-        Assert.Contains("data-passage-anchor-id=", html);
-        Assert.Contains("inline-comment-highlight", html);
+        // Selection capture intentionally absent on mobile
+        Assert.DoesNotContain("/Reader/CapturePassageAnchorSelection", html);
+        Assert.DoesNotContain("__draftViewPendingPassageAnchorPayload", html);
+
+        // Inline comment boxes not rendered in MobileRead (read-first philosophy)
+        Assert.DoesNotContain("class=\"comment-box", html);
+
+        // Scene comments count link present
+        Assert.Contains("SceneComments", html);
+        Assert.Contains("Scene Comments (1)", html);
     }
 
     [Fact]

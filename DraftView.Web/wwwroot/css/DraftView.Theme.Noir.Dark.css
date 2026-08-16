@@ -1,0 +1,60 @@
+/* ==========================================================================
+   DraftView Theme: Noir / Cold War Spy — Dark
+
+   A mid-century intelligence world after hours: absolute shadow, green-black
+   surfaces (the colour of old CRT terminals and darkrooms), nicotine ivory
+   text, and tarnished gold as the sole warm accent.
+   The world is almost monochrome; warmth is rationed.
+
+   Ratio: ~75% near-black olive-green / 15% nicotine gold / 10% status.
+   ========================================================================== */
+
+:root {
+    /* Core surfaces — absolute shadow, green-black, smoky olive black */
+    --color-bg:           #090B09;   /* Absolute Shadow */
+    --color-surface:      #141814;   /* Green Black */
+    --color-surface-alt:  #1D231D;   /* Smoky Olive Black */
+
+    /* Borders — shadow olive to military grey-green */
+    --color-border:       #343A31;   /* Shadow Olive */
+    --color-border-strong:#51594A;   /* Military Grey Green */
+
+    /* Text — nicotine ivory over near-black; deliberately aged */
+    --color-text:         #DDD8C3;   /* Nicotine Ivory */
+    --color-text-muted:   #A9A48E;   /* Cigarette Paper */
+    --color-text-subtle:  #777867;   /* Smoke Grey */
+
+    /* Accent — Nicotine Gold; the only warmth in this world */
+    --color-accent:       #B7A765;   /* Nicotine Gold */
+    --color-accent-hover: #C8B979;   /* Faded Brass */
+    --color-accent-light: #2D2B1D;   /* Tarnished Gold Shadow */
+    --color-accent-text:  #11120E;   /* Near Black */
+
+    /* Status — functional; kept consistent across themes */
+    --color-success:      #8CB083;   /* Muted Signal Green */
+    --color-success-bg:   #202D20;   /* Dark Signal Green */
+    --color-danger:       #D06C62;   /* Darkroom Red */
+    --color-danger-bg:    #35201E;   /* Deep Darkroom Red */
+    --color-warning:      #C5AD59;   /* Tarnished Brass */
+    --color-warning-bg:   #322E1D;   /* Brass Shadow */
+
+    /* Private comment — tobacco gold, the analogue world's mark */
+    --color-private:      #B49C64;   /* Tobacco Gold */
+
+    /* Status indicators */
+    --color-status-info:     #8EA3A8;   /* Cold Intelligence Grey */
+    --color-status-warning:  #C5AD59;   /* Tarnished Brass */
+    --color-status-critical: #D06C62;   /* Alarm Red */
+
+    /* Background tile — near-black charcoal stone */
+    --background-tile: url('/images/Noir-Dark-Background-Tile.png');
+
+    /* Hero and error images — Cold War Spy visual world; shared across light/dark variants */
+    --header-image:       url('/images/Noir.Header.png');                  /* Thames embankment, DraftView sign, St Paul's + Big Ben */
+    --atmosphere-image:   url('/images/Noir-Atmosphere.png');              /* London establishing shot */
+    --hero-image:         url('/images/Noir-Reader-Dashboard-Hero.png');   /* Intelligence Section desk, confidential files */
+    --error-image-403:    url('/images/Noir-403.png');                     /* Section 7 Intelligence door, red ACCESS REQUEST light */
+    --error-image-404:    url('/images/Noir-404.png');                     /* Northfield Platform 7, empty platform */
+    --error-image-405:    url('/images/Noir-405a.png');                    /* Berlin Wall, Achtung Staatsgrenze — alt: Noir-405b.png */
+    --error-image-500:    url('/images/Noir-500.png');                     /* Telephone Exchange, Direct Line Not Available */
+}

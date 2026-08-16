@@ -1,0 +1,61 @@
+/* ==========================================================================
+   DraftView Theme: Crime / Glasgow Rain — Dark
+
+   A cold, contemporary Scottish crime drama palette.
+   Principal world: Glasgow after dark — wet tarmac, iron grey buildings,
+   the Clyde at night. Sodium amber dominates as the accent: the city's
+   characteristic warm light source against an otherwise blue-black world.
+
+   Ratio: ~70% cold dark neutral / 20% sodium amber / 10% status colour.
+   ========================================================================== */
+
+:root {
+    /* Core surfaces — Glasgow night, wet slate, rain-darkened stone */
+    --color-bg:           #11171A;   /* Glasgow Night */
+    --color-surface:      #1B2428;   /* Wet Slate */
+    --color-surface-alt:  #253036;   /* Rain Darkened Stone */
+
+    /* Borders — iron grey to granite edge */
+    --color-border:       #39474D;   /* Iron Grey */
+    --color-border-strong:#56666D;   /* Granite Edge */
+
+    /* Text — streetlight ivory over dark cold surfaces */
+    --color-text:         #E7E4DC;   /* Streetlight Ivory */
+    --color-text-muted:   #B5B1A7;   /* Weathered Paper */
+    --color-text-subtle:  #878984;   /* Concrete Mist */
+
+    /* Accent — Sodium Amber; the defining light source of Glasgow at night */
+    --color-accent:       #D08A46;   /* Sodium Amber */
+    --color-accent-hover: #E2A05D;   /* Streetlamp Gold */
+    --color-accent-light: #382A20;   /* Amber Reflection */
+    --color-accent-text:  #FFF8EE;   /* Warm White */
+
+    /* Status — functional; kept consistent across themes */
+    --color-success:      #7BC47F;   /* Evidence Green */
+    --color-success-bg:   #203324;   /* Dark Evidence Green */
+    --color-danger:       #E07B6E;   /* Muted Incident Red */
+    --color-danger-bg:    #3A2220;   /* Dark Incident Red */
+    --color-warning:      #E0A34A;   /* Sodium Warning */
+    --color-warning-bg:   #3B2C1C;   /* Dark Amber */
+
+    /* Private comment — sandstone amber, the warm city material at night */
+    --color-private:      #D18B4B;   /* Sandstone Amber */
+
+    /* Status indicators */
+    --color-status-info:     #7DB7E0;   /* Rainlit Blue */
+    --color-status-warning:  #E0A34A;   /* Sodium Warning */
+    --color-status-critical: #E07B6E;   /* Incident Red */
+
+    /* Background tile — dark charcoal concrete */
+    --background-tile: url('/images/DraftView.Theme.Crime.Tile.Dark.png');
+
+    /* Hero and error images — cinematic Glasgow crime world; shared across light/dark variants */
+    --header-image:       url('/images/DraftView.Theme.Crime.Header.png');          /* Clydeside embankment banner — lamps, wet stone, Clyde Arc */
+    --atmosphere-image:   url('/images/DraftView.Theme.Crime.Atmosphere.png');      /* Clydeside skyline — Armadillo, Finnieston Crane, Clyde Arc */
+    --hero-image:         url('/images/DraftView.Theme.Crime.Hero.web.jpg');        /* Figure reading by the Clyde */
+    --bg-image:           url('/images/DraftView.Theme.Crime.Bg.web.jpg');          /* Empty desk, case files, lamp */
+    --error-image-403:    url('/images/DraftView.Theme.Crime.Error.403.web.jpg');   /* Strathclyde Police corridor */
+    --error-image-404:    url('/images/DraftView.Theme.Crime.Error.404.png');        /* Argyle Street crossroads */
+    --error-image-405:    url('/images/DraftView.Theme.Crime.Error.405.web.jpg');   /* Hotel corridor, room 405 — pending */
+    --error-image-500:    url('/images/DraftView.Theme.Crime.Error.500.web.jpg');   /* Incident room, cascading errors */
+}
