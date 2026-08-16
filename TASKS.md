@@ -1,5 +1,5 @@
 # DraftView — Task List
-Last updated: 2026-08-16
+Last updated: 2026-08-16 (evening)
 
 ---
 
@@ -106,7 +106,7 @@ No open bugs.
   - NEW: `DraftView.Web/Views/Reader/MobileChapterComments.cshtml` — chapter comments page view
   - MODIFY: `DraftView.Web/wwwroot/css/DraftView.MobileReader.css` — chapter-comments link + page styles
 
-- [ ] CHANGE-009 — Mobile reader: read-first scene comments
+- [x] CHANGE-009 — Mobile reader: read-first scene comments — merged to main 2026-08-16. See `HISTORY.md`.
 
   **Goal:** Remove inline scene comments from `MobileRead` entirely. The reading surface should be
   prose only. Comment activity is accessed deliberately via a count link after reading.
@@ -314,6 +314,9 @@ re-engagement surface.
 - `DraftView.Web/Views/Reader/ReaderDashboard.cshtml`
 - `DraftView.Web/Views/Reader/ReaderDiscovery.cshtml`
 - Home controller role-based redirect: `/` → author or reader dashboard by role
+
+**Assets:**
+- `DraftViewReaderDash.Hero.png` — hero image for the dashboard cold landing. Added to main 2026-08-16.
 
 **Dependency:** Shares infrastructure with MT-Sprint (cross-project queries, tenancy model).
 Plan RD-Sprint-1 after MT-Sprint-1 lands.
