@@ -29,6 +29,11 @@ public sealed class UserPreferences
     public ProseFont ProseFont{get; private set;}
     public ProseFontSize ProseFontSize{get; private set;}
 
+    // Reader discovery profile (all optional)
+    public string? ReaderBio{get; private set;}
+    public string? ReaderGenreInterests{get; private set;}
+    public ReaderPace? ReaderPace{get; private set;}
+
 
 
     // ---------------------------------------------------------------------------
@@ -116,6 +121,13 @@ public sealed class UserPreferences
     {
         ProseFont = proseFont;
         ProseFontSize = proseFontSize;
+    }
+
+    public void UpdateReaderProfile(string? bio, string? genreInterests, ReaderPace? pace)
+    {
+        ReaderBio            = bio;
+        ReaderGenreInterests = genreInterests;
+        ReaderPace           = pace;
     }
 
     // ---------------------------------------------------------------------------

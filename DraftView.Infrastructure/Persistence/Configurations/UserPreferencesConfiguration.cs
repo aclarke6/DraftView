@@ -35,5 +35,17 @@ public class UserPreferencesConfiguration : IEntityTypeConfiguration<UserPrefere
 
         builder.Property(p => p.ProseFontSize)
             .IsRequired();
+
+        builder.Property(p => p.ReaderBio)
+            .IsRequired(false)
+            .HasMaxLength(1000);
+
+        builder.Property(p => p.ReaderGenreInterests)
+            .IsRequired(false)
+            .HasMaxLength(500);
+
+        builder.Property(p => p.ReaderPace)
+            .IsRequired(false)
+            .HasConversion<string>();
     }
 }

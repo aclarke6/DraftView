@@ -39,6 +39,9 @@ public sealed class Project
     public Guid? SyncLeaseId { get; set; }
     public DateTime? SyncLeaseExpiresUtc { get; set; }
     public string? LastBackgroundSyncOutcome { get; set; }
+    public bool IsOpen { get; private set; }
+    public string? Brief { get; private set; }
+    public DateTime? OpenedAt { get; private set; }
     public bool IsSoftDeleted { get; private set; }
     public DateTime? SoftDeletedAt { get; private set; }
 
@@ -175,4 +178,23 @@ public sealed class Project
     }
 
     public void ClearDropboxCursor() => DropboxCursor = null;
+
+    public void Open(string brief)
+    {
+        if (IsSoftDeleted)
+            throw new InvariantViolationException("I-PROJ-OPEN-DELETED",
+                "A soft-deleted project cannot be opened for discovery.");
+        if (string.IsNullOrWhiteSpace(brief))
+            throw new InvariantViolationException("I-PROJ-BRIEF",
+                "A brief is required when opening a project for discovery.");
+
+        IsOpen   = true;
+        Brief    = brief.Trim();
+        OpenedAt = DateTime.UtcNow;
+    }
+
+    public void Close()
+    {
+        IsOpen = false;
+    }
 }
