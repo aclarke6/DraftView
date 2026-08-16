@@ -55,6 +55,6 @@
     --hero-image:         url('/images/contemporary-reader-dashboard-hero.png');        /* Reader in First Class, riverside view */
     --error-image-403:    url('/images/contemporary-403-access-denied.png');            /* Riverside Court, ACCESS RESTRICTED panel */
     --error-image-404:    url('/images/contemporary-404-not-found.png');                /* Town Centre kiosk, "You are here / can't find what you're looking for" */
-    --error-image-405:    url('/images/contemporary-405-method-not-allowed.png');       /* Door 405, person with key — right place, wrong method */
+    --error-image-405:    url('/images/405-method-not-allowed.png');                    /* Door 405, person with key — right place, wrong method */
     --error-image-500:    url('/images/contemporary-500-internal-server-error.png');    /* Internal server error */
 }
