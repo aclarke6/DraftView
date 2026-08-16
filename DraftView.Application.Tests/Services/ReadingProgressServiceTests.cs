@@ -6,6 +6,7 @@ using DraftView.Domain.Enumerations;
 using DraftView.Domain.Exceptions;
 using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Interfaces.Services;
+using DraftView.Domain.Notifications;
 
 namespace DraftView.Application.Tests.Services;
 
@@ -17,16 +18,20 @@ namespace DraftView.Application.Tests.Services;
 /// </summary>
 public class ReadingProgressServiceTests
 {
-    private readonly Mock<IReadEventRepository> _readEventRepo = new();
-    private readonly Mock<ISectionRepository>   _sectionRepo   = new();
-    private readonly Mock<IPassageAnchorService> _passageAnchorService = new();
-    private readonly Mock<IUnitOfWork>          _unitOfWork    = new();
+    private readonly Mock<IReadEventRepository>          _readEventRepo       = new();
+    private readonly Mock<ISectionRepository>            _sectionRepo         = new();
+    private readonly Mock<IPassageAnchorService>         _passageAnchorService = new();
+    private readonly Mock<IUnitOfWork>                   _unitOfWork          = new();
+    private readonly Mock<IUserRepository>               _userRepo            = new();
+    private readonly Mock<IAuthorNotificationRepository> _notificationRepo    = new();
 
     private ReadingProgressService CreateSut() => new(
         _readEventRepo.Object,
         _sectionRepo.Object,
         _passageAnchorService.Object,
-        _unitOfWork.Object);
+        _unitOfWork.Object,
+        _userRepo.Object,
+        _notificationRepo.Object);
 
     private static Section MakePublishedSection(Guid projectId)
     {
@@ -644,5 +649,244 @@ public class ReadingProgressServiceTests
             10,
             "content-hash",
             "#scene");
+    }
+
+    // ---------------------------------------------------------------------------
+    // RecordOpen — reader notifications
+    // ---------------------------------------------------------------------------
+
+    private static Section MakePublishedDocument(Guid projectId, string title = "Scene 1")
+    {
+        var s = Section.CreateDocument(projectId, Guid.NewGuid().ToString(),
+            title, null, 0, "<p>x</p>", "h", "First Draft");
+        s.PublishAsPartOfChapter("h");
+        return s;
+    }
+
+    private static ReadEvent MakeOldReadEvent(Guid sectionId, Guid userId, int daysAgo)
+    {
+        var ev = ReadEvent.Create(sectionId, userId);
+        typeof(ReadEvent)
+            .GetProperty(nameof(ReadEvent.LastOpenedAt))!
+            .SetValue(ev, DateTime.UtcNow.AddDays(-daysAgo));
+        return ev;
+    }
+
+    private void SetupNotificationDeps(User author, User reader, Guid userId, Section section)
+    {
+        _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
+        _userRepo.Setup(r => r.GetByIdAsync(userId, default)).ReturnsAsync(reader);
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _readEventRepo.Setup(r => r.GetByUserIdAsync(userId, default))
+            .ReturnsAsync(new List<ReadEvent>());
+        _sectionRepo.Setup(r => r.GetPublishedByProjectIdAsync(section.ProjectId, default))
+            .ReturnsAsync(new List<Section> { section });
+        _readEventRepo.Setup(r => r.HasReadAsync(section.Id, userId, default)).ReturnsAsync(false);
+    }
+
+    [Fact]
+    public async Task RecordOpenAsync_FirstOpen_DocumentSection_WritesReaderReadNewSceneNotification()
+    {
+        var projectId = Guid.NewGuid();
+        var userId    = Guid.NewGuid();
+        var section   = MakePublishedDocument(projectId);
+        var author    = User.Create("a@test.com", "Author Name", Role.Author);
+        var reader    = User.Create("r@test.com", "Reader Name", Role.BetaReader);
+        var sut       = CreateSut();
+
+        _readEventRepo.Setup(r => r.GetAsync(section.Id, userId, default)).ReturnsAsync((ReadEvent?)null);
+        SetupNotificationDeps(author, reader, userId, section);
+
+        await sut.RecordOpenAsync(section.Id, userId);
+
+        _notificationRepo.Verify(
+            r => r.AddAsync(It.Is<AuthorNotification>(n =>
+                n.EventType == NotificationEventType.ReaderReadNewScene &&
+                n.AuthorId  == author.Id &&
+                n.Title.Contains("Reader Name") &&
+                n.Title.Contains(section.Title)),
+                default),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task RecordOpenAsync_FirstOpen_FolderSection_DoesNotWriteNotification()
+    {
+        var projectId = Guid.NewGuid();
+        var userId    = Guid.NewGuid();
+        var folder    = Section.CreateFolder(projectId, Guid.NewGuid().ToString(), "Chapter 1", null, 0);
+        var sut       = CreateSut();
+
+        _readEventRepo.Setup(r => r.GetAsync(folder.Id, userId, default)).ReturnsAsync((ReadEvent?)null);
+        _readEventRepo.Setup(r => r.GetByUserIdAsync(userId, default)).ReturnsAsync(new List<ReadEvent>());
+        _sectionRepo.Setup(r => r.GetByIdAsync(folder.Id, default)).ReturnsAsync(folder);
+
+        await sut.RecordOpenAsync(folder.Id, userId);
+
+        _notificationRepo.Verify(r => r.AddAsync(It.IsAny<AuthorNotification>(), default), Times.Never);
+    }
+
+    [Fact]
+    public async Task RecordOpenAsync_RepeatOpen_DoesNotWriteReaderReadNewSceneNotification()
+    {
+        var projectId = Guid.NewGuid();
+        var userId    = Guid.NewGuid();
+        var section   = MakePublishedDocument(projectId);
+        var existing  = ReadEvent.Create(section.Id, userId);
+        var sut       = CreateSut();
+
+        _readEventRepo.Setup(r => r.GetAsync(section.Id, userId, default)).ReturnsAsync(existing);
+
+        await sut.RecordOpenAsync(section.Id, userId);
+
+        _notificationRepo.Verify(r => r.AddAsync(It.IsAny<AuthorNotification>(), default), Times.Never);
+    }
+
+    [Fact]
+    public async Task RecordOpenAsync_FirstOpen_WithPreviousEventsOlderThan7Days_WritesReaderReturnedNotification()
+    {
+        var projectId  = Guid.NewGuid();
+        var userId     = Guid.NewGuid();
+        var section    = MakePublishedDocument(projectId);
+        var oldSection = Guid.NewGuid();
+        var author     = User.Create("a@test.com", "Author Name", Role.Author);
+        var reader     = User.Create("r@test.com", "Reader Name", Role.BetaReader);
+        var sut        = CreateSut();
+
+        var oldEvent = MakeOldReadEvent(oldSection, userId, daysAgo: 10);
+
+        _readEventRepo.Setup(r => r.GetAsync(section.Id, userId, default)).ReturnsAsync((ReadEvent?)null);
+        _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
+        _userRepo.Setup(r => r.GetByIdAsync(userId, default)).ReturnsAsync(reader);
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _readEventRepo.Setup(r => r.GetByUserIdAsync(userId, default))
+            .ReturnsAsync(new List<ReadEvent> { oldEvent });
+        _sectionRepo.Setup(r => r.GetPublishedByProjectIdAsync(section.ProjectId, default))
+            .ReturnsAsync(new List<Section> { section });
+        _readEventRepo.Setup(r => r.HasReadAsync(section.Id, userId, default)).ReturnsAsync(false);
+
+        await sut.RecordOpenAsync(section.Id, userId);
+
+        _notificationRepo.Verify(
+            r => r.AddAsync(It.Is<AuthorNotification>(n =>
+                n.EventType == NotificationEventType.ReaderReturned &&
+                n.AuthorId  == author.Id &&
+                n.Title.Contains("Reader Name")),
+                default),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task RecordOpenAsync_FirstOpen_WithPreviousEventsWithin7Days_DoesNotWriteReaderReturned()
+    {
+        var projectId = Guid.NewGuid();
+        var userId    = Guid.NewGuid();
+        var section   = MakePublishedDocument(projectId);
+        var author    = User.Create("a@test.com", "Author Name", Role.Author);
+        var reader    = User.Create("r@test.com", "Reader Name", Role.BetaReader);
+        var sut       = CreateSut();
+
+        var recentEvent = MakeOldReadEvent(Guid.NewGuid(), userId, daysAgo: 3);
+
+        _readEventRepo.Setup(r => r.GetAsync(section.Id, userId, default)).ReturnsAsync((ReadEvent?)null);
+        _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
+        _userRepo.Setup(r => r.GetByIdAsync(userId, default)).ReturnsAsync(reader);
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _readEventRepo.Setup(r => r.GetByUserIdAsync(userId, default))
+            .ReturnsAsync(new List<ReadEvent> { recentEvent });
+        _sectionRepo.Setup(r => r.GetPublishedByProjectIdAsync(section.ProjectId, default))
+            .ReturnsAsync(new List<Section> { section });
+        _readEventRepo.Setup(r => r.HasReadAsync(section.Id, userId, default)).ReturnsAsync(false);
+
+        await sut.RecordOpenAsync(section.Id, userId);
+
+        _notificationRepo.Verify(
+            r => r.AddAsync(It.Is<AuthorNotification>(n =>
+                n.EventType == NotificationEventType.ReaderReturned),
+                default),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task RecordOpenAsync_FirstOpen_NoPreviousEvents_DoesNotWriteReaderReturned()
+    {
+        var projectId = Guid.NewGuid();
+        var userId    = Guid.NewGuid();
+        var section   = MakePublishedDocument(projectId);
+        var author    = User.Create("a@test.com", "Author Name", Role.Author);
+        var reader    = User.Create("r@test.com", "Reader Name", Role.BetaReader);
+        var sut       = CreateSut();
+
+        _readEventRepo.Setup(r => r.GetAsync(section.Id, userId, default)).ReturnsAsync((ReadEvent?)null);
+        SetupNotificationDeps(author, reader, userId, section);
+
+        await sut.RecordOpenAsync(section.Id, userId);
+
+        _notificationRepo.Verify(
+            r => r.AddAsync(It.Is<AuthorNotification>(n =>
+                n.EventType == NotificationEventType.ReaderReturned),
+                default),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task RecordOpenAsync_FirstOpen_ReaderNowCaughtUp_WritesReaderFinishedManuscriptNotification()
+    {
+        var projectId = Guid.NewGuid();
+        var userId    = Guid.NewGuid();
+        var section   = MakePublishedDocument(projectId);
+        var author    = User.Create("a@test.com", "Author Name", Role.Author);
+        var reader    = User.Create("r@test.com", "Reader Name", Role.BetaReader);
+        var sut       = CreateSut();
+
+        _readEventRepo.Setup(r => r.GetAsync(section.Id, userId, default)).ReturnsAsync((ReadEvent?)null);
+        _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
+        _userRepo.Setup(r => r.GetByIdAsync(userId, default)).ReturnsAsync(reader);
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _readEventRepo.Setup(r => r.GetByUserIdAsync(userId, default)).ReturnsAsync(new List<ReadEvent>());
+        _sectionRepo.Setup(r => r.GetPublishedByProjectIdAsync(section.ProjectId, default))
+            .ReturnsAsync(new List<Section> { section });
+        // After adding the new ReadEvent the reader has read this section
+        _readEventRepo.Setup(r => r.HasReadAsync(section.Id, userId, default)).ReturnsAsync(true);
+
+        await sut.RecordOpenAsync(section.Id, userId);
+
+        _notificationRepo.Verify(
+            r => r.AddAsync(It.Is<AuthorNotification>(n =>
+                n.EventType == NotificationEventType.ReaderFinishedManuscript &&
+                n.AuthorId  == author.Id &&
+                n.Title.Contains("Reader Name")),
+                default),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task RecordOpenAsync_FirstOpen_ReaderNotCaughtUp_DoesNotWriteReaderFinishedManuscript()
+    {
+        var projectId   = Guid.NewGuid();
+        var userId      = Guid.NewGuid();
+        var section     = MakePublishedDocument(projectId);
+        var unread      = MakePublishedDocument(projectId, "Scene 2");
+        var author      = User.Create("a@test.com", "Author Name", Role.Author);
+        var reader      = User.Create("r@test.com", "Reader Name", Role.BetaReader);
+        var sut         = CreateSut();
+
+        _readEventRepo.Setup(r => r.GetAsync(section.Id, userId, default)).ReturnsAsync((ReadEvent?)null);
+        _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
+        _userRepo.Setup(r => r.GetByIdAsync(userId, default)).ReturnsAsync(reader);
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _readEventRepo.Setup(r => r.GetByUserIdAsync(userId, default)).ReturnsAsync(new List<ReadEvent>());
+        _sectionRepo.Setup(r => r.GetPublishedByProjectIdAsync(section.ProjectId, default))
+            .ReturnsAsync(new List<Section> { section, unread });
+        _readEventRepo.Setup(r => r.HasReadAsync(section.Id, userId, default)).ReturnsAsync(true);
+        _readEventRepo.Setup(r => r.HasReadAsync(unread.Id, userId, default)).ReturnsAsync(false);
+
+        await sut.RecordOpenAsync(section.Id, userId);
+
+        _notificationRepo.Verify(
+            r => r.AddAsync(It.Is<AuthorNotification>(n =>
+                n.EventType == NotificationEventType.ReaderFinishedManuscript),
+                default),
+            Times.Never);
     }
 }
