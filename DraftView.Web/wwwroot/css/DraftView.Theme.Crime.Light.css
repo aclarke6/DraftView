@@ -1,0 +1,51 @@
+/* ==========================================================================
+   DraftView Theme: Crime / Glasgow Rain — Light
+
+   A cold, contemporary Scottish crime drama palette.
+   Principal world: wet Glasgow streets, sandstone tenements, concrete
+   underpasses, cold interiors. Warm sodium amber appears only as accent —
+   a streetlight against an overwhelmingly grey-blue world.
+
+   Ratio: ~70% cold neutral / 20% warm amber accent / 10% status colour.
+   ========================================================================== */
+
+:root {
+    /* Core surfaces — mist, porcelain, rainwashed stone */
+    --color-bg:           #EDF0F0;   /* Glasgow Mist */
+    --color-surface:      #F8F9F8;   /* Cold Porcelain */
+    --color-surface-alt:  #E3E7E7;   /* Rainwashed Stone */
+
+    /* Borders — damp concrete to granite */
+    --color-border:       #D1D7D7;   /* Damp Concrete */
+    --color-border-strong:#A9B2B4;   /* Granite Grey */
+
+    /* Text — wet charcoal reading over cold surfaces */
+    --color-text:         #182125;   /* Wet Charcoal */
+    --color-text-muted:   #5E696D;   /* Slate Grey */
+    --color-text-subtle:  #879195;   /* Rain Grey */
+
+    /* Accent — Clyde Teal; sodium amber reserved for dark theme */
+    --color-accent:       #356A78;   /* Clyde Teal */
+    --color-accent-hover: #295764;   /* Deep Clyde */
+    --color-accent-light: #E0EAEC;   /* Pale Rain Blue */
+    --color-accent-text:  #FFFFFF;   /* Clean White */
+
+    /* Status — functional; kept consistent across themes */
+    --color-success:      #166534;   /* Evidence Green */
+    --color-success-bg:   #DCFCE7;   /* Pale Evidence Green */
+    --color-danger:       #991B1B;   /* Warning Red */
+    --color-danger-bg:    #FEE2E2;   /* Pale Warning Red */
+    --color-warning:      #92400E;   /* Amber Warning */
+    --color-warning-bg:   #FEF3C7;   /* Pale Amber */
+
+    /* Private comment — sandstone ochre, the warm city material */
+    --color-private:      #9A5A24;   /* Sandstone Ochre */
+
+    /* Status indicators */
+    --color-status-info:     #39718C;   /* Police Blue */
+    --color-status-warning:  #B7600A;   /* Sodium Warning */
+    --color-status-critical: #C0392B;   /* Incident Red */
+
+    /* Background tile — wet slate or sandstone texture */
+    --background-tile: url('/images/DraftView.Theme.Crime.Tile.Light.web.jpg');
+}
