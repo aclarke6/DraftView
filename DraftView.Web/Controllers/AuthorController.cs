@@ -33,7 +33,8 @@ public class AuthorController(
     IImportService importService,
     ISectionTreeService sectionTreeService,
     IConfiguration configuration,
-    ILogger<AuthorController> logger) : BaseController(userRepo)
+    ILogger<AuthorController> logger,
+    IAccessRequestService accessRequestService) : BaseController(userRepo)
 {
     // ---------------------------------------------------------------------------
     // Dashboard
@@ -186,6 +187,38 @@ public class AuthorController(
 
         TempData["Success"] = $"{project.Name} is now inactive for readers.";
         return RedirectToAction("Dashboard");
+    }
+
+    // ---------------------------------------------------------------------------
+    // Book discovery — open / close
+    // ---------------------------------------------------------------------------
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> OpenBook(Guid projectId, string brief)
+    {
+        var project = await projectRepo.GetByIdAsync(projectId);
+        if (project is null) return NotFound();
+
+        project.Open(brief);
+        await GetUnitOfWork().SaveChangesAsync();
+
+        TempData["Success"] = $"\"{project.Name}\" is now open for reader discovery.";
+        return RedirectToAction("Publishing", new { projectId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CloseBook(Guid projectId)
+    {
+        var project = await projectRepo.GetByIdAsync(projectId);
+        if (project is null) return NotFound();
+
+        project.Close();
+        await accessRequestService.BulkDeclineOnRevokeAsync(projectId);
+        await GetUnitOfWork().SaveChangesAsync();
+
+        TempData["Success"] = $"\"{project.Name}\" is now closed to new readers.";
+        return RedirectToAction("Publishing", new { projectId });
     }
 
     // ---------------------------------------------------------------------------

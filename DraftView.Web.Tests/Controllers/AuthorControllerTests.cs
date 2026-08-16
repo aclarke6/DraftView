@@ -39,6 +39,7 @@ public class AuthorControllerTests
     private readonly Mock<IUnitOfWork> unitOfWork = new();
     private readonly Mock<IConfiguration> configuration = new();
     private readonly Mock<ILogger<AuthorController>> logger = new();
+    private readonly Mock<IAccessRequestService> accessRequestService = new();
 
     private AuthorController CreateSut(string email = "author@example.test")
     {
@@ -62,7 +63,8 @@ public class AuthorControllerTests
             importService.Object,
             sectionTreeService.Object,
             configuration.Object,
-            logger.Object);
+            logger.Object,
+            accessRequestService.Object);
 
         controller.ControllerContext = new ControllerContext
         {
@@ -752,5 +754,68 @@ public class AuthorControllerTests
         Assert.Equal("Version deleted.", sut.TempData["Success"]);
         sectionVersionRepo.Verify(r => r.DeleteAsync(version1.Id, It.IsAny<CancellationToken>()), Times.Once);
         unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // -----------------------------------------------------------------------
+    // OpenBook / CloseBook
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task OpenBook_WhenProjectExists_OpensProjectAndSaves()
+    {
+        var author = User.Create("author@example.test", "Author", Role.Author);
+        var project = Project.Create("My Novel", "/dropbox/test.scriv", author.Id);
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
+
+        var sut = CreateSut();
+        var result = await sut.OpenBook(project.Id, "A gripping thriller.");
+
+        Assert.True(project.IsOpen);
+        Assert.Equal("A gripping thriller.", project.Brief);
+        unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Publishing", redirect.ActionName);
+    }
+
+    [Fact]
+    public async Task OpenBook_WhenProjectNotFound_ReturnsNotFound()
+    {
+        projectRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Project?)null);
+
+        var sut = CreateSut();
+        var result = await sut.OpenBook(Guid.NewGuid(), "brief");
+
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task CloseBook_WhenProjectExists_ClosesProjectAndBulkDeclines()
+    {
+        var author = User.Create("author@example.test", "Author", Role.Author);
+        var project = Project.Create("My Novel", "/dropbox/test.scriv", author.Id);
+        project.Open("A thriller.");
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
+
+        var sut = CreateSut();
+        var result = await sut.CloseBook(project.Id);
+
+        Assert.False(project.IsOpen);
+        accessRequestService.Verify(s => s.BulkDeclineOnRevokeAsync(project.Id, It.IsAny<CancellationToken>()), Times.Once);
+        unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Publishing", redirect.ActionName);
+    }
+
+    [Fact]
+    public async Task CloseBook_WhenProjectNotFound_ReturnsNotFound()
+    {
+        projectRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Project?)null);
+
+        var sut = CreateSut();
+        var result = await sut.CloseBook(Guid.NewGuid());
+
+        Assert.IsType<NotFoundResult>(result);
     }
 }
