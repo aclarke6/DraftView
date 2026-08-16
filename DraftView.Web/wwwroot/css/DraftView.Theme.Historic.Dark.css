@@ -1,0 +1,60 @@
+/* ==========================================================================
+   DraftView Theme: Historic / Georgian — Dark
+
+   The ballroom after midnight: deep midnight navy, naval blue-black,
+   candlelight ivory text. Faded crimson accent — the colour of a dress
+   coat seen by candlelight, wine in a dark glass, wax dried on a letter.
+   Rich, formal, and warm against an overwhelmingly deep blue world.
+
+   Ratio: ~65% midnight navy / 25% faded crimson / 10% status colour.
+   ========================================================================== */
+
+:root {
+    /* Core surfaces — midnight navy, naval blue-black, deep drawing room blue */
+    --color-bg:           #171C26;   /* Midnight Navy */
+    --color-surface:      #222936;   /* Naval Blue Black */
+    --color-surface-alt:  #2B3341;   /* Deep Drawing Room Blue */
+
+    /* Borders — gunmetal blue to pewter blue */
+    --color-border:       #434B59;   /* Gunmetal Blue */
+    --color-border-strong:#626B79;   /* Pewter Blue */
+
+    /* Text — candle ivory over deep navy; warm and legible */
+    --color-text:         #EEE2CC;   /* Candle Ivory */
+    --color-text-muted:   #C7B69E;   /* Antique Cream */
+    --color-text-subtle:  #998D7E;   /* Faded Silk */
+
+    /* Accent — Faded Crimson; claret seen by candlelight */
+    --color-accent:       #C66B76;   /* Faded Crimson */
+    --color-accent-hover: #D9828C;   /* Ballroom Rose */
+    --color-accent-light: #40252D;   /* Claret Shadow */
+    --color-accent-text:  #FFF5F1;   /* Ivory White */
+
+    /* Status — functional; kept consistent across themes */
+    --color-success:      #83AC85;   /* Bottle Green */
+    --color-success-bg:   #243126;   /* Deep Bottle Green */
+    --color-danger:       #DD766E;   /* Officer Scarlet */
+    --color-danger-bg:    #3A2223;   /* Scarlet Shadow */
+    --color-warning:      #D4AA61;   /* Candle Brass */
+    --color-warning-bg:   #392D1F;   /* Brass Shadow */
+
+    /* Private comment — sealing wax copper; correspondence by candlelight */
+    --color-private:      #C48A63;   /* Sealing Wax Copper */
+
+    /* Status indicators */
+    --color-status-info:     #829CB7;   /* Naval Sky Blue */
+    --color-status-warning:  #D4AA61;   /* Candle Brass */
+    --color-status-critical: #DD766E;   /* Officer Scarlet */
+
+    /* Background tile — dark damask or aged velvet texture */
+    --background-tile: url('/images/Historic-Dark-Background-Tile.png');
+
+    /* Hero and error images — Georgian / Napoleonic visual world; shared across light/dark variants */
+    --header-image:       url('/images/Historic-Banner.png');                        /* Header banner */
+    --atmosphere-image:   url('/images/Historic-Atmosphere.png');                   /* Letter with wax seal, gloves, fan — candlelit ballroom beyond */
+    --hero-image:         url('/images/Historic-Reader-Dashboard-Hero.png');        /* Regency woman reading by ballroom window */
+    --error-image-403:    url('/images/Historic-403-Access-Denied.png');            /* Redcoat soldier blocking door, 403 ACCESS DENIED plaque */
+    --error-image-404:    url('/images/Historic-404-Not-Found.png');                /* Naval officer over maps, 404 NOT FOUND plaque */
+    --error-image-405:    url('/images/Historic-405-Method-Not-Allowed.png');       /* Press gang alley, man fleeing — 405 METHOD NOT ALLOWED */
+    --error-image-500:    url('/images/Historic-500-Internal-Server-Error.png');    /* Internal server error */
+}

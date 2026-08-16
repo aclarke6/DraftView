@@ -1,0 +1,60 @@
+/* ==========================================================================
+   DraftView Theme: Contemporary — Dark
+
+   A warm, quiet dark palette. Evening charcoal, soft graphite, deep sage
+   grey. The accent shifts from terracotta to soft sage green — calming,
+   restful, appropriate for extended night reading.
+   Lower contrast than the Crime or Noir dark themes; deliberately restful.
+
+   Ratio: ~70% warm dark neutral / 20% sage accent / 10% status colour.
+   ========================================================================== */
+
+:root {
+    /* Core surfaces — evening charcoal, soft graphite, deep sage grey */
+    --color-bg:           #202526;   /* Evening Charcoal */
+    --color-surface:      #2A3030;   /* Soft Graphite */
+    --color-surface-alt:  #343B3A;   /* Deep Sage Grey */
+
+    /* Borders — urban sage to soft concrete */
+    --color-border:       #48504E;   /* Urban Sage */
+    --color-border-strong:#606967;   /* Soft Concrete */
+
+    /* Text — linen white over charcoal; gentle, not stark */
+    --color-text:         #ECE9E1;   /* Linen White */
+    --color-text-muted:   #C2BDB3;   /* Warm Grey */
+    --color-text-subtle:  #92958F;   /* Muted Sage */
+
+    /* Accent — Soft Sage; calming, slightly botanical */
+    --color-accent:       #9EB69A;   /* Soft Sage */
+    --color-accent-hover: #B1C6AD;   /* Fresh Sage */
+    --color-accent-light: #303D31;   /* Deep Sage Tint */
+    --color-accent-text:  #111611;   /* Forest Black */
+
+    /* Status — functional; kept consistent across themes */
+    --color-success:      #83B887;   /* Leaf Green */
+    --color-success-bg:   #243328;   /* Deep Leaf Green */
+    --color-danger:       #DA7770;   /* Soft Coral Red */
+    --color-danger-bg:    #3A2524;   /* Deep Coral Shadow */
+    --color-warning:      #D1A05A;   /* Warm Ochre */
+    --color-warning-bg:   #392E21;   /* Ochre Shadow */
+
+    /* Private comment — muted terracotta; gentle callback to light theme */
+    --color-private:      #C98A6E;   /* Muted Terracotta */
+
+    /* Status indicators */
+    --color-status-info:     #83A8B5;   /* Dusty Sky Blue */
+    --color-status-warning:  #D1A05A;   /* Warm Ochre */
+    --color-status-critical: #DA7770;   /* Soft Coral Red */
+
+    /* Background tile — warm dark linen or subtle woven texture */
+    --background-tile: url('/images/contemporary-dark-background-tile.png');
+
+    /* Hero and error images — Contemporary editorial visual world; shared across light/dark variants */
+    --header-image:       url('/images/contemporary-banner.png');                        /* Editorial banner */
+    --atmosphere-image:   url('/images/contemporary-atmosphere.png');                   /* Open book on kitchen table, morning light */
+    --hero-image:         url('/images/contemporary-reader-dashboard-hero.png');        /* Reader in First Class, riverside view */
+    --error-image-403:    url('/images/contemporary-403-access-denied.png');            /* Riverside Court, ACCESS RESTRICTED panel */
+    --error-image-404:    url('/images/contemporary-404-not-found.png');                /* Town Centre kiosk, "You are here / can't find what you're looking for" */
+    --error-image-405:    url('/images/405-method-not-allowed.png');                    /* Door 405, person with key — right place, wrong method */
+    --error-image-500:    url('/images/contemporary-500-internal-server-error.png');    /* Internal server error */
+}
