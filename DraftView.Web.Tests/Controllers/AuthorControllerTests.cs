@@ -49,12 +49,14 @@ public class AuthorControllerTests
     public AuthorControllerTests()
     {
         var store = new Mock<IUserStore<IdentityUser>>();
+#pragma warning disable CS8625
         userManager = new Mock<UserManager<IdentityUser>>(
             store.Object, null, null, null, null, null, null, null, null);
         var contextAccessor = new Mock<Microsoft.AspNetCore.Http.IHttpContextAccessor>();
         var claimsFactory = new Mock<IUserClaimsPrincipalFactory<IdentityUser>>();
         signInManager = new Mock<SignInManager<IdentityUser>>(
             userManager.Object, contextAccessor.Object, claimsFactory.Object, null, null, null, null);
+#pragma warning restore CS8625
     }
 
     private AuthorController CreateSut(string email = "author@example.test")
