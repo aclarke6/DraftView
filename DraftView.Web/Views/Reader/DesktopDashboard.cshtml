@@ -20,6 +20,10 @@
                 @:No manuscript available yet
             }
         </div>
+        @if (Model.ContinueReadingUrl is not null)
+        {
+            <a href="@Model.ContinueReadingUrl" class="reader-dashboard__continue-btn">Continue reading</a>
+        }
     </div>
 </div>
 
@@ -113,6 +117,7 @@ else
                                     <thead>
                                         <tr class="reader-dashboard__row">
                                             <th class="reader-dashboard__head">Chapter</th>
+                                            <th class="reader-dashboard__head reader-dashboard__head--comments">Comments</th>
                                             <th class="reader-dashboard__head">Status</th>
                                         </tr>
                                     </thead>
@@ -126,6 +131,16 @@ else
                                                        class="reader-dashboard__chapter-link">
                                                         @item.Chapter.Title
                                                     </a>
+                                                </td>
+                                                <td class="reader-dashboard__cell reader-dashboard__cell--comments">
+                                                    @if (item.ReaderCommentCount > 0)
+                                                    {
+                                                        <span class="reader-dashboard__comment-count">@item.ReaderCommentCount</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="reader-dashboard__comment-none">—</span>
+                                                    }
                                                 </td>
                                                 <td class="reader-dashboard__cell reader-dashboard__cell--status">
                                                     @if (item.HasRead)

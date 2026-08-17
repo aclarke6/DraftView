@@ -147,13 +147,14 @@ public class DesktopDashboardViewModel
     public int TotalReadChapters => Projects.Sum(p => p.ReadChapters);
     public int TotalChapters => Projects.Sum(p => p.TotalChapters);
     public IReadOnlyList<ReaderDashboardRequestViewModel> AccessRequests { get; init; } = [];
-    public string? ContinueReadingUrl { get; init; }
+    public string? ContinueReadingUrl { get; set; }
 }
 
 public class DesktopChapterProgressViewModel
 {
     public Section Chapter { get; set; } = default!;
     public bool HasRead { get; set; }
+    public int ReaderCommentCount { get; set; }
 }
 
 public enum DiscoveryRequestStatus { None, Pending, Approved, Declined }
