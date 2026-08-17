@@ -856,6 +856,71 @@ public class ReaderControllerTests
         Assert.Contains("#scene-", redirect.Url);
     }
 
+    [Fact]
+    public async Task Dashboard_Mobile_WithReadHistory_ShowsMobileChaptersNotScene()
+    {
+        var authorId = Guid.NewGuid();
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0)");
+
+        var project = Project.Create("Test Book", "/Apps/Scrivener/Test", authorId, "project-root");
+        project.ActivateForReaders();
+
+        var chapter = Section.CreateFolder(project.Id, "chapter-uuid", "Chapter 1", null, 1);
+        chapter.MarkAsPublishedContainer();
+
+        var scene = Section.CreateDocument(project.Id, "scene-uuid", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "scene-hash", "Draft");
+        scene.PublishAsPartOfChapter("scene-hash");
+
+        var readEvent = ReadEvent.Create(scene.Id, user.Id);
+        var access = ReaderAccess.Grant(user.Id, authorId, project.Id);
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        readerAccessRepo.Setup(r => r.GetByReaderIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync([access]);
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
+        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
+        progressService.Setup(r => r.GetLastReadEventAsync(user.Id, project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(readEvent);
+        progressService.Setup(r => r.HasReadSectionAsync(user.Id, chapter.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var result = await sut.Dashboard();
+
+        var view = Assert.IsType<ViewResult>(result);
+        Assert.Equal("MobileChapters", view.ViewName);
+    }
+
+    [Fact]
+    public async Task Dashboard_Mobile_NoReadHistory_ShowsMobileChapters()
+    {
+        var authorId = Guid.NewGuid();
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0)");
+
+        var project = Project.Create("Test Book", "/Apps/Scrivener/Test", authorId, "project-root");
+        project.ActivateForReaders();
+
+        var chapter = Section.CreateFolder(project.Id, "chapter-uuid", "Chapter 1", null, 1);
+        chapter.MarkAsPublishedContainer();
+
+        var scene = Section.CreateDocument(project.Id, "scene-uuid", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "scene-hash", "Draft");
+        scene.PublishAsPartOfChapter("scene-hash");
+
+        var access = ReaderAccess.Grant(user.Id, authorId, project.Id);
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        readerAccessRepo.Setup(r => r.GetByReaderIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync([access]);
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
+        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
+        progressService.Setup(r => r.GetLastReadEventAsync(user.Id, project.Id, It.IsAny<CancellationToken>())).ReturnsAsync((ReadEvent?)null);
+        progressService.Setup(r => r.HasReadSectionAsync(user.Id, chapter.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+
+        var result = await sut.Dashboard();
+
+        var view = Assert.IsType<ViewResult>(result);
+        Assert.Equal("MobileChapters", view.ViewName);
+    }
+
     private ReaderController CreateSut(User user, string userAgent)
     {
         var controller = new ReaderController(
