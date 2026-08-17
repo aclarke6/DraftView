@@ -850,7 +850,6 @@
 .reader-dashboard__hero {
     min-height: 200px;
     margin-bottom: var(--space-8);
-    background-image: url('/images/DraftViewReaderDash.Hero.png');
 }
 
 .reader-dashboard__empty-body {
