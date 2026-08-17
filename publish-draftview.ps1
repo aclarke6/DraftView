@@ -110,7 +110,7 @@ if ($tasks -notmatch [regex]::Escape($deployEntry)) {
     [System.IO.File]::WriteAllText($tasksPath, $tasks, [System.Text.Encoding]::UTF8)
     git pull origin main --ff-only
     git add TASKS.md
-    git commit -m "chore: record production deployment $deployDate UTC"
+    git commit -m "chore: record production deployment $deployDate"
     if ($LASTEXITCODE -eq 0) {
         git push origin main
         if ($LASTEXITCODE -ne 0) {
