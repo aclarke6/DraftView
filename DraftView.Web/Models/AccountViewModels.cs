@@ -129,6 +129,7 @@ public class ChangePasswordViewModel
 public class ResetPasswordViewModel
 {
     public string Token { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
 
     [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Please choose a password.")]
     [System.ComponentModel.DataAnnotations.StringLength(100, MinimumLength = 8,
