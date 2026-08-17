@@ -13,6 +13,7 @@ It is tool-agnostic and applies to all agents.
 Agents must load and follow:
 
 - .github/Instructions/refactoring.instructions.md
+- PostgreSQL.md
 
 ---
 

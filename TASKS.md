@@ -40,6 +40,7 @@ Last deployed: 2026-08-17 10:56 (commit: 0b7c53a)
 | `PRINCIPLES.md` | Core engineering principles Ã¢â‚¬â€ architecture, layering, and behavioural rules |
 | `REFACTORING.md` | Refactoring roadmap and constraints for safe structural improvement |
 | `PowerShell.md` | PowerShell scripting standards for safe file modification and verification |
+| `PostgreSQL.md` | PostgreSQL query standards — quoting rules, shell escaping, common tables |
 | `DraftView Git Rules.md` | Branching strategy, merge gates, and commit standards |
 | `.github/copilot-instructions.md` | Supplemental agent guidance for repository-integrated coding agents |
 | `HISTORY.md` | Completed bugs, changes, sprints, and phases |
