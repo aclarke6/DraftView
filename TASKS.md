@@ -289,6 +289,7 @@ Plan RD-Sprint-1 after MT-Sprint-1 lands.
 
 ### 3.9 Post Go-Live Backlog
 
+- Ubuntu OS upgrade: 20.04 → 22.04 → 24.04 via `do-release-upgrade` from Oracle Cloud console (pg_dump first; keep current config files when prompted; verify all services after each hop)
 - Reader notification emails (new chapter published)
 - Dropbox OAuth2 token refresh
 - Dropbox webhook controller for push-based sync
