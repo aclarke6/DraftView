@@ -6,6 +6,16 @@ $key     = "C:\Users\alast\.ssh\draftview-prod.key"
 $remote  = "/var/www/draftview"
 
 # ---------------------------------------------------------------------------
+# Guard: must be on main branch before publishing
+# ---------------------------------------------------------------------------
+$currentBranch = git branch --show-current
+if ($currentBranch -ne "main") {
+    Write-Host "ERROR: You are on branch '$currentBranch'. Switch to main before publishing." -ForegroundColor Red
+    exit 1
+}
+Write-Host "On branch main." -ForegroundColor Green
+
+# ---------------------------------------------------------------------------
 # Guard: require clean git state before publishing
 # ---------------------------------------------------------------------------
 Write-Host "Checking git status..." -ForegroundColor Cyan
@@ -98,6 +108,7 @@ if ($tasks -notmatch [regex]::Escape($deployEntry)) {
     Write-Host "WARNING: TASKS.md was not updated — check the script." -ForegroundColor Yellow
 } else {
     [System.IO.File]::WriteAllText($tasksPath, $tasks)
+    git pull origin main --ff-only
     git add TASKS.md
     git commit -m "chore: record production deployment $deployDate UTC"
     if ($LASTEXITCODE -eq 0) {
