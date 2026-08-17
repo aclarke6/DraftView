@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Web.Helpers;
 using DraftView.Web.Models;

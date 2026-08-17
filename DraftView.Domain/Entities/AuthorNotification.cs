@@ -1,4 +1,4 @@
-using DraftView.Domain.Exceptions;
+﻿using DraftView.Domain.Exceptions;
 using DraftView.Domain.Notifications;
 
 namespace DraftView.Domain.Entities;

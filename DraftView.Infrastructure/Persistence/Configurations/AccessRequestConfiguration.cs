@@ -1,4 +1,4 @@
-using DraftView.Domain.Entities;
+﻿using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;

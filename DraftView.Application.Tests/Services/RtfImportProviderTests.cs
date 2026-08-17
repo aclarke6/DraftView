@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using DraftView.Application.Services;
 using DraftView.Domain.Exceptions;
 using DraftView.Domain.Interfaces.Services;

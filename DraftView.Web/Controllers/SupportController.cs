@@ -1,4 +1,4 @@
-using DraftView.Domain.Enumerations;
+﻿using DraftView.Domain.Enumerations;
 using DraftView.Domain.Interfaces.Services;
 using DraftView.Web.Models;
 using Microsoft.AspNetCore.Authorization;

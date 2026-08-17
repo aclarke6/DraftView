@@ -1,4 +1,4 @@
-using DraftView.Web.Infrastructure;
+﻿using DraftView.Web.Infrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;

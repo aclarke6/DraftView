@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
 using DraftView.Infrastructure.Persistence;

@@ -1,4 +1,4 @@
-namespace DraftView.Web.Infrastructure;
+﻿namespace DraftView.Web.Infrastructure;
 
 /// <summary>
 /// Claim type constants written into the auth cookie during reader impersonation.

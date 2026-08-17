@@ -1,4 +1,4 @@
-using DraftView.Application.Interfaces;
+﻿using DraftView.Application.Interfaces;
 using System.Security.Cryptography;
 using System.Text;
 

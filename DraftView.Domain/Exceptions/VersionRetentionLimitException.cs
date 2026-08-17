@@ -1,4 +1,4 @@
-namespace DraftView.Domain.Exceptions;
+﻿namespace DraftView.Domain.Exceptions;
 
 /// <summary>
 /// Thrown when a new version cannot be created because the section has

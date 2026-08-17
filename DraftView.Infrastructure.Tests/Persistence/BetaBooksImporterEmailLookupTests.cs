@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
 using DraftView.Infrastructure.Persistence;

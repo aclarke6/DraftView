@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using DraftView.Domain.Diff;
 using DraftView.Domain.Enumerations;
 using DraftView.Domain.Interfaces.Services;

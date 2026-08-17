@@ -1,4 +1,4 @@
-using DraftView.Domain.Enumerations;
+﻿using DraftView.Domain.Enumerations;
 using DraftView.Domain.Exceptions;
 using DraftView.Domain.ValueObjects;
 

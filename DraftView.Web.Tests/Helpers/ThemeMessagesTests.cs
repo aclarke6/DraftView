@@ -1,4 +1,4 @@
-using DraftView.Web.Helpers;
+﻿using DraftView.Web.Helpers;
 
 namespace DraftView.Web.Tests.Helpers;
 

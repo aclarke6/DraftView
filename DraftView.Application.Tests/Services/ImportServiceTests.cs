@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
 using DraftView.Application.Services;
 using DraftView.Domain.Entities;

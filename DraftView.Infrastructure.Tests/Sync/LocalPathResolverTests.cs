@@ -1,4 +1,4 @@
-using DraftView.Domain.Entities;
+﻿using DraftView.Domain.Entities;
 using DraftView.Infrastructure.Sync;
 using Microsoft.Extensions.Logging.Abstractions;
 

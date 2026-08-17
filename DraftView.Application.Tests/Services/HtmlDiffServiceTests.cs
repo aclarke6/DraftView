@@ -1,4 +1,4 @@
-using DraftView.Application.Services;
+﻿using DraftView.Application.Services;
 using DraftView.Domain.Diff;
 using DraftView.Domain.Enumerations;
 using Xunit;

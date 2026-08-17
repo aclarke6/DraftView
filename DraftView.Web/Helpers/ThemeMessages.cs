@@ -1,4 +1,4 @@
-namespace DraftView.Web.Helpers;
+﻿namespace DraftView.Web.Helpers;
 
 public static class ThemeMessages
 {

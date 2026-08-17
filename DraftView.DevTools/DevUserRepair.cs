@@ -1,4 +1,4 @@
-using DraftView.Infrastructure.Persistence;
+﻿using DraftView.Infrastructure.Persistence;
 using DraftView.Infrastructure.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;

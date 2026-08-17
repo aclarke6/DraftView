@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using System.Net;
 using System.Text.RegularExpressions;
 using DraftView.Domain.Diff;
@@ -445,11 +445,11 @@ public class ReaderController(
 
         var projectId = projectIds.FirstOrDefault();
         if (projectId == Guid.Empty)
-            return View(“NoActiveProject”);
+            return View("NoActiveProject");
 
         var project = await ProjectRepo.GetByIdAsync(projectId);
         if (project is null || !project.IsReaderActive || project.IsSoftDeleted)
-            return View(“NoActiveProject”);
+            return View("NoActiveProject");
 
         var allSections = await SectionRepo.GetByProjectIdAsync(project.Id);
 
@@ -495,7 +495,7 @@ public class ReaderController(
             }
         }
 
-        return View(“MobileChapters”, new MobileChaptersViewModel {
+        return View("MobileChapters", new MobileChaptersViewModel {
             ProjectName       = project.Name,
             ProjectId         = project.Id,
             Chapters          = chapterRows,

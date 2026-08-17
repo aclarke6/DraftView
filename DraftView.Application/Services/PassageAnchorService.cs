@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Text.RegularExpressions;
 using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Contracts;

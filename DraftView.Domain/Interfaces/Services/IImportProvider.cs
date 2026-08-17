@@ -1,4 +1,4 @@
-namespace DraftView.Domain.Interfaces.Services;
+﻿namespace DraftView.Domain.Interfaces.Services;
 
 /// <summary>
 /// Converts a file stream to HTML for ingestion into a Section's working state.

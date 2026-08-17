@@ -1,4 +1,4 @@
-namespace DraftView.Domain.Exceptions;
+﻿namespace DraftView.Domain.Exceptions;
 
 /// <summary>
 /// Thrown when an import provider cannot handle the supplied file extension.

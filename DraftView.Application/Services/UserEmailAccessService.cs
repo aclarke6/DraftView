@@ -1,4 +1,4 @@
-using DraftView.Application.Contracts;
+﻿using DraftView.Application.Contracts;
 using DraftView.Application.Interfaces;
 using DraftView.Domain.Enumerations;
 

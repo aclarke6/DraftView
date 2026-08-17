@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using DraftView.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
