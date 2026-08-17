@@ -26,11 +26,13 @@ public class ReaderController(
     ISectionDiffService sectionDiffService,
     IHumanOverrideService humanOverrideService,
     IPassageAnchorService passageAnchorService,
+    ICommentDisplayService commentDisplayService,
     IAccessRequestRepository accessRequestRepo,
     IReaderDashboardService readerDashboardService,
     ILogger<ReaderController> logger)
     : BaseReaderController(projectRepo, sectionRepo, commentService, progressService,
-                           userRepository, readerAccessRepo, humanOverrideService, passageAnchorService, logger)
+                           userRepository, readerAccessRepo, humanOverrideService, passageAnchorService,
+                           commentDisplayService, logger)
 {
     private readonly IUserPreferencesRepository _userPreferencesRepo = userPreferencesRepo;
     private readonly IPassageAnchorService _passageAnchorService = passageAnchorService;
