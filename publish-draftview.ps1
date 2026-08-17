@@ -82,7 +82,7 @@ if ($LASTEXITCODE -ne 0) { Write-Host "Service did not start cleanly." -Foregrou
 Write-Host "Recording deployment in TASKS.md..." -ForegroundColor Cyan
 $repoRoot    = "C:\Users\alast\source\repos\DraftView"
 $tasksPath   = "$repoRoot\TASKS.md"
-$deployDate  = Get-Date -Format "yyyy-MM-dd"
+$deployDate  = Get-Date -Format "yyyy-MM-dd HH:mm"
 $commitHash  = git rev-parse --short HEAD
 $deployEntry = "Last deployed: $deployDate (commit: $commitHash)"
 
@@ -99,7 +99,7 @@ if ($tasks -notmatch [regex]::Escape($deployEntry)) {
 } else {
     [System.IO.File]::WriteAllText($tasksPath, $tasks)
     git add TASKS.md
-    git commit -m "chore: record production deployment $deployDate"
+    git commit -m "chore: record production deployment $deployDate UTC"
     if ($LASTEXITCODE -eq 0) {
         git push origin main
         if ($LASTEXITCODE -ne 0) {
