@@ -243,7 +243,13 @@
                             </div>
                         }
 
-                        <h4 class="scene-heading">@item.Scene.Title</h4>
+                        <div class="scene-heading">
+                            <span>@item.Scene.Title</span>
+                            @if (item.VersionLabel != null)
+                            {
+                                <span class="scene-heading__version">@item.VersionLabel</span>
+                            }
+                        </div>
 
                         @if (item.ShowUpdateBanner && item.CurrentVersionNumber.HasValue)
                         {
