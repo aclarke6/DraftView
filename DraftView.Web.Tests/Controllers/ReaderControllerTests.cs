@@ -136,8 +136,7 @@ public class ReaderControllerTests
         scene.PublishAsPartOfChapter("scene-hash");
         var latestVersion = SectionVersion.Create(
             Section.CreateDocument(project.Id, "scene-published", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "scene-hash", "Published"),
-            Guid.NewGuid(),
-            2);
+            Guid.NewGuid(), 2, 1, 0);
 
         var anchorId = Guid.NewGuid();
         var anchoredComment = Comment.CreateRoot(
@@ -388,7 +387,7 @@ public class ReaderControllerTests
         scene.PublishAsPartOfChapter("scene-hash");
 
         var publishedSection = Section.CreateDocument(project.Id, "scene-published", "Scene 1", chapter.Id, 1, "<p>Published text</p>", "published-hash", "Published");
-        var latestVersion = SectionVersion.Create(publishedSection, Guid.NewGuid(), 1);
+        var latestVersion = SectionVersion.Create(publishedSection, Guid.NewGuid(), 1, 1, 0);
 
         var sut = CreateSut(user, userAgent: "Mozilla/5.0");
 
@@ -432,7 +431,7 @@ public class ReaderControllerTests
         scene.PublishAsPartOfChapter("scene-hash");
 
         var publishedSection = Section.CreateDocument(project.Id, "scene-published", "Scene 1", chapter.Id, 1, "<p>Published text</p>", "published-hash", "Published");
-        var latestVersion = SectionVersion.Create(publishedSection, Guid.NewGuid(), 3);
+        var latestVersion = SectionVersion.Create(publishedSection, Guid.NewGuid(), 3, 1, 0);
         var readEvent = ReadEvent.Create(scene.Id, user.Id);
         readEvent.UpdateLastReadVersion(1);
 
@@ -478,8 +477,7 @@ public class ReaderControllerTests
         scene.PublishAsPartOfChapter("scene-hash");
         var latestVersion = SectionVersion.Create(
             Section.CreateDocument(project.Id, "scene-published", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "published-hash", "Published"),
-            Guid.NewGuid(),
-            2);
+            Guid.NewGuid(), 2, 1, 0);
 
         var sut = CreateSut(user, userAgent: "Mozilla/5.0");
 
@@ -534,8 +532,7 @@ public class ReaderControllerTests
         scene.PublishAsPartOfChapter("scene-hash");
         var latestVersion = SectionVersion.Create(
             Section.CreateDocument(project.Id, "scene-published", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "published-hash", "Published"),
-            Guid.NewGuid(),
-            2);
+            Guid.NewGuid(), 2, 1, 0);
 
         var sut = CreateSut(user, userAgent: "Mozilla/5.0");
 
@@ -590,8 +587,7 @@ public class ReaderControllerTests
         scene.PublishAsPartOfChapter("scene-hash");
         var latestVersion = SectionVersion.Create(
             Section.CreateDocument(project.Id, "scene-published", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "published-hash", "Published"),
-            Guid.NewGuid(),
-            2);
+            Guid.NewGuid(), 2, 1, 0);
 
         var sut = CreateSut(user, userAgent: "Mozilla/5.0 (iPhone)");
 
@@ -1005,7 +1001,7 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
 
         var html = await response.Content.ReadAsStringAsync();
 
-        Assert.Matches(new Regex("href=\"#scene-[^\"]+\"[^>]*>\\s*Scene 1\\s*\\(v2\\)\\s*</a>", RegexOptions.IgnoreCase), html);
+        Assert.Matches(new Regex("href=\"#scene-[^\"]+\"[^>]*>\\s*Scene 1\\s*\\(Version 1\\.00\\)\\s*</a>", RegexOptions.IgnoreCase), html);
     }
 
     [Fact]
@@ -1184,7 +1180,7 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
             scene.PublishAsPartOfChapter("scene-hash");
 
             var publishedScene = Section.CreateDocument(project.Id, "scene-uuid-version", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "scene-hash", "Published");
-            latestVersion = SectionVersion.Create(publishedScene, ReaderId, 2);
+            latestVersion = SectionVersion.Create(publishedScene, ReaderId, 2, 1, 0);
 
             var anchoredCommentAnchorId = Guid.Parse("33333333-3333-3333-3333-333333333333");
             anchoredComment = Comment.CreateRoot(

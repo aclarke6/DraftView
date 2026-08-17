@@ -122,6 +122,7 @@ public class PublishingDocumentViewModel
 {
     public Section Document { get; init; } = default!;
     public int? CurrentVersionNumber { get; init; }
+    public string? CurrentVersionLabel { get; init; }
     public bool HasChanges { get; init; }
     public ChangeClassification? Classification { get; init; }
     public bool CanRevoke { get; init; }
@@ -150,6 +151,7 @@ public class VersionHistoryItem
 {
     public Guid VersionId { get; init; }
     public int VersionNumber { get; init; }
+    public string? VersionLabel { get; init; }
     public DateTime CreatedAt { get; init; }
     public ChangeClassification? Classification { get; init; }
     public bool CanDelete { get; init; }

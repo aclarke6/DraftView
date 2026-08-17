@@ -34,7 +34,7 @@ public class ImportServiceTests
     {
         var section = Section.CreateDocumentForUpload(Guid.NewGuid(), "Scene 1", null, 1);
         section.UpdateContent("<p>Published</p>", "hash");
-        return SectionVersion.Create(section, Guid.NewGuid(), 1);
+        return SectionVersion.Create(section, Guid.NewGuid(), 1, 1, 0);
     }
 
     /// <summary>Import should write converted HTML into the section.</summary>

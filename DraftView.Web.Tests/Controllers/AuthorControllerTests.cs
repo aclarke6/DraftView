@@ -306,7 +306,7 @@ public class AuthorControllerTests
             "<p>Original prose</p>",
             "hash-original",
             null);
-        var latestVersion = SectionVersion.Create(previousSceneSnapshot, author.Id, 1);
+        var latestVersion = SectionVersion.Create(previousSceneSnapshot, author.Id, 1, 1, 0);
 
         var sut = CreateSut();
 
@@ -393,9 +393,9 @@ public class AuthorControllerTests
             "hash",
             null);
 
-        var version1 = SectionVersion.Create(document, author.Id, 1);
-        var version2 = SectionVersion.Create(document, author.Id, 2);
-        var version3 = SectionVersion.Create(document, author.Id, 3);
+        var version1 = SectionVersion.Create(document, author.Id, 1, 1, 0);
+        var version2 = SectionVersion.Create(document, author.Id, 2, 1, 0);
+        var version3 = SectionVersion.Create(document, author.Id, 3, 1, 0);
 
         var sut = CreateSut();
 
@@ -730,8 +730,8 @@ public class AuthorControllerTests
             "<p>content</p>",
             "hash",
             null);
-        var version1 = SectionVersion.Create(section, author.Id, 1);
-        var version2 = SectionVersion.Create(section, author.Id, 2);
+        var version1 = SectionVersion.Create(section, author.Id, 1, 1, 0);
+        var version2 = SectionVersion.Create(section, author.Id, 2, 1, 0);
         var sut = CreateSut();
         sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
 
@@ -759,8 +759,8 @@ public class AuthorControllerTests
             "<p>content</p>",
             "hash",
             null);
-        var version1 = SectionVersion.Create(section, author.Id, 1);
-        var version2 = SectionVersion.Create(section, author.Id, 2);
+        var version1 = SectionVersion.Create(section, author.Id, 1, 1, 0);
+        var version2 = SectionVersion.Create(section, author.Id, 2, 1, 0);
         var sut = CreateSut();
         sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
 

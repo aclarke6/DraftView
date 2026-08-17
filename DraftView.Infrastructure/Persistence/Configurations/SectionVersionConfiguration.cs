@@ -15,6 +15,17 @@ public class SectionVersionConfiguration : IEntityTypeConfiguration<SectionVersi
         builder.Property(v => v.VersionNumber)
             .IsRequired();
 
+        builder.Property(v => v.MajorVersion)
+            .IsRequired();
+
+        builder.Property(v => v.MinorVersion)
+            .IsRequired();
+
+        builder.Property(v => v.ScrivenerStatus)
+            .HasMaxLength(100);
+
+        builder.Ignore(v => v.VersionLabel);
+
         builder.Property(v => v.HtmlContent)
             .IsRequired();
 

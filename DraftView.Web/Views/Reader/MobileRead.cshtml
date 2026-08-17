@@ -25,7 +25,7 @@
 
         <a asp-action="Scenes" asp-route-chapterId="@Model.Chapter.Id"
            class="mobile-read__nav-up">
-            &#8593; Scenes@(Model.CurrentVersionNumber.HasValue ? $" · v{Model.CurrentVersionNumber.Value}" : string.Empty)
+            &#8593; Scenes@(Model.VersionLabel != null ? $" · {Model.VersionLabel}" : string.Empty)
         </a>
 
         @if (Model.HasNext)
@@ -56,7 +56,7 @@
         <div class="update-banner" data-section-id="@Model.Scene.Id" data-version="@Model.CurrentVersionNumber">
             <div class="update-banner__content">
                 <span class="update-banner__version">
-                    Updated — version @Model.CurrentVersionNumber
+                    @(Model.VersionLabel ?? $"Version {Model.CurrentVersionNumber}")
                 </span>
             </div>
             <button type="button" class="update-banner__dismiss" aria-label="Dismiss update notice">

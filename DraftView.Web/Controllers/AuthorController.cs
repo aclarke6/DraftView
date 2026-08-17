@@ -1312,6 +1312,7 @@ public class AuthorController(
                 {
                     VersionId = v.Id,
                     VersionNumber = v.VersionNumber,
+                    VersionLabel = v.VersionLabel,
                     CreatedAt = v.CreatedAt,
                     Classification = v.ChangeClassification,
                     CanDelete = v.VersionNumber != latestVersionNumber
@@ -1323,6 +1324,7 @@ public class AuthorController(
         {
             Document = document,
             CurrentVersionNumber = latestVersion?.VersionNumber,
+            CurrentVersionLabel = latestVersion?.VersionLabel,
             HasChanges = document.ContentChangedSincePublish,
             Classification = TryClassifyDocumentChanges(document, latestVersion),
             CanRevoke = allVersions.Count > 1,

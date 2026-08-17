@@ -107,6 +107,7 @@ public class MobileReadViewModel
     /// Null if no version exists yet (pre-versioning section).
     /// </summary>
     public int? CurrentVersionNumber { get; set; }
+    public string? VersionLabel { get; set; }
 
     /// <summary>
     /// Paragraph-level diff results for this scene. Empty when no changes.
