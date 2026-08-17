@@ -45,6 +45,8 @@ public class ReaderControllerTests
     private readonly Mock<IAccessRequestRepository> accessRequestRepo = new();
     private readonly Mock<IReaderDashboardService> readerDashboardService = new();
     private readonly Mock<ILogger<ReaderController>> logger = new();
+    private ICommentDisplayService CommentDisplayService =>
+        new DraftView.Application.Services.CommentDisplayService(userRepo.Object, passageAnchorService.Object);
 
     [Fact]
     public async Task Read_DesktopRead_PopulatesModelWithStoredProsePreferences()
@@ -932,6 +934,7 @@ public class ReaderControllerTests
             sectionDiffService.Object,
             humanOverrideService.Object,
             passageAnchorService.Object,
+            CommentDisplayService,
             accessRequestRepo.Object,
             readerDashboardService.Object,
             logger.Object);

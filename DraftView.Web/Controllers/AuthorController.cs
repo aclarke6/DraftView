@@ -42,7 +42,9 @@ public class AuthorController(
     IAccessRequestRepository accessRequestRepo,
     IUserPreferencesRepository userPreferencesRepo,
     UserManager<IdentityUser> userManager,
-    SignInManager<IdentityUser> signInManager) : BaseController(userRepo)
+    SignInManager<IdentityUser> signInManager,
+    ISectionManagementService sectionManagementService,
+    IProjectManagementService projectManagementService) : BaseController(userRepo)
 {
     // ---------------------------------------------------------------------------
     // Dashboard
@@ -288,71 +290,14 @@ public class AuthorController(
     // ---------------------------------------------------------------------------
     public async Task<IActionResult> Sections(Guid projectId)
     {
-        var project = await projectRepo.GetByIdAsync(projectId);
-        if (project is null) return NotFound();
+        var summary = await sectionManagementService.GetSectionsSummaryAsync(projectId);
+        if (summary is null) return NotFound();
 
-        var sections = await sectionRepo.GetByProjectIdAsync(projectId);
-        var sorted   = SortDepthFirst(sections);
-
-        var publishable = new HashSet<Guid>();
-        foreach (var (s, _) in sorted.Where(x => x.Section.NodeType == NodeType.Folder))
-        {
-            if (await publicationService.CanPublishAsync(s.Id))
-                publishable.Add(s.Id);
-        }
-
-        var classificationMap = new Dictionary<Guid, ChangeClassification>();
-        var chapterHasChanges = new HashSet<Guid>();
-        foreach (var (chapter, _) in sorted.Where(x =>
-                     x.Section.NodeType == NodeType.Folder &&
-                     x.Section.IsPublished))
-        {
-            try
-            {
-                var documents = sorted
-                    .Where(x => x.Section.ParentId == chapter.Id &&
-                                x.Section.NodeType == NodeType.Document &&
-                                !x.Section.IsSoftDeleted)
-                    .Select(x => x.Section)
-                    .ToList();
-
-                if (!documents.Any(d => d.ContentChangedSincePublish))
-                    continue;
-
-                chapterHasChanges.Add(chapter.Id);
-
-                var highestClassification = ChangeClassification.Polish;
-                var hasClassifiableVersion = false;
-
-                foreach (var document in documents)
-                {
-                    var latestVersion = await sectionVersionRepo.GetLatestAsync(document.Id);
-                    if (latestVersion is null) continue;
-
-                    hasClassifiableVersion = true;
-                    var diff = htmlDiffService.Compute(
-                        latestVersion.HtmlContent,
-                        document.HtmlContent ?? string.Empty);
-
-                    var classification = changeClassificationService.Classify(diff);
-                    if (classification.HasValue && classification.Value > highestClassification)
-                        highestClassification = classification.Value;
-                }
-
-                if (hasClassifiableVersion)
-                    classificationMap[chapter.Id] = highestClassification;
-            }
-            catch
-            {
-                // Classification indicator is advisory only; skip failures silently.
-            }
-        }
-
-        ViewBag.Project     = project;
-        ViewBag.Publishable = publishable;
-        ViewBag.ChapterHasChanges = chapterHasChanges;
-        ViewBag.ClassificationMap = classificationMap;
-        return View(sorted);
+        ViewBag.Project     = summary.Project;
+        ViewBag.Publishable = summary.Publishable;
+        ViewBag.ChapterHasChanges = summary.ChapterHasChanges;
+        ViewBag.ClassificationMap = summary.ClassificationMap;
+        return View(summary.SortedSections.Select(r => (r.Section, r.Depth)).ToList());
     }
 
     [HttpPost]
@@ -993,85 +938,11 @@ public class AuthorController(
             return RedirectToAction("Projects");
         }
 
-        var discovered = await discoveryService.DiscoverAsync(author.Id);
-        var toAdd      = discovered
-            .Where(d => selectedUuids.Contains(d.SyncRootId) && !d.AlreadyAdded)
-            .ToList();
+        var result = await projectManagementService.AddDiscoveredProjectsAsync(selectedUuids, author.Id);
 
-        var addedCount = 0;
-        foreach (var d in toAdd)
-        {
-            try
-            {
-                var softDeleted = await projectRepo.GetSoftDeletedBySyncRootIdAsync(d.SyncRootId);
-                if (softDeleted is not null)
-                {
-                    softDeleted.Restore(d.Name);
-                    addedCount++;
-                }
-                else
-                {
-                    var project = Project.Create(d.Name, d.DropboxPath, author.Id, d.SyncRootId);
-                    await projectRepo.AddAsync(project);
-                    addedCount++;
-                }
-            }
-            catch (DuplicateProjectException) { }
-        }
-
-        await GetUnitOfWork().SaveChangesAsync();
-
-        var projectsToSync = new List<Guid>();
-        foreach (var d in toAdd)
-        {
-            var projects = await projectRepo.GetAllAsync();
-            var project  = projects.FirstOrDefault(p => p.SyncRootId == d.SyncRootId);
-            if (project is null) continue;
-            project.MarkSyncing();
-            projectsToSync.Add(project.Id);
-        }
-
-        if (projectsToSync.Count > 0)
-            await GetUnitOfWork().SaveChangesAsync();
-
-        foreach (var projectId in projectsToSync)
-        {
-            _ = Task.Run(async () =>
-            {
-                using var scope   = scopeFactory.CreateScope();
-                var bgSyncService = scope.ServiceProvider.GetRequiredService<ISyncService>();
-                var bgProjectRepo = scope.ServiceProvider.GetRequiredService<IProjectRepository>();
-                var bgUnitOfWork  = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-                try
-                {
-                    await bgSyncService.ParseProjectAsync(projectId);
-                    logger.LogInformation("Background sync completed for project {ProjectId}", projectId);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Background sync failed for project {ProjectId}: {Message}",
-                        projectId, ex.Message);
-                    try
-                    {
-                        var failedProject = await bgProjectRepo.GetByIdAsync(projectId);
-                        if (failedProject is not null && failedProject.SyncStatus == SyncStatus.Syncing)
-                        {
-                            failedProject.UpdateSyncStatus(SyncStatus.Error, DateTime.UtcNow,
-                                ex.Message.Length > 200 ? ex.Message[..200] : ex.Message);
-                            await bgUnitOfWork.SaveChangesAsync();
-                        }
-                    }
-                    catch (Exception innerEx)
-                    {
-                        logger.LogError(innerEx, "Failed to update sync error status for {ProjectId}", projectId);
-                    }
-                }
-            });
-        }
-
-        TempData["Success"] = addedCount == 1
-            ? $"{toAdd.First().Name} added successfully."
-            : $"{addedCount} projects added successfully.";
+        TempData["Success"] = result.AddedCount == 1
+            ? $"{result.SingleAddedProjectName} added successfully."
+            : $"{result.AddedCount} projects added successfully.";
 
         return RedirectToAction("Dashboard");
     }

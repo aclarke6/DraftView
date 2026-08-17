@@ -26,6 +26,7 @@ public abstract class BaseReaderController(
     IReaderAccessRepository readerAccessRepo,
     IHumanOverrideService humanOverrideService,
     IPassageAnchorService passageAnchorService,
+    ICommentDisplayService commentDisplayService,
     ILogger logger) : BaseController(userRepository)
 {
     protected readonly IProjectRepository ProjectRepo      = projectRepo;
@@ -266,90 +267,22 @@ public abstract class BaseReaderController(
         Guid projectAuthorId,
         bool currentUserIsModerator)
     {
-        var visibleComments = comments
-            .Where(c => !c.IsSoftDeleted)
-            .ToList();
+        var displayData = await commentDisplayService.GetCommentDisplayDataAsync(
+            comments, currentUserId, projectAuthorId, currentUserIsModerator);
 
-        var commentsByParentId = visibleComments
-            .Where(c => c.ParentCommentId.HasValue)
-            .GroupBy(c => c.ParentCommentId!.Value)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-        var authorIds   = visibleComments.Select(c => c.AuthorId).Distinct().ToList();
-        var authorNames = new Dictionary<Guid, string>();
-
-        foreach (var authorId in authorIds)
-        {
-            var author = await userRepository.GetByIdAsync(authorId);
-            authorNames[authorId] = author?.DisplayName ?? "Unknown";
-        }
-
-        var anchorIds = visibleComments
-            .Where(c => c.PassageAnchorId.HasValue)
-            .Select(c => c.PassageAnchorId!.Value)
-            .Distinct()
-            .ToList();
-
-        var anchorsById = new Dictionary<Guid, PassageAnchorDto?>();
-        foreach (var anchorId in anchorIds)
-        {
-            try
+        return displayData
+            .Select(d => new CommentDisplayViewModel
             {
-                anchorsById[anchorId] = await PassageAnchorService.GetByIdAsync(anchorId, currentUserId);
-            }
-            catch
-            {
-                anchorsById[anchorId] = null;
-            }
-        }
-
-        var auditUserIds = anchorsById.Values
-            .Where(anchor => anchor is not null)
-            .SelectMany(anchor => new[]
-            {
-                anchor!.CurrentMatch?.ResolvedByUserId,
-                anchor.Rejection?.RejectedByUserId
-            })
-            .Where(id => id.HasValue && id.Value != Guid.Empty)
-            .Select(id => id!.Value)
-            .Distinct()
-            .ToList();
-
-        foreach (var auditUserId in auditUserIds)
-        {
-            if (authorNames.ContainsKey(auditUserId))
-                continue;
-
-            var auditUser = await userRepository.GetByIdAsync(auditUserId);
-            authorNames[auditUserId] = auditUser?.DisplayName ?? "Unknown";
-        }
-
-        return visibleComments
-            .Select(comment =>
-            {
-                var hasChildren = commentsByParentId.ContainsKey(comment.Id);
-                var canDelete   = comment.AuthorId == currentUserId && !hasChildren;
-                anchorsById.TryGetValue(comment.PassageAnchorId ?? Guid.Empty, out var passageAnchor);
-
-                return new CommentDisplayViewModel {
-                    Comment           = comment,
-                    AuthorDisplayName = authorNames.TryGetValue(comment.AuthorId, out var name) ? name : "Unknown",
-                    HasChildren       = hasChildren,
-                    CanDelete         = canDelete,
-                    CanEdit           = comment.AuthorId == currentUserId,
-                    IsModerator       = currentUserIsModerator,
-                    PassageAnchor     = passageAnchor,
-                    CanOverridePassageAnchor = passageAnchor is not null &&
-                        (comment.AuthorId == currentUserId || projectAuthorId == currentUserId),
-                    PassageAnchorResolvedByDisplayName = passageAnchor?.CurrentMatch?.ResolvedByUserId is Guid resolvedById &&
-                        authorNames.TryGetValue(resolvedById, out var resolvedByName)
-                        ? resolvedByName
-                        : null,
-                    PassageAnchorRejectedByDisplayName = passageAnchor?.Rejection?.RejectedByUserId is Guid rejectedById &&
-                        authorNames.TryGetValue(rejectedById, out var rejectedByName)
-                        ? rejectedByName
-                        : null
-                };
+                Comment                            = d.Comment,
+                AuthorDisplayName                   = d.AuthorDisplayName,
+                HasChildren                         = d.HasChildren,
+                CanDelete                           = d.CanDelete,
+                CanEdit                             = d.CanEdit,
+                IsModerator                         = d.IsModerator,
+                PassageAnchor                       = d.PassageAnchor,
+                CanOverridePassageAnchor            = d.CanOverridePassageAnchor,
+                PassageAnchorResolvedByDisplayName  = d.PassageAnchorResolvedByDisplayName,
+                PassageAnchorRejectedByDisplayName  = d.PassageAnchorRejectedByDisplayName
             })
             .ToList();
     }
