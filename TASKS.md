@@ -114,8 +114,8 @@ No open bugs.
 
 ### 3.2 Go-Live Prerequisites
 
-- [ ] Invitation acceptance flow does not expose stored email
-- [ ] Forgot-password flow works end-to-end in production
+- [x] Invitation acceptance flow does not expose stored email (verified 2026-08-17)
+- [x] Forgot-password flow works end-to-end in production (verified 2026-08-17)
 - [ ] Production smoke check: no `localhost` links, no plaintext email leakage
 - [x] Data handling aligns with UK GDPR and Data Protection Act 2018 (reviewed 2026-08-17)
 - [ ] Copy production `EmailProtection:EncryptionKey` and `EmailProtection:LookupHmacKey` into secure password manager
