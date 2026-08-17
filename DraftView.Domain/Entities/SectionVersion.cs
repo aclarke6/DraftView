@@ -17,7 +17,6 @@ public sealed class SectionVersion
     public string HtmlContent { get; private set; } = default!;
     public string ContentHash { get; private set; } = default!;
     public ChangeClassification? ChangeClassification { get; private set; }
-    public string? AiSummary { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
     private SectionVersion() { }
@@ -62,7 +61,6 @@ public sealed class SectionVersion
             HtmlContent = section.HtmlContent,
             ContentHash = section.ContentHash ?? string.Empty,
             ChangeClassification = null,
-            AiSummary = null,
             CreatedAt = DateTime.UtcNow
         };
     }
@@ -83,23 +81,4 @@ public sealed class SectionVersion
         ChangeClassification = classification;
     }
 
-    /// <summary>
-    /// Sets the AI-generated summary for this version.
-    /// Called by the application layer after AI summary generation during Republish.
-    /// Can only be set once — summary is immutable after first assignment.
-    /// </summary>
-    /// <param name="summary">The one-line summary to assign. Must not be null or whitespace.</param>
-    /// <exception cref="InvariantViolationException">Thrown when summary has already been set or is empty.</exception>
-    public void SetAiSummary(string summary)
-    {
-        if (AiSummary is not null)
-            throw new InvariantViolationException("I-VER-AISUMMARY",
-                "AiSummary has already been set and cannot be changed.");
-
-        if (string.IsNullOrWhiteSpace(summary))
-            throw new InvariantViolationException("I-VER-AISUMMARY-EMPTY",
-                "AiSummary must not be null or whitespace.");
-
-        AiSummary = summary;
-    }
 }

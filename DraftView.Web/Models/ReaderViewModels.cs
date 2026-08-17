@@ -94,12 +94,6 @@ public class SceneWithComments
     /// </summary>
     public int? CurrentVersionNumber { get; set; }
 
-    /// <summary>
-    /// The AI-generated one-line summary from the current SectionVersion.
-    /// Null when no summary exists for the current version.
-    /// Shown inside the update banner when ShowUpdateBanner is true.
-    /// </summary>
-    public string? AiSummary { get; set; }
 }
 
 public class CommentDisplayViewModel

@@ -18,7 +18,6 @@ public class VersioningService(
     ISectionVersionRepository sectionVersionRepository,
     IHtmlDiffService htmlDiffService,
     IChangeClassificationService changeClassificationService,
-    IAiSummaryService aiSummaryService,
     IUnitOfWork unitOfWork,
     IConfiguration configuration) : IVersioningService
 {
@@ -186,14 +185,6 @@ public class VersioningService(
 
         if (previousVersion is not null)
             TryApplyClassification(version, previousVersion);
-
-        var summary = await aiSummaryService.GenerateSummaryAsync(
-            previousVersion?.HtmlContent,
-            document.HtmlContent ?? string.Empty,
-            ct);
-
-        if (summary is not null)
-            version.SetAiSummary(summary);
 
         await sectionVersionRepository.AddAsync(version, ct);
         document.PublishAsPartOfChapter(document.ContentHash ?? string.Empty);

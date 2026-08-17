@@ -25,9 +25,6 @@ public class SectionVersionConfiguration : IEntityTypeConfiguration<SectionVersi
         builder.Property(v => v.ChangeClassification)
             .HasConversion<int?>();
 
-        builder.Property(v => v.AiSummary)
-            .HasMaxLength(500);
-
         builder.Property(v => v.CreatedAt)
             .IsRequired();
     }
