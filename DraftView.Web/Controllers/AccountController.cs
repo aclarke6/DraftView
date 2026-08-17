@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using DraftView.Domain.Interfaces.Repositories;
@@ -112,6 +112,7 @@ public class AccountController(
     // ---------------------------------------------------------------------------
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [DraftView.Web.Infrastructure.AllowWhenImpersonating]
     public async Task<IActionResult> ExitImpersonation()
     {
         var authorEmail = User.FindFirstValue(DraftView.Web.Infrastructure.ImpersonationClaims.ImpersonatorEmail);
