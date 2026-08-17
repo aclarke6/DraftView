@@ -27,6 +27,15 @@
     </div>
 </div>
 
+@if (Model.ContinueReadingUrl is not null)
+{
+    <div class="reader-dashboard-continue">
+        <a href="@Model.ContinueReadingUrl" class="reader-dashboard-continue__btn">
+            Continue Reading &#8594;
+        </a>
+    </div>
+}
+
 @if (Model.AccessRequests.Any())
 {
     <div class="reader-dashboard-requests">

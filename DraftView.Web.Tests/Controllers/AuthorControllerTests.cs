@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Identity;
 using Moq;
 using Xunit;
 
@@ -42,6 +43,19 @@ public class AuthorControllerTests
     private readonly Mock<IAccessRequestService> accessRequestService = new();
     private readonly Mock<IAccessRequestRepository> accessRequestRepo = new();
     private readonly Mock<IUserPreferencesRepository> userPreferencesRepo = new();
+    private readonly Mock<UserManager<IdentityUser>> userManager;
+    private readonly Mock<SignInManager<IdentityUser>> signInManager;
+
+    public AuthorControllerTests()
+    {
+        var store = new Mock<IUserStore<IdentityUser>>();
+        userManager = new Mock<UserManager<IdentityUser>>(
+            store.Object, null, null, null, null, null, null, null, null);
+        var contextAccessor = new Mock<Microsoft.AspNetCore.Http.IHttpContextAccessor>();
+        var claimsFactory = new Mock<IUserClaimsPrincipalFactory<IdentityUser>>();
+        signInManager = new Mock<SignInManager<IdentityUser>>(
+            userManager.Object, contextAccessor.Object, claimsFactory.Object, null, null, null, null);
+    }
 
     private AuthorController CreateSut(string email = "author@example.test")
     {
@@ -68,7 +82,9 @@ public class AuthorControllerTests
             logger.Object,
             accessRequestService.Object,
             accessRequestRepo.Object,
-            userPreferencesRepo.Object);
+            userPreferencesRepo.Object,
+            userManager.Object,
+            signInManager.Object);
 
         controller.ControllerContext = new ControllerContext
         {
@@ -903,5 +919,59 @@ public class AuthorControllerTests
         accessRequestService.Verify(s => s.DeclineRequestAsync(requestId, author.Id, It.IsAny<CancellationToken>()), Times.Once);
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal("BookRequests", redirect.ActionName);
+    }
+
+    // -----------------------------------------------------------------------
+    // ImpersonateReader guards
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task ImpersonateReader_WhenReaderNotFound_ReturnsNotFound()
+    {
+        userRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        var sut = CreateSut();
+        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
+
+        var result = await sut.ImpersonateReader(Guid.NewGuid());
+
+        Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task ImpersonateReader_WhenUserIsNotBetaReader_RedirectsToReadersWithError()
+    {
+        var authorUser = User.Create("other@example.test", "Other Author", Role.Author);
+        userRepo.Setup(r => r.GetByIdAsync(authorUser.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(authorUser);
+
+        var sut = CreateSut();
+        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
+
+        var result = await sut.ImpersonateReader(authorUser.Id);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Readers", redirect.ActionName);
+        Assert.NotNull(sut.TempData["Error"]);
+    }
+
+    [Fact]
+    public async Task ImpersonateReader_WhenReaderHasNoIdentityAccount_RedirectsToReadersWithError()
+    {
+        var reader = User.Create("reader@example.test", "Test Reader", Role.BetaReader);
+        userRepo.Setup(r => r.GetByIdAsync(reader.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(reader);
+        userManager.Setup(m => m.FindByEmailAsync("reader@example.test"))
+            .ReturnsAsync((IdentityUser?)null);
+
+        var sut = CreateSut();
+        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
+
+        var result = await sut.ImpersonateReader(reader.Id);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Readers", redirect.ActionName);
+        Assert.NotNull(sut.TempData["Error"]);
     }
 }
