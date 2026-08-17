@@ -25,10 +25,10 @@ public class SectionVersionRepositoryTests
         var section = MakeSection();
         var otherSection = MakeSection();
 
-        db.SectionVersions.Add(SectionVersion.Create(section, AuthorId, 1));
-        db.SectionVersions.Add(SectionVersion.Create(section, AuthorId, 2));
-        db.SectionVersions.Add(SectionVersion.Create(section, AuthorId, 3));
-        db.SectionVersions.Add(SectionVersion.Create(otherSection, AuthorId, 1));
+        db.SectionVersions.Add(SectionVersion.Create(section, AuthorId, 1, 1, 0));
+        db.SectionVersions.Add(SectionVersion.Create(section, AuthorId, 2, 1, 0));
+        db.SectionVersions.Add(SectionVersion.Create(section, AuthorId, 3, 1, 0));
+        db.SectionVersions.Add(SectionVersion.Create(otherSection, AuthorId, 1, 1, 0));
         await db.SaveChangesAsync();
 
         var sut = new SectionVersionRepository(db);

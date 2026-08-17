@@ -580,7 +580,7 @@ public class ReaderController(
 
         await ProgressService.RecordOpenAsync(id, user.Id);
 
-        var (resolvedHtml, currentSectionVersionId, currentVersionNumber, resumeCaptureText, resumeRestoreTarget, diffParagraphs, updatedSinceLastRead, showUpdateBanner) =
+        var (resolvedHtml, currentSectionVersionId, currentVersionNumber, versionLabel, resumeCaptureText, resumeRestoreTarget, diffParagraphs, updatedSinceLastRead, showUpdateBanner) =
             await ResolveSceneContentAndDiffAsync(scene, user.Id);
 
         var allSections = await SectionRepo.GetByProjectIdAsync(project.Id);
@@ -609,6 +609,7 @@ public class ReaderController(
             ResumeRestoreConfidenceScore = resumeRestoreTarget?.ConfidenceScore,
             ResumeRestoreMatchMethod = resumeRestoreTarget?.MatchMethod,
             CurrentVersionNumber     = currentVersionNumber,
+            VersionLabel             = versionLabel,
             DiffParagraphs           = diffParagraphs,
             UpdatedSinceLastRead     = updatedSinceLastRead,
             ShowUpdateBanner         = showUpdateBanner
@@ -628,7 +629,7 @@ public class ReaderController(
     {
         await ProgressService.RecordOpenAsync(scene.Id, user.Id, ct);
 
-        var (resolvedHtml, currentSectionVersionId, currentVersionNumber, resumeCaptureText, resumeRestoreTarget, diffParagraphs, updatedSinceLastRead, showUpdateBanner) =
+        var (resolvedHtml, currentSectionVersionId, currentVersionNumber, versionLabel, resumeCaptureText, resumeRestoreTarget, diffParagraphs, updatedSinceLastRead, showUpdateBanner) =
             await ResolveSceneContentAndDiffAsync(scene, user.Id, ct);
 
         var comments = await CommentService.GetThreadsForSectionAsync(scene.Id, user.Id, ct);
@@ -650,16 +651,17 @@ public class ReaderController(
             DiffParagraphs = diffParagraphs,
             UpdatedSinceLastRead = updatedSinceLastRead,
             ShowUpdateBanner = showUpdateBanner,
-            CurrentVersionNumber = currentVersionNumber
+            CurrentVersionNumber = currentVersionNumber,
+            VersionLabel = versionLabel
         };
     }
 
     /// <summary>
     /// Resolves scene content from the latest version (or fallback to working content),
     /// computes diff if reader has a prior read version, and updates reader progress.
-    /// Returns: (resolvedHtml, currentVersionNumber, diffParagraphs, updatedSinceLastRead, showUpdateBanner)
+    /// Returns: (resolvedHtml, currentSectionVersionId, currentVersionNumber, versionLabel, resumeCaptureText, resumeRestoreTarget, diffParagraphs, updatedSinceLastRead, showUpdateBanner)
     /// </summary>
-    private async Task<(string? resolvedHtml, Guid? currentSectionVersionId, int? currentVersionNumber, string resumeCaptureText, ResumeRestoreTargetDto? resumeRestoreTarget, IReadOnlyList<ParagraphDiffResult> diffParagraphs, bool updatedSinceLastRead, bool showUpdateBanner)>
+    private async Task<(string? resolvedHtml, Guid? currentSectionVersionId, int? currentVersionNumber, string? versionLabel, string resumeCaptureText, ResumeRestoreTargetDto? resumeRestoreTarget, IReadOnlyList<ParagraphDiffResult> diffParagraphs, bool updatedSinceLastRead, bool showUpdateBanner)>
         ResolveSceneContentAndDiffAsync(
             Section scene,
             Guid userId,
@@ -669,6 +671,7 @@ public class ReaderController(
         var resolvedHtml = latestVersion?.HtmlContent ?? scene.HtmlContent;
         var currentSectionVersionId = latestVersion?.Id;
         var currentVersionNumber = latestVersion?.VersionNumber;
+        var versionLabel = latestVersion?.VersionLabel;
         var resumeCaptureText = CanonicalizeForCapture(resolvedHtml);
         var resumeRestoreTarget = await ProgressService.GetResumeRestoreTargetAsync(
             scene.Id,
@@ -701,7 +704,7 @@ public class ReaderController(
             ? diffResult.Paragraphs
             : Array.Empty<ParagraphDiffResult>();
 
-        return (resolvedHtml, currentSectionVersionId, currentVersionNumber, resumeCaptureText, resumeRestoreTarget, diffParagraphs, updatedSinceLastRead, showUpdateBanner);
+        return (resolvedHtml, currentSectionVersionId, currentVersionNumber, versionLabel, resumeCaptureText, resumeRestoreTarget, diffParagraphs, updatedSinceLastRead, showUpdateBanner);
     }
 
     /// <summary>

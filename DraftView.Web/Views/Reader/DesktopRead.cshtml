@@ -41,7 +41,7 @@
             <div class="reader__contents-label">This chapter</div>
             @foreach (var item in Model.Scenes)
             {
-                <a href="#scene-@item.Scene.Id" class="reader__contents-link">@item.Scene.Title@(item.CurrentVersionNumber.HasValue ? $" (v{item.CurrentVersionNumber.Value})" : string.Empty)</a>
+                <a href="#scene-@item.Scene.Id" class="reader__contents-link">@item.Scene.Title@(item.VersionLabel != null ? $" ({item.VersionLabel})" : string.Empty)</a>
             }
             <a href="#chapter-comments"
                    class="reader__contents-link reader__contents-link--muted">
@@ -126,7 +126,7 @@
                 <div class="chapter-sidebar__label">This chapter</div>
                 @foreach (var item in Model.Scenes)
                 {
-                    <a href="#scene-@item.Scene.Id" class="chapter-sidebar__link">@item.Scene.Title@(item.CurrentVersionNumber.HasValue ? $" (v{item.CurrentVersionNumber.Value})" : string.Empty)</a>
+                    <a href="#scene-@item.Scene.Id" class="chapter-sidebar__link">@item.Scene.Title@(item.VersionLabel != null ? $" ({item.VersionLabel})" : string.Empty)</a>
                 }
 
                 <a href="#chapter-comments"
@@ -250,7 +250,7 @@
                             <div class="update-banner" data-section-id="@item.Scene.Id" data-version="@item.CurrentVersionNumber">
                                 <div class="update-banner__content">
                                     <span class="update-banner__version">
-                                        Updated — version @item.CurrentVersionNumber
+                                        @(item.VersionLabel ?? $"Version {item.CurrentVersionNumber}")
                                     </span>
                                 </div>
                                 <button type="button" class="update-banner__dismiss" aria-label="Dismiss update notice">

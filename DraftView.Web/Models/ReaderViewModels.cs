@@ -93,6 +93,7 @@ public class SceneWithComments
     /// The current version number. Used in the banner label.
     /// </summary>
     public int? CurrentVersionNumber { get; set; }
+    public string? VersionLabel { get; set; }
 
 }
 

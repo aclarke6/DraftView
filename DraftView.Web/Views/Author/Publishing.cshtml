@@ -140,7 +140,7 @@ else
 
                             @if (doc.CurrentVersionNumber.HasValue)
                             {
-                                <span class="publishing-doc__version">@($"v{doc.CurrentVersionNumber.Value}")</span>
+                                <span class="publishing-doc__version">@(doc.CurrentVersionLabel ?? $"v{doc.CurrentVersionNumber.Value}")</span>
                             }
 
                             @if (doc.Classification.HasValue)
@@ -183,7 +183,7 @@ else
                                         @foreach (var v in doc.VersionHistory)
                                         {
                                             <li class="version-history__item">
-                                                <span class="version-history__number">v@v.VersionNumber</span>
+                                                <span class="version-history__number">@(v.VersionLabel ?? $"v{v.VersionNumber}")</span>
                                                 <span class="version-history__date">@v.CreatedAt.ToString("d MMM yyyy")</span>
                                                 @if (v.Classification.HasValue)
                                                 {
@@ -194,7 +194,7 @@ else
                                                 @if (v.CanDelete)
                                                 {
                                                     <form asp-action="DeleteVersion" method="post" style="display:inline"
-                                                          onsubmit="return confirm('Permanently delete version @v.VersionNumber? This cannot be undone.');">
+                                                          onsubmit="return confirm('Permanently delete version @(v.VersionLabel ?? v.VersionNumber.ToString())? This cannot be undone.');">
                                                         @Html.AntiForgeryToken()
                                                         <input type="hidden" name="versionId" value="@v.VersionId" />
                                                         <input type="hidden" name="sectionId" value="@doc.Document.Id" />

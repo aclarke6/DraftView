@@ -41,7 +41,7 @@ public class PassageAnchorServiceTests
     {
         var reader = MakeReader();
         var section = MakePublishedSection();
-        var version = SectionVersion.Create(section, Guid.NewGuid(), 1);
+        var version = SectionVersion.Create(section, Guid.NewGuid(), 1, 1, 0);
         var request = CreateRequest(section.Id, version.Id, "Alpha beta");
         var sut = CreateSut();
 
@@ -72,7 +72,7 @@ public class PassageAnchorServiceTests
     {
         var reader = MakeReader();
         var section = MakePublishedSection();
-        var version = SectionVersion.Create(section, Guid.NewGuid(), 1);
+        var version = SectionVersion.Create(section, Guid.NewGuid(), 1, 1, 0);
         var request = CreateRequest(section.Id, version.Id, "Wrong text");
         var sut = CreateSut();
 
@@ -91,7 +91,7 @@ public class PassageAnchorServiceTests
     {
         var reader = MakeReader();
         var section = MakePublishedSection();
-        var version = SectionVersion.Create(section, Guid.NewGuid(), 1);
+        var version = SectionVersion.Create(section, Guid.NewGuid(), 1, 1, 0);
         var request = CreateRequest(section.Id, version.Id, "Alpha beta");
         var sut = CreateSut();
 
@@ -122,7 +122,7 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, Guid.NewGuid(), 1);
+        var version = SectionVersion.Create(section, Guid.NewGuid(), 1, 1, 0);
         var request = CreateRequest(section.Id, version.Id, "Alpha beta");
         var sut = CreateSut();
 
@@ -143,7 +143,7 @@ public class PassageAnchorServiceTests
     {
         var reader = MakeReader();
         var section = MakePublishedSection();
-        var version = SectionVersion.Create(section, Guid.NewGuid(), 1);
+        var version = SectionVersion.Create(section, Guid.NewGuid(), 1, 1, 0);
         var request = CreateRequest(section.Id, version.Id, "Alpha beta");
         var sut = CreateSut();
 
@@ -162,7 +162,7 @@ public class PassageAnchorServiceTests
     {
         var reader = MakeReader();
         var section = MakePublishedSection();
-        var version = SectionVersion.Create(section, Guid.NewGuid(), 1);
+        var version = SectionVersion.Create(section, Guid.NewGuid(), 1, 1, 0);
         var request = CreateRequest(section.Id, version.Id, "Alpha beta");
         var sut = CreateSut();
 
@@ -182,7 +182,7 @@ public class PassageAnchorServiceTests
     {
         var reader = MakeReader();
         var section = MakePublishedSection();
-        var version = SectionVersion.Create(section, Guid.NewGuid(), 1);
+        var version = SectionVersion.Create(section, Guid.NewGuid(), 1, 1, 0);
         var snapshot = PassageAnchorSnapshot.Create(
             "Alpha beta",
             "Alpha beta",
@@ -229,7 +229,7 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1);
+        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
             version.Id,
@@ -276,7 +276,7 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1);
+        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
             version.Id,
@@ -318,7 +318,7 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1);
+        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
             version.Id,
@@ -365,7 +365,7 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1);
+        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
             version.Id,
@@ -407,7 +407,7 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1);
+        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
             version.Id,
@@ -454,7 +454,7 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1);
+        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
             version.Id,
@@ -496,7 +496,7 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1);
+        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
             version.Id,
@@ -542,7 +542,7 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1);
+        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
             version.Id,
@@ -587,7 +587,7 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1);
+        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
             version.Id,
@@ -632,7 +632,7 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1);
+        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
             version.Id,
@@ -676,7 +676,7 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1);
+        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
             version.Id,
@@ -730,7 +730,7 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1);
+        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
             version.Id,

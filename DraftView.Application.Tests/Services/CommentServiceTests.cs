@@ -1,4 +1,4 @@
-﻿using DraftView.Domain.Contracts;
+using DraftView.Domain.Contracts;
 using Moq;
 using DraftView.Application.Services;
 using DraftView.Domain.Entities;
@@ -396,7 +396,7 @@ public class CommentServiceTests
         reader.Activate();
         var sut = CreateSut();
 
-        var version = SectionVersion.Create(section, Guid.NewGuid(), 1);
+        var version = SectionVersion.Create(section, Guid.NewGuid(), 1, 1, 0);
         var versionRepo = new Mock<ISectionVersionRepository>();
         versionRepo.Setup(r => r.GetLatestAsync(section.Id, default))
             .ReturnsAsync(version);

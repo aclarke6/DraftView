@@ -203,6 +203,6 @@ public class SectionDiffServiceTests
     {
         var authorId = Guid.NewGuid();
         section.UpdateContent(htmlContent, "hash-" + versionNumber);
-        return SectionVersion.Create(section, authorId, versionNumber);
+        return SectionVersion.Create(section, authorId, versionNumber, 1, 0);
     }
 }

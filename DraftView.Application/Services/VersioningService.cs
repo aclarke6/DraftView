@@ -162,7 +162,9 @@ public class VersioningService(
     }
 
     /// <summary>
-    /// Creates, classifies, summarizes, and persists a new version for one document.
+    /// Creates, classifies, and persists a new version for one document.
+    /// Computes the semantic major/minor version by comparing the document's
+    /// current ScrivenerStatus against the previous version's stored status.
     /// </summary>
     private async Task CreateVersionForDocumentAsync(
         Section document,
@@ -174,20 +176,42 @@ public class VersioningService(
         await AssertWithinRetentionLimitAsync(document.Id, subscriptionTier, ct);
 
         var currentMaxVersion = maxVersion ?? await sectionVersionRepository.GetMaxVersionNumberAsync(document.Id, ct);
-        var nextVersion = currentMaxVersion + 1;
-        var version = SectionVersion.Create(document, authorId, nextVersion);
+        var nextVersionNumber = currentMaxVersion + 1;
 
         var allVersions = await sectionVersionRepository.GetAllBySectionIdAsync(document.Id, ct);
         var previousVersion = allVersions
-            .Where(v => v.VersionNumber < version.VersionNumber)
             .OrderByDescending(v => v.VersionNumber)
             .FirstOrDefault();
+
+        var (major, minor) = ComputeSemanticVersion(previousVersion, document.ScrivenerStatus);
+        var version = SectionVersion.Create(document, authorId, nextVersionNumber, major, minor);
 
         if (previousVersion is not null)
             TryApplyClassification(version, previousVersion);
 
         await sectionVersionRepository.AddAsync(version, ct);
         document.PublishAsPartOfChapter(document.ContentHash ?? string.Empty);
+    }
+
+    /// <summary>
+    /// Determines the semantic major/minor version for a new publish based on
+    /// whether the Scrivener status changed since the previous version.
+    /// A status change (in either direction) increments the major version and resets minor.
+    /// If the previous version has no stored status (pre-feature data), always minor-bumps.
+    /// </summary>
+    private static (int major, int minor) ComputeSemanticVersion(
+        SectionVersion? previousVersion, string? currentStatus)
+    {
+        if (previousVersion is null)
+            return (1, 0);
+
+        if (string.IsNullOrEmpty(previousVersion.ScrivenerStatus))
+            return (previousVersion.MajorVersion, previousVersion.MinorVersion + 1);
+
+        var statusChanged = previousVersion.ScrivenerStatus != (currentStatus ?? string.Empty);
+        return statusChanged
+            ? (previousVersion.MajorVersion + 1, 0)
+            : (previousVersion.MajorVersion, previousVersion.MinorVersion + 1);
     }
 
     private async Task AssertWithinRetentionLimitAsync(Guid sectionId, SubscriptionTier tier, CancellationToken ct)

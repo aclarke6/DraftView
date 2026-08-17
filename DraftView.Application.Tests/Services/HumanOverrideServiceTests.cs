@@ -42,7 +42,7 @@ public class HumanOverrideServiceTests
         var owner = MakeUser("owner@example.test", "Owner", Role.BetaReader);
         var project = Project.Create("Project", "/tmp/project", author.Id, "root");
         var section = MakePublishedSection(project.Id);
-        var version = SectionVersion.Create(section, author.Id, 1);
+        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = CreateAnchor(section, version, author.Id);
         var comment = Comment.CreateRoot(
             section.Id,
@@ -66,7 +66,7 @@ public class HumanOverrideServiceTests
         var otherUser = MakeUser("reader@example.test", "Reader", Role.BetaReader);
         var project = Project.Create("Project", "/tmp/project", author.Id, "root");
         var section = MakePublishedSection(project.Id);
-        var version = SectionVersion.Create(section, author.Id, 1);
+        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = CreateAnchor(section, version, otherUser.Id);
         var comment = Comment.CreateRoot(
             section.Id,
@@ -90,7 +90,7 @@ public class HumanOverrideServiceTests
         var otherUser = MakeUser("reader@example.test", "Reader", Role.BetaReader);
         var project = Project.Create("Project", "/tmp/project", author.Id, "root");
         var section = MakePublishedSection(project.Id);
-        var version = SectionVersion.Create(section, author.Id, 1);
+        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = CreateAnchor(section, version, author.Id);
         var comment = Comment.CreateRoot(
             section.Id,
@@ -115,7 +115,7 @@ public class HumanOverrideServiceTests
         var support = MakeUser("support@example.test", "Support", Role.SystemSupport);
         var project = Project.Create("Project", "/tmp/project", author.Id, "root");
         var section = MakePublishedSection(project.Id);
-        var version = SectionVersion.Create(section, author.Id, 1);
+        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = CreateAnchor(section, version, author.Id);
         var sut = CreateSut();
 
@@ -133,7 +133,7 @@ public class HumanOverrideServiceTests
         var owner = MakeUser("owner@example.test", "Owner", Role.BetaReader);
         var project = Project.Create("Project", "/tmp/project", author.Id, "root");
         var section = MakePublishedSection(project.Id);
-        var version = SectionVersion.Create(section, author.Id, 1);
+        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = CreateAnchor(section, version, owner.Id);
         anchor.UpdateCurrentMatch(CreateMatch(version.Id));
         var comment = Comment.CreateRoot(
@@ -167,7 +167,7 @@ public class HumanOverrideServiceTests
         var owner = MakeUser("owner@example.test", "Owner", Role.BetaReader);
         var project = Project.Create("Project", "/tmp/project", author.Id, "root");
         var section = MakePublishedSection(project.Id);
-        var version = SectionVersion.Create(section, author.Id, 1);
+        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = CreateAnchor(section, version, owner.Id);
         var comment = Comment.CreateRoot(
             section.Id,
