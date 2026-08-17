@@ -32,7 +32,6 @@ Last updated: 2026-08-17
 |----------|---------|
 | `AGENTS.md` | Authoritative execution rules for all coding agents — defines constraints, architecture boundaries, TDD requirements, and hard-gated response behaviour across all tools |
 | `Passage Anchoring, Reader Continuity, and Inline Commentary.md` | Authoritative design for passage anchoring, relocation, reader continuity, and inline commentary (RSprint series) |
-| `AIScoringService.md` | AI change scoring service — provider abstraction, tier model, and usage for relocation confidence (RS-G) |
 | `DropBox Synchronisation Using WebHooks.md` | Webhook-driven background Dropbox sync — control model, cursor-based interrogation, and S-Sprint series |
 | `MultiTenancy.md` | Multi-tenancy sprint series, design decisions, and migration strategy |
 | `Publishing And Versioning Architecture.md` | Versioning model — SectionVersion, publish/republish rules, and lifecycle behaviour |
@@ -150,10 +149,10 @@ No open bugs.
   - [ ] Phase F2 — Navigate to original anchor
   - [ ] Phase F3 — UI integration ("View original context")
 
-- [ ] **RS-G — AI-Assisted Relocation**
-  - [ ] Phase G1 — Integration via AIScoringService
-  - [ ] Phase G2 — Prompt design and candidate matching
-  - [ ] Phase G3 — Confidence thresholds and activation
+- [REMOVED] **RS-G — AI-Assisted Relocation** — removed 2026-08-17.
+  When anchor-text matching fails after a sync, the comment is demoted to scene level
+  automatically. The comment is not lost; it remains visible in the scene without a
+  highlighted passage. This is the confirmed fallback behaviour — no AI required.
 
 - [ ] **RS-H — Reader Insight**
   - [ ] Phase H1 — Progress tracking (anchor-based)
