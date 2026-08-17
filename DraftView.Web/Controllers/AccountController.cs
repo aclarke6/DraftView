@@ -304,7 +304,19 @@ public class AccountController(
         if (resetToken is null || !resetToken.IsValid())
             return RedirectToAction("ResetPasswordInvalid");
 
-        return View(new ResetPasswordViewModel { Token = token });
+        var user = await GetUserByIdAsync(resetToken.UserId);
+        if (user is not null)
+        {
+            var prefs = await prefsRepo.GetByUserIdAsync(user.Id);
+            if (prefs is not null)
+                ViewData["OverrideTheme"] = prefs.DisplayTheme.ToString();
+        }
+
+        return View(new ResetPasswordViewModel
+        {
+            Token = token,
+            DisplayName = user?.DisplayName ?? string.Empty
+        });
     }
 
     [HttpPost]
