@@ -1,5 +1,5 @@
 # DraftView — Completed Work History
-Last updated: 2026-08-15
+Last updated: 2026-08-17
 
 ---
 
@@ -7,6 +7,7 @@ Last updated: 2026-08-15
 
 | Sprint | Deliverable | Date |
 |--------|-------------|------|
+| DR-Sprint | Open Book Discovery & Access Requests — 5 phases, `AccessRequest` entity, discovery page, author review UI, reader dashboard requests section, CSS. See DR-Sprint section below. | 2026-08-17 |
 | V-Sprints 1–10 | Publishing and Versioning Series (636 tests). See `Publishing And Versioning Architecture.md` | pre-2026-04 |
 | Sprint 4 | Email Privacy and Controlled Access. See `Sprint4-EmailPrivacy.md` | pre-2026-04 |
 | Sprint 3 | Reader Font Preferences | pre-2026-04 |
@@ -17,6 +18,18 @@ Last updated: 2026-08-15
 | ScrivenerProject → Project rename | — | pre-2026-04 |
 | UserNotificationPreferences → UserPreferences rename | — | pre-2026-04 |
 | Incremental Refactor Phase 1 | Centralise controller user/role resolution | pre-2026-04 |
+
+---
+
+## DR-Sprint — Open Book Discovery & Access Requests (2026-08-17)
+
+All 5 phases complete and merged to main.
+
+- **Phase 1 — Domain & Infrastructure:** `IsOpen`/`Brief`/`OpenedAt` on `ScrivenerProject`; `ReaderBio`/`ReaderGenreInterests`/`ReaderPace` on `UserPreferences`; new `AccessRequest` entity + `AccessRequestStatus` enum; `NotificationEventType.AccessRequest`; `IAccessRequestRepository`; EF migration `AddOpenBookDiscovery`.
+- **Phase 2 — Application Layer:** `IAccessRequestService`/`AccessRequestService`; open/close toggles with bulk-decline and `OpenedAt`; acceptance email template.
+- **Phase 3 — Author UI:** Publishing page open/close toggle + brief textarea; book list pending badge; `Author/BookRequests` page with Accept/Decline actions.
+- **Phase 4 — Reader/Discovery UI:** `Discovery/Index` public page; inline request form; reader dashboard "Your requests" section with `MarkDeclinedAsSeenAsync`; reader profile card in Account Settings; safe landing link; `/discover` nav link.
+- **Phase 5 — CSS:** Discovery cards, request list, reader profile, dashboard requests sections; CSS version bump to `v2026-08-16-5`.
 
 ---
 
@@ -107,8 +120,18 @@ Last updated: 2026-08-15
 
 ---
 
+## AI Feature Removals (2026-08-17)
+
+- **AI summaries removed** — `AiSummaryService`, `IAiSummaryService`, `AiSummary` property on `SectionVersion`, EF column, DI registration, viewmodel properties, controller tuple member, and all Razor render blocks stripped. EF migration `RemoveAiSummaryFromSectionVersion` drops the column. Avoids AI dependency in publishing workflow.
+- **RS-G (AI-Assisted Relocation) removed** — When anchor-text matching fails after a sync, the comment is demoted to scene level automatically. The comment is not lost; it remains visible in the scene without a highlighted passage. This is the confirmed fallback behaviour — no AI required.
+
+---
+
 ## Completed Changes
 
+- CHANGE-009 — Mobile reader: read-first scene comments — merged 2026-08-16. `MobileRead` becomes prose + bottom nav only; `.mobile-comments` section removed; "Scene Comments (N) ›" link navigates to new `GET /Reader/SceneComments/{sceneId}` page; `MobileReadViewModel` carries only `SceneCommentCount` int.
+- CHANGE-008 — Mobile reader: chapter comments page + disable passage-anchor capture on touch — merged 2026-08-16. Passage-anchor creation disabled on mobile; chapter-level comments moved to dedicated `GET /Reader/ChapterComments/{chapterId}` page.
+- CHANGE-006 + CHANGE-007 — Collapsible reader nav and comments toggle — merged 2026-08-15. Collapsible act tree with `›` chevron toggles, panel pin/unpin, `localStorage` state persistence.
 - CHANGE-005 — Username login: `AcceptInvitation` form now includes a "Choose a username" field (`autocomplete="username"`, stored as `IdentityUser.UserName`). Login accepts username or email — if the input contains `@` and the initial attempt fails, Identity looks up the user by email and retries with their `UserName`. Display name is not a valid login identifier (2026-08-15)
 - CHANGE-004 — Readers list: Resend Invitation button (paper-plane icon) for readers in Invited state, and for Active readers who still have a pending invitation (manually activated before completing setup). `ResendInvitation` action deactivates the reader first if needed, then re-issues the invitation preserving the original expiry policy (2026-08-15)
 - CHANGE-002 — `Views/Author/Publishing.cshtml`: align scene version labels beside scene titles using CSS Grid layout (2026-04-21)

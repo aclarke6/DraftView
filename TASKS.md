@@ -10,7 +10,7 @@ Last updated: 2026-08-17
 **Repository:** https://github.com/aclarke6/DraftView
 
 ### Current Test State
-- 1019 total, 1018 passed, 1 skipped, 0 failed
+- 844 total, 844 passed, 1 skipped, 0 failed (Web.Tests DB-connection failures are pre-existing environment, not code failures)
 - 1 skipped — `SmtpEmailSenderIntegrationTests` (sends real email, manual only)
 
 ### Active Work
@@ -83,58 +83,8 @@ No open bugs.
 
 - [DONE] CHANGE-006 + CHANGE-007 — Collapsible reader nav and comments toggle — merged to main 2026-08-15. See `HISTORY.md`.
 
-- [x] CHANGE-008 — Mobile reader: chapter comments page + disable passage-anchor capture on touch
-
-  **Implemented:** branch `change/CHANGE-008-mobile-chapter-comments`
-
-  **Scope — mobile only (desktop unchanged):**
-  - Passage-anchor *creation* (selection capture) disabled on mobile — unreliable on touch. Existing
-    anchored comments still display with highlight + modal. Two IIFEs removed from `MobileRead.cshtml`:
-    `CapturePassageAnchorSelection` and `applyPendingAnchor`.
-  - Scene-level comments stay inline in `MobileRead`. Add-comment form moved to **top** of comments
-    section so it appears before the list.
-  - Chapter-level comments get a dedicated page:
-    `GET /Reader/ChapterComments/{chapterId}` → `MobileChapterComments.cshtml`
-  - "Chapter Comments →" link added at the bottom of `MobileRead` and `MobileScenes` views.
-
-  **Files modified:**
-  - MODIFY: `DraftView.Web/Views/Reader/MobileRead.cshtml` — remove two selection-capture IIFEs; move
-    add-comment form to top of comments section; add chapter-comments link
-  - MODIFY: `DraftView.Web/Views/Reader/MobileScenes.cshtml` — add chapter-comments link
-  - MODIFY: `DraftView.Web/Models/MobileReaderViewModels.cs` — add `MobileChapterCommentsViewModel`
-  - MODIFY: `DraftView.Web/Controllers/ReaderController.cs` — add `ChapterComments(Guid chapterId)` action
-  - NEW: `DraftView.Web/Views/Reader/MobileChapterComments.cshtml` — chapter comments page view
-  - MODIFY: `DraftView.Web/wwwroot/css/DraftView.MobileReader.css` — chapter-comments link + page styles
-
-- [x] CHANGE-009 — Mobile reader: read-first scene comments — merged to main 2026-08-16. See `HISTORY.md`.
-
-  **Goal:** Remove inline scene comments from `MobileRead` entirely. The reading surface should be
-  prose only. Comment activity is accessed deliberately via a count link after reading.
-
-  **Design:**
-  - `MobileRead` becomes prose + bottom nav only. The `.mobile-comments` section is removed.
-  - A "Scene Comments (N) ›" link sits at the bottom of the prose (below the bottom nav).
-    If there are no comments, shows "Scene Comments ›" with no count.
-  - Tapping the link navigates to a new `GET /Reader/SceneComments/{sceneId}` page.
-  - `MobileSceneComments.cshtml` mirrors `MobileChapterComments.cshtml` — full add/edit/delete/reply,
-    back link returns to `Read` (the prose page).
-  - `MobileReadViewModel` no longer carries the full comment list — only a `SceneCommentCount` int,
-    avoiding the expensive `BuildCommentDisplayModelsAsync` call on every scene page load.
-  - Post-comment redirects updated: `AddComment` / `DeleteComment` / `EditComment` from the scene
-    comments page redirect back to `SceneComments`, not `Read`.
-
-  **Files affected:**
-  - MODIFY: `DraftView.Web/Models/MobileReaderViewModels.cs` — replace Comments list with
-    `SceneCommentCount`; add `MobileSceneCommentsViewModel`
-  - MODIFY: `DraftView.Web/Controllers/ReaderController.cs` — update `MobileRead` private method;
-    add `SceneComments(Guid sceneId)` action
-  - MODIFY: `DraftView.Web/Controllers/BaseReaderController.cs` — extend `RedirectToReaderAsync`
-    to route Document IDs to `SceneComments` on mobile
-  - MODIFY: `DraftView.Web/Views/Reader/MobileRead.cshtml` — remove comments section; add count link
-  - NEW: `DraftView.Web/Views/Reader/MobileSceneComments.cshtml`
-  - MODIFY: `DraftView.Web/wwwroot/css/DraftView.MobileReader.css` — count link style; rename
-    generic `.mobile-comments-link` to replace per-type classes
-  - MODIFY: `DraftView.Web/wwwroot/css/DraftView.Core.css` — CSS version bump
+- [x] CHANGE-008 — Mobile reader: chapter comments page + disable passage-anchor capture on touch — merged 2026-08-16. See `HISTORY.md`.
+- [x] CHANGE-009 — Mobile reader: read-first scene comments — merged 2026-08-16. See `HISTORY.md`.
 
 ---
 
@@ -163,7 +113,6 @@ No open bugs.
 
 ### 3.2 Go-Live Prerequisites
 
-- [ ] Add `Anthropic:ApiKey` to `appsettings.Production.json` (enables AI summaries)
 - [ ] Invitation acceptance flow does not expose stored email
 - [ ] Forgot-password flow works end-to-end in production
 - [ ] Production smoke check: no `localhost` links, no plaintext email leakage
@@ -331,136 +280,9 @@ Plan RD-Sprint-1 after MT-Sprint-1 lands.
 
 ### 3.8 DR-Sprint — Open Book Discovery & Access Requests
 
-**Status:** ✅ Complete — all 5 phases merged to main 2026-08-17
+**Status:** ✅ Complete — all 5 phases merged to main 2026-08-17. See `HISTORY.md` for full detail.
 
-**Goal:** Allow authors to open a project for discovery by readers. Readers browse open books,
-submit access requests with an optional cover note and contact email. Authors review requests and
-accept or decline. Accepted readers are added to the book directly; an email confirms acceptance.
-The feature integrates with the existing AuthorNotification system and reader email pipeline.
-
----
-
-#### Model summary
-
-**`ScrivenerProject` extensions**
-- `IsOpen: bool` — author toggles on Publishing page
-- `Brief: string?` — pitch visible to readers (genre, word count, feedback wanted, content notes)
-- `OpenedAt: DateTime?` — updated every time `IsOpen` is set to `true`; acts as the "clean slate" stamp
-
-**`AccessRequest` (new entity)**
-- `Id: Guid`
-- `ReaderId: Guid` → User
-- `ProjectId: Guid` → ScrivenerProject
-- `CoverNote: string?` — optional, max 500 chars
-- `ContactEmail: string?` — optional off-platform contact email
-- `Status: Pending | Approved | Declined`
-- `RequestedAt: DateTime`
-- `RespondedAt: DateTime?`
-- `SeenByReaderAt: DateTime?` — set when reader views a declined request on their dashboard
-
-**`UserPreferences` extensions** (all nullable, all optional)
-- `ReaderBio: string?`
-- `ReaderGenreInterests: string?`
-- `ReaderPace: enum? (Slow | Steady | Fast)`
-
-**`NotificationEventType`** — add `AccessRequest`
-
----
-
-#### Business rules
-
-**Requesting**
-- Book must be `IsOpen = true`
-- Reader may not have an existing `Pending` request for the same project
-- Reader shown at submission: "You'll be notified by email if the author accepts."
-
-**Discovery page filter (per reader)**
-Show the "Request access" button if:
-- No `Declined` request exists for (reader, book)
-- OR most recent `Declined` has `RespondedAt ≤ project.OpenedAt` (book reinstated since decline → fresh state)
-
-**Declined entry visibility on reader dashboard**
-```
-Show if: Status = Pending
-      OR (Status = Declined AND SeenByReaderAt IS NULL)
-      OR (Status = Declined AND SeenByReaderAt.Date >= UtcNow.Date)
-```
-On dashboard load, set `SeenByReaderAt = UtcNow` for any visible Declined entry where it is null.
-The following calendar day the entry vanishes permanently from all reader-facing queries.
-
-**Accepting**
-- Adds reader to project via existing grant-access mechanism
-- Sends approval email to reader
-- Marks request `Approved`, sets `RespondedAt`
-- Other pending requests for the same book remain open (author can accept multiple readers)
-
-**Declining**
-- Marks request `Declined`, sets `RespondedAt`
-- No email sent; reader sees "Not accepted" on their dashboard for one day, then vanished
-
-**Revoking (`IsOpen → false`)**
-- All `Pending` requests bulk-declined (`RespondedAt = now`)
-- `OpenedAt` is NOT updated on revoke
-- Existing approved readers keep their access
-
-**Reinstating (`IsOpen → true`)**
-- `OpenedAt` updated to now
-- All previously declined readers may re-request (their `RespondedAt < new OpenedAt`)
-- This includes readers declined in the original run — it is a fully fresh state
-
----
-
-#### Phase 1 — Domain & Infrastructure ✅
-
-- [x] **Phase 1.1** — Add `IsOpen`, `Brief`, `OpenedAt` to `ScrivenerProject`
-- [x] **Phase 1.2** — Add optional `ReaderBio`, `ReaderGenreInterests`, `ReaderPace` to `UserPreferences`
-- [x] **Phase 1.3** — New `AccessRequest` entity + `AccessRequestStatus` enum
-- [x] **Phase 1.4** — Add `NotificationEventType.AccessRequest` to existing enum
-- [x] **Phase 1.5** — `IAccessRequestRepository` interface
-- [x] **Phase 1.6** — `AccessRequestRepository` implementation (InMemory tests)
-- [x] **Phase 1.7** — `DraftViewDbContext`: add `DbSet<AccessRequest>`; update `ScrivenerProject` config; update `UserPreferences` config
-- [x] **Phase 1.8** — EF migration: `AddOpenBookDiscovery`
-- [x] **Phase 1.9** — Register repository in DI (`ServiceCollectionExtensions`)
-- [x] Tests: `AccessRequestTests.cs`, `AccessRequestRepositoryTests.cs`
-
-#### Phase 2 — Application Layer ✅
-
-- [x] **Phase 2.1** — `IAccessRequestService` / `AccessRequestService`
-- [x] **Phase 2.2** — Extend project update logic: open/close toggles bulk-decline and `OpenedAt`
-- [x] **Phase 2.3** — Email template: "Your request to read [Book Title] has been accepted"
-- [x] **Phase 2.4** — Register service in DI
-- [x] Tests: `AccessRequestServiceTests.cs`
-
-#### Phase 3 — Author UI ✅
-
-- [x] **Phase 3.1** — Publishing page: "Open for beta readers" toggle + "Brief for readers" textarea
-- [x] **Phase 3.2** — Book list: pending request count badge per open book, links to Requests page
-- [x] **Phase 3.3** — New page `Author/BookRequests.cshtml` — lists Pending requests, Accept/Decline actions
-- [x] **Phase 3.4** — `AuthorController` actions: `BookRequests`, `ApproveRequest`, `DeclineRequest`
-- [x] Tests: controller unit tests for all three actions
-
-#### Phase 4 — Reader/Discovery UI ✅
-
-- [x] **Phase 4.1** — New public page `Discovery/Index.cshtml` (route: `/discover`)
-- [x] **Phase 4.2** — Inline request form: cover note + contact email
-- [x] **Phase 4.3** — Reader dashboard "Your requests" section; `MarkDeclinedAsSeenAsync` on load
-- [x] **Phase 4.4** — Reader profile card in Account Settings (bio, genre interests, pace)
-- [x] **Phase 4.5** — Safe landing: link to `/discover` from `NoActiveProject` view
-- [x] **Phase 4.6** — "Browse" nav link updated to point to `/discover`
-- [x] **Phase 4.7** — `DiscoveryController`: `Index()` (public) + `SubmitRequest` (authenticated reader)
-- [x] Tests: `DiscoveryControllerTests`, `AccountControllerTests` (+3), `UserServiceTests` (+2)
-
-#### Phase 5 — CSS & version bump ✅
-
-- [x] Discovery cards: `.discovery-card`, `.discovery-card__brief`, `.discovery-card__cta`, `.discovery-card__status`
-- [x] Request list: `.request-list`, `.request-list__item`, `.request-list__status`
-- [x] Reader profile section: `.reader-profile-card`, `.settings-hint`
-- [x] Dashboard requests: `.reader-dashboard-requests`, `.reader-dashboard-requests__heading`
-- [x] CSS version bump → `v2026-08-16-5`
-
----
-
-**Note:** RD-Sprint-3 ("Discover Authors") is superseded by DR-Sprint — complete 2026-08-17.
+**Note:** RD-Sprint-3 ("Discover Authors") is superseded by DR-Sprint.
 
 ---
 
