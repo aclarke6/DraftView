@@ -117,7 +117,7 @@ No open bugs.
 - [ ] Invitation acceptance flow does not expose stored email
 - [ ] Forgot-password flow works end-to-end in production
 - [ ] Production smoke check: no `localhost` links, no plaintext email leakage
-- [ ] Data handling aligns with UK GDPR and Data Protection Act 2018
+- [x] Data handling aligns with UK GDPR and Data Protection Act 2018 (reviewed 2026-08-17)
 - [ ] Copy production `EmailProtection:EncryptionKey` and `EmailProtection:LookupHmacKey` into secure password manager
 - [ ] Go-Live Day: send password reset emails to Becca (becca@the-dunlops.co.uk) and Hilary (hilaryrrb@gmail.com)
 
