@@ -125,7 +125,7 @@ No open bugs.
 
 ### 3.3 Platform Hardening
 
-- [ ] Fail2ban setup on production VM
+- [x] Fail2ban setup on production VM (verified active 2026-08-17 — sshd jail, 44 IPs banned since launch)
 - [ ] Report Fault modal (HomeController POST + `_Layout.cshtml` modal + CSS)
 - [ ] SystemStateMessage expiry (`ExpiresAt` nullable DateTime, `GetActiveAsync` filters expired)
 - [ ] Logging: failed authorization attempts
