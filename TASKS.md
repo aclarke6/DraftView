@@ -208,11 +208,30 @@ S-Sprint-1 complete — see `HISTORY.md`.
 ### 3.6 Incremental Refactor Roadmap
 See `REFACTORING.md` for full detail. Phase 1 complete — see `HISTORY.md`.
 
-- [ ] Phase 2 — Extract procedural controller workflows
+**Status:** 🔴 HIGH PRIORITY — Web layer review (2026-08-17) identified ~530 lines of business logic violations. See `Web-Layer-Business-Logic-Review.md` and GitHub issue for full detail.
+
+**Current Focus:** Web Layer Business Logic Extraction (replaces original Phase 2)
+
+- [ ] **Phase 2a — Extract Critical Controller Orchestration** (🔴 BLOCKING)
+  - [ ] Create `ISectionManagementService.GetSectionsSummaryAsync(projectId)` — extract `AuthorController.Sections` (lines 289-356)
+  - [ ] Create `IProjectManagementService.AddDiscoveredProjectsAsync(selectedUuids, authorId)` — extract `AuthorController.AddProjects` (lines 985-1077)
+  - [ ] Create `ICommentDisplayService.GetCommentDisplayDataAsync(...)` — extract `BaseReaderController.BuildCommentDisplayModelsAsync` (lines 263-355)
+  - [ ] Full TDD: failing tests → implementation → zero regressions
+- [ ] **Phase 2b — Standardize Background Sync**
+  - [ ] Create `ISyncOrchestrationService.StartSyncAsync(projectId, authorId)`
+  - [ ] Remove inline `Task.Run` blocks from `AuthorController.Sync` and `AddProjects`
+- [ ] **Phase 2c — Extract Domain Mutations**
+  - [ ] Move project activation/deactivation to `IProjectManagementService`
+  - [ ] Move version deletion rules to `IVersioningService`
+  - [ ] Remove all direct entity mutations from controllers
+- [ ] **Phase 2d — Extract Helper Orchestration**
+  - [ ] Create `IContentNavigationService` for tree-building helpers
+  - [ ] Extract reader management summary logic to `IReaderManagementService`
+
+**Original roadmap (deferred pending Web layer cleanup):**
 - [ ] Phase 3 — Decompose startup/seeding
 - [ ] Phase 4 — Standardise inheritance and shared utilities
 - [ ] Phase 5 — Extract remaining procedural workflows
-- [ ] Phase 6 — Standardise sync kickoff (remove inline `Task.Run`)
 
 ---
 
