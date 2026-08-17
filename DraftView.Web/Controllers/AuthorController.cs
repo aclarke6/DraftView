@@ -1210,29 +1210,6 @@ public class AuthorController(
         return RedirectToAction("Dashboard", "Reader");
     }
 
-    /// <summary>
-    /// Exits reader impersonation by signing the original author back in.
-    /// Exempt from ReadOnlyImpersonationFilter so it remains reachable during impersonation.
-    /// </summary>
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    [AllowWhenImpersonating]
-    public async Task<IActionResult> ExitImpersonation()
-    {
-        var authorEmail = User.FindFirstValue(ImpersonationClaims.ImpersonatorEmail);
-        if (authorEmail is null)
-            return RedirectToAction("Readers");
-
-        var identityUser = await userManager.FindByEmailAsync(authorEmail);
-        if (identityUser is null)
-            return RedirectToAction("Login", "Account");
-
-        var principal = await signInManager.CreateUserPrincipalAsync(identityUser);
-        await HttpContext.SignInAsync(IdentityConstants.ApplicationScheme, principal);
-
-        return RedirectToAction("Readers");
-    }
-
     // ---------------------------------------------------------------------------
     // Private helpers
     // ---------------------------------------------------------------------------

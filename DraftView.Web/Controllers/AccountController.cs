@@ -6,6 +6,7 @@ using DraftView.Domain.Interfaces.Services;
 using Microsoft.EntityFrameworkCore;
 using DraftView.Infrastructure.Persistence;
 using DraftView.Web.Models;
+using System.Security.Claims;
 
 namespace DraftView.Web.Controllers;
 
@@ -102,6 +103,29 @@ public class AccountController(
     {
         await signInManager.SignOutAsync();
         return RedirectToAction("Login");
+    }
+
+    // ---------------------------------------------------------------------------
+    // Exit reader impersonation
+    // Placed here (not AuthorController) so it is reachable while signed in as
+    // BetaReader during impersonation — AuthorController requires the Author role.
+    // ---------------------------------------------------------------------------
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ExitImpersonation()
+    {
+        var authorEmail = User.FindFirstValue(DraftView.Web.Infrastructure.ImpersonationClaims.ImpersonatorEmail);
+        if (authorEmail is null)
+            return RedirectToAction("Readers", "Author");
+
+        var identityUser = await userManager.FindByEmailAsync(authorEmail);
+        if (identityUser is null)
+            return RedirectToAction("Login");
+
+        var principal = await signInManager.CreateUserPrincipalAsync(identityUser);
+        await HttpContext.SignInAsync(IdentityConstants.ApplicationScheme, principal);
+
+        return RedirectToAction("Readers", "Author");
     }
 
     // ---------------------------------------------------------------------------
