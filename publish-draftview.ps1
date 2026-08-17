@@ -96,7 +96,7 @@ $deployDate  = Get-Date -Format "yyyy-MM-dd HH:mm"
 $commitHash  = git rev-parse --short HEAD
 $deployEntry = "Last deployed: $deployDate (commit: $commitHash)"
 
-$tasks = Get-Content $tasksPath -Raw
+$tasks = [System.IO.File]::ReadAllText($tasksPath, [System.Text.Encoding]::UTF8)
 if ($tasks -match 'Last deployed:') {
     $tasks = $tasks -replace 'Last deployed:[^\r\n]*', $deployEntry
 } else {
@@ -107,7 +107,7 @@ if ($tasks -match 'Last deployed:') {
 if ($tasks -notmatch [regex]::Escape($deployEntry)) {
     Write-Host "WARNING: TASKS.md was not updated — check the script." -ForegroundColor Yellow
 } else {
-    [System.IO.File]::WriteAllText($tasksPath, $tasks)
+    [System.IO.File]::WriteAllText($tasksPath, $tasks, [System.Text.Encoding]::UTF8)
     git pull origin main --ff-only
     git add TASKS.md
     git commit -m "chore: record production deployment $deployDate UTC"
