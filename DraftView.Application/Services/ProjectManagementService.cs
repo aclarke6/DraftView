@@ -27,6 +27,7 @@ public class ProjectManagementService(
             .ToList();
 
         var addedCount = 0;
+        string? singleAddedProjectName = null;
         foreach (var d in toAdd)
         {
             try
@@ -36,12 +37,14 @@ public class ProjectManagementService(
                 {
                     softDeleted.Restore(d.Name);
                     addedCount++;
+                    singleAddedProjectName = d.Name;
                 }
                 else
                 {
                     var project = Project.Create(d.Name, d.DropboxPath, authorId, d.SyncRootId);
                     await projectRepo.AddAsync(project, ct);
                     addedCount++;
+                    singleAddedProjectName = d.Name;
                 }
             }
             catch (DuplicateProjectException) { }
@@ -49,14 +52,18 @@ public class ProjectManagementService(
 
         await unitOfWork.SaveChangesAsync(ct);
 
-        var projectsToSync = new List<Guid>();
-        foreach (var d in toAdd)
+        var syncRootIdsToSync = toAdd.Select(d => d.SyncRootId).ToHashSet();
+        var projectsToSync    = new List<Guid>();
+
+        if (syncRootIdsToSync.Count > 0)
         {
-            var projects = await projectRepo.GetAllAsync(ct);
-            var project  = projects.FirstOrDefault(p => p.SyncRootId == d.SyncRootId);
-            if (project is null) continue;
-            project.MarkSyncing();
-            projectsToSync.Add(project.Id);
+            var allProjects = await projectRepo.GetAllAsync(ct);
+            foreach (var project in allProjects.Where(p =>
+                         p.SyncRootId is not null && syncRootIdsToSync.Contains(p.SyncRootId)))
+            {
+                project.MarkSyncing();
+                projectsToSync.Add(project.Id);
+            }
         }
 
         if (projectsToSync.Count > 0)
@@ -68,7 +75,7 @@ public class ProjectManagementService(
         return new AddDiscoveredProjectsResultDto
         {
             AddedCount = addedCount,
-            SingleAddedProjectName = addedCount == 1 ? toAdd.First().Name : null
+            SingleAddedProjectName = addedCount == 1 ? singleAddedProjectName : null
         };
     }
 

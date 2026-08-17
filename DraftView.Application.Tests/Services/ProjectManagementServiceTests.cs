@@ -173,4 +173,27 @@ public class ProjectManagementServiceTests
         Assert.Equal(2, result.AddedCount);
         Assert.Null(result.SingleAddedProjectName);
     }
+
+    [Fact]
+    public async Task AddDiscoveredProjectsAsync_FirstProjectDuplicate_SecondSucceeds_NameIsSecondProject()
+    {
+        var authorId = Guid.NewGuid();
+        var d1 = new DiscoveredProject { Name = "Dup Book", DropboxPath = "/a", SyncRootId = "uuid-dup", AlreadyAdded = false };
+        var d2 = new DiscoveredProject { Name = "Good Book", DropboxPath = "/b", SyncRootId = "uuid-good", AlreadyAdded = false };
+
+        _discoveryService.Setup(d => d.DiscoverAsync(authorId, default))
+            .ReturnsAsync(new List<DiscoveredProject> { d1, d2 });
+        _projectRepo.Setup(r => r.GetSoftDeletedBySyncRootIdAsync(It.IsAny<string>(), default))
+            .ReturnsAsync((Project?)null);
+        _projectRepo.SetupSequence(r => r.AddAsync(It.IsAny<Project>(), default))
+            .ThrowsAsync(new DuplicateProjectException("uuid-dup"))
+            .Returns(Task.CompletedTask);
+        _projectRepo.Setup(r => r.GetAllAsync(default))
+            .ReturnsAsync(new List<Project> { Project.Create("Good Book", "/b", authorId, "uuid-good") });
+
+        var result = await CreateSut().AddDiscoveredProjectsAsync(["uuid-dup", "uuid-good"], authorId);
+
+        Assert.Equal(1, result.AddedCount);
+        Assert.Equal("Good Book", result.SingleAddedProjectName);
+    }
 }
