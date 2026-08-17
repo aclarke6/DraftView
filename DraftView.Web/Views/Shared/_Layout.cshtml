@@ -147,7 +147,7 @@ All css files are included here to ensure consistent styling across the site.
                     <div class="site-nav__user">
                         @if (isImpersonating)
                         {
-                            <form asp-controller="Author" asp-action="ExitImpersonation" method="post" class="logout-form">
+                            <form asp-controller="Account" asp-action="ExitImpersonation" method="post" class="logout-form">
                                 @Html.AntiForgeryToken()
                                 <button type="submit" class="site-nav__reader-view" title="Exit reader view">
                                     Reader View — @impersonatedName

@@ -443,39 +443,6 @@ public class ReaderController(
                 .Select(a => a.ProjectId)
                 .ToList();
 
-        // Kindle-style resume — redirect to last read position across all projects
-        ReadEvent? resume = null;
-        foreach (var pid in projectIds)
-        {
-            var ev = await ProgressService.GetLastReadEventAsync(user.Id, pid);
-            if (ev is not null && (resume is null || ev.LastOpenedAt > resume.LastOpenedAt))
-                resume = ev;
-        }
-        if (resume is not null)
-        {
-            var resumeSection = await SectionRepo.GetByIdAsync(resume.SectionId);
-            if (resumeSection is not null && resumeSection.IsPublished)
-            {
-                // Scene (Document) â€” mobile reads the scene directly
-                if (resumeSection.NodeType == NodeType.Document)
-                {
-                    return RedirectToAction("Read", new
-                    {
-                        id = resumeSection.Id
-                    });
-                }
-
-                // Chapter (Folder) â€” mobile should go to the scene list, not Read(chapterId)
-                if (resumeSection.NodeType == NodeType.Folder)
-                {
-                    return RedirectToAction("Scenes", new
-                    {
-                        chapterId = resumeSection.Id
-                    });
-                }
-            }
-        }
-
         var projectId = projectIds.FirstOrDefault();
         if (projectId == Guid.Empty)
             return View("NoActiveProject");
