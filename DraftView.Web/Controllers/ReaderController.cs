@@ -27,12 +27,14 @@ public class ReaderController(
     IHumanOverrideService humanOverrideService,
     IPassageAnchorService passageAnchorService,
     IAccessRequestRepository accessRequestRepo,
+    IReaderDashboardService readerDashboardService,
     ILogger<ReaderController> logger)
     : BaseReaderController(projectRepo, sectionRepo, commentService, progressService,
                            userRepository, readerAccessRepo, humanOverrideService, passageAnchorService, logger)
 {
     private readonly IUserPreferencesRepository _userPreferencesRepo = userPreferencesRepo;
     private readonly IPassageAnchorService _passageAnchorService = passageAnchorService;
+    private readonly IReaderDashboardService _readerDashboardService = readerDashboardService;
     private static readonly Regex HtmlTagRegex = new("<[^>]+>", RegexOptions.Compiled);
     private static readonly Regex WhitespaceRegex = new("\\s+", RegexOptions.Compiled);
 
@@ -355,34 +357,6 @@ public class ReaderController(
                 .Select(a => a.ProjectId)
                 .ToList();
 
-        // Kindle-style resume — redirect to last read position across all projects
-        ReadEvent? resume = null;
-        foreach (var pid in projectIds)
-        {
-            var ev = await ProgressService.GetLastReadEventAsync(user.Id, pid);
-            if (ev is not null && (resume is null || ev.LastOpenedAt > resume.LastOpenedAt))
-                resume = ev;
-        }
-        if (resume is not null)
-        {
-            var resumeSection = await SectionRepo.GetByIdAsync(resume.SectionId);
-            if (resumeSection is not null && resumeSection.IsPublished)
-            {
-                // Scene (Document) — redirect to parent chapter
-                if (resumeSection.NodeType == NodeType.Document && resumeSection.ParentId.HasValue)
-                {
-                    var parentChapter = await SectionRepo.GetByIdAsync(resumeSection.ParentId.Value);
-                    if (parentChapter is not null && parentChapter.IsPublished)
-                        return Redirect(Url.Action("Read", new { id = parentChapter.Id }) + "#scene-" + resumeSection.Id);
-                }
-                // Chapter (Folder) — redirect directly
-                else if (resumeSection.NodeType == NodeType.Folder)
-                {
-                    return RedirectToAction("Read", new { id = resumeSection.Id });
-                }
-            }
-        }
-
         var visibleRequests = await accessRequestRepo.GetVisibleByReaderIdAsync(user.Id, DateTime.UtcNow.Date);
         var requestRows = new List<ReaderDashboardRequestViewModel>();
         foreach (var req in visibleRequests)
@@ -434,6 +408,25 @@ public class ReaderController(
                 ReadChapters      = chaptersWithProgress.Count(c => c.HasRead),
                 PublishedChapters = chaptersWithProgress
             });
+        }
+
+        // Populate comment counts via application service
+        var allChapterIds = viewModel.Projects
+            .SelectMany(p => p.PublishedChapters.Select(c => c.Chapter.Id))
+            .ToList();
+        var commentCounts = await _readerDashboardService.GetReaderChapterCommentCountsAsync(user.Id, allChapterIds);
+        foreach (var proj in viewModel.Projects)
+            foreach (var ch in proj.PublishedChapters)
+                if (commentCounts.TryGetValue(ch.Chapter.Id, out var count))
+                    ch.ReaderCommentCount = count;
+
+        // Resolve resume target via application service
+        var resumeTarget = await _readerDashboardService.GetCrossProjectResumeTargetAsync(user.Id, projectIds);
+        if (resumeTarget is not null)
+        {
+            viewModel.ContinueReadingUrl = resumeTarget.SceneId.HasValue
+                ? Url.Action("Read", new { id = resumeTarget.ChapterId }) + "#scene-" + resumeTarget.SceneId
+                : Url.Action("Read", new { id = resumeTarget.ChapterId });
         }
 
         return View("DesktopDashboard", viewModel);

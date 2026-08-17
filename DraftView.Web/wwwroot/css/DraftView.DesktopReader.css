@@ -1050,5 +1050,51 @@
     transition: width 0.3s;
 }
 
+/* Continue Reading CTA inside the hero */
+.reader-dashboard__continue-btn {
+    display: inline-block;
+    margin-top: var(--space-5);
+    padding: var(--space-3) var(--space-6);
+    background: var(--color-accent);
+    color: #fff;
+    border-radius: var(--radius);
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    text-decoration: none;
+    transition: opacity var(--transition);
+}
+
+.reader-dashboard__continue-btn:hover {
+    opacity: 0.88;
+    text-decoration: none;
+}
+
+/* Comments column */
+.reader-dashboard__head--comments {
+    width: 90px;
+    text-align: center;
+}
+
+.reader-dashboard__cell--comments {
+    text-align: center;
+}
+
+.reader-dashboard__comment-count {
+    display: inline-block;
+    min-width: 24px;
+    padding: 2px var(--space-2);
+    background: var(--color-accent);
+    color: #fff;
+    border-radius: 999px;
+    font-size: var(--text-xs);
+    font-weight: var(--font-bold);
+    text-align: center;
+}
+
+.reader-dashboard__comment-none {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+}
+
 
 
