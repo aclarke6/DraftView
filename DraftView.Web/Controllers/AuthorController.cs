@@ -9,6 +9,10 @@ using DraftView.Domain.Interfaces.Services;
 using DraftView.Domain.Policies;
 using DraftView.Web.Models;
 using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authentication;
+using System.Security.Claims;
+using DraftView.Web.Infrastructure;
 namespace DraftView.Web.Controllers;
 
 #pragma warning disable CS9107, CS9113
@@ -36,7 +40,9 @@ public class AuthorController(
     ILogger<AuthorController> logger,
     IAccessRequestService accessRequestService,
     IAccessRequestRepository accessRequestRepo,
-    IUserPreferencesRepository userPreferencesRepo) : BaseController(userRepo)
+    IUserPreferencesRepository userPreferencesRepo,
+    UserManager<IdentityUser> userManager,
+    SignInManager<IdentityUser> signInManager) : BaseController(userRepo)
 {
     // ---------------------------------------------------------------------------
     // Dashboard
@@ -1161,6 +1167,69 @@ public class AuthorController(
 
         await GetUnitOfWork().SaveChangesAsync();
         TempData["Success"] = "Reader removed.";
+        return RedirectToAction("Readers");
+    }
+
+    // ---------------------------------------------------------------------------
+    // Reader impersonation
+    // ---------------------------------------------------------------------------
+
+    /// <summary>
+    /// Signs the author in as the given active beta reader, preserving an
+    /// ImpersonatorEmail claim so the session can be restored via ExitImpersonation.
+    /// All non-GET requests are blocked by ReadOnlyImpersonationFilter while active.
+    /// </summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ImpersonateReader(Guid userId)
+    {
+        var reader = await userRepo.GetByIdAsync(userId);
+        if (reader is null)
+            return NotFound();
+
+        if (reader.Role != Role.BetaReader)
+        {
+            TempData["Error"] = "Only beta readers can be viewed in Reader View.";
+            return RedirectToAction("Readers");
+        }
+
+        var identityUser = await userManager.FindByEmailAsync(reader.Email);
+        if (identityUser is null)
+        {
+            TempData["Error"] = "This reader has not yet accepted their invitation.";
+            return RedirectToAction("Readers");
+        }
+
+        var principal = await signInManager.CreateUserPrincipalAsync(identityUser);
+        var identity = (System.Security.Claims.ClaimsIdentity)principal.Identity!;
+        identity.AddClaim(new System.Security.Claims.Claim(ImpersonationClaims.ImpersonatorEmail, User.Identity!.Name!));
+        identity.AddClaim(new System.Security.Claims.Claim(ImpersonationClaims.ImpersonatedDisplayName, reader.DisplayName));
+
+        await HttpContext.SignInAsync(IdentityConstants.ApplicationScheme, principal);
+
+        return RedirectToAction("Dashboard", "Reader");
+    }
+
+    /// <summary>
+    /// Exits reader impersonation by signing the original author back in.
+    /// Exempt from ReadOnlyImpersonationFilter so it remains reachable during impersonation.
+    /// </summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [AllowWhenImpersonating]
+    public async Task<IActionResult> ExitImpersonation()
+    {
+        var authorEmail = User.FindFirstValue(ImpersonationClaims.ImpersonatorEmail);
+        if (authorEmail is null)
+            return RedirectToAction("Readers");
+
+        var identityUser = await userManager.FindByEmailAsync(authorEmail);
+        if (identityUser is null)
+            return RedirectToAction("Login", "Account");
+
+        var principal = await signInManager.CreateUserPrincipalAsync(identityUser);
+        await HttpContext.SignInAsync(IdentityConstants.ApplicationScheme, principal);
+
         return RedirectToAction("Readers");
     }
 

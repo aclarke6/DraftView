@@ -128,7 +128,7 @@ No open bugs.
 - [ ] Report Fault modal (HomeController POST + `_Layout.cshtml` modal + CSS)
 - [ ] SystemStateMessage expiry (`ExpiresAt` nullable DateTime, `GetActiveAsync` filters expired)
 - [ ] Logging: failed authorization attempts
-- [ ] Impersonation — read-only, explicit enter/exit mode (design agreed, not built)
+- [x] CHANGE-010 — Impersonation — read-only reader view (implemented on change/CHANGE-010-reader-impersonation)
 
 ---
 

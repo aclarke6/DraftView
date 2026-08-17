@@ -59,6 +59,12 @@ else
                             <div class="actions-cell">
                                 @if (r.Status == ReaderStatus.Active)
                                 {
+                                    <form asp-action="ImpersonateReader" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="userId" value="@r.Id" />
+                                        <button type="submit" class="comment-action-btn"
+                                                title="View as @r.DisplayName">@Html.Raw(Icons.BookOpen())</button>
+                                    </form>
                                     @if (r.HasPendingInvitation)
                                     {
                                         <form asp-action="ResendInvitation" method="post">

@@ -140,7 +140,8 @@ namespace DraftView.Web.Extensions
         public static IServiceCollection AddWebServices(this IServiceCollection services, IConfiguration configuration)
         {
             // MVC / Razor Pages
-            services.AddControllersWithViews();
+            services.AddControllersWithViews(options =>
+                options.Filters.Add<ReadOnlyImpersonationFilter>());
             services.AddHttpContextAccessor();
             services.AddScoped<IAuthorizationFacade,
 HttpContextAuthorizationFacade>();
