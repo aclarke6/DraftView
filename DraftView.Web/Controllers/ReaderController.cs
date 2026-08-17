@@ -443,48 +443,65 @@ public class ReaderController(
                 .Select(a => a.ProjectId)
                 .ToList();
 
-        // Kindle-style resume — redirect to last read position across all projects
-        ReadEvent? resume = null;
-        foreach (var pid in projectIds)
-        {
-            var ev = await ProgressService.GetLastReadEventAsync(user.Id, pid);
-            if (ev is not null && (resume is null || ev.LastOpenedAt > resume.LastOpenedAt))
-                resume = ev;
-        }
-        if (resume is not null)
-        {
-            var resumeSection = await SectionRepo.GetByIdAsync(resume.SectionId);
-            if (resumeSection is not null && resumeSection.IsPublished)
-            {
-                // Scene (Document) â€” mobile reads the scene directly
-                if (resumeSection.NodeType == NodeType.Document)
-                {
-                    return RedirectToAction("Read", new
-                    {
-                        id = resumeSection.Id
-                    });
-                }
-
-                // Chapter (Folder) â€” mobile should go to the scene list, not Read(chapterId)
-                if (resumeSection.NodeType == NodeType.Folder)
-                {
-                    return RedirectToAction("Scenes", new
-                    {
-                        chapterId = resumeSection.Id
-                    });
-                }
-            }
-        }
-
         var projectId = projectIds.FirstOrDefault();
         if (projectId == Guid.Empty)
-            return View("NoActiveProject");
+            return View(“NoActiveProject”);
 
         var project = await ProjectRepo.GetByIdAsync(projectId);
         if (project is null || !project.IsReaderActive || project.IsSoftDeleted)
-            return View("NoActiveProject");
+            return View(“NoActiveProject”);
 
-        return RedirectToAction("Chapters", new { projectId = project.Id });
+        var allSections = await SectionRepo.GetByProjectIdAsync(project.Id);
+
+        var folderChildIds = allSections
+            .Where(s => s.NodeType == NodeType.Folder && s.ParentId.HasValue)
+            .Select(s => s.ParentId!.Value)
+            .ToHashSet();
+
+        var sortOrderById = allSections.ToDictionary(s => s.Id, s => s.SortOrder);
+
+        var publishedChapters = allSections
+            .Where(s => s.NodeType == NodeType.Folder && s.IsPublished && !s.IsSoftDeleted
+                        && !folderChildIds.Contains(s.Id))
+            .OrderBy(s => s.ParentId.HasValue ? sortOrderById.GetValueOrDefault(s.ParentId.Value) : 0)
+            .ThenBy(s => s.SortOrder)
+            .ToList();
+
+        var chapterRows = new List<MobileChapterRowViewModel>();
+        foreach (var chapter in publishedChapters)
+        {
+            var hasRead    = await ProgressService.HasReadSectionAsync(user.Id, chapter.Id);
+            var sceneCount = allSections.Count(s => s.ParentId == chapter.Id
+                                                    && s.NodeType == NodeType.Document
+                                                    && s.IsPublished && !s.IsSoftDeleted);
+            chapterRows.Add(new MobileChapterRowViewModel {
+                Chapter    = chapter,
+                HasRead    = hasRead,
+                SceneCount = sceneCount
+            });
+        }
+
+        Guid? lastReadSceneId   = null;
+        Guid? lastReadChapterId = null;
+
+        var lastReadEvent = await ProgressService.GetLastReadEventAsync(user.Id, project.Id);
+        if (lastReadEvent is not null)
+        {
+            var lastSection = allSections.FirstOrDefault(s => s.Id == lastReadEvent.SectionId);
+            if (lastSection?.NodeType == NodeType.Document)
+            {
+                lastReadSceneId   = lastSection.Id;
+                lastReadChapterId = lastSection.ParentId;
+            }
+        }
+
+        return View(“MobileChapters”, new MobileChaptersViewModel {
+            ProjectName       = project.Name,
+            ProjectId         = project.Id,
+            Chapters          = chapterRows,
+            LastReadSceneId   = lastReadSceneId,
+            LastReadChapterId = lastReadChapterId
+        });
     }
 
     private async Task<IActionResult> DesktopRead(Guid id, Domain.Entities.User user)
