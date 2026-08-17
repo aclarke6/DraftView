@@ -119,7 +119,7 @@ No open bugs.
 - [ ] Production smoke check: no `localhost` links, no plaintext email leakage
 - [x] Data handling aligns with UK GDPR and Data Protection Act 2018 (reviewed 2026-08-17)
 - [x] Copy production `EmailProtection:EncryptionKey` and `EmailProtection:LookupHmacKey` into secure password manager (done 2026-08-17)
-- [ ] Apply pending EF migrations to production DB: `AddOpenBookDiscovery` (2026-08-16) and `RemoveAiSummaryFromSectionVersion` (2026-08-17) — publish script does not run migrations; run `dotnet ef database update` manually on production before Go-Live
+- [x] Apply pending EF migrations to production DB — all 27 migrations applied and in sync (verified 2026-08-17)
 - [ ] UAT: complete scenarios C–K (A, B partial, H passed — see `DraftView-UAT-Plan.md`)
 - [ ] Go-Live Day: send password reset emails to Becca (becca@the-dunlops.co.uk) and Hilary (hilaryrrb@gmail.com)
 
