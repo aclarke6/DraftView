@@ -10,7 +10,7 @@ Last updated: 2026-08-17
 **Repository:** https://github.com/aclarke6/DraftView
 
 ### Current Test State
-- 844 total, 844 passed, 1 skipped, 0 failed (Web.Tests DB-connection failures are pre-existing environment, not code failures)
+- 862 total, 862 passed, 1 skipped, 0 failed
 - 1 skipped — `SmtpEmailSenderIntegrationTests` (sends real email, manual only)
 
 ### Active Work
@@ -19,7 +19,7 @@ Last updated: 2026-08-17
 | RSprint Series | 🟡 In progress — RS-A to RS-E complete, RS-F next |
 | S-Sprint Series | 🟡 In progress — S-Sprint-1 complete, S-Sprint-2 next |
 | MT-Sprint Series | 🔴 HIGH PRIORITY — second author interest accelerates timeline; see `MultiTenancy.md` |
-| RD-Sprint Series | 🔵 Pre-planning — Reader Dashboard; see section 3.7 |
+| RD-Sprint Series | 🟡 In progress — RD-Sprint-1 (Continue Reading CTA) merged to main 2026-08-17; see section 3.7 |
 | DR-Sprint Series | ✅ Complete — merged to main 2026-08-17; see section 3.8 |
 | Go-Live Prerequisites | 🔴 Blocking — items below must complete before launch |
 | UAT | 🟡 In progress |
