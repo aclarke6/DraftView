@@ -74,4 +74,42 @@ if ($LASTEXITCODE -ne 0) { Write-Host "Restart failed." -ForegroundColor Red; ex
 Write-Host "Verifying service is running..." -ForegroundColor Cyan
 Start-Sleep -Seconds 3
 ssh -i $key $server "sudo systemctl is-active draftview"
+if ($LASTEXITCODE -ne 0) { Write-Host "Service did not start cleanly." -ForegroundColor Red; exit 1 }
+
+# ---------------------------------------------------------------------------
+# Record deployment in TASKS.md and commit to main
+# ---------------------------------------------------------------------------
+Write-Host "Recording deployment in TASKS.md..." -ForegroundColor Cyan
+$repoRoot    = "C:\Users\alast\source\repos\DraftView"
+$tasksPath   = "$repoRoot\TASKS.md"
+$deployDate  = Get-Date -Format "yyyy-MM-dd"
+$commitHash  = git rev-parse --short HEAD
+$deployEntry = "Last deployed: $deployDate (commit: $commitHash)"
+
+$tasks = Get-Content $tasksPath -Raw
+if ($tasks -match 'Last deployed:') {
+    $tasks = $tasks -replace 'Last deployed:[^\r\n]*', $deployEntry
+} else {
+    $replacement = '$1' + "`r`n" + $deployEntry
+    $tasks = $tasks -replace '(Last updated:[^\r\n]*)', $replacement
+}
+
+if ($tasks -notmatch [regex]::Escape($deployEntry)) {
+    Write-Host "WARNING: TASKS.md was not updated — check the script." -ForegroundColor Yellow
+} else {
+    [System.IO.File]::WriteAllText($tasksPath, $tasks)
+    git add TASKS.md
+    git commit -m "chore: record production deployment $deployDate"
+    if ($LASTEXITCODE -eq 0) {
+        git push origin main
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "WARNING: Push failed — commit is local, push manually." -ForegroundColor Yellow
+        } else {
+            Write-Host "Deployment recorded in TASKS.md." -ForegroundColor Green
+        }
+    } else {
+        Write-Host "WARNING: Commit failed." -ForegroundColor Yellow
+    }
+}
+
 Write-Host "Done." -ForegroundColor Green
