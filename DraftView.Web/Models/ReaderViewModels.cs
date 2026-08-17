@@ -147,6 +147,7 @@ public class DesktopDashboardViewModel
     public int TotalReadChapters => Projects.Sum(p => p.ReadChapters);
     public int TotalChapters => Projects.Sum(p => p.TotalChapters);
     public IReadOnlyList<ReaderDashboardRequestViewModel> AccessRequests { get; init; } = [];
+    public string? ContinueReadingUrl { get; init; }
 }
 
 public class DesktopChapterProgressViewModel

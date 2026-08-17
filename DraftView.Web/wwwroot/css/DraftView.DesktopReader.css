@@ -1052,3 +1052,27 @@
 
 
 
+
+/* Continue Reading CTA */
+.reader-dashboard-continue {
+    max-width: var(--content-max-width, 960px);
+    margin: 0 auto var(--space-4);
+    padding: 0 var(--space-4);
+}
+
+.reader-dashboard-continue__btn {
+    display: inline-block;
+    padding: var(--space-3) var(--space-6);
+    background: var(--color-accent);
+    color: var(--color-text-on-accent, #fff);
+    border-radius: var(--radius-md);
+    font-weight: var(--font-semibold);
+    font-size: var(--text-base);
+    text-decoration: none;
+    transition: opacity 0.15s;
+}
+
+.reader-dashboard-continue__btn:hover {
+    opacity: 0.85;
+    text-decoration: none;
+}

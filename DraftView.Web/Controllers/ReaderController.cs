@@ -355,7 +355,8 @@ public class ReaderController(
                 .Select(a => a.ProjectId)
                 .ToList();
 
-        // Kindle-style resume — redirect to last read position across all projects
+        // Continue Reading — find most recent read position across all projects
+        string? continueReadingUrl = null;
         ReadEvent? resume = null;
         foreach (var pid in projectIds)
         {
@@ -368,17 +369,15 @@ public class ReaderController(
             var resumeSection = await SectionRepo.GetByIdAsync(resume.SectionId);
             if (resumeSection is not null && resumeSection.IsPublished)
             {
-                // Scene (Document) — redirect to parent chapter
                 if (resumeSection.NodeType == NodeType.Document && resumeSection.ParentId.HasValue)
                 {
                     var parentChapter = await SectionRepo.GetByIdAsync(resumeSection.ParentId.Value);
                     if (parentChapter is not null && parentChapter.IsPublished)
-                        return Redirect(Url.Action("Read", new { id = parentChapter.Id }) + "#scene-" + resumeSection.Id);
+                        continueReadingUrl = Url.Action("Read", new { id = parentChapter.Id }) + "#scene-" + resumeSection.Id;
                 }
-                // Chapter (Folder) — redirect directly
                 else if (resumeSection.NodeType == NodeType.Folder)
                 {
-                    return RedirectToAction("Read", new { id = resumeSection.Id });
+                    continueReadingUrl = Url.Action("Read", new { id = resumeSection.Id });
                 }
             }
         }
@@ -395,7 +394,7 @@ public class ReaderController(
             });
         }
 
-        var viewModel = new DesktopDashboardViewModel { AccessRequests = requestRows };
+        var viewModel = new DesktopDashboardViewModel { AccessRequests = requestRows, ContinueReadingUrl = continueReadingUrl };
 
         foreach (var projectId in projectIds)
         {
