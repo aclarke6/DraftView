@@ -6,9 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Interfaces.Services;
-using DraftView.Domain.Policies;
 using DraftView.Web.Models;
-using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication;
 using System.Security.Claims;
@@ -20,7 +18,6 @@ namespace DraftView.Web.Controllers;
 public class AuthorController(
     IProjectRepository projectRepo,
     ISectionRepository sectionRepo,
-    ISectionVersionRepository sectionVersionRepo,
     IPublicationService publicationService,
     IUserService userService,
     IDashboardService dashboardService,
@@ -31,11 +28,8 @@ public class AuthorController(
     ISyncOrchestrationService syncOrchestrationService,
     IReaderAccessRepository readerAccessRepo,
     IVersioningService versioningService,
-    IHtmlDiffService htmlDiffService,
-    IChangeClassificationService changeClassificationService,
     IImportService importService,
     ISectionTreeService sectionTreeService,
-    IConfiguration configuration,
     ILogger<AuthorController> logger,
     IAccessRequestService accessRequestService,
     IAccessRequestRepository accessRequestRepo,
@@ -43,7 +37,9 @@ public class AuthorController(
     UserManager<IdentityUser> userManager,
     SignInManager<IdentityUser> signInManager,
     ISectionManagementService sectionManagementService,
-    IProjectManagementService projectManagementService) : BaseController(userRepo)
+    IProjectManagementService projectManagementService,
+    IContentNavigationService contentNavigationService,
+    IReaderManagementService readerManagementService) : BaseController(userRepo)
 {
     // ---------------------------------------------------------------------------
     // Dashboard
@@ -346,9 +342,7 @@ public class AuthorController(
         var project = await projectRepo.GetByIdAsync(projectId);
         if (project is null) return NotFound();
 
-        var sections = await sectionRepo.GetByProjectIdAsync(projectId);
-        var sorted = SortDepthFirst(sections);
-        var chapters = await BuildPublishingChapterViewModelsAsync(sorted, project.ProjectType);
+        var chapterData = await contentNavigationService.BuildPublishingChapterDataAsync(projectId, project.ProjectType);
         var pendingCount = project.IsOpen
             ? await accessRequestRepo.GetPendingCountByProjectIdAsync(projectId)
             : 0;
@@ -356,7 +350,7 @@ public class AuthorController(
         return View(new PublishingPageViewModel
         {
             Project = project,
-            Chapters = chapters,
+            Chapters = chapterData.Select(MapChapterData).ToList(),
             PendingRequestCount = pendingCount
         });
     }
@@ -630,32 +624,16 @@ public class AuthorController(
     // ---------------------------------------------------------------------------
     public async Task<IActionResult> Readers()
     {
-        var readers = await userRepo.GetAllBetaReadersAsync();
-
-        var rows = new List<ReaderRowViewModel>();
-        foreach (var r in readers.Where(r => !r.IsSoftDeleted))
+        var rows = await readerManagementService.GetReaderSummaryAsync();
+        return View(rows.Select(r => new ReaderRowViewModel
         {
-            var pending = await invitationRepo.GetPendingByUserIdAsync(r.Id);
-            var hasPending = pending.Count > 0;
-
-            var status = r.IsActive
-                ? ReaderStatus.Active
-                : hasPending
-                    ? ReaderStatus.Invited
-                    : ReaderStatus.Inactive;
-
-            rows.Add(new ReaderRowViewModel
-            {
-                Id                   = r.Id,
-                DisplayName          = string.IsNullOrWhiteSpace(r.DisplayName) ? "Pending reader" : r.DisplayName,
-                Email                = string.Empty,
-                Status               = status,
-                ActivatedAt          = r.ActivatedAt,
-                HasPendingInvitation = hasPending
-            });
-        }
-
-        return View(rows.OrderBy(r => r.DisplayName).ToList());
+            Id                   = r.Id,
+            DisplayName          = r.DisplayName,
+            Email                = string.Empty,
+            Status               = r.Status,
+            ActivatedAt          = r.ActivatedAt,
+            HasPendingInvitation = r.HasPendingInvitation
+        }).ToList());
     }
 
     [HttpGet]
@@ -1051,176 +1029,36 @@ public class AuthorController(
     private IReadEventRepository GetReadEventRepo() =>
         HttpContext.RequestServices.GetRequiredService<IReadEventRepository>();
 
-    private async Task<IReadOnlyList<PublishingChapterViewModel>> BuildPublishingChapterViewModelsAsync(
-        IReadOnlyList<(Section Section, int Depth)> sorted,
-        ProjectType projectType)
-    {
-        var chapters = new List<PublishingChapterViewModel>();
-        foreach (var chapter in GetPublishedLeafChapters(sorted))
+    private static PublishingChapterViewModel MapChapterData(PublishingChapterData d) =>
+        new()
         {
-            var chapterViewModel = await BuildPublishingChapterViewModelAsync(
-                chapter,
-                sorted,
-                projectType);
-
-            chapters.Add(chapterViewModel);
-        }
-
-        return chapters;
-    }
-
-    private async Task<PublishingChapterViewModel> BuildPublishingChapterViewModelAsync(
-        Section chapter,
-        IReadOnlyList<(Section Section, int Depth)> sorted,
-        ProjectType projectType)
-    {
-        var documents = GetPublishedDocumentsForChapter(chapter.Id, sorted);
-        var docViewModels = new List<PublishingDocumentViewModel>();
-        foreach (var doc in documents)
-            docViewModels.Add(await BuildPublishingDocumentViewModelAsync(doc));
-
-        var chapterHasChanges = documents.Any(d => d.ContentChangedSincePublish);
-        var chapterClassification = docViewModels
-            .Where(d => d.Classification.HasValue)
-            .Select(d => d.Classification)
-            .Max();
-
-        return new PublishingChapterViewModel
-        {
-            Chapter = chapter,
-            HasChanges = chapterHasChanges,
-            Classification = chapterClassification,
-            CanRevoke = docViewModels.Any(d => d.CanRevoke),
-            ShowDocumentControls = documents.Count > 1 || projectType == ProjectType.Manual,
-            Documents = docViewModels
+            Chapter              = d.Chapter,
+            HasChanges           = d.HasChanges,
+            Classification       = d.Classification,
+            CanRevoke            = d.CanRevoke,
+            ShowDocumentControls = d.ShowDocumentControls,
+            Documents            = d.Documents.Select(MapDocumentData).ToList()
         };
-    }
 
-    private async Task<PublishingDocumentViewModel> BuildPublishingDocumentViewModelAsync(Section document)
-    {
-        var latestVersion = await sectionVersionRepo.GetLatestAsync(document.Id);
-        var allVersions = latestVersion is not null
-            ? await sectionVersionRepo.GetAllBySectionIdAsync(document.Id)
-            : [];
-
-        var tier = GetSubscriptionTier();
-        var limit = VersionRetentionPolicy.GetLimit(tier);
-        var versionCount = allVersions.Count;
-        var atLimit = VersionRetentionPolicy.IsAtLimit(versionCount, tier);
-        var latestVersionNumber = allVersions.Any()
-            ? allVersions.Max(v => v.VersionNumber)
-            : 0;
-
-        var versionHistory = atLimit
-            ? allVersions
-                .OrderByDescending(v => v.VersionNumber)
-                .Select(v => new VersionHistoryItem
-                {
-                    VersionId = v.Id,
-                    VersionNumber = v.VersionNumber,
-                    VersionLabel = v.VersionLabel,
-                    CreatedAt = v.CreatedAt,
-                    Classification = v.ChangeClassification,
-                    CanDelete = v.VersionNumber != latestVersionNumber
-                })
-                .ToList()
-            : [];
-
-        return new PublishingDocumentViewModel
+    private static PublishingDocumentViewModel MapDocumentData(PublishingDocumentData d) =>
+        new()
         {
-            Document = document,
-            CurrentVersionNumber = latestVersion?.VersionNumber,
-            CurrentVersionLabel = latestVersion?.VersionLabel,
-            HasChanges = document.ContentChangedSincePublish,
-            Classification = TryClassifyDocumentChanges(document, latestVersion),
-            CanRevoke = allVersions.Count > 1,
-            VersionHistory = versionHistory,
-            ShowVersionHistory = atLimit,
-            RetentionLimit = limit
-        };
-    }
-
-    private SubscriptionTier GetSubscriptionTier()
-    {
-        var raw = configuration["DraftView:SubscriptionTier"];
-        return Enum.TryParse<SubscriptionTier>(raw, ignoreCase: true, out var tier)
-            ? tier
-            : SubscriptionTier.Free;
-    }
-
-    private ChangeClassification? TryClassifyDocumentChanges(Section document, SectionVersion? latestVersion)
-    {
-        if (latestVersion is null || !document.ContentChangedSincePublish)
-            return null;
-
-        try
-        {
-            var diff = htmlDiffService.Compute(
-                latestVersion.HtmlContent,
-                document.HtmlContent ?? string.Empty);
-
-            return changeClassificationService.Classify(diff);
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static IReadOnlyList<Section> GetPublishedLeafChapters(IReadOnlyList<(Section Section, int Depth)> sorted)
-    {
-        var folderChildIds = sorted
-            .Where(x => x.Section.NodeType == NodeType.Folder && x.Section.ParentId.HasValue)
-            .Select(x => x.Section.ParentId!.Value)
-            .ToHashSet();
-
-        return sorted
-            .Select(x => x.Section)
-            .Where(s => s.NodeType == NodeType.Folder &&
-                        s.IsPublished &&
-                        !folderChildIds.Contains(s.Id))
-            .ToList();
-    }
-
-    private static IReadOnlyList<Section> GetPublishedDocumentsForChapter(
-        Guid chapterId,
-        IReadOnlyList<(Section Section, int Depth)> sorted) =>
-        sorted
-            .Select(x => x.Section)
-            .Where(s => s.ParentId == chapterId &&
-                        s.NodeType == NodeType.Document &&
-                        !s.IsSoftDeleted)
-            .ToList();
-
-    private static IReadOnlyList<(Section Section, int Depth)> SortDepthFirst(
-        IReadOnlyList<Section> sections)
-    {
-        var root   = Guid.Empty;
-        var lookup = new Dictionary<Guid, List<Section>>();
-
-        foreach (var s in sections)
-        {
-            var key = s.ParentId ?? root;
-            if (!lookup.ContainsKey(key)) lookup[key] = [];
-            lookup[key].Add(s);
-        }
-
-        foreach (var key in lookup.Keys.ToList())
-            lookup[key] = [.. lookup[key].OrderBy(s => s.SortOrder)];
-
-        var result = new List<(Section, int)>();
-
-        void Walk(Guid parentId, int depth)
-        {
-            if (!lookup.TryGetValue(parentId, out var children)) return;
-            foreach (var child in children)
+            Document             = d.Document,
+            CurrentVersionNumber = d.CurrentVersionNumber,
+            CurrentVersionLabel  = d.CurrentVersionLabel,
+            HasChanges           = d.HasChanges,
+            Classification       = d.Classification,
+            CanRevoke            = d.CanRevoke,
+            VersionHistory       = d.VersionHistory.Select(v => new VersionHistoryItem
             {
-                result.Add((child, depth));
-                Walk(child.Id, depth + 1);
-            }
-        }
-
-        Walk(root, 0);
-        return result;
-    }
+                VersionId      = v.VersionId,
+                VersionNumber  = v.VersionNumber,
+                VersionLabel   = v.VersionLabel,
+                CreatedAt      = v.CreatedAt,
+                Classification = v.Classification,
+                CanDelete      = v.CanDelete
+            }).ToList(),
+            ShowVersionHistory   = d.ShowVersionHistory,
+            RetentionLimit       = d.RetentionLimit
+        };
 }

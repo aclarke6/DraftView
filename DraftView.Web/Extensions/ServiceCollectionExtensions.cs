@@ -114,6 +114,8 @@ namespace DraftView.Web.Extensions
             services.AddScoped<IProjectManagementService, ProjectManagementService>();
             services.AddScoped<ICommentDisplayService, CommentDisplayService>();
             services.AddScoped<ISyncOrchestrationService, SyncOrchestrationService>();
+            services.AddScoped<IContentNavigationService, ContentNavigationService>();
+            services.AddScoped<IReaderManagementService, ReaderManagementService>();
 
             return services;
         }
