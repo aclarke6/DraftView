@@ -9,19 +9,23 @@ using DraftView.Domain.Interfaces.Services;
 namespace DraftView.Application.Tests.Services;
 
 /// <summary>
-/// Tests for SectionManagementService.GetSectionsSummaryAsync.
+/// Tests for SectionManagementService.GetSectionsSummaryAsync and GetSectionDetailAsync.
 /// Covers: depth-first ordering, publishability flagging, change classification
-/// for published chapters with edited documents, and null return for unknown projects.
+/// for published chapters with edited documents, null return for unknown projects,
+/// section detail aggregation.
 /// Excludes: EF Core persistence (unit tests only), UI rendering.
 /// </summary>
 public class SectionManagementServiceTests
 {
-    private readonly Mock<IProjectRepository>              _projectRepo               = new();
-    private readonly Mock<ISectionRepository>               _sectionRepo               = new();
-    private readonly Mock<ISectionVersionRepository>         _sectionVersionRepo        = new();
-    private readonly Mock<IPublicationService>                _publicationService        = new();
-    private readonly Mock<IHtmlDiffService>                    _htmlDiffService           = new();
-    private readonly Mock<IChangeClassificationService>          _changeClassificationService = new();
+    private readonly Mock<IProjectRepository>            _projectRepo                 = new();
+    private readonly Mock<ISectionRepository>             _sectionRepo                 = new();
+    private readonly Mock<ISectionVersionRepository>       _sectionVersionRepo          = new();
+    private readonly Mock<IPublicationService>              _publicationService          = new();
+    private readonly Mock<IHtmlDiffService>                  _htmlDiffService             = new();
+    private readonly Mock<IChangeClassificationService>        _changeClassificationService = new();
+    private readonly Mock<ICommentService>                      _commentService              = new();
+    private readonly Mock<IUserRepository>                       _userRepository              = new();
+    private readonly Mock<IReadEventRepository>                   _readEventRepository         = new();
 
     private SectionManagementService CreateSut() => new(
         _projectRepo.Object,
@@ -29,7 +33,10 @@ public class SectionManagementServiceTests
         _sectionVersionRepo.Object,
         _publicationService.Object,
         _htmlDiffService.Object,
-        _changeClassificationService.Object);
+        _changeClassificationService.Object,
+        _commentService.Object,
+        _userRepository.Object,
+        _readEventRepository.Object);
 
     [Fact]
     public async Task GetSectionsSummaryAsync_ProjectNotFound_ReturnsNull()
@@ -128,5 +135,84 @@ public class SectionManagementServiceTests
 
         Assert.DoesNotContain(chapter.Id, result!.ChapterHasChanges);
         Assert.False(result.ClassificationMap.ContainsKey(chapter.Id));
+    }
+
+    // -----------------------------------------------------------------------
+    // GetSectionDetailAsync
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetSectionDetailAsync_SectionNotFound_ReturnsNull()
+    {
+        var sectionId = Guid.NewGuid();
+        _sectionRepo.Setup(r => r.GetByIdAsync(sectionId, default)).ReturnsAsync((Section?)null);
+
+        var result = await CreateSut().GetSectionDetailAsync(sectionId, Guid.NewGuid());
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetSectionDetailAsync_SceneWithParent_ResolvesChapterTitle()
+    {
+        var project  = Project.Create("Book", "/path", Guid.NewGuid(), "root-uuid");
+        var chapter  = Section.CreateFolder(project.Id, "c1", "Chapter One", null, 0);
+        var scene    = Section.CreateDocument(project.Id, "s1", "Scene 1", chapter.Id, 0, "<p>a</p>", "h1", null);
+        var authorId = Guid.NewGuid();
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(scene.Id, default)).ReturnsAsync(scene);
+        _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default)).ReturnsAsync(chapter);
+        _commentService.Setup(s => s.GetThreadsForSectionAsync(scene.Id, authorId, default)).ReturnsAsync([]);
+        _readEventRepository.Setup(r => r.GetBySectionIdAsync(scene.Id, default)).ReturnsAsync([]);
+
+        var result = await CreateSut().GetSectionDetailAsync(scene.Id, authorId);
+
+        Assert.NotNull(result);
+        Assert.Equal("Chapter One", result!.ChapterTitle);
+        Assert.Same(scene, result.Section);
+    }
+
+    [Fact]
+    public async Task GetSectionDetailAsync_ReturnsReadCount()
+    {
+        var project  = Project.Create("Book", "/path", Guid.NewGuid(), "root-uuid");
+        var scene    = Section.CreateDocument(project.Id, "s1", "Scene 1", null, 0, "<p>a</p>", "h1", null);
+        var authorId = Guid.NewGuid();
+        var readerId = Guid.NewGuid();
+        var readEvent1 = ReadEvent.Create(scene.Id, readerId);
+        var readEvent2 = ReadEvent.Create(scene.Id, Guid.NewGuid());
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(scene.Id, default)).ReturnsAsync(scene);
+        _commentService.Setup(s => s.GetThreadsForSectionAsync(scene.Id, authorId, default)).ReturnsAsync([]);
+        _readEventRepository.Setup(r => r.GetBySectionIdAsync(scene.Id, default))
+            .ReturnsAsync([readEvent1, readEvent2]);
+
+        var result = await CreateSut().GetSectionDetailAsync(scene.Id, authorId);
+
+        Assert.NotNull(result);
+        Assert.Equal(2, result!.ReadCount);
+    }
+
+    [Fact]
+    public async Task GetSectionDetailAsync_BuildsCommentAuthorNameMap()
+    {
+        var project    = Project.Create("Book", "/path", Guid.NewGuid(), "root-uuid");
+        var scene      = Section.CreateDocument(project.Id, "s1", "Scene 1", null, 0, "<p>a</p>", "h1", null);
+        var authorId   = Guid.NewGuid();
+        var readerId   = Guid.NewGuid();
+        var readerUser = User.Create("r@example.test", "Alice", Role.BetaReader);
+        var comment    = Comment.CreateRoot(scene.Id, readerId, "Great scene!", Domain.Enumerations.Visibility.Public);
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(scene.Id, default)).ReturnsAsync(scene);
+        _commentService.Setup(s => s.GetThreadsForSectionAsync(scene.Id, authorId, default))
+            .ReturnsAsync([comment]);
+        _readEventRepository.Setup(r => r.GetBySectionIdAsync(scene.Id, default)).ReturnsAsync([]);
+        _userRepository.Setup(r => r.GetByIdAsync(readerId, default)).ReturnsAsync(readerUser);
+
+        var result = await CreateSut().GetSectionDetailAsync(scene.Id, authorId);
+
+        Assert.NotNull(result);
+        Assert.True(result!.CommentAuthorNames.ContainsKey(readerId));
+        Assert.Equal("Alice", result.CommentAuthorNames[readerId]);
     }
 }

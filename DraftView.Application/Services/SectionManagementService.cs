@@ -6,9 +6,9 @@ using DraftView.Domain.Interfaces.Services;
 namespace DraftView.Application.Services;
 
 /// <summary>
-/// Builds the aggregated sections summary for the author's Sections page,
-/// encapsulating depth-first tree ordering, publishability evaluation, and
-/// change classification across all project chapters.
+/// Builds the aggregated sections summary and section detail data for the author's
+/// Sections and Section pages, encapsulating depth-first tree ordering, publishability
+/// evaluation, change classification, and comment author resolution.
 /// </summary>
 public class SectionManagementService(
     IProjectRepository projectRepo,
@@ -16,7 +16,10 @@ public class SectionManagementService(
     ISectionVersionRepository sectionVersionRepo,
     IPublicationService publicationService,
     IHtmlDiffService htmlDiffService,
-    IChangeClassificationService changeClassificationService) : ISectionManagementService
+    IChangeClassificationService changeClassificationService,
+    ICommentService commentService,
+    IUserRepository userRepository,
+    IReadEventRepository readEventRepository) : ISectionManagementService
 {
     /// <summary>
     /// Loads the project and its full section tree, evaluates publishability
@@ -95,6 +98,44 @@ public class SectionManagementService(
             Publishable       = publishable,
             ChapterHasChanges = chapterHasChanges,
             ClassificationMap = classificationMap
+        };
+    }
+
+    /// <summary>
+    /// Loads a section with its parent chapter title, all comment threads,
+    /// a display-name map for every comment author, and the read count.
+    /// Returns null when the section does not exist.
+    /// </summary>
+    public async Task<SectionDetailDto?> GetSectionDetailAsync(
+        Guid sectionId, Guid authorId, CancellationToken ct = default)
+    {
+        var section = await sectionRepo.GetByIdAsync(sectionId, ct);
+        if (section is null) return null;
+
+        string? chapterTitle = null;
+        if (section.ParentId.HasValue)
+        {
+            var parent = await sectionRepo.GetByIdAsync(section.ParentId.Value, ct);
+            chapterTitle = parent?.Title;
+        }
+
+        var comments = await commentService.GetThreadsForSectionAsync(sectionId, authorId, ct);
+        var events   = await readEventRepository.GetBySectionIdAsync(sectionId, ct);
+
+        var nameMap = new Dictionary<Guid, string>();
+        foreach (var uid in comments.Select(c => c.AuthorId).Distinct())
+        {
+            var u = await userRepository.GetByIdAsync(uid, ct);
+            nameMap[uid] = u?.DisplayName ?? "Unknown";
+        }
+
+        return new SectionDetailDto
+        {
+            Section            = section,
+            ChapterTitle       = chapterTitle,
+            Comments           = comments,
+            CommentAuthorNames = nameMap,
+            ReadCount          = events.Count
         };
     }
 
