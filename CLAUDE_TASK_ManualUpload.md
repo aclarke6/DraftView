@@ -1,6 +1,6 @@
 # Task: Manual chapter upload — text and Word documents
 **Date:** 2026-08-18
-**Branch:** copilot/feat-manual-chapter-upload
+**Branch:** Change-PC/feat-manual-chapter-upload
 
 Implement a chapter-based manual upload path for authors. Manual projects are a
 parallel source type to Scrivener sync and must remain mutually exclusive with
