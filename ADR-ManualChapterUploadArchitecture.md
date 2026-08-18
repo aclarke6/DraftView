@@ -50,15 +50,22 @@ Required launch fields:
 This keeps the manual-upload path honest to the author's file structure and
 avoids brittle heading-based splitting.
 
-### 3. Store parsed plain text in the database at launch
+### 3. Store parsed markdown in the database at launch
 
-At launch, `ManualChapter` stores parsed plain text in the database and does not
-persist original file bytes or disk-backed chapter files.
+At launch, `ManualChapter` stores parsed content as markdown in the database
+and does not persist original file bytes or disk-backed chapter files.
 
 - Simpler operational model
 - No separate file store to manage
 - Easier author-scoped backup, query, and reorder behaviour
 - Avoids retaining binary payloads that are not needed by the reader surface
+- Markdown preserves basic authorial intent (headings, emphasis) that plain text
+  would discard, at negligible storage cost
+
+`RawContent` is a markdown string for all content sources (file import, paste,
+inline edit). For `.docx` imports the parser converts OpenXml structure to
+markdown. For `.txt` imports and paste, the content is stored as-is (authors
+may use markdown syntax directly).
 
 If richer fidelity or file re-download is needed later, raw file storage can be
 added as a follow-up design.
@@ -78,16 +85,59 @@ Launch file support is intentionally narrow:
 - `.txt` → plain text parser
 - `.docx` → Word parser
 
-### 6. Use `DocumentFormat.OpenXml` for `.docx` parsing
+### 6. Use `DocumentFormat.OpenXml` for `.docx` parsing, with optional Markdown output
 
 `DocumentFormat.OpenXml` is the chosen `.docx` parsing library.
 
 - Already aligned with the existing .NET ecosystem
 - No extra service dependency or opaque wrapper required
-- Good fit for extracting plain text without introducing a rich editor model
+- Paragraph structure, heading styles, and character-level runs (bold, italic)
+  are all accessible via the OpenXml object model
 
-The parser contract should normalize `.docx` content to plain text with
-preserved paragraph breaks; rich formatting is out of scope for v1.
+**Markdown formatting — feasible and adopted for v1:**
+
+`.docx` files can contain Heading, bold, and italic formatting that has
+authorial intent (chapter headings, emphasis, scene-break markers). Stripping
+these to plain text loses information that authors reasonably expect to survive
+import. Markdown is a low-cost way to preserve that intent:
+
+| `.docx` element | Markdown equivalent |
+|---|---|
+| `Heading1` paragraph style | `# text` |
+| `Heading2` paragraph style | `## text` |
+| `Heading3` paragraph style | `### text` |
+| Bold run (`<w:b/>`) | `**text**` |
+| Italic run (`<w:i/>`) | `*text*` |
+| Normal paragraph | plain paragraph with blank-line separator |
+
+This mapping is implementable directly against the OpenXml SDK with no
+additional library. The parser produces a markdown string; `RawContent` stores
+that string. The inline editor displays and edits the same markdown string.
+
+**`.txt` files:** The parser checks for common markdown syntax already present
+in the file (headings, bold, italic) and stores the content as-is. No
+transformation is applied.
+
+**Scope boundary:** Tables, images, footnotes, comments, tracked changes, and
+other complex Word structures are stripped and not represented. The goal is
+prose fidelity, not full document fidelity.
+
+**Reader rendering:** The reader surface already renders HTML from
+`SectionVersion.HtmlContent`. A markdown-to-HTML conversion step is added to
+the publishing pipeline for manual chapters, converting stored markdown to HTML
+before creating the `SectionVersion` snapshot. This keeps reader rendering
+unchanged and source-type-agnostic.
+
+**Impact assessment:**
+
+| Concern | Assessment |
+|---|---|
+| Implementation complexity | Low — OpenXml run enumeration is straightforward; markdown output is string concatenation |
+| Storage impact | Negligible — markdown is marginally larger than plain text |
+| Inline editor | Compatible — `<textarea>` works for markdown; a simple preview toggle can be added post-v1 |
+| Paste upload path | Paste accepts markdown syntax directly; no conversion needed |
+| Reader transparency | Unaffected — markdown-to-HTML runs at publish time, invisible to reader |
+| `.docx` round-trip fidelity | Prose headings and emphasis preserved; complex elements stripped cleanly |
 
 ### 7. Launch limits
 
@@ -96,6 +146,92 @@ preserved paragraph breaks; rich formatting is out of scope for v1.
 
 These limits comfortably exceed normal prose chapter sizes while protecting the
 parser path and database-backed storage model from abuse.
+
+### 8. Support cut/paste as an additional upload method
+
+Authors may also submit chapter content by pasting text directly into a
+textarea, in addition to file import. This covers authors who do not work in
+`.txt` or `.docx` files and prefer a copy/paste workflow.
+
+- A **Paste content** tab sits alongside the **Upload file** tab in the upload
+  modal
+- Pasted text is treated as plain text and stored identically to file-parsed
+  content
+- The author must still provide a chapter title; no filename is recorded for
+  paste-origin chapters
+- `OriginalFileName` is `null` for paste-origin chapters
+- All other invariants (non-empty title, non-null content, valid sort order)
+  apply equally
+
+### 9. Provide an inline text editor for minor chapter edits
+
+Authors must be able to make minor corrections to chapter text inside DraftView
+without re-uploading a file. An online editor satisfies requirement 4 of issue
+#34.
+
+- The editor is activated via an **Edit** button on the chapter row
+- It presents the stored `RawContent` in a resizable `<textarea>`
+- On save, the existing `ManualChapter` record is updated in place and a new
+  `ManualChapterVersion` snapshot is created (see decision 10)
+- The editor is not a rich-text editor — plain text only, consistent with the
+  v1 content model
+- No editor is shown for Scrivener-synced content
+
+### 10. Maintain version history for manual chapters, with hard delete
+
+Version history for manual chapters satisfies requirement 5 of issue #34.
+
+- Every time a chapter's content changes (via file upload, replace, paste, or
+  inline edit), the previous content is snapshotted into a new
+  `ManualChapterVersion` record
+- `ManualChapterVersion` is a separate entity:
+  - `Id`
+  - `ManualChapterId`
+  - `AuthorId`
+  - `VersionNumber`
+  - `RawContent`
+  - `SnapshotReason` (enum: `FileUpload | Replace | PasteUpload | InlineEdit`)
+  - `SnapshotAt`
+- Version records are immutable after creation — no setter, no update path
+- Authors can view a chapter's version list from the chapter row
+- **Clear history** removes all version records for that chapter via a
+  **hard delete** — this satisfies requirement 5 explicitly and is the one
+  permitted physical-delete path in the system
+- Hard delete of a `ManualChapterVersion` does not affect the live chapter content
+- Clearing history requires explicit confirmation to protect against accidental loss
+
+### 11. Reader transparency — manual and sync projects are indistinguishable
+
+Requirement 2 of issue #34: the reader must not be able to distinguish between
+Scrivener-synced and manual-upload projects.
+
+- Reader-facing views (`MobileChapters`, `DesktopRead`, scene/chapter pages)
+  render published content regardless of source type
+- The publishing pipeline resolves `ManualChapter` content through the same
+  `SectionVersion` snapshot mechanism already used by Scrivener sync:
+  - Publishing a manual chapter calls `VersioningService.RepublishSectionAsync`
+    (or equivalent), creating a `SectionVersion` from `ManualChapter.RawContent`
+  - The reader reads `SectionVersion.HtmlContent`, which is source-agnostic
+- No reader-facing route, view, or ViewModel exposes `ProjectType` or
+  `ManualChapter` identity
+- "Manual Upload" labelling is confined to author-only screens
+
+### 12. OOP design principles applied throughout
+
+Requirement 1 of issue #34.
+
+- The parser contract (`IChapterFileParser`) is a polymorphic interface;
+  `PlainTextChapterParser` and `DocxChapterParser` are concrete implementations,
+  selected by extension without switch statements in the upload handler
+- Upload method variants (file vs paste) are unified at the application layer
+  via a single `UploadChapterAsync` overload set or a command model —
+  controllers dispatch to the same service regardless of input origin
+- `ManualChapterVersion` history capture is handled inside the application
+  service, not in the controller; the service decides when a snapshot is
+  warranted
+- Hard-delete of version history is an explicit, named operation
+  (`ClearVersionHistoryAsync`) on the application service, not an exposed
+  repository call
 
 ## Consequences
 
@@ -110,9 +246,11 @@ parser path and database-backed storage model from abuse.
 ### Trade-offs
 
 - Manual projects do not reuse existing `Section` tree tooling
-- `.docx` formatting is reduced to normalized plain text
+- `.docx` formatting is reduced to markdown (headings, bold, italic); tables,
+  images, and other complex elements are stripped
 - Future publishing and reader-resolution work must explicitly decide how
-  `ManualChapter` participates in reader-facing delivery
+  `ManualChapter` participates in reader-facing delivery (markdown-to-HTML
+  conversion at publish time is the confirmed approach)
 
 ## Rejected alternatives
 
