@@ -3,7 +3,6 @@ using DraftView.Domain.Enumerations;
 using DraftView.Domain.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Interfaces.Services;
 using DraftView.Web.Models;
@@ -17,16 +16,13 @@ namespace DraftView.Web.Controllers;
 [Authorize(Policy = "RequireAuthorPolicy")]
 public class AuthorController(
     IProjectRepository projectRepo,
-    ISectionRepository sectionRepo,
     IPublicationService publicationService,
     IUserService userService,
     IDashboardService dashboardService,
     IUserRepository userRepo,
     IProjectDiscoveryService discoveryService,
-    IInvitationRepository invitationRepo,
     ISyncProgressTracker progressTracker,
     ISyncOrchestrationService syncOrchestrationService,
-    IReaderAccessRepository readerAccessRepo,
     IVersioningService versioningService,
     IImportService importService,
     ISectionTreeService sectionTreeService,
@@ -701,23 +697,15 @@ public class AuthorController(
         var (author, error) = await RequireCurrentAuthorAsync();
         if (error is not null || author is null) return error ?? Forbid();
 
-        var reader = await userRepo.GetByIdAsync(userId, ct);
-        if (reader is null) return NotFound();
-
-        // Reader was manually activated without completing the invitation flow —
-        // deactivate first so IssueInvitationAsync can accept the re-invite.
-        if (reader.IsActive)
-            await userService.DeactivateUserAsync(userId, author.Id, ct);
-
-        var pending = (await invitationRepo.GetPendingByUserIdAsync(userId, ct)).FirstOrDefault();
-        var policy = pending?.ExpiryPolicy ?? DraftView.Domain.Enumerations.ExpiryPolicy.AlwaysOpen;
-        var expiresAt = pending?.ExpiresAt;
-
         try
         {
-            await userService.IssueInvitationAsync(reader.Email, reader.DisplayName, policy, expiresAt, author.Id, ct);
+            await userService.ResendInvitationAsync(userId, author.Id, ct);
             TempData["Success"] = "Invitation resent.";
             return RedirectToAction("Readers");
+        }
+        catch (InvariantViolationException)
+        {
+            return NotFound();
         }
         catch (Exception ex)
         {
@@ -746,34 +734,16 @@ public class AuthorController(
         var (author, error) = await RequireCurrentAuthorAsync();
         if (error is not null || author is null) return error ?? Forbid();
 
-        var s = await sectionRepo.GetByIdAsync(id);
-        if (s is null) return NotFound();
-
-        // Resolve parent chapter title if this is a scene
-        string? chapterTitle = null;
-        if (s.ParentId.HasValue)
-        {
-            var parent = await sectionRepo.GetByIdAsync(s.ParentId.Value);
-            chapterTitle = parent?.Title;
-        }
-
-        var comments = await GetCommentService().GetThreadsForSectionAsync(id, author.Id);
-        var events   = await GetReadEventRepo().GetBySectionIdAsync(id);
-
-        var nameMap = new Dictionary<Guid, string>();
-        foreach (var uid in comments.Select(c => c.AuthorId).Distinct())
-        {
-            var u = await userRepo.GetByIdAsync(uid);
-            nameMap[uid] = u?.DisplayName ?? "Unknown";
-        }
+        var detail = await sectionManagementService.GetSectionDetailAsync(id, author.Id);
+        if (detail is null) return NotFound();
 
         return View(new SectionViewModel
         {
-            Section            = s,
-            ChapterTitle       = chapterTitle,
-            Comments           = comments,
-            ReadCount          = events.Count,
-            CommentAuthorNames = nameMap
+            Section            = detail.Section,
+            ChapterTitle       = detail.ChapterTitle,
+            Comments           = detail.Comments,
+            ReadCount          = detail.ReadCount,
+            CommentAuthorNames = detail.CommentAuthorNames
         });
     }
 
@@ -892,30 +862,17 @@ public class AuthorController(
         var (author, error) = await RequireCurrentAuthorAsync();
         if (error is not null || author is null) return error ?? Forbid();
 
-        var reader = await userRepo.GetByIdAsync(readerId);
-        if (reader is null) return NotFound();
-
-        var allProjects = await projectRepo.GetAllAsync();
-        var activeProjects = allProjects.Where(p => !p.IsSoftDeleted).ToList();
-
-        var accessRecords = await readerAccessRepo.GetByReaderIdAsync(readerId);
-        var accessProjectIds = accessRecords.Select(a => a.ProjectId).ToHashSet();
-
-        var invitation = await invitationRepo.GetByUserIdAsync(readerId);
-        var isPending = invitation is not null
-                     && invitation.Status == Domain.Enumerations.InvitationStatus.Pending;
-        var status = reader.IsActive
-            ? ReaderStatus.Active
-            : isPending ? ReaderStatus.Invited : ReaderStatus.Inactive;
+        var data = await readerManagementService.GetReaderAccessDataAsync(readerId);
+        if (data is null) return NotFound();
 
         return View(new ReaderAccessViewModel
         {
-            ReaderId            = reader.Id,
-            DisplayName         = reader.DisplayName,
-            Email               = string.Empty,
-            Status              = status,
-            ProjectsWithAccess = [.. activeProjects.Where(p => accessProjectIds.Contains(p.Id))],
-            ProjectsWithoutAccess = [.. activeProjects.Where(p => !accessProjectIds.Contains(p.Id))]
+            ReaderId              = data.ReaderId,
+            DisplayName           = data.DisplayName,
+            Email                 = string.Empty,
+            Status                = data.Status,
+            ProjectsWithAccess    = [.. data.ProjectsWithAccess],
+            ProjectsWithoutAccess = [.. data.ProjectsWithoutAccess]
         });
     }
 
@@ -927,27 +884,7 @@ public class AuthorController(
         var (author, error) = await RequireCurrentAuthorAsync();
         if (error is not null || author is null) return error ?? Forbid();
 
-        foreach (var projectId in grantIds)
-        {
-            var existing = await readerAccessRepo.GetByReaderAndProjectAsync(readerId, projectId);
-            if (existing is null)
-            {
-                var access = ReaderAccess.Grant(readerId, author.Id, projectId);
-                await readerAccessRepo.AddAsync(access);
-            }
-            else if (!existing.IsActive)
-            {
-                existing.Reinstate();
-            }
-        }
-
-        foreach (var projectId in revokeIds)
-        {
-            var existing = await readerAccessRepo.GetByReaderAndProjectAsync(readerId, projectId);
-            existing?.Revoke();
-        }
-
-        await GetUnitOfWork().SaveChangesAsync();
+        await readerManagementService.UpdateReaderAccessAsync(readerId, grantIds, revokeIds, author.Id);
         TempData["Success"] = "Project access updated.";
         return RedirectToAction("Readers");
     }
@@ -962,17 +899,7 @@ public class AuthorController(
         var (author, error) = await RequireCurrentAuthorAsync();
         if (error is not null || author is null) return error ?? Forbid();
 
-        // Revoke all ReaderAccess for this author
-        var allProjects = await projectRepo.GetAllAsync();
-        foreach (var project in allProjects.Where(p => !p.IsSoftDeleted))
-        {
-            var access = await readerAccessRepo.GetByReaderAndProjectAsync(userId, project.Id);
-            access?.Revoke();
-        }
-
-        await userService.SoftDeleteUserAsync(userId, author.Id);
-
-        await GetUnitOfWork().SaveChangesAsync();
+        await readerManagementService.SoftDeleteReaderAsync(userId, author.Id);
         TempData["Success"] = "Reader removed.";
         return RedirectToAction("Readers");
     }
@@ -1025,9 +952,6 @@ public class AuthorController(
 
     private ICommentService GetCommentService() =>
         HttpContext.RequestServices.GetRequiredService<ICommentService>();
-
-    private IReadEventRepository GetReadEventRepo() =>
-        HttpContext.RequestServices.GetRequiredService<IReadEventRepository>();
 
     private static PublishingChapterViewModel MapChapterData(PublishingChapterData d) =>
         new()

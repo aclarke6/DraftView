@@ -24,6 +24,20 @@ public sealed class SectionsSummaryDto
     public required IReadOnlyDictionary<Guid, ChangeClassification> ClassificationMap { get; init; }
 }
 
+/// <summary>
+/// All data required to render the author's section detail page, including
+/// the section itself, its parent chapter title, comments with author names,
+/// and the read count.
+/// </summary>
+public sealed class SectionDetailDto
+{
+    public required Section Section { get; init; }
+    public string? ChapterTitle { get; init; }
+    public required IReadOnlyList<Comment> Comments { get; init; }
+    public required IReadOnlyDictionary<Guid, string> CommentAuthorNames { get; init; }
+    public required int ReadCount { get; init; }
+}
+
 public interface ISectionManagementService
 {
     /// <summary>
@@ -33,4 +47,12 @@ public interface ISectionManagementService
     /// </summary>
     Task<SectionsSummaryDto?> GetSectionsSummaryAsync(
         Guid projectId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the section detail including comments, comment author names,
+    /// and read count for the author's section view. Returns null when the
+    /// section does not exist.
+    /// </summary>
+    Task<SectionDetailDto?> GetSectionDetailAsync(
+        Guid sectionId, Guid authorId, CancellationToken ct = default);
 }

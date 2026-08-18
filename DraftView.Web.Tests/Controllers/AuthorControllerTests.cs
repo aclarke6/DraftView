@@ -19,16 +19,13 @@ namespace DraftView.Web.Tests.Controllers;
 public class AuthorControllerTests
 {
     private readonly Mock<IProjectRepository> projectRepo = new();
-    private readonly Mock<ISectionRepository> sectionRepo = new();
     private readonly Mock<IPublicationService> publicationService = new();
     private readonly Mock<IUserService> userService = new();
     private readonly Mock<IDashboardService> dashboardService = new();
     private readonly Mock<IUserRepository> userRepo = new();
     private readonly Mock<IProjectDiscoveryService> discoveryService = new();
-    private readonly Mock<IInvitationRepository> invitationRepo = new();
     private readonly Mock<ISyncProgressTracker> progressTracker = new();
     private readonly Mock<ISyncOrchestrationService> syncOrchestrationService = new();
-    private readonly Mock<IReaderAccessRepository> readerAccessRepo = new();
     private readonly Mock<IVersioningService> versioningService = new();
     private readonly Mock<IImportService> importService = new();
     private readonly Mock<ISectionTreeService> sectionTreeService = new();
@@ -61,16 +58,13 @@ public class AuthorControllerTests
     {
         var controller = new AuthorController(
             projectRepo.Object,
-            sectionRepo.Object,
             publicationService.Object,
             userService.Object,
             dashboardService.Object,
             userRepo.Object,
             discoveryService.Object,
-            invitationRepo.Object,
             progressTracker.Object,
             syncOrchestrationService.Object,
-            readerAccessRepo.Object,
             versioningService.Object,
             importService.Object,
             sectionTreeService.Object,
@@ -194,27 +188,22 @@ public class AuthorControllerTests
     }
 
     [Fact]
-    public async Task SoftDeleteReader_WhenAuthorRemovesReader_SoftDeletesUser()
+    public async Task SoftDeleteReader_WhenAuthorRemovesReader_DelegatesToReaderManagementService()
     {
         var author = User.Create("author@example.test", "Author", Role.Author);
-        var project = Project.Create("Project One", "/Apps/Scrivener/ProjectOne", author.Id, "sync-root");
         var sut = CreateSut();
         var readerId = Guid.NewGuid();
 
         userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
             .ReturnsAsync(author);
-        projectRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([project]);
-        readerAccessRepo.Setup(r => r.GetByReaderAndProjectAsync(readerId, project.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ReaderAccess?)null);
 
         var result = await sut.SoftDeleteReader(readerId);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal("Readers", redirect.ActionName);
-        userService.Verify(s => s.SoftDeleteUserAsync(readerId, author.Id, It.IsAny<CancellationToken>()), Times.Once);
-        userService.Verify(s => s.DeactivateUserAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
-        unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        readerManagementService.Verify(
+            s => s.SoftDeleteReaderAsync(readerId, author.Id, It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]

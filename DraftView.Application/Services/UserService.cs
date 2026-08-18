@@ -185,6 +185,28 @@ public class UserService(
         await unitOfWork.SaveChangesAsync(ct);
     }
 
+    /// <summary>
+    /// Re-issues an invitation to an existing reader. Deactivates the reader first
+    /// if they were manually activated without completing the invitation flow.
+    /// Uses the reader's most recent pending invitation policy when available,
+    /// otherwise defaults to AlwaysOpen.
+    /// </summary>
+    public async Task ResendInvitationAsync(Guid userId, Guid authorId, CancellationToken ct = default)
+    {
+        var reader = await userRepo.GetByIdAsync(userId, ct);
+        if (reader is null)
+            throw new InvariantViolationException("U-RESEND-NOT-FOUND", "Reader not found.");
+
+        if (reader.IsActive)
+            await DeactivateUserAsync(userId, authorId, ct);
+
+        var pending   = (await invitationRepo.GetPendingByUserIdAsync(userId, ct)).FirstOrDefault();
+        var policy    = pending?.ExpiryPolicy ?? ExpiryPolicy.AlwaysOpen;
+        var expiresAt = pending?.ExpiresAt;
+
+        await IssueInvitationAsync(reader.Email, reader.DisplayName, policy, expiresAt, authorId, ct);
+    }
+
     public async Task UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default)
     {
         var validatedDisplayName = ValidateDisplayName(displayName);
