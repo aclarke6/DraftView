@@ -87,7 +87,9 @@ tabs share the same title field and submit path; only the content origin differs
 - Title textbox (not prefilled — author must enter it)
 - Submit button
 - Cancel button
-- Pasted content is submitted as plain text; no filename is associated
+- Pasted content is stored as-is; authors may use markdown syntax (e.g.
+  `# Heading`, `**bold**`, `*italic*`) and it will be preserved and rendered
+  correctly when the chapter is published
 
 ### Validation (both tabs)
 
@@ -144,6 +146,8 @@ Authors may make minor corrections without re-uploading.
 
 - An **Edit** button appears on each chapter row
 - Clicking **Edit** expands an inline edit zone below the chapter row
+- The editor is a plain-text `<textarea>`; markdown syntax entered here is
+  respected (same rules as paste upload)
 
 ### Edit zone
 
@@ -215,7 +219,12 @@ v1 — FileUpload — 16 Aug 2026 18:00
 - Chapter list labels should use "Chapter" consistently, not "Section"
 - Client-side validation is convenience only; server-side validation remains
   authoritative
-- `.docx` import extracts plain text only; rich formatting preview is out of
-  scope
+- `.docx` import maps paragraph styles and character formatting to markdown:
+  headings (H1–H3), bold, and italic are preserved; tables, images, and other
+  complex elements are stripped
+- `.txt` and paste content is stored as-is; markdown syntax written by the
+  author is preserved
+- Markdown is converted to HTML at publish time; the reader surface is
+  unaffected by the content source
 - Cut/paste and file-upload tabs share the same server-side handler via a
   command model; the controller does not branch on input origin

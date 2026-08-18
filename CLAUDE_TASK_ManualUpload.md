@@ -90,8 +90,9 @@ Stage 1 design decisions are recorded in:
 - Repository persistence and author scoping for `ManualChapterVersion`
 - Hard-delete path in `ManualChapterVersionRepository.ClearForChapterAsync`
 - Parser selection by extension
-- `.txt` parsing
-- `.docx` parsing via `DocumentFormat.OpenXml`
+- `.txt` parsing (stored as-is; markdown syntax preserved)
+- `.docx` parsing via `DocumentFormat.OpenXml` — maps Heading1–3, bold runs,
+  and italic runs to markdown; complex elements stripped cleanly
 - Limit enforcement for file type and file size
 
 ---
