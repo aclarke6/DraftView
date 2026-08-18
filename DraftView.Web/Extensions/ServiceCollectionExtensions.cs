@@ -113,6 +113,7 @@ namespace DraftView.Web.Extensions
             services.AddScoped<ISectionManagementService, SectionManagementService>();
             services.AddScoped<IProjectManagementService, ProjectManagementService>();
             services.AddScoped<ICommentDisplayService, CommentDisplayService>();
+            services.AddScoped<ISyncOrchestrationService, SyncOrchestrationService>();
 
             return services;
         }

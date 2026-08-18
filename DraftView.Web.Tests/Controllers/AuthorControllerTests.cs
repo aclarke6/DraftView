@@ -24,12 +24,11 @@ public class AuthorControllerTests
     private readonly Mock<IPublicationService> publicationService = new();
     private readonly Mock<IUserService> userService = new();
     private readonly Mock<IDashboardService> dashboardService = new();
-    private readonly Mock<ISyncService> syncService = new();
     private readonly Mock<IUserRepository> userRepo = new();
     private readonly Mock<IProjectDiscoveryService> discoveryService = new();
     private readonly Mock<IInvitationRepository> invitationRepo = new();
-    private readonly Mock<IServiceScopeFactory> scopeFactory = new();
     private readonly Mock<ISyncProgressTracker> progressTracker = new();
+    private readonly Mock<ISyncOrchestrationService> syncOrchestrationService = new();
     private readonly Mock<IReaderAccessRepository> readerAccessRepo = new();
     private readonly Mock<ISectionVersionRepository> sectionVersionRepo = new();
     private readonly Mock<IVersioningService> versioningService = new();
@@ -70,12 +69,11 @@ public class AuthorControllerTests
             publicationService.Object,
             userService.Object,
             dashboardService.Object,
-            syncService.Object,
             userRepo.Object,
             discoveryService.Object,
             invitationRepo.Object,
-            scopeFactory.Object,
             progressTracker.Object,
+            syncOrchestrationService.Object,
             readerAccessRepo.Object,
             versioningService.Object,
             htmlDiffService.Object,

@@ -1,5 +1,5 @@
 ﻿# DraftView — Task List
-Last updated: 2026-08-17
+Last updated: 2026-08-18
 Last deployed: 2026-08-17 13:59 (commit: d51d201)
 
 ---
@@ -23,6 +23,7 @@ Last deployed: 2026-08-17 13:59 (commit: d51d201)
 | RD-Sprint Series | 🟡 In progress — RD-Sprint-1 (Continue Reading CTA) merged to main 2026-08-17; see section 3.7 |
 | DR-Sprint Series | ✅ Complete — merged to main 2026-08-17; see section 3.8 |
 | MU-Sprint Series | 🔵 Pre-implementation — design complete; see section 3.10 |
+| Incremental Refactor (3.6) | 🟡 In progress — Phase 2a complete (PR #31), Phase 2b in progress (PR #37); see section 3.6 |
 | Go-Live Prerequisites | 🔴 Blocking — items below must complete before launch |
 | UAT | 🟡 In progress |
 
@@ -209,18 +210,18 @@ S-Sprint-1 complete — see `HISTORY.md`.
 ### 3.6 Incremental Refactor Roadmap
 See `REFACTORING.md` for full detail. Phase 1 complete — see `HISTORY.md`.
 
-**Status:** 🔴 HIGH PRIORITY — Web layer review (2026-08-17) identified ~530 lines of business logic violations. See `Web-Layer-Business-Logic-Review.md` and GitHub issue for full detail.
+**Status:** 🟡 In progress — Phase 2a complete (PR #31, 2026-08-17), Phase 2b in progress (PR #37, 2026-08-18). Web layer review identified ~530 lines of business logic violations — see `Web-Layer-Business-Logic-Review.md` for full detail.
 
-**Current Focus:** Web Layer Business Logic Extraction (replaces original Phase 2)
+**Current Focus:** Phase 2b — Standardize Background Sync (Web Layer Business Logic Extraction, replaces original Phase 2)
 
-- [ ] **Phase 2a — Extract Critical Controller Orchestration** (🔴 BLOCKING)
-  - [ ] Create `ISectionManagementService.GetSectionsSummaryAsync(projectId)` — extract `AuthorController.Sections` (lines 289-356)
-  - [ ] Create `IProjectManagementService.AddDiscoveredProjectsAsync(selectedUuids, authorId)` — extract `AuthorController.AddProjects` (lines 985-1077)
-  - [ ] Create `ICommentDisplayService.GetCommentDisplayDataAsync(...)` — extract `BaseReaderController.BuildCommentDisplayModelsAsync` (lines 263-355)
-  - [ ] Full TDD: failing tests → implementation → zero regressions
+- [x] **Phase 2a — Extract Critical Controller Orchestration** ✅ Complete (merged PR #31)
+  - [x] Create `ISectionManagementService.GetSectionsSummaryAsync(projectId)` — extracted from `AuthorController.Sections`
+  - [x] Create `IProjectManagementService.AddDiscoveredProjectsAsync(selectedUuids, authorId)` — extracted from `AuthorController.AddProjects`
+  - [x] Create `ICommentDisplayService.GetCommentDisplayDataAsync(...)` — extracted from `BaseReaderController.BuildCommentDisplayModelsAsync`
+  - [x] Full TDD: failing tests → implementation → zero regressions
 - [ ] **Phase 2b — Standardize Background Sync**
-  - [ ] Create `ISyncOrchestrationService.StartSyncAsync(projectId, authorId)`
-  - [ ] Remove inline `Task.Run` blocks from `AuthorController.Sync` and `AddProjects`
+  - [x] Create `ISyncOrchestrationService.StartSyncAsync(projectId)` — extracted from `AuthorController.Sync`; dead `ISyncService` and `IServiceScopeFactory` constructor params removed from controller
+  - [ ] Remove inline `Task.Run` from `ProjectManagementService.StartBackgroundSync` — use `ISyncOrchestrationService`
 - [ ] **Phase 2c — Extract Domain Mutations**
   - [ ] Move project activation/deactivation to `IProjectManagementService`
   - [ ] Move version deletion rules to `IVersioningService`

@@ -10,6 +10,13 @@ using DraftView.Domain.Interfaces.Services;
 
 namespace DraftView.Application.Tests.Services;
 
+/// <summary>
+/// Tests for ProjectManagementService.AddDiscoveredProjectsAsync.
+/// Covers: empty selection, new project creation, soft-deleted project restoration,
+/// already-added and undiscovered UUIDs being ignored, DuplicateProjectException swallowing,
+/// and AddedCount / SingleAddedProjectName result semantics.
+/// Excludes: background sync execution (fire-and-forget), EF Core persistence.
+/// </summary>
 public class ProjectManagementServiceTests
 {
     private readonly Mock<IProjectDiscoveryService> _discoveryService = new();

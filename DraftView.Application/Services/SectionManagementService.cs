@@ -5,6 +5,11 @@ using DraftView.Domain.Interfaces.Services;
 
 namespace DraftView.Application.Services;
 
+/// <summary>
+/// Builds the aggregated sections summary for the author's Sections page,
+/// encapsulating depth-first tree ordering, publishability evaluation, and
+/// change classification across all project chapters.
+/// </summary>
 public class SectionManagementService(
     IProjectRepository projectRepo,
     ISectionRepository sectionRepo,
@@ -13,6 +18,12 @@ public class SectionManagementService(
     IHtmlDiffService htmlDiffService,
     IChangeClassificationService changeClassificationService) : ISectionManagementService
 {
+    /// <summary>
+    /// Loads the project and its full section tree, evaluates publishability
+    /// for every folder, and computes change classifications for published
+    /// chapters that have unpublished document edits. Returns null when the
+    /// project does not exist.
+    /// </summary>
     public async Task<SectionsSummaryDto?> GetSectionsSummaryAsync(
         Guid projectId, CancellationToken ct = default)
     {
@@ -87,6 +98,10 @@ public class SectionManagementService(
         };
     }
 
+    /// <summary>
+    /// Returns all sections in depth-first order, each paired with its
+    /// indentation depth. Children are sorted by SortOrder within their parent.
+    /// </summary>
     private static IReadOnlyList<SectionTreeRow> SortDepthFirst(
         IReadOnlyList<Section> sections)
     {
