@@ -22,6 +22,7 @@ Last deployed: 2026-08-17 13:59 (commit: d51d201)
 | MT-Sprint Series | 🔴 HIGH PRIORITY — second author interest accelerates timeline; see `MultiTenancy.md` |
 | RD-Sprint Series | 🟡 In progress — RD-Sprint-1 (Continue Reading CTA) merged to main 2026-08-17; see section 3.7 |
 | DR-Sprint Series | ✅ Complete — merged to main 2026-08-17; see section 3.8 |
+| Incremental Refactor | 🟡 In progress — Phase 2a complete, Phase 2b partial; see section 3.6 |
 | MU-Sprint Series | 🔵 Pre-implementation — design complete; see section 3.10 |
 | Incremental Refactor (3.6) | 🟡 In progress — Phase 2a complete (PR #31), Phase 2b in progress (PR #37); see section 3.6 |
 | Go-Live Prerequisites | 🔴 Blocking — items below must complete before launch |
@@ -210,7 +211,7 @@ S-Sprint-1 complete — see `HISTORY.md`.
 ### 3.6 Incremental Refactor Roadmap
 See `REFACTORING.md` for full detail. Phase 1 complete — see `HISTORY.md`.
 
-**Status:** 🟡 In progress — Phase 2a complete (PR #31, 2026-08-17), Phase 2b in progress (PR #37, 2026-08-18). Web layer review identified ~530 lines of business logic violations — see `Web-Layer-Business-Logic-Review.md` for full detail.
+**Status:** 🟡 In progress — Phase 2a complete (PR #31, 2026-08-17), Phase 2b partial (PR #37 merged 2026-08-18 — ISyncOrchestrationService done, ProjectManagementService Task.Run extraction outstanding). Web layer review identified ~530 lines of business logic violations — see `Web-Layer-Business-Logic-Review.md` for full detail.
 
 **Current Focus:** Phase 2b — Standardize Background Sync (Web Layer Business Logic Extraction, replaces original Phase 2)
 
