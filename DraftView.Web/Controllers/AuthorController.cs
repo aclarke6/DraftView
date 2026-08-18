@@ -24,12 +24,11 @@ public class AuthorController(
     IPublicationService publicationService,
     IUserService userService,
     IDashboardService dashboardService,
-    ISyncService syncService,
     IUserRepository userRepo,
     IProjectDiscoveryService discoveryService,
     IInvitationRepository invitationRepo,
-    IServiceScopeFactory scopeFactory,
     ISyncProgressTracker progressTracker,
+    ISyncOrchestrationService syncOrchestrationService,
     IReaderAccessRepository readerAccessRepo,
     IVersioningService versioningService,
     IHtmlDiffService htmlDiffService,
@@ -103,45 +102,7 @@ public class AuthorController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Sync(Guid projectId)
     {
-        var project = await projectRepo.GetByIdAsync(projectId);
-        if (project is not null)
-        {
-            project.MarkSyncing();
-            await GetUnitOfWork().SaveChangesAsync();
-        }
-
-        _ = Task.Run(async () =>
-        {
-            using var scope   = scopeFactory.CreateScope();
-            var bgSyncService = scope.ServiceProvider.GetRequiredService<ISyncService>();
-            var bgProjectRepo = scope.ServiceProvider.GetRequiredService<IProjectRepository>();
-            var bgUnitOfWork  = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-            try
-            {
-                await bgSyncService.ParseProjectAsync(projectId);
-                logger.LogInformation("Background sync completed for project {ProjectId}", projectId);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Background sync failed for project {ProjectId}: {Message}",
-                    projectId, ex.Message);
-                try
-                {
-                    var failedProject = await bgProjectRepo.GetByIdAsync(projectId);
-                    if (failedProject is not null && failedProject.SyncStatus == SyncStatus.Syncing)
-                    {
-                        failedProject.UpdateSyncStatus(SyncStatus.Error, DateTime.UtcNow,
-                            ex.Message.Length > 200 ? ex.Message[..200] : ex.Message);
-                        await bgUnitOfWork.SaveChangesAsync();
-                    }
-                }
-                catch (Exception innerEx)
-                {
-                    logger.LogError(innerEx, "Failed to update sync error status for {ProjectId}", projectId);
-                }
-            }
-        });
-
+        await syncOrchestrationService.StartSyncAsync(projectId);
         return RedirectToAction("Dashboard");
     }
 

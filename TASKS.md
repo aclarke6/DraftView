@@ -213,14 +213,14 @@ See `REFACTORING.md` for full detail. Phase 1 complete — see `HISTORY.md`.
 
 **Current Focus:** Web Layer Business Logic Extraction (replaces original Phase 2)
 
-- [ ] **Phase 2a — Extract Critical Controller Orchestration** (🔴 BLOCKING)
-  - [ ] Create `ISectionManagementService.GetSectionsSummaryAsync(projectId)` — extract `AuthorController.Sections` (lines 289-356)
-  - [ ] Create `IProjectManagementService.AddDiscoveredProjectsAsync(selectedUuids, authorId)` — extract `AuthorController.AddProjects` (lines 985-1077)
-  - [ ] Create `ICommentDisplayService.GetCommentDisplayDataAsync(...)` — extract `BaseReaderController.BuildCommentDisplayModelsAsync` (lines 263-355)
-  - [ ] Full TDD: failing tests → implementation → zero regressions
+- [x] **Phase 2a — Extract Critical Controller Orchestration** ✅ Complete (merged PR #31)
+  - [x] Create `ISectionManagementService.GetSectionsSummaryAsync(projectId)` — extracted from `AuthorController.Sections`
+  - [x] Create `IProjectManagementService.AddDiscoveredProjectsAsync(selectedUuids, authorId)` — extracted from `AuthorController.AddProjects`
+  - [x] Create `ICommentDisplayService.GetCommentDisplayDataAsync(...)` — extracted from `BaseReaderController.BuildCommentDisplayModelsAsync`
+  - [x] Full TDD: failing tests → implementation → zero regressions
 - [ ] **Phase 2b — Standardize Background Sync**
-  - [ ] Create `ISyncOrchestrationService.StartSyncAsync(projectId, authorId)`
-  - [ ] Remove inline `Task.Run` blocks from `AuthorController.Sync` and `AddProjects`
+  - [x] Create `ISyncOrchestrationService.StartSyncAsync(projectId)` — extracted from `AuthorController.Sync`; dead `ISyncService` and `IServiceScopeFactory` constructor params removed from controller
+  - [ ] Remove inline `Task.Run` from `ProjectManagementService.StartBackgroundSync` — use `ISyncOrchestrationService`
 - [ ] **Phase 2c — Extract Domain Mutations**
   - [ ] Move project activation/deactivation to `IProjectManagementService`
   - [ ] Move version deletion rules to `IVersioningService`
