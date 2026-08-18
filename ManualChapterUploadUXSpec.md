@@ -71,19 +71,31 @@ Manual projects land on a flat chapter-management screen.
 
 ## 4. Upload interaction
 
-### Upload modal / form fields
+The upload modal presents two tabs: **Upload file** and **Paste content**. Both
+tabs share the same title field and submit path; only the content origin differs.
 
-- File picker
+### 4a. Upload file tab
+
+- File picker (`.txt` or `.docx` only)
 - Title textbox, prefilled from the filename without extension
 - Submit button
 - Cancel button
 
-### Validation
+### 4b. Paste content tab
 
-- Allowed extensions: `.txt`, `.docx`
-- Max file size: 2 MiB
+- Large resizable textarea labelled "Paste or type your chapter text"
+- Title textbox (not prefilled — author must enter it)
+- Submit button
+- Cancel button
+- Pasted content is submitted as plain text; no filename is associated
+
+### Validation (both tabs)
+
+- Allowed extensions (file tab): `.txt`, `.docx`
+- Max file size: 2 MiB (file tab only)
 - Max chapter count per project: 250
 - Title required and trimmed
+- Content must not be empty
 
 ### Success result
 
@@ -94,7 +106,10 @@ Manual projects land on a flat chapter-management screen.
 ## 5. Replace interaction
 
 - Replace keeps the same chapter identity and sort order
-- Author selects a new `.txt` or `.docx` file
+- Author selects a new `.txt` or `.docx` file, or pastes replacement text on
+  the **Paste content** tab
+- Before overwriting, the current content is snapshotted as a
+  `ManualChapterVersion` record (see section 8)
 - Title may be edited separately; replacement must not silently rename a chapter
 
 ## 6. Reordering
@@ -121,10 +136,86 @@ manual upload controls are visible together.
 - No tree builder for manual projects in v1
 - Uploaded files are treated as the author's final structural intent
 
-## 9. Notes for implementation
+## 9. Inline chapter editor
+
+Authors may make minor corrections without re-uploading.
+
+### Activation
+
+- An **Edit** button appears on each chapter row
+- Clicking **Edit** expands an inline edit zone below the chapter row
+
+### Edit zone
+
+```
++-------------------------------------------------------------------+
+| [↕] 2. Chapter Two            chapter-02.txt  Uploaded 18 Aug    |
+|      [Replace file] [Move up] [Move down] [Delete] [Edit] [History]|
+|                                                                     |
+|  +-----------------------------------------------------------------+|
+|  | Chapter Two                                                    ||
+|  | +---------------------------------------------------------+    ||
+|  | | It was the best of times, it was the worst of...       |    ||
+|  | |                                                         |    ||
+|  | +---------------------------------------------------resize+    ||
+|  |                                           [Save] [Cancel]  |   ||
+|  +-----------------------------------------------------------------+|
++-------------------------------------------------------------------+
+```
+
+- The textarea is pre-populated with the current `RawContent`
+- On **Save**, the content is updated and a `ManualChapterVersion` snapshot is
+  created with reason `InlineEdit`
+- On **Cancel**, no change is made
+- Only one chapter may be in edit mode at a time; opening a second auto-cancels
+  the first without saving
+
+## 10. Version history panel
+
+### Access
+
+- A **History** button on each chapter row opens the version history panel
+- The panel displays a list of past versions in reverse-chronological order
+
+### Version list row
+
+```
+v3 — InlineEdit — 18 Aug 2026 14:02  [Restore] [Preview]
+v2 — Replace    — 17 Aug 2026 09:45  [Restore] [Preview]
+v1 — FileUpload — 16 Aug 2026 18:00
+```
+
+- **Preview** shows the snapshotted `RawContent` in a read-only modal
+- **Restore** replaces current content with the version snapshot (creating
+  another version snapshot first, with reason `InlineEdit`)
+- Version 1 has no restore link (it is the origin)
+
+### Clear history
+
+```
+[ Clear all history ]  (requires confirmation dialog)
+```
+
+- **Clear history** hard-deletes all `ManualChapterVersion` rows for that chapter
+- A confirmation dialog is shown: "This will permanently remove all version
+  history for this chapter. The current content will not be affected."
+- Hard delete is the only physical-delete path permitted for version records
+- After clearing, the History panel shows "No version history."
+
+## 11. Reader transparency
+
+- No reader-facing view exposes source type
+- Reader pages render published content from `SectionVersion.HtmlContent`
+  regardless of whether the content originated from Scrivener sync or manual
+  upload
+- "Manual Upload" labelling appears only on author-only screens
+
+## 12. Notes for implementation
 
 - Chapter list labels should use "Chapter" consistently, not "Section"
 - Client-side validation is convenience only; server-side validation remains
   authoritative
 - `.docx` import extracts plain text only; rich formatting preview is out of
   scope
+- Cut/paste and file-upload tabs share the same server-side handler via a
+  command model; the controller does not branch on input origin

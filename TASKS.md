@@ -22,6 +22,7 @@ Last deployed: 2026-08-17 13:59 (commit: d51d201)
 | MT-Sprint Series | 🔴 HIGH PRIORITY — second author interest accelerates timeline; see `MultiTenancy.md` |
 | RD-Sprint Series | 🟡 In progress — RD-Sprint-1 (Continue Reading CTA) merged to main 2026-08-17; see section 3.7 |
 | DR-Sprint Series | ✅ Complete — merged to main 2026-08-17; see section 3.8 |
+| MU-Sprint Series | 🔵 Pre-implementation — design complete; see section 3.10 |
 | Go-Live Prerequisites | 🔴 Blocking — items below must complete before launch |
 | UAT | 🟡 In progress |
 
@@ -305,6 +306,46 @@ Plan RD-Sprint-1 after MT-Sprint-1 lands.
 **Status:** ✅ Complete — all 5 phases merged to main 2026-08-17. See `HISTORY.md` for full detail.
 
 **Note:** RD-Sprint-3 ("Discover Authors") is superseded by DR-Sprint.
+
+---
+
+---
+
+### 3.10 MU-Sprint — Manual Chapter Upload
+
+**Status:** 🔵 Pre-implementation — design complete (issue #34 closed)
+
+**Goal:** Allow authors to upload chapters from `.txt` / `.docx` files or via
+cut/paste, edit minor corrections with an inline plain-text editor, maintain
+version history per chapter with a hard-delete clear option, and ensure readers
+cannot distinguish manual-upload projects from Scrivener-synced projects.
+
+**Design documents:**
+- `ADR-ManualChapterUploadArchitecture.md` — architecture decisions (decisions 1–12)
+- `ManualChapterUploadUXSpec.md` — UX screen flows including cut/paste, inline editor, version history panel
+- `CLAUDE_TASK_ManualUpload.md` — stage-by-stage implementation spec
+
+**Issue requirements satisfied by design:**
+1. OOP design principles — polymorphic `IChapterFileParser`, command model unifying file and paste upload paths
+2. Reader transparency — reader sees `SectionVersion.HtmlContent` regardless of source type
+3. Cut/paste upload — **Paste content** tab alongside file picker in upload modal
+4. Inline editor — plain-text `<textarea>` edit zone per chapter row
+5. Version history with hard delete — `ManualChapterVersion` snapshots; **Clear history** physically deletes all versions for a chapter
+
+| Sprint | Deliverable |
+|--------|-------------|
+| MU-Sprint-1 | Domain: `ManualChapter`, `ManualChapterVersion`, invariants, repository interfaces |
+| MU-Sprint-2 | Infrastructure: EF config, migrations, repository implementations, file parsers (`.txt`, `.docx`) |
+| MU-Sprint-3 | Application: `ManualUploadService` — file upload, paste upload, reorder, replace, inline edit, version snapshots, hard-delete clear |
+| MU-Sprint-4 | Web UI: upload form (file + paste tabs), chapter list, inline editor, version history panel, reader-transparent publishing |
+| MU-Sprint-5 | Verification and polish: smoke test, parser tests green, no reader-side leakage |
+
+**Non-negotiable rules (from ADR):**
+- One file = one chapter; no auto-splitting
+- No mixed manual + Scrivener mode on one project
+- `ManualChapterVersion` is immutable after creation
+- Hard delete of version history is the one permitted physical-delete path for these records
+- No source-type information exposed to reader-facing views
 
 ---
 
