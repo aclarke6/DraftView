@@ -110,7 +110,7 @@ Stage 1 design decisions are recorded in:
 - Show a flat chapter list for manual projects
 - Provide drag-to-reorder or accessible up/down fallback
 - Hide manual-upload UI for Scrivener-synced projects
-- Add `DraftView.ManualUpload.css`
+- Add `DraftView.ManualUpload.css` (explicitly requested by issue #32)
 - Bump `--css-version` in `DraftView.Core.css`
 
 ### Web verification
@@ -122,12 +122,12 @@ Stage 1 design decisions are recorded in:
 
 ---
 
-## Stage 6 — Tests and polish
+## Stage 6 — Verification and polish
 
-- Domain tests for `ManualChapter`
-- Repository integration tests
-- Application service tests
-- Parser tests for `.txt` and `.docx`
+- Confirm Domain tests for `ManualChapter` were written first and are green
+- Confirm repository integration tests were written first and are green
+- Confirm application service tests were written first and are green
+- Confirm parser tests for `.txt` and `.docx` were written first and are green
 - Smoke test: upload a `.txt` chapter and verify it appears with the parsed
   content
 
