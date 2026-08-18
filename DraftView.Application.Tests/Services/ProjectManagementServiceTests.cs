@@ -1,9 +1,6 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using DraftView.Application.Services;
 using DraftView.Domain.Entities;
-using DraftView.Domain.Enumerations;
 using DraftView.Domain.Exceptions;
 using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Interfaces.Services;
@@ -15,34 +12,20 @@ namespace DraftView.Application.Tests.Services;
 /// Covers: empty selection, new project creation, soft-deleted project restoration,
 /// already-added and undiscovered UUIDs being ignored, DuplicateProjectException swallowing,
 /// and AddedCount / SingleAddedProjectName result semantics.
-/// Excludes: background sync execution (fire-and-forget), EF Core persistence.
+/// Excludes: background sync execution (fire-and-forget via ISyncOrchestrationService), EF Core persistence.
 /// </summary>
 public class ProjectManagementServiceTests
 {
-    private readonly Mock<IProjectDiscoveryService> _discoveryService = new();
-    private readonly Mock<IProjectRepository>        _projectRepo     = new();
-    private readonly Mock<IUnitOfWork>               _unitOfWork      = new();
-    private readonly Mock<IServiceScopeFactory>      _scopeFactory    = new();
-    private readonly Mock<ISyncService>              _syncService     = new();
+    private readonly Mock<IProjectDiscoveryService>    _discoveryService        = new();
+    private readonly Mock<IProjectRepository>          _projectRepo             = new();
+    private readonly Mock<IUnitOfWork>                 _unitOfWork              = new();
+    private readonly Mock<ISyncOrchestrationService>   _syncOrchestrationService = new();
 
     private ProjectManagementService CreateSut() => new(
         _discoveryService.Object,
         _projectRepo.Object,
         _unitOfWork.Object,
-        _scopeFactory.Object,
-        NullLogger<ProjectManagementService>.Instance);
-
-    private void SetUpBackgroundScope()
-    {
-        var serviceProvider = new Mock<IServiceProvider>();
-        serviceProvider.Setup(p => p.GetService(typeof(ISyncService))).Returns(_syncService.Object);
-        serviceProvider.Setup(p => p.GetService(typeof(IProjectRepository))).Returns(_projectRepo.Object);
-        serviceProvider.Setup(p => p.GetService(typeof(IUnitOfWork))).Returns(_unitOfWork.Object);
-
-        var scope = new Mock<IServiceScope>();
-        scope.Setup(s => s.ServiceProvider).Returns(serviceProvider.Object);
-        _scopeFactory.Setup(f => f.CreateScope()).Returns(scope.Object);
-    }
+        _syncOrchestrationService.Object);
 
     [Fact]
     public async Task AddDiscoveredProjectsAsync_NoSelection_ReturnsZeroAdded()
@@ -51,6 +34,7 @@ public class ProjectManagementServiceTests
 
         Assert.Equal(0, result.AddedCount);
         _projectRepo.Verify(r => r.AddAsync(It.IsAny<Project>(), default), Times.Never);
+        _syncOrchestrationService.Verify(s => s.StartSyncAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -66,16 +50,14 @@ public class ProjectManagementServiceTests
             .ReturnsAsync(new List<DiscoveredProject> { discovered });
         _projectRepo.Setup(r => r.GetSoftDeletedBySyncRootIdAsync("uuid-1", default))
             .ReturnsAsync((Project?)null);
-        _projectRepo.Setup(r => r.GetAllAsync(default))
-            .ReturnsAsync(new List<Project> { Project.Create("My Book", "/path", authorId, "uuid-1") });
-        SetUpBackgroundScope();
 
         var result = await CreateSut().AddDiscoveredProjectsAsync(["uuid-1"], authorId);
 
         Assert.Equal(1, result.AddedCount);
         Assert.Equal("My Book", result.SingleAddedProjectName);
         _projectRepo.Verify(r => r.AddAsync(It.Is<Project>(p => p.SyncRootId == "uuid-1"), default), Times.Once);
-        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.AtLeastOnce);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+        _syncOrchestrationService.Verify(s => s.StartSyncAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -92,15 +74,13 @@ public class ProjectManagementServiceTests
             .ReturnsAsync(new List<DiscoveredProject> { discovered });
         _projectRepo.Setup(r => r.GetSoftDeletedBySyncRootIdAsync("uuid-2", default))
             .ReturnsAsync(softDeleted);
-        _projectRepo.Setup(r => r.GetAllAsync(default))
-            .ReturnsAsync(new List<Project> { softDeleted });
-        SetUpBackgroundScope();
 
         var result = await CreateSut().AddDiscoveredProjectsAsync(["uuid-2"], authorId);
 
         Assert.Equal(1, result.AddedCount);
         Assert.Equal("Restored Book", softDeleted.Name);
         _projectRepo.Verify(r => r.AddAsync(It.IsAny<Project>(), default), Times.Never);
+        _syncOrchestrationService.Verify(s => s.StartSyncAsync(softDeleted.Id, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -119,6 +99,7 @@ public class ProjectManagementServiceTests
 
         Assert.Equal(0, result.AddedCount);
         _projectRepo.Verify(r => r.AddAsync(It.IsAny<Project>(), default), Times.Never);
+        _syncOrchestrationService.Verify(s => s.StartSyncAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -131,6 +112,7 @@ public class ProjectManagementServiceTests
         var result = await CreateSut().AddDiscoveredProjectsAsync(["missing-uuid"], authorId);
 
         Assert.Equal(0, result.AddedCount);
+        _syncOrchestrationService.Verify(s => s.StartSyncAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -148,12 +130,11 @@ public class ProjectManagementServiceTests
             .ReturnsAsync((Project?)null);
         _projectRepo.Setup(r => r.AddAsync(It.IsAny<Project>(), default))
             .ThrowsAsync(new DuplicateProjectException("uuid-4"));
-        _projectRepo.Setup(r => r.GetAllAsync(default))
-            .ReturnsAsync(new List<Project>());
 
         var result = await CreateSut().AddDiscoveredProjectsAsync(["uuid-4"], authorId);
 
         Assert.Equal(0, result.AddedCount);
+        _syncOrchestrationService.Verify(s => s.StartSyncAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -167,18 +148,12 @@ public class ProjectManagementServiceTests
             .ReturnsAsync(new List<DiscoveredProject> { d1, d2 });
         _projectRepo.Setup(r => r.GetSoftDeletedBySyncRootIdAsync(It.IsAny<string>(), default))
             .ReturnsAsync((Project?)null);
-        _projectRepo.Setup(r => r.GetAllAsync(default))
-            .ReturnsAsync(new List<Project>
-            {
-                Project.Create("Book A", "/a", authorId, "uuid-a"),
-                Project.Create("Book B", "/b", authorId, "uuid-b")
-            });
-        SetUpBackgroundScope();
 
         var result = await CreateSut().AddDiscoveredProjectsAsync(["uuid-a", "uuid-b"], authorId);
 
         Assert.Equal(2, result.AddedCount);
         Assert.Null(result.SingleAddedProjectName);
+        _syncOrchestrationService.Verify(s => s.StartSyncAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Fact]
@@ -195,12 +170,11 @@ public class ProjectManagementServiceTests
         _projectRepo.SetupSequence(r => r.AddAsync(It.IsAny<Project>(), default))
             .ThrowsAsync(new DuplicateProjectException("uuid-dup"))
             .Returns(Task.CompletedTask);
-        _projectRepo.Setup(r => r.GetAllAsync(default))
-            .ReturnsAsync(new List<Project> { Project.Create("Good Book", "/b", authorId, "uuid-good") });
 
         var result = await CreateSut().AddDiscoveredProjectsAsync(["uuid-dup", "uuid-good"], authorId);
 
         Assert.Equal(1, result.AddedCount);
         Assert.Equal("Good Book", result.SingleAddedProjectName);
+        _syncOrchestrationService.Verify(s => s.StartSyncAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 }
