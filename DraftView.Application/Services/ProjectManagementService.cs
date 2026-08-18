@@ -8,6 +8,11 @@ using DraftView.Domain.Interfaces.Services;
 
 namespace DraftView.Application.Services;
 
+/// <summary>
+/// Orchestrates adding discovered Scrivener/Dropbox projects for an author:
+/// restoring soft-deleted projects or creating new ones, then kicking off
+/// background synchronisation for each newly added project.
+/// </summary>
 public class ProjectManagementService(
     IProjectDiscoveryService discoveryService,
     IProjectRepository projectRepo,
@@ -15,6 +20,12 @@ public class ProjectManagementService(
     IServiceScopeFactory scopeFactory,
     ILogger<ProjectManagementService> logger) : IProjectManagementService
 {
+    /// <summary>
+    /// Matches the selected UUIDs against the author's discovered projects,
+    /// restores any that were previously soft-deleted, or creates new Project
+    /// entities. Saves to the database, then enqueues a background sync for
+    /// each project that was added.
+    /// </summary>
     public async Task<AddDiscoveredProjectsResultDto> AddDiscoveredProjectsAsync(
         IReadOnlyList<string> selectedUuids, Guid authorId, CancellationToken ct = default)
     {
@@ -79,6 +90,11 @@ public class ProjectManagementService(
         };
     }
 
+    /// <summary>
+    /// Fires a background Task.Run that parses the project via ISyncService
+    /// in an isolated DI scope. On failure, attempts to record the error
+    /// on the project's SyncStatus.
+    /// </summary>
     private void StartBackgroundSync(Guid projectId)
     {
         _ = Task.Run(async () =>

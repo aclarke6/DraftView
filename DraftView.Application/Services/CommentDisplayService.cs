@@ -5,10 +5,21 @@ using DraftView.Domain.Interfaces.Services;
 
 namespace DraftView.Application.Services;
 
+/// <summary>
+/// Resolves all display data required to render a list of comments in the
+/// reader view: author names, passage anchor state, and per-user permissions.
+/// Filters soft-deleted comments before any resolution.
+/// </summary>
 public class CommentDisplayService(
     IUserRepository userRepository,
     IPassageAnchorService passageAnchorService) : ICommentDisplayService
 {
+    /// <summary>
+    /// Filters soft-deleted comments, resolves author display names for
+    /// each visible comment and any passage-anchor audit users, and
+    /// determines edit/delete/override permissions for the current user.
+    /// Passage anchor lookups that throw are treated as missing (null anchor).
+    /// </summary>
     public async Task<IReadOnlyList<CommentDisplayDto>> GetCommentDisplayDataAsync(
         IReadOnlyList<Comment> comments,
         Guid currentUserId,

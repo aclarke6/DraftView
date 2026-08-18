@@ -8,6 +8,13 @@ using DraftView.Domain.Interfaces.Services;
 
 namespace DraftView.Application.Tests.Services;
 
+/// <summary>
+/// Tests for CommentDisplayService.GetCommentDisplayDataAsync.
+/// Covers: soft-delete filtering, author display name resolution, unknown-author fallback,
+/// parent/child HasChildren and CanDelete logic, passage anchor resolution and override
+/// permission, and passage anchor lookup failures being swallowed.
+/// Excludes: EF Core persistence, UI rendering.
+/// </summary>
 public class CommentDisplayServiceTests
 {
     private readonly Mock<IUserRepository>         _userRepo            = new();

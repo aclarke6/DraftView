@@ -8,6 +8,12 @@ using DraftView.Domain.Interfaces.Services;
 
 namespace DraftView.Application.Tests.Services;
 
+/// <summary>
+/// Tests for SectionManagementService.GetSectionsSummaryAsync.
+/// Covers: depth-first ordering, publishability flagging, change classification
+/// for published chapters with edited documents, and null return for unknown projects.
+/// Excludes: EF Core persistence (unit tests only), UI rendering.
+/// </summary>
 public class SectionManagementServiceTests
 {
     private readonly Mock<IProjectRepository>              _projectRepo               = new();
