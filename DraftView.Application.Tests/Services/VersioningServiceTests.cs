@@ -1041,6 +1041,58 @@ public class VersioningServiceTests
         Assert.Equal(1, added.MinorVersion);
     }
 
+    // -----------------------------------------------------------------------
+    // DeleteVersionAsync
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task DeleteVersionAsync_VersionIsLatest_ThrowsInvariantViolationException()
+    {
+        var projectId = Guid.NewGuid();
+        var section   = MakeDocument(projectId, null);
+        var version1  = SectionVersion.Create(section, Guid.NewGuid(), 1, 1, 0);
+        var version2  = SectionVersion.Create(section, Guid.NewGuid(), 2, 1, 1);
+
+        _versionRepo.Setup(r => r.GetAllBySectionIdAsync(section.Id, default))
+            .ReturnsAsync([version1, version2]);
+
+        await Assert.ThrowsAsync<InvariantViolationException>(
+            () => _sut.DeleteVersionAsync(version2.Id, section.Id));
+    }
+
+    [Fact]
+    public async Task DeleteVersionAsync_VersionIsLatest_DoesNotDelete()
+    {
+        var projectId = Guid.NewGuid();
+        var section   = MakeDocument(projectId, null);
+        var version1  = SectionVersion.Create(section, Guid.NewGuid(), 1, 1, 0);
+        var version2  = SectionVersion.Create(section, Guid.NewGuid(), 2, 1, 1);
+
+        _versionRepo.Setup(r => r.GetAllBySectionIdAsync(section.Id, default))
+            .ReturnsAsync([version1, version2]);
+
+        try { await _sut.DeleteVersionAsync(version2.Id, section.Id); } catch { }
+
+        _versionRepo.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteVersionAsync_VersionIsOlderVersion_DeletesAndSaves()
+    {
+        var projectId = Guid.NewGuid();
+        var section   = MakeDocument(projectId, null);
+        var version1  = SectionVersion.Create(section, Guid.NewGuid(), 1, 1, 0);
+        var version2  = SectionVersion.Create(section, Guid.NewGuid(), 2, 1, 1);
+
+        _versionRepo.Setup(r => r.GetAllBySectionIdAsync(section.Id, default))
+            .ReturnsAsync([version1, version2]);
+
+        await _sut.DeleteVersionAsync(version1.Id, section.Id);
+
+        _versionRepo.Verify(r => r.DeleteAsync(version1.Id, default), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
     // Test helpers
     private static Section MakeChapter(Guid projectId) =>
         Section.CreateFolder(projectId, Guid.NewGuid().ToString(), "Chapter 1", null, 0);

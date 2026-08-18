@@ -68,4 +68,12 @@ public interface IVersioningService
     /// </summary>
     Task ClearScheduleAsync(Guid chapterId, Guid authorId,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Permanently deletes a single historical version.
+    /// Throws <see cref="DraftView.Domain.Exceptions.InvariantViolationException"/> if
+    /// <paramref name="versionId"/> is the current (latest) version for <paramref name="sectionId"/> —
+    /// use <see cref="RevokeLatestVersionAsync"/> instead.
+    /// </summary>
+    Task DeleteVersionAsync(Guid versionId, Guid sectionId, CancellationToken ct = default);
 }

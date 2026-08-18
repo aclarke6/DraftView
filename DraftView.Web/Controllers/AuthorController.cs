@@ -132,17 +132,15 @@ public class AuthorController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ActivateProject(Guid projectId)
     {
-        var project = await projectRepo.GetByIdAsync(projectId);
-        if (project is null) return NotFound();
-
-        var currentlyActiveProject = await projectRepo.GetReaderActiveProjectAsync();
-        if (currentlyActiveProject is not null && currentlyActiveProject.Id != project.Id)
-            currentlyActiveProject.DeactivateForReaders();
-
-        project.ActivateForReaders();
-        await GetUnitOfWork().SaveChangesAsync();
-
-        TempData["Success"] = $"{project.Name} is now active for readers.";
+        try
+        {
+            await projectManagementService.SetActiveProjectAsync(projectId);
+            TempData["Success"] = "Project activated for readers.";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
         return RedirectToAction("Dashboard");
     }
 
@@ -150,13 +148,15 @@ public class AuthorController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeactivateProject(Guid projectId)
     {
-        var project = await projectRepo.GetByIdAsync(projectId);
-        if (project is null) return NotFound();
-
-        project.DeactivateForReaders();
-        await GetUnitOfWork().SaveChangesAsync();
-
-        TempData["Success"] = $"{project.Name} is now inactive for readers.";
+        try
+        {
+            await projectManagementService.DeactivateProjectAsync(projectId);
+            TempData["Success"] = "Project deactivated for readers.";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
         return RedirectToAction("Dashboard");
     }
 
@@ -530,17 +530,12 @@ public class AuthorController(
 
         try
         {
-            var allVersions = await sectionVersionRepo.GetAllBySectionIdAsync(sectionId);
-            var latest = allVersions.OrderByDescending(v => v.VersionNumber).FirstOrDefault();
-            if (latest is not null && latest.Id == versionId)
-            {
-                TempData["Error"] = "The current version cannot be deleted. Use Revoke instead.";
-                return Redirect(Url.Action("Publishing", new { projectId }) + "#section-" + sectionId);
-            }
-
-            await sectionVersionRepo.DeleteAsync(versionId);
-            await GetUnitOfWork().SaveChangesAsync();
+            await versioningService.DeleteVersionAsync(versionId, sectionId);
             TempData["Success"] = "Version deleted.";
+        }
+        catch (InvariantViolationException ex)
+        {
+            TempData["Error"] = ex.Message;
         }
         catch (Exception ex)
         {
@@ -849,13 +844,15 @@ public class AuthorController(
         var (author, error) = await RequireCurrentAuthorAsync();
         if (error is not null || author is null) return error ?? Forbid();
 
-        var project = await projectRepo.GetByIdAsync(projectId);
-        if (project is null) return NotFound();
-
-        project.SoftDelete();
-        await GetUnitOfWork().SaveChangesAsync();
-
-        TempData["Success"] = $"{project.Name} removed. You can re-add it from Add Project.";
+        try
+        {
+            await projectManagementService.SoftDeleteProjectAsync(projectId);
+            TempData["Success"] = "Project removed. You can re-add it from Add Project.";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
         return RedirectToAction("Dashboard");
     }
 
