@@ -8,7 +8,6 @@ using DraftView.Web.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Identity;
@@ -30,14 +29,10 @@ public class AuthorControllerTests
     private readonly Mock<ISyncProgressTracker> progressTracker = new();
     private readonly Mock<ISyncOrchestrationService> syncOrchestrationService = new();
     private readonly Mock<IReaderAccessRepository> readerAccessRepo = new();
-    private readonly Mock<ISectionVersionRepository> sectionVersionRepo = new();
     private readonly Mock<IVersioningService> versioningService = new();
-    private readonly Mock<IHtmlDiffService> htmlDiffService = new();
-    private readonly Mock<IChangeClassificationService> changeClassificationService = new();
     private readonly Mock<IImportService> importService = new();
     private readonly Mock<ISectionTreeService> sectionTreeService = new();
     private readonly Mock<IUnitOfWork> unitOfWork = new();
-    private readonly Mock<IConfiguration> configuration = new();
     private readonly Mock<ILogger<AuthorController>> logger = new();
     private readonly Mock<IAccessRequestService> accessRequestService = new();
     private readonly Mock<IAccessRequestRepository> accessRequestRepo = new();
@@ -46,6 +41,8 @@ public class AuthorControllerTests
     private readonly Mock<SignInManager<IdentityUser>> signInManager;
     private readonly Mock<ISectionManagementService> sectionManagementService = new();
     private readonly Mock<IProjectManagementService> projectManagementService = new();
+    private readonly Mock<IContentNavigationService> contentNavigationService = new();
+    private readonly Mock<IReaderManagementService> readerManagementService = new();
 
     public AuthorControllerTests()
     {
@@ -65,7 +62,6 @@ public class AuthorControllerTests
         var controller = new AuthorController(
             projectRepo.Object,
             sectionRepo.Object,
-            sectionVersionRepo.Object,
             publicationService.Object,
             userService.Object,
             dashboardService.Object,
@@ -76,11 +72,8 @@ public class AuthorControllerTests
             syncOrchestrationService.Object,
             readerAccessRepo.Object,
             versioningService.Object,
-            htmlDiffService.Object,
-            changeClassificationService.Object,
             importService.Object,
             sectionTreeService.Object,
-            configuration.Object,
             logger.Object,
             accessRequestService.Object,
             accessRequestRepo.Object,
@@ -88,7 +81,9 @@ public class AuthorControllerTests
             userManager.Object,
             signInManager.Object,
             sectionManagementService.Object,
-            projectManagementService.Object);
+            projectManagementService.Object,
+            contentNavigationService.Object,
+            readerManagementService.Object);
 
         controller.ControllerContext = new ControllerContext
         {
@@ -107,7 +102,6 @@ public class AuthorControllerTests
         urlHelper.Setup(u => u.IsLocalUrl(It.IsAny<string?>())).Returns(false);
         controller.Url = urlHelper.Object;
         controller.TempData = new Mock<ITempDataDictionary>().Object;
-        configuration.Setup(c => c["DraftView:SubscriptionTier"]).Returns((string?)null);
 
         return controller;
     }
@@ -240,25 +234,34 @@ public class AuthorControllerTests
     }
 
     // ---------------------------------------------------------------------------
-    // RepublishChapter
+    // Publishing
     // ---------------------------------------------------------------------------
 
     [Fact]
-    public async Task Publishing_WhenProjectExists_ReturnsPublishingPageViewModel()
+    public async Task Publishing_WhenProjectExists_DelegatesToContentNavigationService()
     {
         var author = User.Create("author@example.test", "Author", Role.Author);
         var project = Project.Create("Project One", "/Apps/Scrivener/ProjectOne", author.Id, "sync-root");
         var chapter = Section.CreateFolder(project.Id, Guid.NewGuid().ToString(), "Chapter 1", null, 0);
-        chapter.MarkAsPublishedContainer();
         var document = Section.CreateDocument(
-            project.Id,
-            Guid.NewGuid().ToString(),
-            "Scene 1",
-            chapter.Id,
-            0,
-            "<p>content</p>",
-            "hash",
-            null);
+            project.Id, Guid.NewGuid().ToString(), "Scene 1", chapter.Id, 0, "<p>content</p>", "hash", null);
+
+        var chapterData = new PublishingChapterData(
+            Chapter: chapter,
+            HasChanges: false,
+            Classification: null,
+            CanRevoke: false,
+            ShowDocumentControls: false,
+            Documents: [new PublishingDocumentData(
+                Document: document,
+                CurrentVersionNumber: null,
+                CurrentVersionLabel: null,
+                HasChanges: false,
+                Classification: null,
+                CanRevoke: false,
+                VersionHistory: [],
+                ShowVersionHistory: false,
+                RetentionLimit: 3)]);
 
         var sut = CreateSut();
 
@@ -266,10 +269,9 @@ public class AuthorControllerTests
             .ReturnsAsync(author);
         projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(project);
-        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([chapter, document]);
-        sectionVersionRepo.Setup(r => r.GetLatestAsync(document.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((SectionVersion?)null);
+        contentNavigationService
+            .Setup(s => s.BuildPublishingChapterDataAsync(project.Id, project.ProjectType, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([chapterData]);
 
         var result = await sut.Publishing(project.Id);
 
@@ -332,39 +334,46 @@ public class AuthorControllerTests
     }
 
     [Fact]
-    public async Task Publishing_WhenAtRetentionLimit_ShowsVersionHistoryWithCurrentNotDeletable()
+    public async Task Publishing_MapsVersionHistoryFromServiceData()
     {
         var author = User.Create("author@example.test", "Author", Role.Author);
         var project = Project.Create("Project One", "/Apps/Scrivener/ProjectOne", author.Id, "sync-root");
         var chapter = Section.CreateFolder(project.Id, Guid.NewGuid().ToString(), "Chapter 1", null, 0);
-        chapter.MarkAsPublishedContainer();
         var document = Section.CreateDocument(
-            project.Id,
-            Guid.NewGuid().ToString(),
-            "Scene 1",
-            chapter.Id,
-            0,
-            "<p>content</p>",
-            "hash",
-            null);
+            project.Id, Guid.NewGuid().ToString(), "Scene 1", chapter.Id, 0, "<p>content</p>", "hash", null);
 
-        var version1 = SectionVersion.Create(document, author.Id, 1, 1, 0);
-        var version2 = SectionVersion.Create(document, author.Id, 2, 1, 0);
-        var version3 = SectionVersion.Create(document, author.Id, 3, 1, 0);
+        var v1 = new VersionHistoryData(Guid.NewGuid(), 1, null, DateTime.UtcNow, null, true);
+        var v2 = new VersionHistoryData(Guid.NewGuid(), 2, null, DateTime.UtcNow, null, true);
+        var v3 = new VersionHistoryData(Guid.NewGuid(), 3, null, DateTime.UtcNow, null, false);
+
+        var docData = new PublishingDocumentData(
+            Document: document,
+            CurrentVersionNumber: 3,
+            CurrentVersionLabel: null,
+            HasChanges: false,
+            Classification: null,
+            CanRevoke: true,
+            VersionHistory: [v1, v2, v3],
+            ShowVersionHistory: true,
+            RetentionLimit: 3);
+
+        var chapterData = new PublishingChapterData(
+            Chapter: chapter,
+            HasChanges: false,
+            Classification: null,
+            CanRevoke: true,
+            ShowDocumentControls: false,
+            Documents: [docData]);
 
         var sut = CreateSut();
 
-        configuration.Setup(c => c["DraftView:SubscriptionTier"]).Returns("Free");
         userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
             .ReturnsAsync(author);
         projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(project);
-        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([chapter, document]);
-        sectionVersionRepo.Setup(r => r.GetLatestAsync(document.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(version3);
-        sectionVersionRepo.Setup(r => r.GetAllBySectionIdAsync(document.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([version1, version2, version3]);
+        contentNavigationService
+            .Setup(s => s.BuildPublishingChapterDataAsync(project.Id, project.ProjectType, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([chapterData]);
 
         var result = await sut.Publishing(project.Id);
 
@@ -712,6 +721,34 @@ public class AuthorControllerTests
         await sut.DeleteVersion(versionId, sectionId, Guid.NewGuid());
 
         Assert.Equal("The current version cannot be deleted. Use Revoke instead.", sut.TempData["Error"]);
+    }
+
+    // -----------------------------------------------------------------------
+    // Readers
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task Readers_DelegatesToReaderManagementService_AndMapsRows()
+    {
+        var readerId = Guid.NewGuid();
+        var row = new ReaderSummaryRow(
+            Id: readerId,
+            DisplayName: "Alice",
+            Status: ReaderStatus.Active,
+            ActivatedAt: null,
+            HasPendingInvitation: false);
+
+        readerManagementService.Setup(s => s.GetReaderSummaryAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([row]);
+
+        var sut = CreateSut();
+        var result = await sut.Readers();
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<List<ReaderRowViewModel>>(view.Model);
+        Assert.Single(model);
+        Assert.Equal("Alice", model[0].DisplayName);
+        Assert.Equal(ReaderStatus.Active, model[0].Status);
     }
 
     // -----------------------------------------------------------------------

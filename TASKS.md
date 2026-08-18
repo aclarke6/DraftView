@@ -22,7 +22,7 @@ Last deployed: 2026-08-17 13:59 (commit: d51d201)
 | MT-Sprint Series | 🔴 HIGH PRIORITY — second author interest accelerates timeline; see `MultiTenancy.md` |
 | RD-Sprint Series | 🟡 In progress — RD-Sprint-1 (Continue Reading CTA) merged to main 2026-08-17; see section 3.7 |
 | DR-Sprint Series | ✅ Complete — merged to main 2026-08-17; see section 3.8 |
-| Incremental Refactor | 🟡 In progress — Phase 2a and 2b complete, Phase 2c next; see section 3.6 |
+| Incremental Refactor | 🟡 In progress — Phase 2a–2d complete, Phase 3 deferred; see section 3.6 |
 | MU-Sprint Series | 🔵 Pre-implementation — design complete; see section 3.10 |
 | Go-Live Prerequisites | 🔴 Blocking — items below must complete before launch |
 | UAT | 🟡 In progress |
@@ -210,9 +210,7 @@ S-Sprint-1 complete — see `HISTORY.md`.
 ### 3.6 Incremental Refactor Roadmap
 See `REFACTORING.md` for full detail. Phase 1 complete — see `HISTORY.md`.
 
-**Status:** 🟡 In progress — Phase 2a and 2b complete (PRs #31, #37, #39 merged 2026-08-17/18). Phase 2c next. Web layer review identified ~530 lines of business logic violations — see `Web-Layer-Business-Logic-Review.md` for full detail.
-
-**Current Focus:** Phase 2c — Extract Domain Mutations
+**Status:** 🟡 In progress — Phase 2a–2d complete (PRs #31, #37, #39, #40, #41 merged). Phase 3 deferred. Web layer review identified ~530 lines of business logic violations — see `Web-Layer-Business-Logic-Review.md` for full detail.
 
 - [x] **Phase 2a — Extract Critical Controller Orchestration** ✅ Complete (merged PR #31)
   - [x] Create `ISectionManagementService.GetSectionsSummaryAsync(projectId)` — extracted from `AuthorController.Sections`
@@ -222,13 +220,13 @@ See `REFACTORING.md` for full detail. Phase 1 complete — see `HISTORY.md`.
 - [x] **Phase 2b — Standardize Background Sync** ✅ Complete (merged PRs #37, #39)
   - [x] Create `ISyncOrchestrationService.StartSyncAsync(projectId)` — extracted from `AuthorController.Sync`; dead `ISyncService` and `IServiceScopeFactory` constructor params removed from controller
   - [x] Remove inline `Task.Run` from `ProjectManagementService.StartBackgroundSync` — delegates to `ISyncOrchestrationService`; dead `IServiceScopeFactory` and `ILogger` constructor params removed
-- [ ] **Phase 2c — Extract Domain Mutations**
-  - [ ] Move project activation/deactivation to `IProjectManagementService`
-  - [ ] Move version deletion rules to `IVersioningService`
-  - [ ] Remove all direct entity mutations from controllers
-- [ ] **Phase 2d — Extract Helper Orchestration**
-  - [ ] Create `IContentNavigationService` for tree-building helpers
-  - [ ] Extract reader management summary logic to `IReaderManagementService`
+- [x] **Phase 2c — Extract Domain Mutations** ✅ Complete (merged PR #40)
+  - [x] Move project activation/deactivation to `IProjectManagementService`
+  - [x] Move version deletion rules to `IVersioningService`
+  - [x] Remove all direct entity mutations from controllers
+- [x] **Phase 2d — Extract Helper Orchestration** ✅ Complete (merged PR #41)
+  - [x] Create `IContentNavigationService` for tree-building helpers
+  - [x] Extract reader management summary logic to `IReaderManagementService`
 
 **Original roadmap (deferred pending Web layer cleanup):**
 - [ ] Phase 3 — Decompose startup/seeding

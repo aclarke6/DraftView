@@ -3,7 +3,6 @@ using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
 using DraftView.Domain.Notifications;
 using Microsoft.AspNetCore.Http;
-using DraftView.Domain.Interfaces.Repositories;
 
 namespace DraftView.Web.Models;
 
@@ -25,8 +24,6 @@ public class SectionViewModel
     public IReadOnlyDictionary<Guid, string> CommentAuthorNames { get; set; } = new Dictionary<Guid, string>();
     public int ReadCount { get; set; }
 }
-
-public enum ReaderStatus { Invited, Active, Inactive }
 
 public class ReaderRowViewModel
 {

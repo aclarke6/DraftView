@@ -8,10 +8,10 @@
         <p class="page-subtitle">
             @switch (Model.Status)
             {
-                case DraftView.Web.Models.ReaderStatus.Active:
+                case DraftView.Domain.Enumerations.ReaderStatus.Active:
                     <span class="badge badge--success">Active</span>
                     break;
-                case DraftView.Web.Models.ReaderStatus.Invited:
+                case DraftView.Domain.Enumerations.ReaderStatus.Invited:
                     <span class="badge badge--neutral">Invited</span>
                     break;
                 default:
