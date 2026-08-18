@@ -147,6 +147,23 @@ public class VersioningService(
         return ClearChapterScheduleInternalAsync(chapterId, ct);
     }
 
+    /// <summary>
+    /// Permanently deletes a single historical version.
+    /// Throws <see cref="InvariantViolationException"/> if the version is the current latest.
+    /// </summary>
+    public async Task DeleteVersionAsync(Guid versionId, Guid sectionId, CancellationToken ct = default)
+    {
+        var allVersions = await sectionVersionRepository.GetAllBySectionIdAsync(sectionId, ct);
+        var latest = allVersions.OrderByDescending(v => v.VersionNumber).FirstOrDefault();
+
+        if (latest is not null && latest.Id == versionId)
+            throw new InvariantViolationException("I-VER-DEL-LATEST",
+                "The current version cannot be deleted. Use Revoke instead.");
+
+        await sectionVersionRepository.DeleteAsync(versionId, ct);
+        await unitOfWork.SaveChangesAsync(ct);
+    }
+
     private async Task ScheduleChapterInternalAsync(Guid chapterId, DateTime scheduledAt, CancellationToken ct)
     {
         var chapter = await LoadAndValidateChapterAsync(chapterId, ct);

@@ -22,4 +22,23 @@ public interface IProjectManagementService
     /// </summary>
     Task<AddDiscoveredProjectsResultDto> AddDiscoveredProjectsAsync(
         IReadOnlyList<string> selectedUuids, Guid authorId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Makes <paramref name="projectId"/> the active project for readers,
+    /// atomically deactivating the currently-active project if it differs.
+    /// Throws <see cref="InvalidOperationException"/> if the project does not exist.
+    /// </summary>
+    Task SetActiveProjectAsync(Guid projectId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deactivates the specified project for readers.
+    /// Throws <see cref="InvalidOperationException"/> if the project does not exist.
+    /// </summary>
+    Task DeactivateProjectAsync(Guid projectId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Soft-deletes the specified project so it no longer appears in the author's project list.
+    /// Throws <see cref="InvalidOperationException"/> if the project does not exist.
+    /// </summary>
+    Task SoftDeleteProjectAsync(Guid projectId, CancellationToken ct = default);
 }

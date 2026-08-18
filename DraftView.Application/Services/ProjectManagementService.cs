@@ -72,4 +72,41 @@ public class ProjectManagementService(
             SingleAddedProjectName = addedCount == 1 ? singleAddedProjectName : null
         };
     }
+
+    /// <summary>
+    /// Makes the specified project active for readers, deactivating the current
+    /// active project first if it differs.
+    /// </summary>
+    public async Task SetActiveProjectAsync(Guid projectId, CancellationToken ct = default)
+    {
+        var project = await projectRepo.GetByIdAsync(projectId, ct)
+            ?? throw new InvalidOperationException($"Project {projectId} not found.");
+
+        var currentlyActive = await projectRepo.GetReaderActiveProjectAsync(ct);
+        if (currentlyActive is not null && currentlyActive.Id != project.Id)
+            currentlyActive.DeactivateForReaders();
+
+        project.ActivateForReaders();
+        await unitOfWork.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Deactivates the specified project for readers.</summary>
+    public async Task DeactivateProjectAsync(Guid projectId, CancellationToken ct = default)
+    {
+        var project = await projectRepo.GetByIdAsync(projectId, ct)
+            ?? throw new InvalidOperationException($"Project {projectId} not found.");
+
+        project.DeactivateForReaders();
+        await unitOfWork.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Soft-deletes the specified project.</summary>
+    public async Task SoftDeleteProjectAsync(Guid projectId, CancellationToken ct = default)
+    {
+        var project = await projectRepo.GetByIdAsync(projectId, ct)
+            ?? throw new InvalidOperationException($"Project {projectId} not found.");
+
+        project.SoftDelete();
+        await unitOfWork.SaveChangesAsync(ct);
+    }
 }

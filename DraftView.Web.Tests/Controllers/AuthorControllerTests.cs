@@ -380,55 +380,58 @@ public class AuthorControllerTests
     }
 
     [Fact]
-    public async Task ActivateProject_DeactivatesExistingActiveProject_WhenDifferentProjectIsActivated()
+    public async Task ActivateProject_CallsSetActiveProjectAsync_AndRedirectsToDashboard()
     {
-        var author = User.Create("author@example.test", "Author", Role.Author);
-        var activeProject = Project.Create("Old Project", "/Apps/Scrivener/Old", author.Id, "sync-root-old");
-        var newProject = Project.Create("New Project", "/Apps/Scrivener/New", author.Id, "sync-root-new");
-        activeProject.ActivateForReaders();
+        var projectId = Guid.NewGuid();
         var sut = CreateSut();
         sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
 
-        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(author);
-        projectRepo.Setup(r => r.GetByIdAsync(newProject.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(newProject);
-        projectRepo.Setup(r => r.GetReaderActiveProjectAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(activeProject);
+        var result = await sut.ActivateProject(projectId);
 
-        var result = await sut.ActivateProject(newProject.Id);
-
+        projectManagementService.Verify(s => s.SetActiveProjectAsync(projectId, It.IsAny<CancellationToken>()), Times.Once);
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal("Dashboard", redirect.ActionName);
-        Assert.False(activeProject.IsReaderActive);
-        Assert.True(newProject.IsReaderActive);
-        unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task ActivateProject_DoesNotDeactivate_WhenActivatingAlreadyActiveProject()
+    public async Task ActivateProject_SetsSuccessTempData_WhenServiceSucceeds()
     {
-        var author = User.Create("author@example.test", "Author", Role.Author);
-        var project = Project.Create("Project", "/Apps/Scrivener/Project", author.Id, "sync-root");
-        project.ActivateForReaders();
-        var originalActivatedAt = project.ReaderActivatedAt;
+        var projectId = Guid.NewGuid();
         var sut = CreateSut();
         sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
 
-        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(author);
-        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(project);
-        projectRepo.Setup(r => r.GetReaderActiveProjectAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(project);
+        await sut.ActivateProject(projectId);
 
-        var result = await sut.ActivateProject(project.Id);
+        Assert.Equal("Project activated for readers.", sut.TempData["Success"]);
+    }
 
+    [Fact]
+    public async Task ActivateProject_SetsErrorTempData_WhenServiceThrows()
+    {
+        var projectId = Guid.NewGuid();
+        projectManagementService
+            .Setup(s => s.SetActiveProjectAsync(projectId, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Project not found."));
+        var sut = CreateSut();
+        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
+
+        await sut.ActivateProject(projectId);
+
+        Assert.Equal("Project not found.", sut.TempData["Error"]);
+    }
+
+    [Fact]
+    public async Task DeactivateProject_CallsDeactivateProjectAsync_AndRedirectsToDashboard()
+    {
+        var projectId = Guid.NewGuid();
+        var sut = CreateSut();
+        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
+
+        var result = await sut.DeactivateProject(projectId);
+
+        projectManagementService.Verify(s => s.DeactivateProjectAsync(projectId, It.IsAny<CancellationToken>()), Times.Once);
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal("Dashboard", redirect.ActionName);
-        Assert.True(project.IsReaderActive);
-        Assert.NotNull(project.ReaderActivatedAt);
-        unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -673,62 +676,42 @@ public class AuthorControllerTests
     }
 
     [Fact]
-    public async Task DeleteVersion_WhenDeletingLatestVersion_SetsErrorAndDoesNotDelete()
+    public async Task DeleteVersion_CallsVersioningServiceDeleteVersionAsync()
     {
         var author = User.Create("author@example.test", "Author", Role.Author);
-        var section = Section.CreateDocument(
-            Guid.NewGuid(),
-            Guid.NewGuid().ToString(),
-            "Scene 1",
-            null,
-            0,
-            "<p>content</p>",
-            "hash",
-            null);
-        var version1 = SectionVersion.Create(section, author.Id, 1, 1, 0);
-        var version2 = SectionVersion.Create(section, author.Id, 2, 1, 0);
+        var versionId = Guid.NewGuid();
+        var sectionId = Guid.NewGuid();
         var sut = CreateSut();
         sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
 
         userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
             .ReturnsAsync(author);
-        sectionVersionRepo.Setup(r => r.GetAllBySectionIdAsync(section.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([version1, version2]);
 
-        await sut.DeleteVersion(version2.Id, section.Id, Guid.NewGuid());
+        await sut.DeleteVersion(versionId, sectionId, Guid.NewGuid());
 
-        Assert.Equal("The current version cannot be deleted. Use Revoke instead.", sut.TempData["Error"]);
-        sectionVersionRepo.Verify(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        versioningService.Verify(v => v.DeleteVersionAsync(versionId, sectionId, It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Equal("Version deleted.", sut.TempData["Success"]);
     }
 
     [Fact]
-    public async Task DeleteVersion_WhenDeletingOlderVersion_DeletesAndSaves()
+    public async Task DeleteVersion_WhenServiceThrowsInvariantViolation_SetsErrorMessage()
     {
         var author = User.Create("author@example.test", "Author", Role.Author);
-        var section = Section.CreateDocument(
-            Guid.NewGuid(),
-            Guid.NewGuid().ToString(),
-            "Scene 1",
-            null,
-            0,
-            "<p>content</p>",
-            "hash",
-            null);
-        var version1 = SectionVersion.Create(section, author.Id, 1, 1, 0);
-        var version2 = SectionVersion.Create(section, author.Id, 2, 1, 0);
+        var versionId = Guid.NewGuid();
+        var sectionId = Guid.NewGuid();
         var sut = CreateSut();
         sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
 
         userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
             .ReturnsAsync(author);
-        sectionVersionRepo.Setup(r => r.GetAllBySectionIdAsync(section.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([version1, version2]);
+        versioningService
+            .Setup(v => v.DeleteVersionAsync(versionId, sectionId, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvariantViolationException(
+                "I-VER-DEL-LATEST", "The current version cannot be deleted. Use Revoke instead."));
 
-        await sut.DeleteVersion(version1.Id, section.Id, Guid.NewGuid());
+        await sut.DeleteVersion(versionId, sectionId, Guid.NewGuid());
 
-        Assert.Equal("Version deleted.", sut.TempData["Success"]);
-        sectionVersionRepo.Verify(r => r.DeleteAsync(version1.Id, It.IsAny<CancellationToken>()), Times.Once);
-        unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Equal("The current version cannot be deleted. Use Revoke instead.", sut.TempData["Error"]);
     }
 
     // -----------------------------------------------------------------------

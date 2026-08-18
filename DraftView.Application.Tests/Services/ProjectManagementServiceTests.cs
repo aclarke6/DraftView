@@ -156,6 +156,123 @@ public class ProjectManagementServiceTests
         _syncOrchestrationService.Verify(s => s.StartSyncAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
+    // -----------------------------------------------------------------------
+    // SetActiveProjectAsync
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task SetActiveProjectAsync_ProjectNotFound_ThrowsInvalidOperationException()
+    {
+        var projectId = Guid.NewGuid();
+        _projectRepo.Setup(r => r.GetByIdAsync(projectId, default)).ReturnsAsync((Project?)null);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => CreateSut().SetActiveProjectAsync(projectId));
+    }
+
+    [Fact]
+    public async Task SetActiveProjectAsync_NoCurrentlyActive_ActivatesTargetAndSaves()
+    {
+        var authorId = Guid.NewGuid();
+        var project = Project.Create("My Book", "/path", authorId, "uuid-1");
+        _projectRepo.Setup(r => r.GetByIdAsync(project.Id, default)).ReturnsAsync(project);
+        _projectRepo.Setup(r => r.GetReaderActiveProjectAsync(default)).ReturnsAsync((Project?)null);
+
+        await CreateSut().SetActiveProjectAsync(project.Id);
+
+        Assert.True(project.IsReaderActive);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task SetActiveProjectAsync_DifferentProjectCurrentlyActive_DeactivatesCurrentAndActivatesTarget()
+    {
+        var authorId = Guid.NewGuid();
+        var current = Project.Create("Current", "/c", authorId, "uuid-c");
+        current.ActivateForReaders();
+        var next = Project.Create("Next", "/n", authorId, "uuid-n");
+
+        _projectRepo.Setup(r => r.GetByIdAsync(next.Id, default)).ReturnsAsync(next);
+        _projectRepo.Setup(r => r.GetReaderActiveProjectAsync(default)).ReturnsAsync(current);
+
+        await CreateSut().SetActiveProjectAsync(next.Id);
+
+        Assert.False(current.IsReaderActive);
+        Assert.True(next.IsReaderActive);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task SetActiveProjectAsync_SameProjectAlreadyActive_JustActivatesAndSaves()
+    {
+        var authorId = Guid.NewGuid();
+        var project = Project.Create("Book", "/path", authorId, "uuid");
+        project.ActivateForReaders();
+
+        _projectRepo.Setup(r => r.GetByIdAsync(project.Id, default)).ReturnsAsync(project);
+        _projectRepo.Setup(r => r.GetReaderActiveProjectAsync(default)).ReturnsAsync(project);
+
+        await CreateSut().SetActiveProjectAsync(project.Id);
+
+        Assert.True(project.IsReaderActive);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    // -----------------------------------------------------------------------
+    // DeactivateProjectAsync
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task DeactivateProjectAsync_ProjectNotFound_ThrowsInvalidOperationException()
+    {
+        var projectId = Guid.NewGuid();
+        _projectRepo.Setup(r => r.GetByIdAsync(projectId, default)).ReturnsAsync((Project?)null);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => CreateSut().DeactivateProjectAsync(projectId));
+    }
+
+    [Fact]
+    public async Task DeactivateProjectAsync_ProjectFound_DeactivatesAndSaves()
+    {
+        var authorId = Guid.NewGuid();
+        var project = Project.Create("My Book", "/path", authorId, "uuid-1");
+        project.ActivateForReaders();
+        _projectRepo.Setup(r => r.GetByIdAsync(project.Id, default)).ReturnsAsync(project);
+
+        await CreateSut().DeactivateProjectAsync(project.Id);
+
+        Assert.False(project.IsReaderActive);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    // -----------------------------------------------------------------------
+    // SoftDeleteProjectAsync
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task SoftDeleteProjectAsync_ProjectNotFound_ThrowsInvalidOperationException()
+    {
+        var projectId = Guid.NewGuid();
+        _projectRepo.Setup(r => r.GetByIdAsync(projectId, default)).ReturnsAsync((Project?)null);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => CreateSut().SoftDeleteProjectAsync(projectId));
+    }
+
+    [Fact]
+    public async Task SoftDeleteProjectAsync_ProjectFound_SoftDeletesAndSaves()
+    {
+        var authorId = Guid.NewGuid();
+        var project = Project.Create("My Book", "/path", authorId, "uuid-1");
+        _projectRepo.Setup(r => r.GetByIdAsync(project.Id, default)).ReturnsAsync(project);
+
+        await CreateSut().SoftDeleteProjectAsync(project.Id);
+
+        Assert.True(project.IsSoftDeleted);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
     [Fact]
     public async Task AddDiscoveredProjectsAsync_FirstProjectDuplicate_SecondSucceeds_NameIsSecondProject()
     {
