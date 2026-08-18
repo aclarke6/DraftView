@@ -12,8 +12,14 @@ See DraftView Git Rules.md for versioning and branching strategy.
 | v4.1 | Manual upload as first-class ingestion channel. `ProjectType` enum. `IImportProvider` interface. `SectionTreeService` creation gate. `Comment.SectionVersionId` anchoring. |
 | v4.2 | V-Sprint 1 Phase 1 complete. `SectionVersion`, `ChangeClassification`, `ProjectType` in Domain. `ISectionVersionRepository` + EF implementation. `ReadEvent.LastReadVersionNumber`. `Comment.SectionVersionId`. Migration `AddVersioningAndManualUpload` applied to production 2026-04-17. 529 tests. |
 | v4.3 | V-Sprint 1 Phase 2 complete. `IImportProvider`, `IImportService`, `ISectionTreeService`, `UnsupportedFileTypeException`, `SectionTreeNode` in Domain. `RtfImportProvider`, `ImportService`, `SectionTreeService` in Application. `Section.CreateDocumentForUpload` factory + domain tests. All services registered in DI. Forensic review passed. 558 tests. |
+| v4.4 | Manual chapter upload design recorded in `ADR-ManualChapterUploadArchitecture.md` and `ManualChapterUploadUXSpec.md`. This future `.txt` / `.docx` chapter flow supersedes earlier section-tree assumptions for new manual-upload work. |
 
 ---
+
+> Note: the current implemented manual-upload path in this document reflects the
+> existing section-based flow. The planned chapter-based `.txt` / `.docx` manual
+> upload work for issue #32 is captured in
+> `ADR-ManualChapterUploadArchitecture.md`.
 
 ## 1. Purpose
 
