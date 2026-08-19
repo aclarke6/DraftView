@@ -1,5 +1,5 @@
 ﻿# DraftView — Task List
-Last updated: 2026-08-19 (MT-Sprint-1 complete, awaiting merge)
+Last updated: 2026-08-19
 Last deployed: 2026-08-17 13:59 (commit: d51d201)
 
 ---
@@ -19,7 +19,7 @@ Last deployed: 2026-08-17 13:59 (commit: d51d201)
 |-------|--------|
 | RSprint Series | 🟡 In progress — RS-A to RS-E complete, RS-F next |
 | S-Sprint Series | 🟡 In progress — S-Sprint-1 complete, S-Sprint-2 next |
-| MT-Sprint Series | 🟡 In progress — MT-Sprint-1 complete, awaiting merge; MT-Sprint-2 next; see `MultiTenancy.md` |
+| MT-Sprint Series | ✅ Complete — all 5 sprints merged to main; see `MultiTenancy.md` |
 | RD-Sprint Series | 🟡 In progress — RD-Sprint-1 (Continue Reading CTA) merged to main 2026-08-17; see section 3.7 |
 | DR-Sprint Series | ✅ Complete — merged to main 2026-08-17; see section 3.8 |
 | Incremental Refactor | 🟡 In progress — Phase 2a–2e complete, Phase 3 deferred; see section 3.6 |
@@ -139,7 +139,7 @@ No open bugs.
 
 ### 3.4 Multi-Tenancy Sprint Series
 
-**Status:** 🟡 In progress — MT-Sprint-1 complete, awaiting merge; MT-Sprint-2 next
+**Status:** ✅ Complete — all 5 sprints implemented and merged to main
 
 A second author has expressed interest in the platform. Readers may read
 books from multiple authors. Authors may also be beta readers for other authors. Multi-tenancy
@@ -157,11 +157,11 @@ See `MultiTenancy.md` for full design, migration strategy, and sprint plan.
 
 | Sprint | Deliverable |
 |--------|-------------|
-| ~~MT-Sprint-1~~ | ✅ Account / Tenancy / TenancyMembership entity split — complete, awaiting merge |
-| MT-Sprint-2 | Subscription enforcement, `IBillingProvider`, billing/provider rollout after go-live |
-| MT-Sprint-3 | Author self-serve registration, Dropbox connect per Tenancy |
-| MT-Sprint-4 | Reader cross-tenancy identity |
-| MT-Sprint-5 | Reader Marketplace (post-revenue) |
+| ~~MT-Sprint-1~~ | ✅ Account / Tenancy / TenancyMembership entity split |
+| ~~MT-Sprint-2~~ | ✅ Subscription enforcement, `IBillingProvider`, billing/provider rollout after go-live |
+| ~~MT-Sprint-3~~ | ✅ Author self-serve registration, Dropbox connect per Tenancy |
+| ~~MT-Sprint-4~~ | ✅ Reader cross-tenancy identity |
+| ~~MT-Sprint-5~~ | ✅ Reader Marketplace (post-revenue) |
 
 **Prerequisite:** Production stable before MT-Sprint-1. Billing/provider rollout is deferred until post-go-live MT-Sprint-2.
 
