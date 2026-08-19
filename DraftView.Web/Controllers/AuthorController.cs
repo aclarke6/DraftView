@@ -35,7 +35,10 @@ public class AuthorController(
     ISectionManagementService sectionManagementService,
     IProjectManagementService projectManagementService,
     IContentNavigationService contentNavigationService,
-    IReaderManagementService readerManagementService) : BaseController(userRepo)
+    IReaderManagementService readerManagementService,
+    IManualUploadService manualUploadService,
+    IManualChapterRepository manualChapterRepo,
+    IManualChapterVersionRepository manualChapterVersionRepo) : BaseController(userRepo)
 {
     // ---------------------------------------------------------------------------
     // Dashboard
@@ -986,3 +989,265 @@ public class AuthorController(
             RetentionLimit       = d.RetentionLimit
         };
 }
+
+    // ---------------------------------------------------------------------------
+    // Manual Chapters
+    // ---------------------------------------------------------------------------
+
+    [HttpGet]
+    public async Task<IActionResult> ManualChapters(Guid projectId)
+    {
+        var project = await projectRepo.GetByIdAsync(projectId);
+        if (project is null) return NotFound();
+        if (project.ProjectType != ProjectType.Manual) return BadRequest();
+
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        var chapters  = await manualChapterRepo.GetByProjectAsync(projectId, author.Id);
+        var versionCounts = new Dictionary<Guid, int>();
+        foreach (var ch in chapters)
+        {
+            var versions = await manualChapterVersionRepo.GetByChapterAsync(ch.Id);
+            versionCounts[ch.Id] = versions.Count;
+        }
+
+        var vm = new ManualChaptersViewModel
+        {
+            ProjectId   = projectId,
+            ProjectName = project.Name,
+            Chapters    = chapters.OrderBy(c => c.SortOrder).Select(c => new ManualChapterRowViewModel
+            {
+                Id               = c.Id,
+                Title            = c.Title,
+                SortOrder        = c.SortOrder,
+                OriginalFileName = c.OriginalFileName,
+                UploadedAt       = c.UploadedAt,
+                IsPublished      = c.LinkedSectionId.HasValue,
+                VersionCount     = versionCounts.GetValueOrDefault(c.Id, 0)
+            }).ToList()
+        };
+
+        return View(vm);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UploadManualChapter(UploadManualChapterViewModel model)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Please provide a title and a file.";
+            return RedirectToAction("ManualChapters", new { projectId = model.ProjectId });
+        }
+
+        try
+        {
+            await using var stream = model.File!.OpenReadStream();
+            await manualUploadService.UploadChapterAsync(
+                model.ProjectId, author.Id, model.Title,
+                stream, model.File.FileName);
+
+            TempData["Success"] = $"\"{model.Title}\" uploaded successfully.";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction("ManualChapters", new { projectId = model.ProjectId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> PasteManualChapter(PasteManualChapterViewModel model)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Please provide a title and content.";
+            return RedirectToAction("ManualChapters", new { projectId = model.ProjectId });
+        }
+
+        try
+        {
+            await manualUploadService.UploadChapterFromPasteAsync(
+                model.ProjectId, author.Id, model.Title, model.Content);
+
+            TempData["Success"] = $"\"{model.Title}\" saved successfully.";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction("ManualChapters", new { projectId = model.ProjectId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> PublishManualChapter(Guid chapterId, Guid projectId)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        try
+        {
+            await manualUploadService.PublishChapterAsync(chapterId, author.Id);
+            TempData["Success"] = "Chapter published and now visible to readers.";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction("ManualChapters", new { projectId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditManualChapter(EditManualChapterViewModel model)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Please provide content.";
+            return RedirectToAction("ManualChapters", new { projectId = model.ProjectId });
+        }
+
+        try
+        {
+            await manualUploadService.EditChapterAsync(model.ChapterId, author.Id, model.Content);
+            TempData["Success"] = "Chapter updated.";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction("ManualChapters", new { projectId = model.ProjectId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ReplaceManualChapter(ReplaceManualChapterViewModel model)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Please provide a file.";
+            return RedirectToAction("ManualChapters", new { projectId = model.ProjectId });
+        }
+
+        try
+        {
+            await using var stream = model.File!.OpenReadStream();
+            await manualUploadService.ReplaceChapterAsync(
+                model.ChapterId, author.Id, stream, model.File.FileName);
+
+            TempData["Success"] = "Chapter file replaced.";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction("ManualChapters", new { projectId = model.ProjectId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteManualChapter(Guid chapterId, Guid projectId)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        try
+        {
+            await manualUploadService.DeleteChapterAsync(chapterId, author.Id);
+            TempData["Success"] = "Chapter deleted.";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction("ManualChapters", new { projectId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ReorderManualChapters(Guid projectId, List<Guid> orderedIds)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        try
+        {
+            await manualUploadService.ReorderChaptersAsync(projectId, author.Id, orderedIds);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+
+        return Ok();
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ManualChapterHistory(Guid chapterId, Guid projectId)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        var chapter = await manualChapterRepo.GetByIdAsync(chapterId, author.Id);
+        if (chapter is null) return NotFound();
+
+        var versions = await manualChapterVersionRepo.GetByChapterAsync(chapterId);
+
+        var vm = new ManualChapterHistoryViewModel
+        {
+            ChapterId    = chapterId,
+            ProjectId    = projectId,
+            ChapterTitle = chapter.Title,
+            Versions     = versions.OrderByDescending(v => v.VersionNumber).Select(v => new ManualChapterVersionRowViewModel
+            {
+                VersionId      = v.Id,
+                VersionNumber  = v.VersionNumber,
+                SnapshotReason = v.SnapshotReason.ToString(),
+                CreatedAt      = v.SnapshotAt,
+                ContentLength  = v.RawContent?.Length ?? 0
+            }).ToList()
+        };
+
+        return View(vm);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ClearManualChapterHistory(Guid chapterId, Guid projectId)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        try
+        {
+            await manualUploadService.ClearVersionHistoryAsync(chapterId, author.Id);
+            TempData["Success"] = "Version history cleared.";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction("ManualChapters", new { projectId });
+    }

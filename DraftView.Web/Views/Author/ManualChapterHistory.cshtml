@@ -1,0 +1,57 @@
+@model DraftView.Web.Models.ManualChapterHistoryViewModel
+@{
+    ViewData["Title"] = "Chapter Version History";
+}
+
+<h2>Version History — @Model.ChapterTitle</h2>
+<p>
+    <a asp-action="ManualChapters" asp-route-projectId="@Model.ProjectId">&larr; Back to Chapters</a>
+</p>
+<p class="page-subtitle">
+    Each time you edit or replace this chapter, the previous content is saved here.
+    Clearing history is permanent and cannot be undone.
+</p>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert--success">@success</div>
+}
+
+@if (!Model.Versions.Any())
+{
+    <p class="mu-empty">No version history for this chapter.</p>
+}
+else
+{
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Version</th>
+                <th>Reason</th>
+                <th>Date</th>
+                <th>Size</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var v in Model.Versions)
+            {
+                <tr>
+                    <td>v@v.VersionNumber</td>
+                    <td>@v.SnapshotReason</td>
+                    <td>@v.CreatedAt.ToString("d MMM yyyy HH:mm")</td>
+                    <td>@v.ContentLength chars</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div style="margin-top: 1.5rem;">
+        <form asp-action="ClearManualChapterHistory" method="post"
+              onsubmit="return confirm('Clear all version history for this chapter? This cannot be undone.');">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="chapterId" value="@Model.ChapterId" />
+            <input type="hidden" name="projectId" value="@Model.ProjectId" />
+            <button type="submit" class="btn btn--danger btn--sm">Clear All History</button>
+        </form>
+    </div>
+}
