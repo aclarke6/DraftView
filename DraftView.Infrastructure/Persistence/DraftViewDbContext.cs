@@ -51,6 +51,8 @@ public class DraftViewDbContext : IdentityDbContext<IdentityUser>, IUnitOfWork
     public DbSet<SystemStateMessage> SystemStateMessages { get; set; } = default!;
     public DbSet<AuthorNotification> AuthorNotifications => Set<AuthorNotification>();
     public DbSet<AccessRequest> AccessRequests => Set<AccessRequest>();
+    public DbSet<ManualChapter> ManualChapters => Set<ManualChapter>();
+    public DbSet<ManualChapterVersion> ManualChapterVersions => Set<ManualChapterVersion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

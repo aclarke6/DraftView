@@ -45,6 +45,8 @@ namespace DraftView.Web.Extensions
             services.AddScoped<ISystemStateMessageRepository, SystemStateMessageRepository>();
             services.AddScoped<IAuthorNotificationRepository, AuthorNotificationRepository>();
             services.AddScoped<IAccessRequestRepository, AccessRequestRepository>();
+            services.AddScoped<IManualChapterRepository, ManualChapterRepository>();
+            services.AddScoped<IManualChapterVersionRepository, ManualChapterVersionRepository>();
 
             return services;
         }
@@ -116,6 +118,9 @@ namespace DraftView.Web.Extensions
             services.AddScoped<ISyncOrchestrationService, SyncOrchestrationService>();
             services.AddScoped<IContentNavigationService, ContentNavigationService>();
             services.AddScoped<IReaderManagementService, ReaderManagementService>();
+            services.AddScoped<IChapterFileParser, PlainTextChapterParser>();
+            services.AddScoped<IChapterFileParser, DocxChapterParser>();
+            services.AddScoped<IChapterFileParserResolver, ChapterFileParserResolver>();
 
             return services;
         }
