@@ -19,7 +19,7 @@ Last deployed: 2026-08-17 13:59 (commit: d51d201)
 |-------|--------|
 | RSprint Series | 🟡 In progress — RS-A to RS-E complete, RS-F next |
 | S-Sprint Series | 🟡 In progress — S-Sprint-1 complete, S-Sprint-2 next |
-| MT-Sprint Series | ✅ Complete — all 5 sprints merged to main; see `MultiTenancy.md` |
+| MT-Sprint Series | 🟡 In progress — all 5 sprints complete, awaiting merge; see `MultiTenancy.md` |
 | RD-Sprint Series | 🟡 In progress — RD-Sprint-1 (Continue Reading CTA) merged to main 2026-08-17; see section 3.7 |
 | DR-Sprint Series | ✅ Complete — merged to main 2026-08-17; see section 3.8 |
 | Incremental Refactor | 🟡 In progress — Phase 2a–2e complete, Phase 3 deferred; see section 3.6 |
@@ -139,7 +139,7 @@ No open bugs.
 
 ### 3.4 Multi-Tenancy Sprint Series
 
-**Status:** ✅ Complete — all 5 sprints implemented and merged to main
+**Status:** 🟡 In progress — all 5 sprints complete, awaiting merge
 
 A second author has expressed interest in the platform. Readers may read
 books from multiple authors. Authors may also be beta readers for other authors. Multi-tenancy
