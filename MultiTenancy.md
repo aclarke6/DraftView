@@ -1,5 +1,5 @@
 # DraftView — Multi-Tenancy Sprint Series
-Version: 1.0 | Date: 2026-08-19
+Version: 1.1 | Date: 2026-08-19
 Status: **Planned for implementation** — MT-Sprint-1 through MT-Sprint-4 are the active delivery roadmap; MT-Sprint-5 remains post-revenue.
 
 ---
@@ -34,8 +34,18 @@ Multi-tenancy is now a near-term platform requirement because:
 
 - multiple authors must be supported,
 - readers must be able to read across authors,
-- an author may also act as a beta reader in another workspace,
+- an author may also act as a beta reader on another author's project,
 - Reader Dashboard work depends on cross-author identity and access modelling.
+
+### 3.1.1 Author-as-reader model
+
+An author account can be invited to read another author's project, exactly as a regular reader would be. This is granted at the project level via `ReaderAccess` on the host author's project. The invited author does **not** receive a `TenancyMembership` in the host tenancy; their `Account` simply gains a `ReaderAccess` record scoped to the specific project.
+
+This means:
+- `TenancyMembership` remains the Author-Tenancy 1:1 link **only** (Role = Author).
+- `ReaderAccess` is the universal mechanism for project-level read access — used by both regular readers and authors reading across workspaces.
+- An account can simultaneously be an author in their own tenancy and a beta reader on one or more other tenancies' projects.
+- Reader count limits (`MaxBetaReaderCount`) are enforced against the host tenancy's `ReaderAccess` records, not against `TenancyMembership`.
 
 ### 3.2 Implementation sprint boundary
 
@@ -96,18 +106,22 @@ The target state is:
 
 | Entity | Purpose |
 |--------|---------|
-| `Account` | Platform identity, login credential owner, display-name owner, may participate in multiple tenancies |
-| `Tenancy` | Author-owned workspace containing projects, readers, notifications, integrations, and operational limit properties such as maximum beta-reader count |
-| `TenancyMembership` | Role-bearing link between `Account` and `Tenancy` |
+| `Account` | Platform identity, login credential owner, display-name owner. One per person. Multi-role: role is determined by context (which tenancy / which project). |
+| `Tenancy` | Author-owned workspace containing projects, notifications, integrations, and operational limit properties such as maximum beta-reader count. 1:1 with the author `Account`. |
+| `TenancyMembership` | Author-Tenancy 1:1 link only (Role = Author). Not used for readers. |
+| `ReaderAccess` | Project-level read grant. The universal mechanism for both regular readers and authors reading across workspaces. Scoped to a specific `Project` and `Account`. |
 | `TenancySubscription` | Tier state, future billing-provider identifiers, and subscription status |
 | `DropboxConnection` | Dropbox binding owned by a `Tenancy`, not by a person-account |
 
 ### 5.2 Core invariants
 
-- Exactly one author membership exists per tenancy.
+- Exactly one `TenancyMembership` (Role = Author) exists per tenancy; it identifies the tenancy owner.
 - An account may own at most one tenancy.
-- An account may hold reader memberships in many tenancies.
-- No data from one tenancy may be visible to another unless explicitly represented by a membership in both tenancies.
+- An account does **not** receive a `TenancyMembership` in tenancies where it is only a reader.
+- Reader access — whether the reader is a regular user or an author acting as a reader on another workspace's project — is represented by a `ReaderAccess` record scoped to the specific project.
+- An account may hold `ReaderAccess` on projects across many different tenancies simultaneously.
+- Beta-reader count limits (`MaxBetaReaderCount`) are enforced by counting active `ReaderAccess` records on a tenancy's projects, not by counting `TenancyMembership` records.
+- No data from one tenancy may be visible to another unless explicitly represented by a `ReaderAccess` grant on one of its projects.
 - Soft delete remains the default deletion model.
 - Historical and published content remains immutable under the existing versioning rules.
 
@@ -147,7 +161,7 @@ Replace the single `User` identity model with the minimum viable tenancy model w
 - Preserve existing data through an atomic migration; no partial live state is acceptable.
 - Treat rename completeness as mandatory across entities, repositories, DTOs, view models, controllers, tests, and migrations.
 - Replace project-global or platform-global author lookups with tenancy-scoped lookups.
-- Audit `ReaderAccess` and decide whether it remains temporarily or is subsumed by `TenancyMembership`.
+- `ReaderAccess` is confirmed to remain as the project-level reader grant mechanism (see § 9 resolved decisions). Audit its scope and ensure it is tenancy-safe via project ownership.
 - Audit `AuthorNotification`, `UserPreferences`, and other current `AuthorId` tables as part of the tenancy-key migration.
 
 ### AGENTS.md requirements embedded in this sprint
@@ -262,35 +276,36 @@ Allow a new author to create an account and tenancy without manual seeding, and 
 
 ### Goal
 
-Allow a single reader account to participate in multiple author tenancies while preserving tenancy isolation.
+Allow a single `Account` to hold `ReaderAccess` on projects across multiple author tenancies, and to be simultaneously an author in their own tenancy, while preserving tenancy isolation.
 
 ### Required deliverables
 
-- invitation flow that attaches to an existing `Account` when the email already exists
-- support for one account holding memberships in multiple tenancies
+- invitation flow that attaches a `ReaderAccess` record to an existing `Account` when the email already exists
+- support for one account holding `ReaderAccess` grants on projects across many tenancies
 - account-owned `DisplayName`
-- safe account soft-delete behaviour that inactivates memberships without cross-tenant leakage
-- repository and service support for reader dashboard queries that span memberships safely
+- safe account soft-delete behaviour that inactivates all `ReaderAccess` records without cross-tenant leakage
+- repository and service support for reader dashboard queries that collect accessible projects via `ReaderAccess` safely
 
 ### Specific requirements for this sprint
 
 - Readers must be able to access books from more than one author without duplicate login identities.
-- Authors who are also readers must be representable without role collision.
-- Reader Dashboard dependencies such as "books available" and "discover authors" must query through memberships rather than project-only access records.
-- `IProjectRepository.GetAllForReaderAsync(Guid userId)` or equivalent tenancy-safe query support must exist by sprint completion.
+- An author account can accept an invitation to read another author's project; this creates a `ReaderAccess` record on that project — it does **not** create a `TenancyMembership` in the host tenancy.
+- Role context is derived from the current request: the same account is an Author when acting within their own tenancy, and a Reader when accessing another tenancy's project via `ReaderAccess`.
+- Reader Dashboard queries must collect projects via `ReaderAccess` records scoped to the requesting account, not via `TenancyMembership`.
+- `IProjectRepository.GetAllForReaderAsync(Guid accountId)` or equivalent `ReaderAccess`-based query support must exist by sprint completion.
 
 ### AGENTS.md requirements embedded in this sprint
 
-- No global reader query may bypass tenancy or membership scope.
-- Application services own role-switching and invitation orchestration.
+- No global reader query may bypass project or tenancy ownership scope.
+- Application services own role-context derivation and invitation orchestration.
 - Web must not branch on business rules for invitation acceptance or dashboard composition.
 - Soft delete remains the deletion strategy for user-visible identity state.
 
 ### Exit criteria
 
-- One account can read across multiple authors.
-- One account can be both author and reader in different tenancy contexts.
-- Reader-facing queries are membership-aware and tenancy-safe.
+- One account can read across multiple authors via `ReaderAccess`.
+- One account can be both author (in their own tenancy) and reader (on other tenancies' projects) without role collision.
+- Reader-facing queries are `ReaderAccess`-scoped and tenancy-safe.
 
 ---
 
@@ -333,9 +348,15 @@ This sprint remains in the roadmap, but it is **not** part of the near-term impl
 
 ---
 
-## 9. Open Design Decisions To Resolve Before MT-Sprint-1 Starts
+## 9. Open Design Decisions
 
-- Whether `ReaderAccess` remains as a transitional table or is fully superseded by `TenancyMembership`
+### Resolved
+
+- **`ReaderAccess` vs `TenancyMembership` for readers — RESOLVED: KEEP `ReaderAccess`.**
+  Readers (including authors reading another author's project) are granted access at the project level via `ReaderAccess`. `TenancyMembership` is the Author-Tenancy 1:1 link only; no `BetaReader` tenancy role exists. `ReaderAccess` is the universal reader mechanism.
+
+### Still open before MT-Sprint-1 starts
+
 - Whether encryption remains platform-keyed or becomes tenancy-keyed for protected email data
 - Exact migration path for `UserPreferences`
 - Final tenancy-safe operating model for sync background workers and trusted system actions

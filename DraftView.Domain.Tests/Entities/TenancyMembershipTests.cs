@@ -7,6 +7,7 @@ namespace DraftView.Domain.Tests.Entities;
 /// <summary>
 /// Tests for the TenancyMembership entity.
 /// Covers: factory method invariants, role assignment, soft-delete, restore.
+/// TenancyMembership is the Author-Tenancy 1:1 link; reader access is via ReaderAccess.
 /// Excludes: tenancy limit enforcement (MT-Sprint-2), EF persistence.
 /// </summary>
 public class TenancyMembershipTests
@@ -21,29 +22,21 @@ public class TenancyMembershipTests
     [Fact]
     public void Create_WithValidData_ReturnsMembership()
     {
-        var membership = TenancyMembership.Create(ValidTenancyId, ValidAccountId, TenancyRole.BetaReader);
+        var membership = TenancyMembership.Create(ValidTenancyId, ValidAccountId, TenancyRole.Author);
 
         Assert.NotEqual(Guid.Empty, membership.Id);
         Assert.Equal(ValidTenancyId, membership.TenancyId);
         Assert.Equal(ValidAccountId, membership.AccountId);
-        Assert.Equal(TenancyRole.BetaReader, membership.Role);
+        Assert.Equal(TenancyRole.Author, membership.Role);
         Assert.False(membership.IsSoftDeleted);
         Assert.Null(membership.SoftDeletedAt);
-    }
-
-    [Fact]
-    public void Create_WithAuthorRole_SetsRoleCorrectly()
-    {
-        var membership = TenancyMembership.Create(ValidTenancyId, ValidAccountId, TenancyRole.Author);
-
-        Assert.Equal(TenancyRole.Author, membership.Role);
     }
 
     [Fact]
     public void Create_SetsJoinedAtToNow()
     {
         var before = DateTime.UtcNow;
-        var membership = TenancyMembership.Create(ValidTenancyId, ValidAccountId, TenancyRole.BetaReader);
+        var membership = TenancyMembership.Create(ValidTenancyId, ValidAccountId, TenancyRole.Author);
 
         Assert.True(membership.JoinedAt >= before);
         Assert.True(membership.JoinedAt <= DateTime.UtcNow);
@@ -53,7 +46,7 @@ public class TenancyMembershipTests
     public void Create_WithEmptyTenancyId_ThrowsInvariantViolationException()
     {
         var ex = Assert.Throws<InvariantViolationException>(
-            () => TenancyMembership.Create(Guid.Empty, ValidAccountId, TenancyRole.BetaReader));
+            () => TenancyMembership.Create(Guid.Empty, ValidAccountId, TenancyRole.Author));
 
         Assert.Equal("I-TMEM-TENANCY", ex.InvariantCode);
     }
@@ -62,7 +55,7 @@ public class TenancyMembershipTests
     public void Create_WithEmptyAccountId_ThrowsInvariantViolationException()
     {
         var ex = Assert.Throws<InvariantViolationException>(
-            () => TenancyMembership.Create(ValidTenancyId, Guid.Empty, TenancyRole.BetaReader));
+            () => TenancyMembership.Create(ValidTenancyId, Guid.Empty, TenancyRole.Author));
 
         Assert.Equal("I-TMEM-ACCOUNT", ex.InvariantCode);
     }
@@ -74,7 +67,7 @@ public class TenancyMembershipTests
     [Fact]
     public void SoftDelete_SetsFlagsAndRecordsTimestamp()
     {
-        var membership = TenancyMembership.Create(ValidTenancyId, ValidAccountId, TenancyRole.BetaReader);
+        var membership = TenancyMembership.Create(ValidTenancyId, ValidAccountId, TenancyRole.Author);
         var before = DateTime.UtcNow;
 
         membership.SoftDelete();
@@ -87,7 +80,7 @@ public class TenancyMembershipTests
     [Fact]
     public void SoftDelete_WhenAlreadyDeleted_DoesNotChangeSoftDeletedAt()
     {
-        var membership = TenancyMembership.Create(ValidTenancyId, ValidAccountId, TenancyRole.BetaReader);
+        var membership = TenancyMembership.Create(ValidTenancyId, ValidAccountId, TenancyRole.Author);
         membership.SoftDelete();
         var firstDeletion = membership.SoftDeletedAt;
 
@@ -103,7 +96,7 @@ public class TenancyMembershipTests
     [Fact]
     public void Restore_AfterSoftDelete_ClearsSoftDeleteFlag()
     {
-        var membership = TenancyMembership.Create(ValidTenancyId, ValidAccountId, TenancyRole.BetaReader);
+        var membership = TenancyMembership.Create(ValidTenancyId, ValidAccountId, TenancyRole.Author);
         membership.SoftDelete();
 
         membership.Restore();
@@ -115,7 +108,7 @@ public class TenancyMembershipTests
     [Fact]
     public void Restore_WhenNotDeleted_LeavesIsNotSoftDeletedState()
     {
-        var membership = TenancyMembership.Create(ValidTenancyId, ValidAccountId, TenancyRole.BetaReader);
+        var membership = TenancyMembership.Create(ValidTenancyId, ValidAccountId, TenancyRole.Author);
 
         membership.Restore();
 

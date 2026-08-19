@@ -4,9 +4,9 @@ using DraftView.Domain.Exceptions;
 namespace DraftView.Domain.Entities;
 
 /// <summary>
-/// Represents the role-bearing link between an Account and a Tenancy.
-/// A membership with Role=Author identifies the tenancy owner.
-/// An account may hold BetaReader memberships in many tenancies simultaneously.
+/// Represents the Author-Tenancy link: exactly one membership per tenancy, always Role=Author.
+/// Reader access (including authors reading other authors' projects) is granted at the project
+/// level via ReaderAccess and does not create a TenancyMembership in the host tenancy.
 /// </summary>
 public sealed class TenancyMembership
 {
