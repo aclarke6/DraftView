@@ -1,5 +1,5 @@
 ﻿# DraftView — Task List
-Last updated: 2026-08-18
+Last updated: 2026-08-19
 Last deployed: 2026-08-17 13:59 (commit: d51d201)
 
 ---
@@ -153,15 +153,39 @@ is now a near-term requirement, not a post-revenue concern.
 
 See `MultiTenancy.md` for full design, migration strategy, and sprint plan.
 
-| Sprint | Deliverable |
-|--------|-------------|
-| MT-Sprint-1 | Account / Tenancy / TenancyMembership entity split |
-| MT-Sprint-2 | Subscription enforcement, `IBillingProvider`, billing/provider rollout after go-live |
-| MT-Sprint-3 | Author self-serve registration, Dropbox connect per Tenancy |
-| MT-Sprint-4 | Reader cross-tenancy identity |
-| MT-Sprint-5 | Reader Marketplace (post-revenue) |
+| Sprint | Deliverable | Status |
+|--------|-------------|--------|
+| MT-Sprint-1 | Account / Tenancy / TenancyMembership entity split | 🟡 In progress — cloud phase complete; local phase pending |
+| MT-Sprint-2 | Subscription enforcement, `IBillingProvider`, billing/provider rollout after go-live | 🔴 Not started |
+| MT-Sprint-3 | Author self-serve registration, Dropbox connect per Tenancy | 🔴 Not started |
+| MT-Sprint-4 | Reader cross-tenancy identity | 🔴 Not started |
+| MT-Sprint-5 | Reader Marketplace (post-revenue) | ⏸ Deferred post-revenue |
 
 **Prerequisite:** Production stable before MT-Sprint-1. Billing/provider rollout is deferred until post-go-live MT-Sprint-2.
+
+#### MT-Sprint-1 Progress
+
+**Cloud phase complete (PR #claude/multi-tenancy-implementation-m279oe):**
+- [x] `TenancyRole` enum — `DraftView.Domain/Enumerations/TenancyRole.cs`
+- [x] `Account` entity with full invariants and email-protection pattern — `DraftView.Domain/Entities/Account.cs`
+- [x] `Tenancy` entity with MaxBetaReaderCount default (5) — `DraftView.Domain/Entities/Tenancy.cs`
+- [x] `TenancyMembership` entity with soft-delete and restore — `DraftView.Domain/Entities/TenancyMembership.cs`
+- [x] `IAccountRepository`, `ITenancyRepository`, `ITenancyMembershipRepository` interfaces
+- [x] `AccountRepository`, `TenancyRepository`, `TenancyMembershipRepository` implementations
+- [x] EF configurations for all three entities (`AccountConfiguration`, `TenancyConfiguration`, `TenancyMembershipConfiguration`)
+- [x] `DraftViewDbContext` — new DbSets: `Accounts`, `Tenancies`, `TenancyMemberships`
+- [x] DI registration in `ServiceCollectionExtensions`
+- [x] Unit tests: `AccountTests` (21 tests), `TenancyTests` (10 tests), `TenancyMembershipTests` (9 tests)
+
+**Local phase required (cannot be done safely without dotnet runtime):**
+- [ ] Generate EF migration: `dotnet ef migrations add AddMultiTenancyEntities --project DraftView.Infrastructure --startup-project DraftView.Web`
+- [ ] Apply migration: `dotnet ef database update --project DraftView.Infrastructure --startup-project DraftView.Web`
+- [ ] Run full test suite: `dotnet test` — confirm all new tests GREEN plus no regressions
+- [ ] `AuthorId` → `TenancyId` rename on `Projects`, `Comments`, `ReaderAccess`, `Invitations`, `AuthorNotifications`, `UserPreferences` — requires build verification
+- [ ] `DropboxConnections.UserId` → `DropboxConnections.TenancyId` rename with data migration
+- [ ] Remove/replace `IUserRepository.GetAllBetaReadersAsync()` (unscoped global query)
+- [ ] `ReaderAccess` transitional decision — keep as bridge or subsume into `TenancyMembership`
+- [ ] Data backfill: map existing `User` records to `Account` + `Tenancy` + author `TenancyMembership`
 
 ---
 

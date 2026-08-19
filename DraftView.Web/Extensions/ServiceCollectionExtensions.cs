@@ -48,6 +48,11 @@ namespace DraftView.Web.Extensions
             services.AddScoped<IManualChapterRepository, ManualChapterRepository>();
             services.AddScoped<IManualChapterVersionRepository, ManualChapterVersionRepository>();
 
+            // Multi-tenancy repositories (MT-Sprint-1)
+            services.AddScoped<IAccountRepository, AccountRepository>();
+            services.AddScoped<ITenancyRepository, TenancyRepository>();
+            services.AddScoped<ITenancyMembershipRepository, TenancyMembershipRepository>();
+
             return services;
         }
 
