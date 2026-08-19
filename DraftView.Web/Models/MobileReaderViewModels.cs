@@ -23,6 +23,11 @@ public class MobileChapterRowViewModel
     public Section Chapter { get; set; } = default!;
     public bool HasRead { get; set; }
     public int SceneCount { get; set; }
+    /// <summary>
+    /// True when the chapter has no published Document children — reader links
+    /// directly to Read rather than to the intermediate Scenes list.
+    /// </summary>
+    public bool IsLeaf { get; set; }
 }
 
 /// <summary>

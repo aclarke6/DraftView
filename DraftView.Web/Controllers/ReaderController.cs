@@ -96,7 +96,8 @@ public class ReaderController(
             chapterRows.Add(new MobileChapterRowViewModel {
                 Chapter    = chapter,
                 HasRead    = hasRead,
-                SceneCount = sceneCount
+                SceneCount = sceneCount,
+                IsLeaf     = sceneCount == 0
             });
         }
 
@@ -111,6 +112,12 @@ public class ReaderController(
             {
                 lastReadSceneId   = lastSection.Id;
                 lastReadChapterId = lastSection.ParentId;
+            }
+            else if (lastSection?.NodeType == NodeType.Folder)
+            {
+                // Leaf chapter — Folder was read directly
+                lastReadSceneId   = lastSection.Id;
+                lastReadChapterId = lastSection.Id;
             }
         }
 
@@ -148,6 +155,10 @@ public class ReaderController(
                         s.IsPublished && !s.IsSoftDeleted)
             .OrderBy(s => s.SortOrder)
             .ToList();
+
+        // Leaf chapter — no scenes, read the chapter content directly
+        if (!scenes.Any())
+            return RedirectToAction("Read", new { id = chapterId });
 
         var sceneRows = new List<MobileSceneRowViewModel>();
         foreach (var scene in scenes)
@@ -399,7 +410,8 @@ public class ReaderController(
                 var hasRead = await ProgressService.HasReadSectionAsync(user.Id, chapter.Id);
                 chaptersWithProgress.Add(new DesktopChapterProgressViewModel {
                     Chapter = chapter,
-                    HasRead = hasRead
+                    HasRead = hasRead,
+                    IsLeaf  = IsLeafChapter(chapter, allSections)
                 });
             }
 
@@ -479,7 +491,8 @@ public class ReaderController(
             chapterRows.Add(new MobileChapterRowViewModel {
                 Chapter    = chapter,
                 HasRead    = hasRead,
-                SceneCount = sceneCount
+                SceneCount = sceneCount,
+                IsLeaf     = sceneCount == 0
             });
         }
 
@@ -494,6 +507,12 @@ public class ReaderController(
             {
                 lastReadSceneId   = lastSection.Id;
                 lastReadChapterId = lastSection.ParentId;
+            }
+            else if (lastSection?.NodeType == NodeType.Folder)
+            {
+                // Leaf chapter — Folder was read directly
+                lastReadSceneId   = lastSection.Id;
+                lastReadChapterId = lastSection.Id;
             }
         }
 
@@ -543,6 +562,14 @@ public class ReaderController(
             scenesWithComments.Add(sceneWithComments);
         }
 
+        // Leaf chapter — Folder has no Document children; render the Folder's own content directly.
+        if (!scenesWithComments.Any())
+        {
+            var leafContent = await BuildSceneWithCommentsAsync(
+                chapter, user, project?.AuthorId ?? Guid.Empty, isModerator);
+            scenesWithComments.Add(leafContent);
+        }
+
         var chapterCommentsRaw = await CommentService.GetThreadsForSectionAsync(id, user.Id);
         var chapterComments    = await BuildCommentDisplayModelsAsync(chapterCommentsRaw, user.Id, project?.AuthorId ?? Guid.Empty, isModerator);
         var breadcrumb         = BuildBreadcrumb(chapter, allSections);
@@ -581,19 +608,41 @@ public class ReaderController(
 
     private async Task<IActionResult> MobileRead(Guid id, Domain.Entities.User user)
     {
-        var scene = await SectionRepo.GetByIdAsync(id);
-        if (scene is null || !scene.IsPublished || scene.NodeType != NodeType.Document)
+        var section = await SectionRepo.GetByIdAsync(id);
+        if (section is null || !section.IsPublished)
             return NotFound();
 
-        var chapter = scene.ParentId.HasValue
-            ? await SectionRepo.GetByIdAsync(scene.ParentId.Value)
-            : null;
-        if (chapter is null)
-            return NotFound();
-
-        var project = await ProjectRepo.GetByIdAsync(scene.ProjectId);
+        var project = await ProjectRepo.GetByIdAsync(section.ProjectId);
         if (project is null)
             return NotFound();
+
+        var allSections = await SectionRepo.GetByProjectIdAsync(project.Id);
+
+        // Determine whether this is a normal scene (Document inside a Folder chapter)
+        // or a leaf chapter (Folder with no published Document children).
+        Section scene;
+        Section chapter;
+
+        if (section.NodeType == NodeType.Document)
+        {
+            scene = section;
+            var parentChapter = section.ParentId.HasValue
+                ? allSections.FirstOrDefault(s => s.Id == section.ParentId.Value)
+                : null;
+            if (parentChapter is null)
+                return NotFound();
+            chapter = parentChapter;
+        }
+        else if (section.NodeType == NodeType.Folder && IsLeafChapter(section, allSections))
+        {
+            // Leaf chapter — the Folder itself contains the readable content.
+            scene   = section;
+            chapter = section;
+        }
+        else
+        {
+            return NotFound();
+        }
 
         var isModerator = user.Role == Role.Author;
 
@@ -602,8 +651,9 @@ public class ReaderController(
         var (resolvedHtml, currentSectionVersionId, currentVersionNumber, versionLabel, resumeCaptureText, resumeRestoreTarget, diffParagraphs, updatedSinceLastRead, showUpdateBanner) =
             await ResolveSceneContentAndDiffAsync(scene, user.Id);
 
-        var allSections = await SectionRepo.GetByProjectIdAsync(project.Id);
-        var (prevSceneId, nextSceneId) = GetPrevNextSceneIds(scene.Id, chapter.Id, allSections);
+        var (prevSceneId, nextSceneId) = section.NodeType == NodeType.Document
+            ? GetPrevNextSceneIds(scene.Id, chapter.Id, allSections)
+            : ((Guid?)null, (Guid?)null);
 
         var commentsRaw       = await CommentService.GetThreadsForSectionAsync(id, user.Id);
         var sceneCommentCount = commentsRaw.Count(c => !c.IsSoftDeleted);
@@ -738,6 +788,15 @@ public class ReaderController(
         var decoded = WebUtility.HtmlDecode(withoutTags);
         return WhitespaceRegex.Replace(decoded, " ").Trim();
     }
+
+    /// <summary>
+    /// Returns true when the chapter section has no published, non-deleted Document children.
+    /// Leaf chapters are read directly; non-leaf chapters have a scenes sub-list.
+    /// </summary>
+    private static bool IsLeafChapter(Section chapter, IReadOnlyList<Section> allSections) =>
+        !allSections.Any(s => s.ParentId == chapter.Id &&
+                              s.NodeType == NodeType.Document &&
+                              s.IsPublished && !s.IsSoftDeleted);
 
     /// <summary>
     /// Determines the previous and next scene IDs for mobile navigation.

@@ -156,6 +156,11 @@ public class DesktopChapterProgressViewModel
     public Section Chapter { get; set; } = default!;
     public bool HasRead { get; set; }
     public int ReaderCommentCount { get; set; }
+    /// <summary>
+    /// True when the chapter has no published Document children — reader links
+    /// directly to Read rather than expecting a scenes sub-list.
+    /// </summary>
+    public bool IsLeaf { get; set; }
 }
 
 public enum DiscoveryRequestStatus { None, Pending, Approved, Declined }
