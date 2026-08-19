@@ -39,6 +39,14 @@ Discarded. That assumption no longer matches current roadmap pressure or the tas
 
 Discarded. Reader-experience work remains valuable, but the updated multi-tenancy plan is driven by author onboarding, reader identity, and tenancy isolation needs.
 
+### 9. Naming a billing provider before the billing decision is made
+
+Discarded. The consolidated plan keeps `IBillingProvider`, but does not commit to Creem, Paddle, or any other provider yet.
+
+### 10. Treating the Free Tier beta-reader limit as immediately 3 before payment exists
+
+Discarded. The consolidated plan now records an operational pre-billing limit of 5 readers per tenancy, with the Free Tier target dropping to 3 when payment implementation goes live.
+
 ---
 
 ## Ideas retained elsewhere

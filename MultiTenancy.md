@@ -57,6 +57,16 @@ Until MT-Sprint-1 is implemented:
 - `AuthorId` remains the tenancy anchor,
 - no new global unscoped queries may be introduced.
 
+### 3.4 Billing rollout decision
+
+- Billing is deferred until after go-live.
+- No billing provider has been selected yet.
+- Until billing is implemented, every author tenancy operates on Free Tier semantics.
+- Authors may be shown higher tiers and offered the ability to request a tier change, but the product must clearly state that higher tiers are not implemented yet.
+- The tenancy carries a non-user-editable maximum beta-reader count property.
+- That property is initially set to **5** readers for all tenancies before billing is live.
+- When payment implementation is introduced, the Free Tier beta-reader limit changes to **3**.
+
 ---
 
 ## 4. Current State and Required Change
@@ -87,9 +97,9 @@ The target state is:
 | Entity | Purpose |
 |--------|---------|
 | `Account` | Platform identity, login credential owner, display-name owner, may participate in multiple tenancies |
-| `Tenancy` | Author-owned workspace containing projects, readers, notifications, and integrations |
+| `Tenancy` | Author-owned workspace containing projects, readers, notifications, integrations, and operational limit properties such as maximum beta-reader count |
 | `TenancyMembership` | Role-bearing link between `Account` and `Tenancy` |
-| `TenancySubscription` | Tier state, billing-provider identifiers, subscription status, and limits |
+| `TenancySubscription` | Tier state, future billing-provider identifiers, and subscription status |
 | `DropboxConnection` | Dropbox binding owned by a `Tenancy`, not by a person-account |
 
 ### 5.2 Core invariants
@@ -161,17 +171,24 @@ Replace the single `User` identity model with the minimum viable tenancy model w
 
 ### Goal
 
-Introduce tenancy-level subscription state and enforce product limits without leaking provider-specific logic into the wrong layers.
+Introduce tenancy-level subscription state and enforce product limits without leaking provider-specific logic into the wrong layers, while keeping payment activation deferred until after go-live.
 
 ### Required deliverables
 
 - `TenancySubscription` entity
+- tenancy-owned maximum beta-reader count property
 - `IBillingProvider` abstraction
-- initial Creem implementation
-- optional second provider kept behind the same abstraction boundary
+- provider selection deferred until a later billing implementation decision
 - tier limit enforcement for beta readers and active projects
+- pre-billing handling that places all authors on Free Tier semantics
 
 ### Subscription tiers carried forward
+
+Operational note before payment is live:
+
+- every tenancy starts with `MaxBetaReaderCount = 5`,
+- the property is not user-editable,
+- once payment is implemented, the Free Tier reader cap changes to 3 and higher tiers can be activated properly.
 
 | Tier | Beta Readers | Active Projects |
 |------|--------------|-----------------|
@@ -185,6 +202,9 @@ Introduce tenancy-level subscription state and enforce product limits without le
 - Domain and Application layers may depend on abstractions and billing state, but not provider SDK logic.
 - Lapse behaviour must favour reader continuity and avoid public-facing disruption where possible.
 - Tenancy, not account, is the billing boundary.
+- No provider-specific choice is assumed in this document; selection is deferred.
+- Higher tiers may be described and requested before implementation, but the request path must explicitly state that paid tier behaviour is not live yet.
+- The initial operational control is tenancy-owned `MaxBetaReaderCount`, seeded to 5 for all author tenancies before billing launch.
 
 ### AGENTS.md requirements embedded in this sprint
 
@@ -197,6 +217,7 @@ Introduce tenancy-level subscription state and enforce product limits without le
 ### Exit criteria
 
 - Subscription state is persisted per tenancy.
+- Maximum beta-reader count is enforced from a tenancy-owned property rather than a user-editable setting.
 - Tier checks execute in application services.
 - Provider choice is replaceable by configuration.
 - Active-project and reader-count limits can be enforced without special-case controller logic.
