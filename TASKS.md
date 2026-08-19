@@ -156,12 +156,12 @@ See `MultiTenancy.md` for full design, migration strategy, and sprint plan.
 | Sprint | Deliverable |
 |--------|-------------|
 | MT-Sprint-1 | Account / Tenancy / TenancyMembership entity split |
-| MT-Sprint-2 | Subscription enforcement, `IBillingProvider`, Creem integration |
+| MT-Sprint-2 | Subscription enforcement, `IBillingProvider`, billing/provider rollout after go-live |
 | MT-Sprint-3 | Author self-serve registration, Dropbox connect per Tenancy |
 | MT-Sprint-4 | Reader cross-tenancy identity |
 | MT-Sprint-5 | Reader Marketplace (post-revenue) |
 
-**Prerequisite:** Billing abstraction in place and production stable before MT-Sprint-1.
+**Prerequisite:** Production stable before MT-Sprint-1. Billing/provider rollout is deferred until post-go-live MT-Sprint-2.
 
 ---
 
