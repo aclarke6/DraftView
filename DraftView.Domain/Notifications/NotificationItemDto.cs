@@ -9,7 +9,8 @@ public enum NotificationEventType
     ReaderReadNewScene,
     ReaderReturned,
     ReaderFinishedManuscript,
-    AccessRequest
+    AccessRequest,
+    ChapterUploaded
 }
 
 public sealed class NotificationItemDto
