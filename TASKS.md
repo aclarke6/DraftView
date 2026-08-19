@@ -19,11 +19,11 @@ Last deployed: 2026-08-17 13:59 (commit: d51d201)
 |-------|--------|
 | RSprint Series | 🟡 In progress — RS-A to RS-E complete, RS-F next |
 | S-Sprint Series | 🟡 In progress — S-Sprint-1 complete, S-Sprint-2 next |
-| MT-Sprint Series | 🔴 HIGH PRIORITY — second author interest accelerates timeline; see `MultiTenancy.md` |
+| MT-Sprint Series | 🟡 In progress — MT-Sprint-1 complete, awaiting merge; MT-Sprint-2 next; see `MultiTenancy.md` |
 | RD-Sprint Series | 🟡 In progress — RD-Sprint-1 (Continue Reading CTA) merged to main 2026-08-17; see section 3.7 |
 | DR-Sprint Series | ✅ Complete — merged to main 2026-08-17; see section 3.8 |
 | Incremental Refactor | 🟡 In progress — Phase 2a–2e complete, Phase 3 deferred; see section 3.6 |
-| MU-Sprint Series | 🔵 Pre-implementation — design complete; see section 3.10 |
+| MU-Sprint Series | ✅ Complete — all 5 sprints merged; see section 3.10 |
 | Go-Live Prerequisites | 🔴 Blocking — items below must complete before launch |
 | UAT | 🟡 In progress |
 
@@ -139,7 +139,9 @@ No open bugs.
 
 ### 3.4 Multi-Tenancy Sprint Series
 
-**🔴 HIGH PRIORITY** — A second author has expressed interest in the platform. Readers may read
+**Status:** 🟡 In progress — MT-Sprint-1 complete, awaiting merge; MT-Sprint-2 next
+
+A second author has expressed interest in the platform. Readers may read
 books from multiple authors. Authors may also be beta readers for other authors. Multi-tenancy
 is now a near-term requirement, not a post-revenue concern.
 
@@ -401,7 +403,7 @@ Plan RD-Sprint-1 after MT-Sprint-1 lands.
 
 ### 3.10 MU-Sprint — Manual Chapter Upload
 
-**Status:** 🔵 Pre-implementation — design complete (issue #34 closed)
+**Status:** ✅ Complete — all 5 sprints implemented and merged to main (PRs #46, #48)
 
 **Goal:** Allow authors to upload chapters from `.txt` / `.docx` files or via
 cut/paste, edit minor corrections with an inline plain-text editor, maintain
@@ -422,11 +424,11 @@ cannot distinguish manual-upload projects from Scrivener-synced projects.
 
 | Sprint | Deliverable |
 |--------|-------------|
-| MU-Sprint-1 | Domain: `ManualChapter`, `ManualChapterVersion`, invariants, repository interfaces |
-| MU-Sprint-2 | Infrastructure: EF config, migrations, repository implementations, file parsers (`.txt`, `.docx`) |
-| MU-Sprint-3 | Application: `ManualUploadService` — file upload, paste upload, reorder, replace, inline edit, version snapshots, hard-delete clear |
-| MU-Sprint-4 | Web UI: upload form (file + paste tabs), chapter list, inline editor, version history panel, reader-transparent publishing |
-| MU-Sprint-5 | Verification and polish: smoke test, parser tests green, no reader-side leakage |
+| ~~MU-Sprint-1~~ | ✅ Domain: `ManualChapter`, `ManualChapterVersion`, invariants, repository interfaces |
+| ~~MU-Sprint-2~~ | ✅ Infrastructure: EF config, migrations, repository implementations, file parsers (`.txt`, `.docx`) |
+| ~~MU-Sprint-3~~ | ✅ Application: `ManualUploadService` — file upload, paste upload, reorder, replace, inline edit, version snapshots, hard-delete clear |
+| ~~MU-Sprint-4~~ | ✅ Web UI: upload form (file + paste tabs), chapter list, inline editor, version history panel, reader-transparent publishing |
+| ~~MU-Sprint-5~~ | ✅ Verification and polish: `MarkdownToHtmlConverter` tests added, parser tests confirmed green, no reader-side leakage |
 
 **Non-negotiable rules (from ADR):**
 - One file = one chapter; no auto-splitting
