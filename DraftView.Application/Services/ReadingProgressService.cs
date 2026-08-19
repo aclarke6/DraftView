@@ -132,6 +132,9 @@ public class ReadingProgressService(
             .FirstOrDefault();
     }
 
+    public Task<ReadEvent?> GetLastReadEventAcrossProjectsAsync(Guid userId, CancellationToken ct = default) =>
+        readEventRepo.GetMostRecentByUserIdAsync(userId, ct);
+
     public async Task UpdateLastReadVersionAsync(
         Guid sectionId,
         Guid userId,

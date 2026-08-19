@@ -17,6 +17,13 @@ public class ProjectRepository(DraftViewDbContext db) : IProjectRepository
             .OrderBy(p => p.Name)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<Project>> GetAllForReaderAsync(Guid readerId, CancellationToken ct = default) =>
+        await db.Projects
+            .Where(p => !p.IsSoftDeleted &&
+                        db.ReaderAccess.Any(ra => ra.ProjectId == p.Id && ra.ReaderId == readerId && ra.RevokedAt == null))
+            .OrderBy(p => p.Name)
+            .ToListAsync(ct);
+
     public async Task<Project?> GetReaderActiveProjectAsync(CancellationToken ct = default) =>
         await db.Projects.FirstOrDefaultAsync(p => p.IsReaderActive && !p.IsSoftDeleted, ct);
 

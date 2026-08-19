@@ -889,4 +889,53 @@ public class ReadingProgressServiceTests
                 default),
             Times.Never);
     }
+
+    // ---------------------------------------------------------------------------
+    // GetLastReadEventAcrossProjectsAsync (MT-Sprint-4)
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetLastReadEventAcrossProjectsAsync_DelegatesToRepository()
+    {
+        var userId    = Guid.NewGuid();
+        var sectionId = Guid.NewGuid();
+        var sut       = CreateSut();
+
+        var ev = ReadEvent.Create(sectionId, userId);
+        _readEventRepo.Setup(r => r.GetMostRecentByUserIdAsync(userId, default))
+            .ReturnsAsync(ev);
+
+        var result = await sut.GetLastReadEventAcrossProjectsAsync(userId);
+
+        Assert.NotNull(result);
+        Assert.Equal(sectionId, result!.SectionId);
+    }
+
+    [Fact]
+    public async Task GetLastReadEventAcrossProjectsAsync_NoEvents_ReturnsNull()
+    {
+        var userId = Guid.NewGuid();
+        var sut    = CreateSut();
+
+        _readEventRepo.Setup(r => r.GetMostRecentByUserIdAsync(userId, default))
+            .ReturnsAsync((ReadEvent?)null);
+
+        var result = await sut.GetLastReadEventAcrossProjectsAsync(userId);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetLastReadEventAcrossProjectsAsync_CallsGetMostRecentByUserIdAsync()
+    {
+        var userId = Guid.NewGuid();
+        var sut    = CreateSut();
+
+        _readEventRepo.Setup(r => r.GetMostRecentByUserIdAsync(userId, default))
+            .ReturnsAsync((ReadEvent?)null);
+
+        await sut.GetLastReadEventAcrossProjectsAsync(userId);
+
+        _readEventRepo.Verify(r => r.GetMostRecentByUserIdAsync(userId, default), Times.Once);
+    }
 }

@@ -158,7 +158,7 @@ See `MultiTenancy.md` for full design, migration strategy, and sprint plan.
 | MT-Sprint-1 | Account / Tenancy / TenancyMembership entity split | 🟡 In progress — cloud phase complete; local phase pending |
 | MT-Sprint-2 | Subscription enforcement, `IBillingProvider`, billing/provider rollout after go-live | 🟡 In progress — cloud phase complete; local phase pending |
 | MT-Sprint-3 | Author self-serve registration, Dropbox connect per Tenancy | 🟡 In progress — cloud phase complete; local phase pending |
-| MT-Sprint-4 | Reader cross-tenancy identity | 🔴 Not started |
+| MT-Sprint-4 | Reader cross-tenancy identity | 🟡 In progress — cloud phase complete; local phase pending |
 | MT-Sprint-5 | Reader Marketplace (post-revenue) | ⏸ Deferred post-revenue |
 
 **Prerequisite:** Production stable before MT-Sprint-1. Billing/provider rollout is deferred until post-go-live MT-Sprint-2.
@@ -229,6 +229,22 @@ See `MultiTenancy.md` for full design, migration strategy, and sprint plan.
 - [ ] Run full test suite: `dotnet test` — confirm all new tests GREEN plus no regressions
 - [ ] Wire reader-count enforcement into reader access grant flow (application service layer)
 - [ ] Seed existing tenancies with a `TenancySubscription` record (Free tier) in the data backfill migration
+
+#### MT-Sprint-4 Progress
+
+**Cloud phase complete:**
+- [x] `IProjectRepository.GetAllForReaderAsync(Guid readerId)` — projects accessible via active `ReaderAccess`
+- [x] `ProjectRepository.GetAllForReaderAsync` — EF subquery joining `ReaderAccess` (active, non-revoked)
+- [x] `IReadEventRepository.GetMostRecentByUserIdAsync(Guid userId)` — ordered by `LastOpenedAt DESC`
+- [x] `ReadEventRepository.GetMostRecentByUserIdAsync` — implementation
+- [x] `IReadingProgressService.GetLastReadEventAcrossProjectsAsync(Guid userId)` — cross-project last-read
+- [x] `ReadingProgressService.GetLastReadEventAcrossProjectsAsync` — delegates to repository
+- [x] Unit tests: `ReadingProgressServiceTests` — 3 new tests for `GetLastReadEventAcrossProjectsAsync`
+
+**Local phase required:**
+- [ ] Run full test suite: `dotnet test` — confirm all new tests GREEN plus no regressions
+- [ ] Wire `GetAllForReaderAsync` into reader dashboard service (post-`AuthorId`→`TenancyId` rename)
+- [ ] Wire `GetLastReadEventAcrossProjectsAsync` into reader Continue Reading CTA (cross-project variant)
 
 ---
 

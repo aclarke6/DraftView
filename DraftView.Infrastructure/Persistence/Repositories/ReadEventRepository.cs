@@ -14,6 +14,12 @@ public class ReadEventRepository(DraftViewDbContext db) : IReadEventRepository
     public async Task<IReadOnlyList<ReadEvent>> GetByUserIdAsync(Guid userId, CancellationToken ct = default) =>
         await db.ReadEvents.Where(r => r.UserId == userId).ToListAsync(ct);
 
+    public Task<ReadEvent?> GetMostRecentByUserIdAsync(Guid userId, CancellationToken ct = default) =>
+        db.ReadEvents
+            .Where(r => r.UserId == userId)
+            .OrderByDescending(r => r.LastOpenedAt)
+            .FirstOrDefaultAsync(ct);
+
     public async Task<IReadOnlyList<ReadEvent>> GetBySectionIdAsync(Guid sectionId, CancellationToken ct = default) =>
         await db.ReadEvents.Where(r => r.SectionId == sectionId).ToListAsync(ct);
 
