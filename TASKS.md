@@ -163,6 +163,8 @@ See `MultiTenancy.md` for full design, migration strategy, and sprint plan.
 
 **Prerequisite:** Production stable before MT-Sprint-1. Billing/provider rollout is deferred until post-go-live MT-Sprint-2.
 
+**Branch strategy:** All MT-Sprint work (MT-Sprint-1 through MT-Sprint-4) is developed on `claude/multi-tenancy-implementation-m279oe` and is **not merged to `main`** until the full workstream is complete and verified ready for production deployment. PR #50 remains draft until that point.
+
 #### MT-Sprint-1 Progress
 
 **Cloud phase complete (PR #claude/multi-tenancy-implementation-m279oe):**
