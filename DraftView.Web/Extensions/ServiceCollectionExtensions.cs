@@ -122,6 +122,7 @@ namespace DraftView.Web.Extensions
             services.AddScoped<IChapterFileParser, DocxChapterParser>();
             services.AddScoped<IChapterFileParserResolver, ChapterFileParserResolver>();
             services.AddScoped<IManualUploadService, ManualUploadService>();
+            services.AddSingleton<IMarkdownToHtmlConverter, MarkdownToHtmlConverter>();
 
             return services;
         }

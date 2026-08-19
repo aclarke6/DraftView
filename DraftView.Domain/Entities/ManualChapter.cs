@@ -17,6 +17,12 @@ public sealed class ManualChapter
     public string? OriginalFileName { get; private set; }
     public DateTime UploadedAt { get; private set; }
 
+    /// <summary>
+    /// The Id of the published Folder Section created for this chapter.
+    /// Null until the chapter has been published at least once.
+    /// </summary>
+    public Guid? LinkedSectionId { get; private set; }
+
     private ManualChapter() { }
 
     /// <summary>
@@ -83,5 +89,15 @@ public sealed class ManualChapter
         if (sortOrder < 0)
             throw new InvariantViolationException("I-MC-02", "SortOrder must be zero or positive.");
         SortOrder = sortOrder;
+    }
+
+    /// <summary>
+    /// Records the Folder Section created to publish this chapter's content to readers.
+    /// </summary>
+    public void SetLinkedSection(Guid sectionId)
+    {
+        if (sectionId == Guid.Empty)
+            throw new InvariantViolationException("I-MC-06", "LinkedSectionId must not be empty.");
+        LinkedSectionId = sectionId;
     }
 }

@@ -1,0 +1,298 @@
+@model DraftView.Web.Models.ManualChaptersViewModel
+@{
+    ViewData["Title"] = "Manual Chapters";
+}
+
+<h2>@Model.ProjectName — Chapters</h2>
+<p><a asp-action="Dashboard">&larr; Back to Dashboard</a></p>
+<p class="page-subtitle">
+    Upload or paste chapters, then publish each one to make it visible to readers.
+    Published chapters appear in the reader's chapter list in sort order.
+</p>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert--success">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert--error">@error</div>
+}
+
+<!-- Add chapter accordion -->
+<div class="mu-add-panel">
+    <button class="mu-add-panel__toggle btn btn--secondary" type="button"
+            onclick="muToggleAddPanel()" id="mu-add-toggle">
+        + Add Chapter
+    </button>
+    <div class="mu-add-panel__body" id="mu-add-body" hidden>
+        <div class="mu-tabs" role="tablist">
+            <button class="mu-tab mu-tab--active" role="tab" id="tab-file"
+                    onclick="muSelectTab('file')" aria-selected="true">Upload File</button>
+            <button class="mu-tab" role="tab" id="tab-paste"
+                    onclick="muSelectTab('paste')" aria-selected="false">Paste Text</button>
+        </div>
+
+        <!-- File upload tab -->
+        <div class="mu-tab-panel" id="panel-file">
+            <form asp-action="UploadManualChapter" method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="ProjectId" value="@Model.ProjectId" />
+                <div class="form-group">
+                    <label class="form-label" for="upload-title">Chapter Title</label>
+                    <input type="text" id="upload-title" name="Title" class="input" required maxlength="500"
+                           placeholder="e.g. Chapter One — The Beginning" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="upload-file">File <span class="text-muted">(Plain text .txt or .docx)</span></label>
+                    <input type="file" id="upload-file" name="File" class="input" required
+                           accept=".txt,.docx" />
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn--primary">Upload Chapter</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Paste tab -->
+        <div class="mu-tab-panel" id="panel-paste" hidden>
+            <form asp-action="PasteManualChapter" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="ProjectId" value="@Model.ProjectId" />
+                <div class="form-group">
+                    <label class="form-label" for="paste-title">Chapter Title</label>
+                    <input type="text" id="paste-title" name="Title" class="input" required maxlength="500"
+                           placeholder="e.g. Chapter One — The Beginning" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="paste-content">Content</label>
+                    <textarea id="paste-content" name="Content" class="input mu-textarea" required
+                              placeholder="Paste your chapter text here. Supports # headings, **bold**, *italic*."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn--primary">Save Chapter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Chapter list -->
+@if (!Model.Chapters.Any())
+{
+    <p class="mu-empty">No chapters yet. Add your first chapter above.</p>
+}
+else
+{
+    <div class="mu-chapter-list" id="mu-chapter-list">
+        @foreach (var chapter in Model.Chapters)
+        {
+            <div class="mu-chapter-row" data-id="@chapter.Id">
+                <div class="mu-chapter-row__drag" title="Drag to reorder">&#9776;</div>
+                <div class="mu-chapter-row__body">
+                    <div class="mu-chapter-row__header">
+                        <span class="mu-chapter-row__title">@chapter.Title</span>
+                        @if (chapter.IsPublished)
+                        {
+                            <span class="mu-badge mu-badge--published">Published</span>
+                        }
+                        else
+                        {
+                            <span class="mu-badge mu-badge--draft">Draft</span>
+                        }
+                    </div>
+                    <div class="mu-chapter-row__meta">
+                        @if (chapter.OriginalFileName is not null)
+                        {
+                            <span class="mu-meta-item">@chapter.OriginalFileName</span>
+                        }
+                        <span class="mu-meta-item">Uploaded @chapter.UploadedAt.ToString("d MMM yyyy")</span>
+                        @if (chapter.VersionCount > 0)
+                        {
+                            <span class="mu-meta-item">@chapter.VersionCount version@(chapter.VersionCount == 1 ? "" : "s")</span>
+                        }
+                    </div>
+                </div>
+                <div class="mu-chapter-row__actions">
+                    <!-- Publish / Re-publish -->
+                    <form asp-action="PublishManualChapter" method="post" style="display:inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="chapterId" value="@chapter.Id" />
+                        <input type="hidden" name="projectId" value="@Model.ProjectId" />
+                        <button type="submit" class="btn btn--sm btn--primary"
+                                title="@(chapter.IsPublished ? "Re-publish to update reader content" : "Publish to make visible to readers")">
+                            @(chapter.IsPublished ? "Re-publish" : "Publish")
+                        </button>
+                    </form>
+                    <!-- Edit inline -->
+                    <button class="btn btn--sm btn--secondary" type="button"
+                            onclick="muOpenEdit('@chapter.Id')" title="Edit content">
+                        Edit
+                    </button>
+                    <!-- Replace file -->
+                    <button class="btn btn--sm btn--secondary" type="button"
+                            onclick="muOpenReplace('@chapter.Id')" title="Replace with new file">
+                        Replace
+                    </button>
+                    <!-- History -->
+                    @if (chapter.VersionCount > 0)
+                    {
+                        <a asp-action="ManualChapterHistory"
+                           asp-route-chapterId="@chapter.Id"
+                           asp-route-projectId="@Model.ProjectId"
+                           class="btn btn--sm btn--secondary">History</a>
+                    }
+                    <!-- Delete -->
+                    <form asp-action="DeleteManualChapter" method="post" style="display:inline"
+                          onsubmit="return confirm('Delete this chapter? This cannot be undone.');">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="chapterId" value="@chapter.Id" />
+                        <input type="hidden" name="projectId" value="@Model.ProjectId" />
+                        <button type="submit" class="btn btn--sm btn--danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Edit panel (hidden by default) -->
+            <div class="mu-edit-panel" id="mu-edit-@chapter.Id" hidden>
+                <form asp-action="EditManualChapter" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="ChapterId" value="@chapter.Id" />
+                    <input type="hidden" name="ProjectId" value="@Model.ProjectId" />
+                    <input type="hidden" name="Title" value="@chapter.Title" />
+                    <div class="form-group">
+                        <label class="form-label">Content</label>
+                        <textarea name="Content" class="input mu-textarea mu-textarea--edit" required>@chapter.Title</textarea>
+                        <p class="form-hint">Editing saves a version snapshot before overwriting.</p>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn--primary btn--sm">Save</button>
+                        <button type="button" class="btn btn--secondary btn--sm"
+                                onclick="muCloseEdit('@chapter.Id')">Cancel</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Replace panel (hidden by default) -->
+            <div class="mu-replace-panel" id="mu-replace-@chapter.Id" hidden>
+                <form asp-action="ReplaceManualChapter" method="post" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="ChapterId" value="@chapter.Id" />
+                    <input type="hidden" name="ProjectId" value="@Model.ProjectId" />
+                    <div class="form-group">
+                        <label class="form-label">Replacement File <span class="text-muted">(.txt or .docx)</span></label>
+                        <input type="file" name="File" class="input" required accept=".txt,.docx" />
+                        <p class="form-hint">Current content will be saved as a version before replacing.</p>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn--primary btn--sm">Replace</button>
+                        <button type="button" class="btn btn--secondary btn--sm"
+                                onclick="muCloseReplace('@chapter.Id')">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        }
+    </div>
+}
+
+<script>
+// Tab switching
+function muSelectTab(tab) {
+    document.getElementById('panel-file').hidden  = tab !== 'file';
+    document.getElementById('panel-paste').hidden = tab !== 'paste';
+    document.getElementById('tab-file').classList.toggle('mu-tab--active', tab === 'file');
+    document.getElementById('tab-paste').classList.toggle('mu-tab--active', tab === 'paste');
+    document.getElementById('tab-file').setAttribute('aria-selected', tab === 'file');
+    document.getElementById('tab-paste').setAttribute('aria-selected', tab === 'paste');
+}
+
+// Add panel toggle
+function muToggleAddPanel() {
+    var body = document.getElementById('mu-add-body');
+    body.hidden = !body.hidden;
+}
+
+// Edit panel
+function muOpenEdit(id) {
+    document.querySelectorAll('.mu-edit-panel, .mu-replace-panel').forEach(function(el) { el.hidden = true; });
+    document.getElementById('mu-edit-' + id).hidden = false;
+}
+function muCloseEdit(id) {
+    document.getElementById('mu-edit-' + id).hidden = true;
+}
+
+// Replace panel
+function muOpenReplace(id) {
+    document.querySelectorAll('.mu-edit-panel, .mu-replace-panel').forEach(function(el) { el.hidden = true; });
+    document.getElementById('mu-replace-' + id).hidden = false;
+}
+function muCloseReplace(id) {
+    document.getElementById('mu-replace-' + id).hidden = true;
+}
+
+// Drag-to-reorder
+(function () {
+    var list = document.getElementById('mu-chapter-list');
+    if (!list) return;
+
+    var dragSrc = null;
+
+    list.querySelectorAll('.mu-chapter-row').forEach(function (row) {
+        row.draggable = true;
+
+        row.addEventListener('dragstart', function (e) {
+            dragSrc = row;
+            e.dataTransfer.effectAllowed = 'move';
+            row.classList.add('mu-chapter-row--dragging');
+        });
+
+        row.addEventListener('dragend', function () {
+            row.classList.remove('mu-chapter-row--dragging');
+            list.querySelectorAll('.mu-chapter-row').forEach(function (r) {
+                r.classList.remove('mu-chapter-row--over');
+            });
+            saveOrder();
+        });
+
+        row.addEventListener('dragover', function (e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            if (dragSrc && dragSrc !== row) {
+                list.querySelectorAll('.mu-chapter-row').forEach(function (r) {
+                    r.classList.remove('mu-chapter-row--over');
+                });
+                row.classList.add('mu-chapter-row--over');
+            }
+        });
+
+        row.addEventListener('drop', function (e) {
+            e.preventDefault();
+            if (dragSrc && dragSrc !== row) {
+                var rows = Array.from(list.querySelectorAll('.mu-chapter-row'));
+                var srcIdx = rows.indexOf(dragSrc);
+                var tgtIdx = rows.indexOf(row);
+                if (srcIdx < tgtIdx) {
+                    row.after(dragSrc);
+                } else {
+                    row.before(dragSrc);
+                }
+            }
+        });
+    });
+
+    function saveOrder() {
+        var ids = Array.from(list.querySelectorAll('.mu-chapter-row')).map(function (r) {
+            return r.dataset.id;
+        });
+
+        var formData = new FormData();
+        formData.append('__RequestVerificationToken', document.querySelector('[name=__RequestVerificationToken]').value);
+        ids.forEach(function (id) { formData.append('orderedIds', id); });
+
+        fetch('@Url.Action("ReorderManualChapters", new { projectId = Model.ProjectId })', {
+            method: 'POST',
+            body: formData
+        });
+    }
+}());
+</script>

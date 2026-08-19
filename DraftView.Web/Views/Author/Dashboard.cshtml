@@ -86,8 +86,16 @@
                         {
                             <tr>
                                 <td class="projects-table__col-name">
-                                    <a asp-action="Sections" asp-route-projectId="@p.Id"
-                                       style="font-weight:500;">@p.Name</a>
+                                    @if (p.ProjectType == ProjectType.Manual)
+                                    {
+                                        <a asp-action="ManualChapters" asp-route-projectId="@p.Id"
+                                           style="font-weight:500;">@p.Name</a>
+                                    }
+                                    else
+                                    {
+                                        <a asp-action="Sections" asp-route-projectId="@p.Id"
+                                           style="font-weight:500;">@p.Name</a>
+                                    }
                                 </td>
                                 <td class="projects-table__col-sync">
                                     @if (p.SyncStatus == SyncStatus.Healthy)

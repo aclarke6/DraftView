@@ -34,6 +34,9 @@ public class ManualChapterConfiguration : IEntityTypeConfiguration<ManualChapter
 
         builder.Property(c => c.UploadedAt).IsRequired();
 
+        builder.Property(c => c.LinkedSectionId)
+            .IsRequired(false);
+
         builder.HasIndex(c => new { c.ProjectId, c.AuthorId, c.SortOrder });
     }
 }

@@ -1,0 +1,190 @@
+/* ============================================================
+   DraftView.ManualUpload.css
+   Styles for the Manual Chapter Upload / Management page.
+   ============================================================ */
+
+/* Add chapter accordion */
+.mu-add-panel {
+    margin-bottom: 1.5rem;
+}
+
+.mu-add-panel__toggle {
+    margin-bottom: 0.75rem;
+}
+
+.mu-add-panel__body {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    background: var(--color-surface-raised);
+}
+
+/* Tabs */
+.mu-tabs {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid var(--color-border);
+}
+
+.mu-tab {
+    background: none;
+    border: none;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.mu-tab:hover {
+    color: var(--color-text);
+}
+
+.mu-tab--active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+    font-weight: 500;
+}
+
+/* Textarea */
+.mu-textarea {
+    width: 100%;
+    min-height: 12rem;
+    resize: vertical;
+    font-family: var(--font-mono, monospace);
+    font-size: var(--font-size-sm);
+}
+
+.mu-textarea--edit {
+    min-height: 20rem;
+}
+
+/* Chapter list */
+.mu-chapter-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.mu-empty {
+    color: var(--color-text-muted);
+    font-style: italic;
+    padding: 2rem 0;
+}
+
+/* Chapter row */
+.mu-chapter-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 0.875rem 1rem;
+    background: var(--color-surface);
+    transition: border-color 0.15s;
+}
+
+.mu-chapter-row--dragging {
+    opacity: 0.5;
+}
+
+.mu-chapter-row--over {
+    border-color: var(--color-primary);
+}
+
+.mu-chapter-row__drag {
+    cursor: grab;
+    color: var(--color-text-muted);
+    font-size: 1.1rem;
+    padding-top: 0.1rem;
+    flex-shrink: 0;
+    user-select: none;
+}
+
+.mu-chapter-row__body {
+    flex: 1;
+    min-width: 0;
+}
+
+.mu-chapter-row__header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.mu-chapter-row__title {
+    font-weight: 600;
+    color: var(--color-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mu-chapter-row__meta {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.mu-meta-item {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+}
+
+.mu-chapter-row__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+/* Status badges */
+.mu-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    border-radius: 999px;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.mu-badge--published {
+    background: var(--color-success-subtle, #d1fae5);
+    color: var(--color-success, #065f46);
+}
+
+.mu-badge--draft {
+    background: var(--color-warning-subtle, #fef3c7);
+    color: var(--color-warning-text, #92400e);
+}
+
+/* Edit and replace panels */
+.mu-edit-panel,
+.mu-replace-panel {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.25rem;
+    background: var(--color-surface-raised);
+    margin-top: -0.375rem;
+}
+
+/* Responsive: stack action buttons on narrow screens */
+@media (max-width: 600px) {
+    .mu-chapter-row {
+        flex-wrap: wrap;
+    }
+
+    .mu-chapter-row__actions {
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+}

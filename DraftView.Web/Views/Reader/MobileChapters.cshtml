@@ -29,16 +29,31 @@
             @foreach (var row in Model.Chapters)
             {
                 <li class="mobile-chapter-list__item">
-                    <a asp-action="Scenes"
-                       asp-route-chapterId="@row.Chapter.Id"
-                       class="mobile-chapter-list__link">
-                        <span class="mobile-chapter-list__title">@row.Chapter.Title</span>
-                        <span class="mobile-chapter-list__meta">
-                            <span class="mobile-chapter-list__scenes">@row.SceneCount scene@(row.SceneCount == 1 ? "" : "s")</span>
-                            <span class="mobile-chapter-list__status @(row.HasRead ? "mobile-chapter-list__status--read" : "")"></span>
-                            <span class="mobile-chapter-list__chevron">&#8250;</span>
-                        </span>
-                    </a>
+                    @if (row.IsLeaf)
+                    {
+                        <a asp-action="Read"
+                           asp-route-id="@row.Chapter.Id"
+                           class="mobile-chapter-list__link">
+                            <span class="mobile-chapter-list__title">@row.Chapter.Title</span>
+                            <span class="mobile-chapter-list__meta">
+                                <span class="mobile-chapter-list__status @(row.HasRead ? "mobile-chapter-list__status--read" : "")"></span>
+                                <span class="mobile-chapter-list__chevron">&#8250;</span>
+                            </span>
+                        </a>
+                    }
+                    else
+                    {
+                        <a asp-action="Scenes"
+                           asp-route-chapterId="@row.Chapter.Id"
+                           class="mobile-chapter-list__link">
+                            <span class="mobile-chapter-list__title">@row.Chapter.Title</span>
+                            <span class="mobile-chapter-list__meta">
+                                <span class="mobile-chapter-list__scenes">@row.SceneCount scene@(row.SceneCount == 1 ? "" : "s")</span>
+                                <span class="mobile-chapter-list__status @(row.HasRead ? "mobile-chapter-list__status--read" : "")"></span>
+                                <span class="mobile-chapter-list__chevron">&#8250;</span>
+                            </span>
+                        </a>
+                    }
                 </li>
             }
         </ul>

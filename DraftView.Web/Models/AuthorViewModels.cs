@@ -153,3 +153,92 @@ public class VersionHistoryItem
     public ChangeClassification? Classification { get; init; }
     public bool CanDelete { get; init; }
 }
+
+// ---------------------------------------------------------------------------
+// Manual Chapter Upload
+// ---------------------------------------------------------------------------
+
+public class ManualChaptersViewModel
+{
+    public Guid ProjectId { get; init; }
+    public string ProjectName { get; init; } = default!;
+    public IReadOnlyList<ManualChapterRowViewModel> Chapters { get; init; } = [];
+}
+
+public class ManualChapterRowViewModel
+{
+    public Guid Id { get; init; }
+    public string Title { get; init; } = default!;
+    public int SortOrder { get; init; }
+    public string? OriginalFileName { get; init; }
+    public DateTime UploadedAt { get; init; }
+    public bool IsPublished { get; init; }
+    public int VersionCount { get; init; }
+}
+
+public class UploadManualChapterViewModel
+{
+    [Required]
+    public Guid ProjectId { get; init; }
+
+    [Required, MaxLength(500)]
+    public string Title { get; set; } = default!;
+
+    [Required]
+    public IFormFile? File { get; set; }
+}
+
+public class PasteManualChapterViewModel
+{
+    [Required]
+    public Guid ProjectId { get; init; }
+
+    [Required, MaxLength(500)]
+    public string Title { get; set; } = default!;
+
+    [Required]
+    public string Content { get; set; } = default!;
+}
+
+public class EditManualChapterViewModel
+{
+    [Required]
+    public Guid ChapterId { get; init; }
+
+    [Required]
+    public Guid ProjectId { get; init; }
+
+    public string Title { get; init; } = default!;
+
+    [Required]
+    public string Content { get; set; } = default!;
+}
+
+public class ReplaceManualChapterViewModel
+{
+    [Required]
+    public Guid ChapterId { get; init; }
+
+    [Required]
+    public Guid ProjectId { get; init; }
+
+    [Required]
+    public IFormFile? File { get; set; }
+}
+
+public class ManualChapterHistoryViewModel
+{
+    public Guid ChapterId { get; init; }
+    public Guid ProjectId { get; init; }
+    public string ChapterTitle { get; init; } = default!;
+    public IReadOnlyList<ManualChapterVersionRowViewModel> Versions { get; init; } = [];
+}
+
+public class ManualChapterVersionRowViewModel
+{
+    public Guid VersionId { get; init; }
+    public int VersionNumber { get; init; }
+    public string SnapshotReason { get; init; } = default!;
+    public DateTime CreatedAt { get; init; }
+    public int ContentLength { get; init; }
+}
