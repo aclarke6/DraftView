@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
 using DraftView.Domain.Exceptions;
@@ -18,7 +20,10 @@ public class ManualUploadService(
     IManualChapterVersionRepository versionRepo,
     IAuthorNotificationRepository notificationRepo,
     IChapterFileParserResolver parserResolver,
-    IUnitOfWork unitOfWork) : IManualUploadService
+    IUnitOfWork unitOfWork,
+    ISectionRepository sectionRepo,
+    IVersioningService versioningService,
+    IMarkdownToHtmlConverter markdownConverter) : IManualUploadService
 {
     private const int MaxChaptersPerProject = 250;
 
@@ -173,9 +178,67 @@ public class ManualUploadService(
         await unitOfWork.SaveChangesAsync(ct);
     }
 
+    /// <summary>
+    /// Publishes a manual chapter to the reader surface.
+    /// On first publish: creates Folder + Document sections, converts markdown to HTML,
+    /// records the SectionVersion, and links the Folder to the chapter.
+    /// On re-publish: converts markdown to HTML, updates the existing Document's content,
+    /// and creates a new SectionVersion.
+    /// Returns the Folder Section Id.
+    /// </summary>
+    public async Task<Guid> PublishChapterAsync(
+        Guid chapterId, Guid authorId,
+        CancellationToken ct = default)
+    {
+        var chapter = await RequireChapterAsync(chapterId, authorId, ct);
+        var html    = markdownConverter.Convert(chapter.RawContent);
+        var hash    = ComputeContentHash(html);
+
+        if (chapter.LinkedSectionId is null)
+        {
+            // First publish — create Folder + Document section pair.
+            var folder = Section.CreateFolderForTree(
+                chapter.ProjectId, chapter.Title, null, chapter.SortOrder);
+            var document = Section.CreateDocumentForUpload(
+                chapter.ProjectId, chapter.Title, folder.Id, 0);
+
+            document.UpdateContent(html, hash);
+            folder.MarkAsPublishedContainer();
+
+            await sectionRepo.AddAsync(folder, ct);
+            await sectionRepo.AddAsync(document, ct);
+
+            chapter.SetLinkedSection(folder.Id);
+            await chapterRepo.UpdateAsync(chapter, ct);
+            await unitOfWork.SaveChangesAsync(ct);
+
+            await versioningService.RepublishSectionAsync(document.Id, authorId, ct);
+            return folder.Id;
+        }
+        else
+        {
+            // Re-publish — update the existing Document section's content.
+            var children  = await sectionRepo.GetChildrenAsync(chapter.LinkedSectionId.Value, ct);
+            var document  = children.First(s => s.NodeType == NodeType.Document && !s.IsSoftDeleted);
+
+            document.UpdateContent(html, hash);
+            document.MarkContentChanged();
+            await unitOfWork.SaveChangesAsync(ct);
+
+            await versioningService.RepublishSectionAsync(document.Id, authorId, ct);
+            return chapter.LinkedSectionId.Value;
+        }
+    }
+
     // -----------------------------------------------------------------------
     // Private helpers
     // -----------------------------------------------------------------------
+
+    private static string ComputeContentHash(string html)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(html));
+        return Convert.ToHexString(bytes).ToLowerInvariant();
+    }
 
     private async Task<Project> RequireManualProjectAsync(Guid projectId, CancellationToken ct)
     {

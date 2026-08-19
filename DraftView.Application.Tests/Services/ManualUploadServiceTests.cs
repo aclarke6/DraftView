@@ -28,6 +28,9 @@ public class ManualUploadServiceTests
     private readonly Mock<IChapterFileParserResolver>      _parserResolver   = new();
     private readonly Mock<IChapterFileParser>              _parser           = new();
     private readonly Mock<IUnitOfWork>                     _unitOfWork       = new();
+    private readonly Mock<ISectionRepository>              _sectionRepo      = new();
+    private readonly Mock<IVersioningService>              _versioningService = new();
+    private readonly Mock<IMarkdownToHtmlConverter>        _markdownConverter = new();
 
     private ManualUploadService CreateSut() => new(
         _projectRepo.Object,
@@ -35,7 +38,10 @@ public class ManualUploadServiceTests
         _versionRepo.Object,
         _notificationRepo.Object,
         _parserResolver.Object,
-        _unitOfWork.Object);
+        _unitOfWork.Object,
+        _sectionRepo.Object,
+        _versioningService.Object,
+        _markdownConverter.Object);
 
     private static Project BuildManualProject()    => Project.CreateManual("Test Book", AuthorId);
     private static Project BuildScrivenerProject() => Project.Create("Test Book", "/dropbox/test", AuthorId);
@@ -307,5 +313,82 @@ public class ManualUploadServiceTests
 
         await Assert.ThrowsAsync<EntityNotFoundException>(
             () => sut.ClearVersionHistoryAsync(chapterId, AuthorId));
+    }
+
+    // -----------------------------------------------------------------------
+    // PublishChapterAsync
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task PublishChapterAsync_FirstPublish_CreatesSectionPairSavesAndCallsVersioningService()
+    {
+        var chapterId = Guid.NewGuid();
+        var chapter   = ManualChapter.Create(AuthorId, ProjectId, "Chapter 1", 0, "# Hello\n\nWorld.", null, DateTime.UtcNow);
+        // LinkedSectionId is null on a fresh chapter (first publish)
+
+        _chapterRepo.Setup(r => r.GetByIdAsync(chapterId, AuthorId, default)).ReturnsAsync(chapter);
+        _markdownConverter.Setup(c => c.Convert("# Hello\n\nWorld.")).Returns("<h1>Hello</h1><p>World.</p>");
+
+        var sut = CreateSut();
+
+        var result = await sut.PublishChapterAsync(chapterId, AuthorId);
+
+        // Two sections added (Folder + Document)
+        _sectionRepo.Verify(r => r.AddAsync(It.Is<Section>(s => s.NodeType == NodeType.Folder), default), Times.Once);
+        _sectionRepo.Verify(r => r.AddAsync(It.Is<Section>(s => s.NodeType == NodeType.Document), default), Times.Once);
+
+        // Chapter updated with linked section id
+        _chapterRepo.Verify(r => r.UpdateAsync(It.Is<ManualChapter>(c => c.LinkedSectionId.HasValue), default), Times.Once);
+
+        // SaveChanges called before versioning service
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.AtLeastOnce);
+
+        // VersioningService called for the Document section
+        _versioningService.Verify(v => v.RepublishSectionAsync(It.IsAny<Guid>(), AuthorId, default), Times.Once);
+
+        // Returns the folder section Id (a non-empty Guid)
+        Assert.NotEqual(Guid.Empty, result);
+    }
+
+    [Fact]
+    public async Task PublishChapterAsync_Republish_UpdatesDocumentContentAndCreatesNewVersion()
+    {
+        var chapterId   = Guid.NewGuid();
+        var folderId    = Guid.NewGuid();
+        var documentId  = Guid.NewGuid();
+        var chapter     = ManualChapter.Create(AuthorId, ProjectId, "Chapter 1", 0, "updated content", null, DateTime.UtcNow);
+        chapter.SetLinkedSection(folderId);
+
+        var document = Section.CreateDocumentForUpload(ProjectId, "Chapter 1", folderId, 0);
+
+        _chapterRepo.Setup(r => r.GetByIdAsync(chapterId, AuthorId, default)).ReturnsAsync(chapter);
+        _markdownConverter.Setup(c => c.Convert("updated content")).Returns("<p>updated content</p>");
+        _sectionRepo.Setup(r => r.GetChildrenAsync(folderId, default))
+            .ReturnsAsync(new List<Section> { document });
+
+        var sut = CreateSut();
+
+        var result = await sut.PublishChapterAsync(chapterId, AuthorId);
+
+        // No new sections added on re-publish
+        _sectionRepo.Verify(r => r.AddAsync(It.IsAny<Section>(), default), Times.Never);
+
+        // VersioningService called for the Document section
+        _versioningService.Verify(v => v.RepublishSectionAsync(document.Id, AuthorId, default), Times.Once);
+
+        Assert.Equal(folderId, result);
+    }
+
+    [Fact]
+    public async Task PublishChapterAsync_ChapterNotFound_ThrowsEntityNotFound()
+    {
+        var chapterId = Guid.NewGuid();
+        _chapterRepo.Setup(r => r.GetByIdAsync(chapterId, AuthorId, default))
+            .ReturnsAsync((ManualChapter?)null);
+
+        var sut = CreateSut();
+
+        await Assert.ThrowsAsync<EntityNotFoundException>(
+            () => sut.PublishChapterAsync(chapterId, AuthorId));
     }
 }

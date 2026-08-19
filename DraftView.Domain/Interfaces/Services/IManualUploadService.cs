@@ -64,4 +64,14 @@ public interface IManualUploadService
     Task ClearVersionHistoryAsync(
         Guid chapterId, Guid authorId,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Publishes a manual chapter to the reader surface by converting its markdown
+    /// to HTML and creating a SectionVersion. On first call, a Folder+Document Section
+    /// pair is created and linked to the chapter. On re-publish, a new SectionVersion
+    /// is created for the existing Document section.
+    /// </summary>
+    Task<Guid> PublishChapterAsync(
+        Guid chapterId, Guid authorId,
+        CancellationToken ct = default);
 }
