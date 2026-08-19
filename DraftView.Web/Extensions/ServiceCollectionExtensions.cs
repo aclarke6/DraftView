@@ -18,6 +18,7 @@ using Microsoft.AspNetCore.Identity;
 using System;
 using DraftView.Web.Infrastructure;
 using DraftView.Domain.Enumerations;
+using DraftView.Infrastructure.Billing;
 
 namespace DraftView.Web.Extensions
 {
@@ -52,6 +53,9 @@ namespace DraftView.Web.Extensions
             services.AddScoped<IAccountRepository, AccountRepository>();
             services.AddScoped<ITenancyRepository, TenancyRepository>();
             services.AddScoped<ITenancyMembershipRepository, TenancyMembershipRepository>();
+
+            // Multi-tenancy repositories (MT-Sprint-2)
+            services.AddScoped<ITenancySubscriptionRepository, TenancySubscriptionRepository>();
 
             return services;
         }
@@ -128,6 +132,9 @@ namespace DraftView.Web.Extensions
             services.AddScoped<IChapterFileParserResolver, ChapterFileParserResolver>();
             services.AddScoped<IManualUploadService, ManualUploadService>();
             services.AddSingleton<IMarkdownToHtmlConverter, MarkdownToHtmlConverter>();
+
+            // Billing abstraction (MT-Sprint-2) — NullBillingProvider until a real provider is selected.
+            services.AddSingleton<IBillingProvider, NullBillingProvider>();
 
             return services;
         }

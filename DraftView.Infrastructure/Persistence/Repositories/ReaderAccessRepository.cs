@@ -40,4 +40,7 @@ public class ReaderAccessRepository(DraftViewDbContext db) : IReaderAccessReposi
         foreach (var record in records)
             record.Revoke();
     }
+
+    public Task<int> CountActiveReadersForAuthorAsync(Guid authorId, CancellationToken ct = default) =>
+        db.ReaderAccess.CountAsync(r => r.AuthorId == authorId && r.RevokedAt == null, ct);
 }

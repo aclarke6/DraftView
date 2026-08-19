@@ -156,7 +156,7 @@ See `MultiTenancy.md` for full design, migration strategy, and sprint plan.
 | Sprint | Deliverable | Status |
 |--------|-------------|--------|
 | MT-Sprint-1 | Account / Tenancy / TenancyMembership entity split | 🟡 In progress — cloud phase complete; local phase pending |
-| MT-Sprint-2 | Subscription enforcement, `IBillingProvider`, billing/provider rollout after go-live | 🔴 Not started |
+| MT-Sprint-2 | Subscription enforcement, `IBillingProvider`, billing/provider rollout after go-live | 🟡 In progress — cloud phase complete; local phase pending |
 | MT-Sprint-3 | Author self-serve registration, Dropbox connect per Tenancy | 🔴 Not started |
 | MT-Sprint-4 | Reader cross-tenancy identity | 🔴 Not started |
 | MT-Sprint-5 | Reader Marketplace (post-revenue) | ⏸ Deferred post-revenue |
@@ -188,6 +188,29 @@ See `MultiTenancy.md` for full design, migration strategy, and sprint plan.
 - [ ] Remove/replace `IUserRepository.GetAllBetaReadersAsync()` (unscoped global query)
 - [ ] `ReaderAccess` transitional decision — keep as bridge or subsume into `TenancyMembership`
 - [ ] Data backfill: map existing `User` records to `Account` + `Tenancy` + author `TenancyMembership`
+
+#### MT-Sprint-2 Progress
+
+**Cloud phase complete:**
+- [x] `SubscriptionTier` enum — `DraftView.Domain/Enumerations/SubscriptionTier.cs`
+- [x] `TenancySubscription` entity with tier, provider id, deactivation — `DraftView.Domain/Entities/TenancySubscription.cs`
+- [x] `ITenancySubscriptionRepository` interface
+- [x] `TenancySubscriptionRepository` implementation
+- [x] `TenancySubscriptionConfiguration` EF config (unique index on TenancyId)
+- [x] `IBillingProvider` abstraction — `DraftView.Application/Interfaces/IBillingProvider.cs`
+- [x] `NullBillingProvider` — `DraftView.Infrastructure/Billing/NullBillingProvider.cs`
+- [x] `IReaderAccessRepository.CountActiveReadersForAuthorAsync` — additive reader count method
+- [x] `ReaderAccessRepository.CountActiveReadersForAuthorAsync` — implementation
+- [x] `DraftViewDbContext` — `DbSet<TenancySubscription>` added
+- [x] DI registration: `ITenancySubscriptionRepository`, `IBillingProvider`
+- [x] Unit tests: `TenancySubscriptionTests` (9 tests)
+
+**Local phase required:**
+- [ ] Generate EF migration: `dotnet ef migrations add AddTenancySubscription --project DraftView.Infrastructure --startup-project DraftView.Web`
+- [ ] Apply migration: `dotnet ef database update --project DraftView.Infrastructure --startup-project DraftView.Web`
+- [ ] Run full test suite: `dotnet test` — confirm all new tests GREEN plus no regressions
+- [ ] Wire reader-count enforcement into reader access grant flow (application service layer)
+- [ ] Seed existing tenancies with a `TenancySubscription` record (Free tier) in the data backfill migration
 
 ---
 

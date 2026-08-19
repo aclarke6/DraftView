@@ -59,6 +59,9 @@ public class DraftViewDbContext : IdentityDbContext<IdentityUser>, IUnitOfWork
     public DbSet<Tenancy> Tenancies => Set<Tenancy>();
     public DbSet<TenancyMembership> TenancyMemberships => Set<TenancyMembership>();
 
+    // Multi-tenancy tables (MT-Sprint-2)
+    public DbSet<TenancySubscription> TenancySubscriptions => Set<TenancySubscription>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
