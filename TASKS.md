@@ -157,7 +157,7 @@ See `MultiTenancy.md` for full design, migration strategy, and sprint plan.
 |--------|-------------|--------|
 | MT-Sprint-1 | Account / Tenancy / TenancyMembership entity split | 🟡 In progress — cloud phase complete; local phase pending |
 | MT-Sprint-2 | Subscription enforcement, `IBillingProvider`, billing/provider rollout after go-live | 🟡 In progress — cloud phase complete; local phase pending |
-| MT-Sprint-3 | Author self-serve registration, Dropbox connect per Tenancy | 🔴 Not started |
+| MT-Sprint-3 | Author self-serve registration, Dropbox connect per Tenancy | 🟡 In progress — cloud phase complete; local phase pending |
 | MT-Sprint-4 | Reader cross-tenancy identity | 🔴 Not started |
 | MT-Sprint-5 | Reader Marketplace (post-revenue) | ⏸ Deferred post-revenue |
 
@@ -188,6 +188,24 @@ See `MultiTenancy.md` for full design, migration strategy, and sprint plan.
 - [ ] Remove/replace `IUserRepository.GetAllBetaReadersAsync()` (unscoped global query)
 - [ ] `ReaderAccess` transitional decision — keep as bridge or subsume into `TenancyMembership`
 - [ ] Data backfill: map existing `User` records to `Account` + `Tenancy` + author `TenancyMembership`
+
+#### MT-Sprint-3 Progress
+
+**Cloud phase complete:**
+- [x] `IAuthorRegistrationService` + `AuthorRegistrationResult` — `DraftView.Domain/Interfaces/Services/IAuthorRegistrationService.cs`
+- [x] `AuthorRegistrationService` — atomic Account + Tenancy + TenancyMembership (Author) + TenancySubscription (Free) in single SaveChanges
+- [x] Duplicate-email guard: `I-REG-EMAIL-EXISTS` invariant code
+- [x] `DraftViewDbContext` — extended `PrepareProtectedEmails` to handle Account entities (same AES+HMAC pattern as User)
+- [x] DI registration: `IAuthorRegistrationService`
+- [x] Unit tests: `AuthorRegistrationServiceTests` (8 tests)
+
+**Local phase required:**
+- [ ] Web controller: author registration form (Account/Register route) calling `IAuthorRegistrationService`
+- [ ] Wire ASP.NET Identity `UserManager` to create `IdentityUser` alongside `Account` record
+- [ ] Remove author-only seeding as required onboarding path (move to dev-only tooling)
+- [ ] Tenancy-scoped Dropbox connect flow — `DropboxConnections.TenancyId` (requires AuthorId→TenancyId rename from MT-Sprint-1 local phase)
+
+---
 
 #### MT-Sprint-2 Progress
 

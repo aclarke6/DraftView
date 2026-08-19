@@ -19,6 +19,8 @@ using System;
 using DraftView.Web.Infrastructure;
 using DraftView.Domain.Enumerations;
 using DraftView.Infrastructure.Billing;
+using DraftView.Application.Services;
+using DraftView.Domain.Interfaces.Services;
 
 namespace DraftView.Web.Extensions
 {
@@ -135,6 +137,9 @@ namespace DraftView.Web.Extensions
 
             // Billing abstraction (MT-Sprint-2) — NullBillingProvider until a real provider is selected.
             services.AddSingleton<IBillingProvider, NullBillingProvider>();
+
+            // Author registration (MT-Sprint-3)
+            services.AddScoped<IAuthorRegistrationService, AuthorRegistrationService>();
 
             return services;
         }
