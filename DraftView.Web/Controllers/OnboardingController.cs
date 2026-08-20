@@ -1,3 +1,5 @@
+using DraftView.Application.Interfaces;
+using DraftView.Domain.Entities;
 using DraftView.Domain.Exceptions;
 using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Interfaces.Services;
@@ -17,6 +19,10 @@ public class OnboardingController(
     IUserRepository userRepo,
     IUnitOfWork unitOfWork,
     IEmailSender emailSender,
+    IAccountRepository accountRepo,
+    ITenancyRepository tenancyRepo,
+    IProjectRepository projectRepo,
+    IUserEmailLookupHmacService hmacService,
     ILogger<OnboardingController> logger) : Controller
 {
     // ---------------------------------------------------------------------------
@@ -170,17 +176,36 @@ public class OnboardingController(
         {
             Success  = true,
             Message  = "Your email has been confirmed. Welcome to DraftView!",
-            Redirect = Url.Action("FirstProject", "Onboarding")
+            Redirect = Url.Action("Index", "Home")
         });
     }
 
     // ---------------------------------------------------------------------------
-    // GET /Join/FirstProject — welcome page for newly confirmed authors
+    // GET /Join/Setup — multi-visit progressive workspace setup
     // ---------------------------------------------------------------------------
 
-    [HttpGet("/Join/FirstProject")]
+    [HttpGet("/Join/Setup")]
     [Authorize(Policy = "RequireAuthorPolicy")]
-    public IActionResult FirstProject() => View();
+    public async Task<IActionResult> Setup(CancellationToken ct)
+    {
+        var email   = User.Identity?.Name ?? string.Empty;
+        var hmac    = hmacService.Compute(email.Trim());
+        var account = await accountRepo.GetByEmailLookupHmacAsync(hmac, ct);
+
+        Tenancy? tenancy = null;
+        if (account is not null)
+            tenancy = await tenancyRepo.GetByOwnerAccountIdAsync(account.Id, ct);
+
+        var projects = await projectRepo.GetAllAsync(ct);
+
+        return View(new SetupViewModel
+        {
+            TenancyConfigured = tenancy is not null,
+            TenancyName       = tenancy?.Name,
+            ProjectCreated    = projects.Count > 0,
+            ProjectCount      = projects.Count
+        });
+    }
 
     // ---------------------------------------------------------------------------
     // GET /Join/FAQ

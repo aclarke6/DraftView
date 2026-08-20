@@ -2,6 +2,14 @@ using System.ComponentModel.DataAnnotations;
 
 namespace DraftView.Web.Models;
 
+public class SetupViewModel
+{
+    public bool    TenancyConfigured { get; init; }
+    public string? TenancyName       { get; init; }
+    public bool    ProjectCreated    { get; init; }
+    public int     ProjectCount      { get; init; }
+}
+
 public class ConfirmEmailResultViewModel
 {
     public bool    Success  { get; init; }
