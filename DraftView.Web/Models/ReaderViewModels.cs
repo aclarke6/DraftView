@@ -1,4 +1,5 @@
-﻿using DraftView.Domain.Contracts;
+﻿using System.ComponentModel.DataAnnotations;
+using DraftView.Domain.Contracts;
 using DraftView.Domain.Diff;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
@@ -181,4 +182,24 @@ public class ReaderDashboardRequestViewModel
 {
     public AccessRequest Request { get; init; } = default!;
     public string ProjectName { get; init; } = string.Empty;
+}
+
+public class RequestAccessViewModel
+{
+    public IReadOnlyList<Project> AvailableProjects { get; init; } = [];
+    public IReadOnlyList<ReaderDashboardRequestViewModel> PendingRequests { get; init; } = [];
+
+    [Required(ErrorMessage = "Please select a project.")]
+    public Guid? SelectedProjectId { get; set; }
+
+    [StringLength(500, ErrorMessage = "Cover note must not exceed 500 characters.")]
+    [Display(Name = "Cover note (optional)")]
+    public string? CoverNote { get; set; }
+
+    [EmailAddress(ErrorMessage = "Please enter a valid email address.")]
+    [Display(Name = "Contact email (optional)")]
+    public string? ContactEmail { get; set; }
+
+    public bool RequestSubmitted { get; init; }
+    public string? SubmittedProjectName { get; init; }
 }

@@ -1,0 +1,157 @@
+@model DraftView.Web.Models.RequestAccessViewModel
+@using DraftView.Domain.Enumerations
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Request Access";
+}
+
+<div class="settings-page">
+    <div class="settings-header">
+        <h1 class="settings-header__title">Request access to a project</h1>
+        <p class="settings-header__subtitle">
+            Select a project below and send your request to the author.
+            Once approved you will be able to start reading.
+        </p>
+    </div>
+
+    @if (Model.RequestSubmitted)
+    {
+        <div class="toast toast--success" style="position:static; margin-bottom:1.5rem; display:block; opacity:1;">
+            Your request has been sent to the author of
+            <strong>@(Model.SubmittedProjectName ?? "the project")</strong>.
+            You will receive an email when they respond.
+        </div>
+    }
+
+    @* Pending requests section *@
+    @if (Model.PendingRequests.Count > 0)
+    {
+        <div class="settings-section">
+            <div class="settings-section__header">
+                <h2 class="settings-section__title">Your requests</h2>
+            </div>
+            <div class="settings-section__body">
+                <table class="data-table" style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>Project</th>
+                            <th>Status</th>
+                            <th>Requested</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.PendingRequests)
+                        {
+                            var statusLabel = item.Request.Status switch
+                            {
+                                AccessRequestStatus.Pending  => "Pending",
+                                AccessRequestStatus.Approved => "Approved",
+                                AccessRequestStatus.Declined => "Declined",
+                                _                            => "Unknown"
+                            };
+                            var statusClass = item.Request.Status switch
+                            {
+                                AccessRequestStatus.Approved => "badge badge--success",
+                                AccessRequestStatus.Declined => "badge badge--danger",
+                                _                            => "badge badge--muted"
+                            };
+                            <tr>
+                                <td>@item.ProjectName</td>
+                                <td><span class="@statusClass">@statusLabel</span></td>
+                                <td>@item.Request.RequestedAt.ToString("d MMM yyyy")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @* Available projects section *@
+    @if (Model.AvailableProjects.Count == 0)
+    {
+        <div class="settings-section">
+            <div class="settings-section__body">
+                <p>
+                    There are no projects open for reader applications at this time.
+                    If an author has invited you by email, please check your inbox for the invitation link.
+                </p>
+                <p>
+                    <a href="/Account/Login">Sign in</a> if you already have an account.
+                </p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="settings-section">
+            <div class="settings-section__header">
+                <h2 class="settings-section__title">Request access</h2>
+            </div>
+            <div class="settings-section__body">
+
+                @if (!ViewData.ModelState.IsValid && ViewData.ModelState.ErrorCount > 0)
+                {
+                    <div class="validation-summary" style="margin-bottom:1rem; color:var(--color-danger, #c62828);">
+                        @foreach (var ms in ViewData.ModelState.Values)
+                        {
+                            foreach (var error in ms.Errors)
+                            {
+                                <div>@error.ErrorMessage</div>
+                            }
+                        }
+                    </div>
+                }
+
+                <form asp-controller="Reader" asp-action="RequestAccess" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="form-group" style="margin-bottom:1.25rem;">
+                        <label class="form-label" for="SelectedProjectId">Choose a project</label>
+                        <select asp-for="SelectedProjectId"
+                                id="SelectedProjectId"
+                                class="form-control"
+                                style="width:100%; max-width:400px;">
+                            <option value="">— Select a project —</option>
+                            @foreach (var project in Model.AvailableProjects)
+                            {
+                                <option value="@project.Id">@project.Name</option>
+                            }
+                        </select>
+                        <span asp-validation-for="SelectedProjectId" class="field-validation-error"></span>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:1.25rem;">
+                        <label asp-for="CoverNote" class="form-label"></label>
+                        <textarea asp-for="CoverNote"
+                                  class="form-control"
+                                  rows="4"
+                                  style="width:100%; max-width:600px; resize:vertical;"
+                                  placeholder="Tell the author a little about yourself and why you'd like to read their work (optional)…"></textarea>
+                        <span asp-validation-for="CoverNote" class="field-validation-error"></span>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:1.5rem;">
+                        <label asp-for="ContactEmail" class="form-label"></label>
+                        <input asp-for="ContactEmail"
+                               type="email"
+                               class="form-control"
+                               style="width:100%; max-width:400px;"
+                               placeholder="Alternative contact email (optional)" />
+                        <span asp-validation-for="ContactEmail" class="field-validation-error"></span>
+                    </div>
+
+                    <button type="submit" class="btn btn--primary">Send request</button>
+                </form>
+            </div>
+        </div>
+    }
+
+    <div style="margin-top:2rem;">
+        <p style="color:var(--color-text-muted, #999); font-size:0.875rem;">
+            Waiting to hear from an author?
+            <a asp-controller="Account" asp-action="Login">Sign in</a> if you already have an account,
+            or contact the author directly for an invitation link.
+        </p>
+    </div>
+</div>

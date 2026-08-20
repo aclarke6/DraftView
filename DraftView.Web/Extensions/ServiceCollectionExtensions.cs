@@ -142,6 +142,9 @@ namespace DraftView.Web.Extensions
             services.AddScoped<IAuthorRegistrationService, AuthorRegistrationService>();
             services.AddScoped<IAuthorSelfRegistrationService, AuthorSelfRegistrationService>();
 
+            // Reader self-registration (MT-Sprint-3)
+            services.AddScoped<IReaderSelfRegistrationService, ReaderSelfRegistrationService>();
+
             return services;
         }
 

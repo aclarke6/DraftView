@@ -34,3 +34,16 @@ public class RegisterAuthorViewModel
     [Display(Name = "Workspace name")]
     public string TenancyName { get; set; } = string.Empty;
 }
+
+public class RegisterReaderViewModel
+{
+    [Required(ErrorMessage = "Email address is required.")]
+    [EmailAddress(ErrorMessage = "Please enter a valid email address.")]
+    [Display(Name = "Email address")]
+    public string Email { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Your name is required.")]
+    [StringLength(100, MinimumLength = 2, ErrorMessage = "Name must be between 2 and 100 characters.")]
+    [Display(Name = "Your name")]
+    public string DisplayName { get; set; } = string.Empty;
+}

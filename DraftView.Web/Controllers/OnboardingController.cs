@@ -14,6 +14,7 @@ namespace DraftView.Web.Controllers;
 [AllowAnonymous]
 public class OnboardingController(
     IAuthorSelfRegistrationService registrationService,
+    IReaderSelfRegistrationService readerRegistrationService,
     UserManager<IdentityUser> userManager,
     SignInManager<IdentityUser> signInManager,
     IUserRepository userRepo,
@@ -213,4 +214,156 @@ public class OnboardingController(
 
     [HttpGet("/Join/FAQ")]
     public IActionResult FAQ() => View();
+
+    // ===========================================================================
+    // Beta Reader self-registration
+    // ===========================================================================
+
+    // ---------------------------------------------------------------------------
+    // GET /ReadersJoin
+    // ---------------------------------------------------------------------------
+
+    [HttpGet("/ReadersJoin")]
+    public IActionResult ReaderJoin()
+    {
+        if (User.Identity?.IsAuthenticated == true)
+            return RedirectToAction("Index", "Home");
+
+        return View(new RegisterReaderViewModel());
+    }
+
+    // ---------------------------------------------------------------------------
+    // POST /ReadersJoin
+    // ---------------------------------------------------------------------------
+
+    [HttpPost("/ReadersJoin")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ReaderJoin(RegisterReaderViewModel model, CancellationToken ct)
+    {
+        if (!ModelState.IsValid)
+            return View(model);
+
+        var existingIdentity = await userManager.FindByEmailAsync(model.Email);
+        if (existingIdentity is not null)
+        {
+            ModelState.AddModelError(nameof(model.Email),
+                "An account with this email address already exists.");
+            return View(model);
+        }
+
+        try
+        {
+            var registration = await readerRegistrationService.RegisterAsync(
+                model.Email, model.DisplayName, ct);
+
+            var identityUser = new IdentityUser
+            {
+                Id             = registration.User.Id.ToString(),
+                UserName       = model.Email,
+                Email          = model.Email,
+                EmailConfirmed = false
+            };
+
+            var createResult = await userManager.CreateAsync(identityUser);
+            if (!createResult.Succeeded)
+            {
+                foreach (var error in createResult.Errors)
+                    ModelState.AddModelError(string.Empty, error.Description);
+                return View(model);
+            }
+
+            await userManager.AddToRoleAsync(identityUser, "BetaReader");
+
+            var token   = await userManager.GenerateEmailConfirmationTokenAsync(identityUser);
+            var encoded = HttpUtility.UrlEncode(token);
+            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+            var link    = $"{baseUrl}/ReadersJoin/ConfirmEmail?userId={identityUser.Id}&token={encoded}";
+            var body    = $"""
+                <p>Welcome to DraftView, {model.DisplayName}!</p>
+                <p>Please confirm your email address to get started:</p>
+                <p><a href="{link}">Confirm my email</a></p>
+                <p>Or copy this link: {link}</p>
+                <p>If you did not sign up for DraftView, you can ignore this email.</p>
+                """;
+
+            try
+            {
+                await emailSender.SendAsync(model.Email, model.DisplayName,
+                    "Confirm your DraftView account", body, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to send confirmation email to {Email}", model.Email);
+            }
+
+            return RedirectToAction(nameof(ReaderEmailSent));
+        }
+        catch (InvariantViolationException ex) when (ex.InvariantCode == "I-SELF-REG-EMAIL-EXISTS")
+        {
+            ModelState.AddModelError(nameof(model.Email),
+                "An account with this email address already exists.");
+            return View(model);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Reader self-registration failed for {Email}", model.Email);
+            ModelState.AddModelError(string.Empty, "Something went wrong. Please try again.");
+            return View(model);
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // GET /ReadersJoin/EmailSent
+    // ---------------------------------------------------------------------------
+
+    [HttpGet("/ReadersJoin/EmailSent")]
+    public IActionResult ReaderEmailSent() => View();
+
+    // ---------------------------------------------------------------------------
+    // GET /ReadersJoin/ConfirmEmail
+    // ---------------------------------------------------------------------------
+
+    [HttpGet("/ReadersJoin/ConfirmEmail")]
+    public async Task<IActionResult> ReaderConfirmEmail(string userId, string token, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(token))
+            return View("ConfirmEmailResult", new ConfirmEmailResultViewModel
+            {
+                Success = false,
+                Message = "The confirmation link is invalid or has expired."
+            });
+
+        var identityUser = await userManager.FindByIdAsync(userId);
+        if (identityUser is null)
+            return View("ConfirmEmailResult", new ConfirmEmailResultViewModel
+            {
+                Success = false,
+                Message = "The confirmation link is invalid or has expired."
+            });
+
+        var decoded       = HttpUtility.UrlDecode(token);
+        var confirmResult = await userManager.ConfirmEmailAsync(identityUser, decoded);
+        if (!confirmResult.Succeeded)
+            return View("ConfirmEmailResult", new ConfirmEmailResultViewModel
+            {
+                Success = false,
+                Message = "The confirmation link is invalid or has expired."
+            });
+
+        var domainUser = await userRepo.GetByEmailAsync(identityUser.Email!, ct);
+        if (domainUser is not null && !domainUser.IsActive)
+        {
+            domainUser.Activate();
+            await unitOfWork.SaveChangesAsync(ct);
+        }
+
+        await signInManager.SignInAsync(identityUser, isPersistent: false);
+
+        return View("ConfirmEmailResult", new ConfirmEmailResultViewModel
+        {
+            Success  = true,
+            Message  = "Your email has been confirmed. Welcome to DraftView!",
+            Redirect = Url.Action("Index", "Home")
+        });
+    }
 }
