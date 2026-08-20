@@ -1,0 +1,63 @@
+@model DraftView.Web.Models.ConfirmEmailResultViewModel
+@{
+    Layout = null;
+    ViewData["Title"] = Model.Success ? "Email confirmed — DraftView" : "Confirmation failed — DraftView";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/DraftView.Light.css?v=v2026-08-19-1" />
+    <link rel="stylesheet" href="/css/DraftView.Core.css?v=v2026-08-19-1" />
+    <link rel="stylesheet" href="/css/DraftView.Onboarding.css?v=v2026-08-19-1" />
+    <link rel="icon" type="image/png" href="/images/DraftView.Logo.web.png" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; min-height: 100vh; font-family: 'Inter', system-ui, sans-serif; }
+        body { background: #1a1a2e; }
+    </style>
+</head>
+<body>
+
+<div class="onboarding-bg" aria-hidden="true">
+    <div class="onboarding-bg__slide is-active" style="background-image: url('/images/DraftView.Atmosphere.web.jpg')"></div>
+</div>
+
+<div class="onboarding-page">
+    <div class="onboarding-status">
+        @if (Model.Success)
+        {
+            <span class="onboarding-status__icon" aria-hidden="true">✅</span>
+            <h1 class="onboarding-status__title">You're confirmed!</h1>
+            <p class="onboarding-status__body">@Model.Message</p>
+            @if (!string.IsNullOrEmpty(Model.Redirect))
+            {
+                <a href="@Model.Redirect" class="onboarding-status__action">Get started &rarr;</a>
+            }
+        }
+        else
+        {
+            <span class="onboarding-status__icon" aria-hidden="true">❌</span>
+            <h1 class="onboarding-status__title">Confirmation failed</h1>
+            <p class="onboarding-status__body">@Model.Message</p>
+            <a href="/Join" class="onboarding-status__action">Try again</a>
+        }
+    </div>
+</div>
+
+@if (Model.Success && !string.IsNullOrEmpty(Model.Redirect))
+{
+    <script>
+        setTimeout(function () {
+            window.location.href = "@Model.Redirect";
+        }, 2500);
+    </script>
+}
+
+</body>
+</html>

@@ -1,0 +1,50 @@
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Welcome to DraftView";
+}
+
+<div class="onboarding-welcome" style="color: var(--color-text, #1a1a2e);">
+
+    <h1 class="onboarding-welcome__headline" style="color: var(--color-text, #1a1a2e);">
+        Welcome to DraftView!
+    </h1>
+    <p class="onboarding-welcome__subline" style="opacity: 1; color: var(--color-text-muted, #555);">
+        Your author workspace is ready. Here's how to get your manuscript in front of your first readers.
+    </p>
+
+    <div class="onboarding-steps">
+        <div class="onboarding-step" style="background: var(--color-surface-alt, #f5f5f5); border-color: var(--color-border, #e0e0e0); color: var(--color-text, #1a1a2e);">
+            <div class="onboarding-step__number" style="opacity: 0.4;">01</div>
+            <p class="onboarding-step__title">Connect Dropbox</p>
+            <p class="onboarding-step__desc" style="opacity: 1; color: var(--color-text-muted, #666);">
+                Link your Dropbox account so DraftView can sync chapters from your Scrivener project automatically.
+            </p>
+        </div>
+        <div class="onboarding-step" style="background: var(--color-surface-alt, #f5f5f5); border-color: var(--color-border, #e0e0e0); color: var(--color-text, #1a1a2e);">
+            <div class="onboarding-step__number" style="opacity: 0.4;">02</div>
+            <p class="onboarding-step__title">Sync your project</p>
+            <p class="onboarding-step__desc" style="opacity: 1; color: var(--color-text-muted, #666);">
+                Compile your Scrivener project to Dropbox, then trigger a sync from your dashboard. Your chapters appear instantly.
+            </p>
+        </div>
+        <div class="onboarding-step" style="background: var(--color-surface-alt, #f5f5f5); border-color: var(--color-border, #e0e0e0); color: var(--color-text, #1a1a2e);">
+            <div class="onboarding-step__number" style="opacity: 0.4;">03</div>
+            <p class="onboarding-step__title">Invite your readers</p>
+            <p class="onboarding-step__desc" style="opacity: 1; color: var(--color-text-muted, #666);">
+                Send email invitations to your beta readers. Control which chapters each reader can access.
+            </p>
+        </div>
+        <div class="onboarding-step" style="background: var(--color-surface-alt, #f5f5f5); border-color: var(--color-border, #e0e0e0); color: var(--color-text, #1a1a2e);">
+            <div class="onboarding-step__number" style="opacity: 0.4;">04</div>
+            <p class="onboarding-step__title">Read the feedback</p>
+            <p class="onboarding-step__desc" style="opacity: 1; color: var(--color-text-muted, #666);">
+                Inline comments and reading progress appear on your dashboard in real time.
+            </p>
+        </div>
+    </div>
+
+    <a href="/Author/Dashboard" class="onboarding-welcome__cta" style="background: var(--color-accent, #5b6af0); border-color: var(--color-accent, #5b6af0);">
+        Go to my dashboard &rarr;
+    </a>
+
+</div>
