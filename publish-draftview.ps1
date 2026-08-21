@@ -87,7 +87,7 @@ if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: SCP of app failed." -ForegroundCol
 
 Write-Host "Copying production appsettings to server..." -ForegroundColor Cyan
 $prodConfig = "C:\Users\alast\source\repos\DraftView\appsettings.Production.json"
-# File is owned by www-data (640) — open permissions before overwriting, restore below.
+# File is owned by www-data (640) - open permissions before overwriting, restore below.
 ssh -i $key $server "sudo chmod 666 $remote/appsettings.Production.json 2>/dev/null; true"
 scp -i $key "$prodConfig" "${server}:${remote}/appsettings.Production.json"
 if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: SCP of production appsettings failed." -ForegroundColor Red; exit 1 }
@@ -107,7 +107,7 @@ if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: SCP of migration bundle failed." -
 # ---------------------------------------------------------------------------
 Write-Host "Applying EF migrations on server..." -ForegroundColor Cyan
 ssh -i $key $server "chmod +x /tmp/efbundle && cd $remote && ASPNETCORE_ENVIRONMENT=Production /tmp/efbundle && rm /tmp/efbundle"
-if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: Migration bundle failed. Aborting — service NOT restarted." -ForegroundColor Red; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: Migration bundle failed. Aborting - service NOT restarted." -ForegroundColor Red; exit 1 }
 Write-Host "Migrations applied." -ForegroundColor Green
 
 # ---------------------------------------------------------------------------
@@ -151,7 +151,7 @@ if ($tasks -match 'Last deployed:') {
 }
 
 if ($tasks -notmatch [regex]::Escape($deployEntry)) {
-    Write-Host "WARNING: Docs/TASKS.md was not updated — check the script." -ForegroundColor Yellow
+    Write-Host "WARNING: Docs/TASKS.md was not updated - check the script." -ForegroundColor Yellow
 } else {
     [System.IO.File]::WriteAllText($tasksPath, $tasks, [System.Text.Encoding]::UTF8)
     git pull origin main --ff-only
@@ -160,7 +160,7 @@ if ($tasks -notmatch [regex]::Escape($deployEntry)) {
     if ($LASTEXITCODE -eq 0) {
         git push origin main
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "WARNING: Push failed — commit is local, push manually." -ForegroundColor Yellow
+            Write-Host "WARNING: Push failed - commit is local, push manually." -ForegroundColor Yellow
         } else {
             Write-Host "Deployment recorded in Docs/TASKS.md." -ForegroundColor Green
         }
