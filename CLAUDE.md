@@ -14,12 +14,11 @@ Solution: `DraftView.slnx` at `C:\Users\alast\source\repos\DraftView`
 - Full CSS rule blocks only — never partial `{}` fragments
 
 ## Current task
-No active task file. Consult `TASKS.md` for the current state of all work tracks
-and choose the highest-priority open item. `CLAUDE_TASK_Notifications.md` is
-complete — all seven phases are implemented and merged to main.
+No active task file. Consult `Docs/TASKS.md` for the current state of all work tracks
+and choose the highest-priority open item.
 
 ## How to work
-1. Read `TASKS.md` fully before starting any task
+1. Read `Docs/TASKS.md` fully before starting any task
 2. For implementation tasks, follow the red/green cycle strictly:
    - Write the stub (NotImplementedException) first
    - Write the failing tests
@@ -41,88 +40,37 @@ complete — all seven phases are implemented and merged to main.
 - Application service test pattern: `DraftView.Application.Tests/Services/DashboardServiceTests.cs`
 - DI registration: `DraftView.Web/Extensions/ServiceCollectionExtensions.cs`
 
-### Files this task modifies
-- NEW: `DraftView.Domain/Entities/AuthorNotification.cs`
-- NEW: `DraftView.Domain/Interfaces/Repositories/IAuthorNotificationRepository.cs`
-- NEW: `DraftView.Infrastructure/Persistence/Repositories/AuthorNotificationRepository.cs`
-- NEW: `DraftView.Infrastructure/Persistence/Configurations/AuthorNotificationConfiguration.cs`
-- NEW: `DraftView.Domain.Tests/Entities/AuthorNotificationTests.cs`
-- NEW: `DraftView.Infrastructure.Tests/Persistence/AuthorNotificationRepositoryTests.cs`
-- MODIFY: `DraftView.Infrastructure/Persistence/DraftViewDbContext.cs` — add DbSet
-- MODIFY: `DraftView.Domain/Interfaces/Services/IDashboardService.cs` — replace notification method
-- MODIFY: `DraftView.Application/Services/DashboardService.cs` — replace implementation
-- MODIFY: `DraftView.Application/Services/CommentService.cs` — write notification on comment
-- MODIFY: `DraftView.Application/Services/UserService.cs` — write notification on invite accept
-- MODIFY: `DraftView.Application/Services/SyncService.cs` — write notification on sync complete
-- MODIFY: `DraftView.Application.Tests/Services/DashboardServiceTests.cs` — update and extend
-- MODIFY: `DraftView.Application.Tests/Services/CommentServiceTests.cs` — add notification tests
-- MODIFY: `DraftView.Application.Tests/Services/UserServiceInvitationAcceptanceTests.cs` — add notification test
-- MODIFY: `DraftView.Application.Tests/Services/SyncServiceTests.cs` — add notification tests
-- MODIFY: `DraftView.Web/Extensions/ServiceCollectionExtensions.cs` — register new repo
-- MODIFY: `DraftView.Web/Models/AuthorViewModels.cs` — update DashboardViewModel
-- MODIFY: `DraftView.Web/Controllers/AuthorController.cs` — add Dismiss/ClearAll actions
-- MODIFY: `DraftView.Web/Views/Author/Dashboard.cshtml` — dismiss button, clear all, viewport fix
-- MODIFY: `DraftView.Web/wwwroot/css/DraftView.Notifications.css` — dismiss button styles + viewport fix
-
 ## Important facts
 
-### NotificationEventType enum
-Already exists in `DraftView.Domain/Notifications/NotificationItemDto.cs`.
-Do NOT create a new enum — reuse the existing one.
-In Phase 5, if `NotificationItemDto` is fully removed, move `NotificationEventType`
-to its own file `DraftView.Domain/Notifications/NotificationEventType.cs` first,
-then remove `NotificationItemDto.cs`.
+### CSS version bump
+`DraftView.Web/wwwroot/css/DraftView.Core.css` contains a line like:
+```css
+--css-version: "v2026-08-21-3";
+```
+When modifying any CSS file, increment the version. Use regex replace — never
+hardcode the expected current value. Pattern:
+```powershell
+$content = $content -replace 'v\d{4}-\d{2}-\d{2}-\d+', 'vNEW_VERSION'
+```
+Then verify the replacement applied before saving. Update all standalone views
+(`Layout = null`) as well as `_Layout.cshtml` and `DraftView.Core.css`.
 
-### GetAuthorAsync
-`IUserRepository.GetAuthorAsync(CancellationToken ct)` already exists and is
-implemented. Use it in CommentService, UserService, and SyncService to resolve
-the author's `Id` for writing notifications.
+### EF migration commands
+Run from the solution root:
+```
+dotnet ef migrations add <MigrationName> --project DraftView.Infrastructure --startup-project DraftView.Web
+dotnet ef database update --project DraftView.Infrastructure --startup-project DraftView.Web
+```
 
 ### Infrastructure test database
 Use `UseInMemoryDatabase` (not SQLite) — see `ScrivenerProjectRepositoryTests`
 for the exact pattern. Each test class gets a fresh `Guid.NewGuid().ToString()`
 database name in the constructor.
 
-### DashboardService constructor change
-Current constructor parameters:
-```
-ISectionRepository, IUserRepository, IEmailDeliveryLogRepository,
-ICommentRepository, IInvitationRepository, IScrivenerProjectRepository
-```
-After Phase 3, becomes:
-```
-ISectionRepository, IUserRepository, IEmailDeliveryLogRepository,
-IAuthorNotificationRepository, IUnitOfWork
-```
-`ICommentRepository`, `IInvitationRepository`, `IScrivenerProjectRepository`
-are removed from DashboardService (they may still be used elsewhere — do not
-remove their registrations from DI).
-
-### CSS version bump
-`DraftView.Web/wwwroot/css/DraftView.Core.css` contains a line like:
-```css
---css-version: "v2026-04-10-1";
-```
-When modifying any CSS file, increment the version. Use regex replace — never
-hardcode the expected current value. Pattern:
-```powershell
-$core = $core -replace '--css-version: "v[^"]+"', '--css-version: "vNEW_VERSION"'
-```
-Then verify the replacement applied before saving.
-
-### EF migration commands
-Run from the solution root:
-```
-dotnet ef migrations add AddAuthorNotifications --project DraftView.Infrastructure --startup-project DraftView.Web
-dotnet ef database update --project DraftView.Infrastructure --startup-project DraftView.Web
-```
-
-### Final commit
-After all phases complete and all tests are GREEN:
-```
-dotnet test
-git add -A
-git commit -m "Persisted AuthorNotification entity, dismiss/clear all UI, viewport panel fix"
-git push
-.\publish-draftview.ps1
-```
+### Document location
+All project documents (design docs, sprint plans, task files, reference SQL, etc.)
+are in the `Docs/` folder. Key files:
+- `Docs/TASKS.md` — active task list and sprint status
+- `Docs/AGENTS.md` — authoritative execution rules for all coding agents
+- `Docs/HISTORY.md` — completed work log
+- `Docs/MultiTenancy.md` — multi-tenancy design and sprint plan

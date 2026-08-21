@@ -1,37 +1,66 @@
 <Solution>
   <Folder Name="/Docs/">
-    <File Path="DraftView Billing Model v2.docx" />
-    <File Path="DraftView Business Model v3.docx" />
-    <File Path="DropBox Synchronisation Using WebHooks.md" />
-    <File Path="Passage Anchoring, Reader Continuity, and Inline Commentary.md" />
-    <File Path="Publishing And versioning Architecture.md" />
+    <File Path="Docs/ADR-ManualChapterUploadArchitecture.md" />
+    <File Path="Docs/AGENTS.md" />
+    <File Path="Docs/CLAUDE_TASK_ManualUpload.md" />
+    <File Path="Docs/CLAUDE_TASK_Notifications.md" />
+    <File Path="Docs/DraftView Billing Model v2.docx" />
+    <File Path="Docs/DraftView Business Model v3.docx" />
+    <File Path="Docs/DraftView Git Rules.md" />
+    <File Path="Docs/DraftView-UAT-Plan.md" />
+    <File Path="Docs/DraftView.txt" />
+    <File Path="Docs/DropBox Synchronisation Using WebHooks.md" />
+    <File Path="Docs/HISTORY.md" />
+    <File Path="Docs/ManualChapterUploadUXSpec.md" />
+    <File Path="Docs/MultiTenancy.md" />
+    <File Path="Docs/Passage Anchoring, Reader Continuity, and Inline Commentary.md" />
+    <File Path="Docs/PostgreSQL.md" />
+    <File Path="Docs/PowerShell.md" />
+    <File Path="Docs/Principles.md" />
+    <File Path="Docs/Publishing And versioning Architecture.md" />
+    <File Path="Docs/Refactoring.md" />
+    <File Path="Docs/Sprint4-EmailPrivacy.md" />
+    <File Path="Docs/Sprints-Legacy.md" />
+    <File Path="Docs/System State Messaging.md" />
+    <File Path="Docs/TASKS.md" />
+    <File Path="Docs/TASKS.old" />
+    <File Path="Docs/TASKS1.old" />
+    <File Path="Docs/TASKS2.old" />
+    <File Path="Docs/Web-Layer-Business-Logic-Review.md" />
+    <File Path="Docs/Work Plan.docx" />
+    <File Path="Docs/betabooks-export.json" />
+    <File Path="Docs/check-migrations.sql" />
+    <File Path="Docs/check-project-columns.sql" />
+    <File Path="Docs/draftview-marketing-pages.brief.md" />
+    <File Path="Docs/files.zip" />
+    <File Path="Docs/production-reset.prompt.md" />
+    <File Path="Docs/site.css" />
+    <File Path="Docs/tmp.sql" />
+  </Folder>
+  <Folder Name="/Docs/Prompts/">
+    <File Path="Docs/BUG-015-reader-sees-unpublished-working-content-and-banner-version-missing.prompt.md" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".gitignore" />
-    <File Path="Add-AgentRequirements-To-Prompts.ps1" />
-    <File Path="AGENTS.md" />
-    <File Path="betabooks-export.json" />
     <File Path="CLAUDE.md" />
-    <File Path="CLAUDE_TASK_Notifications.md" />
+    <File Path="appsettings.Production.json" />
+    <File Path="start-claude.cmd" />
+    <File Path="Add-AgentRequirements-To-Prompts.ps1" />
+    <File Path="commit-chore.ps1" />
     <File Path="Copy-SourceFiles.ps1" />
-    <File Path="DraftView-UAT-Plan.md" />
+    <File Path="Generate-SSprint-Prompts.ps1" />
     <File Path="Get-CodeFiles.ps1" />
+    <File Path="Get-CodeFiles.Tests.ps1" />
     <File Path="get-dropbox-refresh-token.ps1" />
-    <File Path="MultiTenancy.md" />
+    <File Path="Get-LineEndings.ps1" />
     <File Path="pg.ps1" />
-    <File Path="PowerShell.md" />
-    <File Path="Principles.md" />
     <File Path="publish-draftview.ps1" />
-    <File Path="Refactoring.md" />
     <File Path="Show-ProjectTree.ps1" />
-    <File Path="Stage13-Verify.ps1" />
     <File Path="start-codex.ps1" />
-    <File Path="System State Messaging.md" />
-    <File Path="TASKS.md" />
-    <File Path="TASKS2.old" />
+    <File Path="test-summary.ps1" />
     <File Path="Update-CssVersion.ps1" />
+    <File Path="write-betabooks-importer.ps1" />
   </Folder>
-  <Folder Name="/Solution Items/.codex/" />
   <Folder Name="/Solution Items/.github/">
     <File Path=".github/copilot-instructions.md" />
     <File Path=".github/PROMPT-STANDARD.md" />
@@ -56,7 +85,6 @@
     <File Path=".github/Prompts/BUG-018-reader-version-display.prompt.md" />
     <File Path=".github/Prompts/CHANGE-001-Move-Version-Number-In-Reader-DesktopAndMobileRead-views.md" />
     <File Path=".github/Prompts/CHANGE-002-Align-Scene-Version-Labels-On-Publishing.md" />
-    <File Path="BUG-015-reader-sees-unpublished-working-content-and-banner-version-missing.prompt.md" />
   </Folder>
   <Folder Name="/Solution Items/.github/Prompts/R-Sprint-Prompts/">
     <File Path=".github/Prompts/R-Sprint-Prompts/RS-A-Phase-A1.md" />
@@ -123,12 +151,6 @@
     <File Path=".github/Prompts/S-Sprint-Prompts/ssprint8-phase2.prompt.md" />
     <File Path=".github/Prompts/S-Sprint-Prompts/ssprint8-phase3.prompt.md" />
     <File Path=".github/Prompts/S-Sprint-Prompts/ssprint8-phase4.prompt.md" />
-  </Folder>
-  <Folder Name="/Solution Items/Production/">
-    <File Path="appsettings.Production.json" />
-  </Folder>
-  <Folder Name="/Solution Items/UAT/">
-    <File Path="DraftView-UAT-Plan.md" />
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="DraftView.Application.Tests/DraftView.Application.Tests.csproj" />
