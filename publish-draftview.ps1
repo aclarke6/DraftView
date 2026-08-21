@@ -1,5 +1,13 @@
 param()
 # publish-draftview.ps1
+#
+# ENCODING WARNING - READ BEFORE EDITING:
+# This file MUST contain only ASCII characters (U+0000 to U+007F).
+# Windows PowerShell 5.1 reads UTF-8 files without BOM as Windows-1252.
+# Non-ASCII characters such as em dashes (U+2014) have byte sequences
+# that Windows-1252 maps to smart quotes, which PowerShell treats as
+# string delimiters -- causing silent parse failures far from the offending
+# character. Use plain ASCII hyphens (-) not em dashes, and no curly quotes.
 $project  = "C:\Users\alast\source\repos\DraftView\DraftView.Web\DraftView.Web.csproj"
 $infra    = "C:\Users\alast\source\repos\DraftView\DraftView.Infrastructure\DraftView.Infrastructure.csproj"
 $output   = "C:\Users\alast\publish\draftview"
