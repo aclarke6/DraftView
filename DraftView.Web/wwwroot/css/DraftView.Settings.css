@@ -1,7 +1,10 @@
 ﻿/* --------------------------------------------------------------------------
    4A. Account Settings Layout
    -------------------------------------------------------------------------- */
-.settings-hero {
+/* Compound selector beats .site-hero alone (specificity 0,2,0 vs 0,1,0).
+   Required because DraftView.Settings.css loads before DraftView.Components.css,
+   so a single-class .settings-hero rule loses to .site-hero in the cascade. */
+.site-hero.settings-hero {
     min-height: 180px;
     background-image: var(--header-image);
     background-position: center 40%;
