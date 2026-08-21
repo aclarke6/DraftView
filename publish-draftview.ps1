@@ -1,9 +1,12 @@
-﻿# publish-draftview.ps1
-$project = "C:\Users\alast\source\repos\DraftView\DraftView.Web\DraftView.Web.csproj"
-$output  = "C:\Users\alast\publish\draftview"
-$server  = "ubuntu@141.147.71.62"
-$key     = "C:\Users\alast\.ssh\draftview-prod.key"
-$remote  = "/var/www/draftview"
+param()
+# publish-draftview.ps1
+$project  = "C:\Users\alast\source\repos\DraftView\DraftView.Web\DraftView.Web.csproj"
+$infra    = "C:\Users\alast\source\repos\DraftView\DraftView.Infrastructure\DraftView.Infrastructure.csproj"
+$output   = "C:\Users\alast\publish\draftview"
+$bundle   = "C:\Users\alast\publish\efbundle"
+$server   = "ubuntu@141.147.71.62"
+$key      = "C:\Users\alast\.ssh\draftview-prod.key"
+$remote   = "/var/www/draftview"
 
 # ---------------------------------------------------------------------------
 # Guard: must be on main branch before publishing
@@ -38,60 +41,103 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: Test suite failed. Fix all failing tests before publishing." -ForegroundColor Red
     exit 1
 }
-# Extract and display summary line
 $summary = $testOutput | Select-String -Pattern "^Test summary:"
 if ($summary) { Write-Host $summary -ForegroundColor Green }
 Write-Host "All tests passed." -ForegroundColor Green
 
-Write-Host "Cleaning previous publish..." -ForegroundColor Cyan
+# ---------------------------------------------------------------------------
+# Build app
+# ---------------------------------------------------------------------------
+Write-Host "Cleaning previous publish output..." -ForegroundColor Cyan
 if (Test-Path $output) { Remove-Item $output -Recurse -Force }
 
 Write-Host "Publishing DraftView..." -ForegroundColor Cyan
 dotnet publish $project -c Release -o $output
-if ($LASTEXITCODE -ne 0) { Write-Host "Publish failed." -ForegroundColor Red; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: Publish failed." -ForegroundColor Red; exit 1 }
 
 Write-Host "Removing Development config from publish output..." -ForegroundColor Cyan
 $devConfig = Join-Path $output "appsettings.Development.json"
 if (Test-Path $devConfig) { Remove-Item $devConfig -Force }
 
-Write-Host "Copying to server..." -ForegroundColor Cyan
+# ---------------------------------------------------------------------------
+# Build EF migration bundle
+# Produces a self-contained Linux-x64 executable that applies all pending
+# migrations against the production database. No EF tools needed on the server.
+# The bundle picks up the connection string from appsettings.Production.json
+# in its working directory when run with ASPNETCORE_ENVIRONMENT=Production.
+# ---------------------------------------------------------------------------
+Write-Host "Building EF migration bundle..." -ForegroundColor Cyan
+if (Test-Path $bundle) { Remove-Item $bundle -Force }
+dotnet ef migrations bundle `
+    --project $infra `
+    --startup-project $project `
+    --output $bundle `
+    --target-runtime linux-x64 `
+    --self-contained `
+    --force
+if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: Migration bundle build failed." -ForegroundColor Red; exit 1 }
+Write-Host "Migration bundle built." -ForegroundColor Green
+
+# ---------------------------------------------------------------------------
+# Copy app to server
+# ---------------------------------------------------------------------------
+Write-Host "Copying app to server..." -ForegroundColor Cyan
 scp -i $key -r "$output/*" "${server}:${remote}"
-if ($LASTEXITCODE -ne 0) { Write-Host "SCP failed." -ForegroundColor Red; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: SCP of app failed." -ForegroundColor Red; exit 1 }
 
 Write-Host "Copying production appsettings to server..." -ForegroundColor Cyan
 $prodConfig = "C:\Users\alast\source\repos\DraftView\appsettings.Production.json"
-# The file is owned by www-data (640) from the previous deploy's permission fix,
-# so ubuntu cannot overwrite it directly via scp. Open it first, then restore below.
+# File is owned by www-data (640) — open permissions before overwriting, restore below.
 ssh -i $key $server "sudo chmod 666 $remote/appsettings.Production.json 2>/dev/null; true"
 scp -i $key "$prodConfig" "${server}:${remote}/appsettings.Production.json"
-if ($LASTEXITCODE -ne 0) { Write-Host "SCP of production appsettings failed." -ForegroundColor Red; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: SCP of production appsettings failed." -ForegroundColor Red; exit 1 }
 
 # ---------------------------------------------------------------------------
-# scp creates new remote directories with a restrictive default mode (no
-# real umask on the Windows client), which leaves wwwroot untraversable by
-# the www-data service account and breaks all static file serving (CSS,
-# images). Re-normalize perms after every deploy rather than relying on
-# whatever scp happened to create.
+# Copy migration bundle to server
 # ---------------------------------------------------------------------------
-Write-Host "Fixing static file permissions..." -ForegroundColor Cyan
+Write-Host "Copying migration bundle to server..." -ForegroundColor Cyan
+scp -i $key "$bundle" "${server}:/tmp/efbundle"
+if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: SCP of migration bundle failed." -ForegroundColor Red; exit 1 }
+
+# ---------------------------------------------------------------------------
+# Apply EF migrations on server
+# Runs before service restart so the new schema is in place before the new
+# binary starts. All current migrations are additive so the running app is
+# unaffected while the bundle executes.
+# ---------------------------------------------------------------------------
+Write-Host "Applying EF migrations on server..." -ForegroundColor Cyan
+ssh -i $key $server "chmod +x /tmp/efbundle && cd $remote && ASPNETCORE_ENVIRONMENT=Production /tmp/efbundle && rm /tmp/efbundle"
+if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: Migration bundle failed. Aborting — service NOT restarted." -ForegroundColor Red; exit 1 }
+Write-Host "Migrations applied." -ForegroundColor Green
+
+# ---------------------------------------------------------------------------
+# Fix permissions
+# scp creates new directories with restrictive modes; re-normalize after every
+# deploy so wwwroot is traversable by www-data and static files are served.
+# ---------------------------------------------------------------------------
+Write-Host "Fixing file permissions..." -ForegroundColor Cyan
 ssh -i $key $server "sudo find $remote -type d -exec chmod 755 {} \; ; sudo find $remote -type f -exec chmod 644 {} \; ; sudo chown www-data:www-data $remote/appsettings.Production.json ; sudo chmod 640 $remote/appsettings.Production.json"
-if ($LASTEXITCODE -ne 0) { Write-Host "Permission fix failed." -ForegroundColor Red; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: Permission fix failed." -ForegroundColor Red; exit 1 }
 
+# ---------------------------------------------------------------------------
+# Restart and verify
+# ---------------------------------------------------------------------------
 Write-Host "Restarting service..." -ForegroundColor Cyan
 ssh -i $key $server "sudo systemctl restart draftview"
-if ($LASTEXITCODE -ne 0) { Write-Host "Restart failed." -ForegroundColor Red; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: Restart failed." -ForegroundColor Red; exit 1 }
 
 Write-Host "Verifying service is running..." -ForegroundColor Cyan
 Start-Sleep -Seconds 3
 ssh -i $key $server "sudo systemctl is-active draftview"
-if ($LASTEXITCODE -ne 0) { Write-Host "Service did not start cleanly." -ForegroundColor Red; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: Service did not start cleanly." -ForegroundColor Red; exit 1 }
+Write-Host "Service is active." -ForegroundColor Green
 
 # ---------------------------------------------------------------------------
-# Record deployment in TASKS.md and commit to main
+# Record deployment in Docs/TASKS.md and commit to main
 # ---------------------------------------------------------------------------
-Write-Host "Recording deployment in TASKS.md..." -ForegroundColor Cyan
+Write-Host "Recording deployment in Docs/TASKS.md..." -ForegroundColor Cyan
 $repoRoot    = "C:\Users\alast\source\repos\DraftView"
-$tasksPath   = "$repoRoot\TASKS.md"
+$tasksPath   = "$repoRoot\Docs\TASKS.md"
 $deployDate  = Get-Date -Format "yyyy-MM-dd HH:mm"
 $commitHash  = git rev-parse --short HEAD
 $deployEntry = "Last deployed: $deployDate (commit: $commitHash)"
@@ -105,22 +151,23 @@ if ($tasks -match 'Last deployed:') {
 }
 
 if ($tasks -notmatch [regex]::Escape($deployEntry)) {
-    Write-Host "WARNING: TASKS.md was not updated — check the script." -ForegroundColor Yellow
+    Write-Host "WARNING: Docs/TASKS.md was not updated — check the script." -ForegroundColor Yellow
 } else {
     [System.IO.File]::WriteAllText($tasksPath, $tasks, [System.Text.Encoding]::UTF8)
     git pull origin main --ff-only
-    git add TASKS.md
+    git add "Docs/TASKS.md"
     git commit -m "chore: record production deployment $deployDate"
     if ($LASTEXITCODE -eq 0) {
         git push origin main
         if ($LASTEXITCODE -ne 0) {
             Write-Host "WARNING: Push failed — commit is local, push manually." -ForegroundColor Yellow
         } else {
-            Write-Host "Deployment recorded in TASKS.md." -ForegroundColor Green
+            Write-Host "Deployment recorded in Docs/TASKS.md." -ForegroundColor Green
         }
     } else {
         Write-Host "WARNING: Commit failed." -ForegroundColor Yellow
     }
 }
 
-Write-Host "Done." -ForegroundColor Green
+Write-Host ""
+Write-Host "Deploy complete." -ForegroundColor Green
