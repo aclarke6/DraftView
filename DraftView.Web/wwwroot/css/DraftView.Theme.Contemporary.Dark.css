@@ -47,14 +47,14 @@
     --color-status-critical: #DA7770;   /* Soft Coral Red */
 
     /* Background tile — warm dark linen or subtle woven texture */
-    --background-tile: url('/images/contemporary-dark-background-tile.png');
+    --background-tile: url('/images/contemporary-tile-dark-1536x1024.png');
 
     /* Hero and error images — Contemporary editorial visual world; shared across light/dark variants */
-    --header-image:       url('/images/contemporary-banner.png');                        /* Editorial banner */
-    --atmosphere-image:   url('/images/contemporary-atmosphere.png');                   /* Open book on kitchen table, morning light */
-    --hero-image:         url('/images/contemporary-reader-dashboard-hero.png');        /* Reader in First Class, riverside view */
-    --error-image-403:    url('/images/contemporary-403-access-denied.png');            /* Riverside Court, ACCESS RESTRICTED panel */
-    --error-image-404:    url('/images/contemporary-404-not-found.png');                /* Town Centre kiosk, "You are here / can't find what you're looking for" */
-    --error-image-405:    url('/images/405-method-not-allowed.png');                    /* Door 405, person with key — right place, wrong method */
-    --error-image-500:    url('/images/contemporary-500-internal-server-error.png');    /* Internal server error */
+    --header-image:       url('/images/contemporary-banner-2241x702.png');                        /* Editorial banner */
+    --atmosphere-image:   url('/images/contemporary-atmosphere-1672x941.png');                   /* Open book on kitchen table, morning light */
+    --hero-image:         url('/images/contemporary-hero-1672x941.png');                         /* Reader in First Class, riverside view */
+    --error-image-403:    url('/images/contemporary-error-403-1672x941.png');                    /* Riverside Court, ACCESS RESTRICTED panel */
+    --error-image-404:    url('/images/contemporary-error-404-1672x941.png');                    /* Town Centre kiosk, "You are here / can't find what you're looking for" */
+    --error-image-405:    url('/images/contemporary-error-405-1672x941.png');                    /* Door 405, person with key — right place, wrong method */
+    --error-image-500:    url('/images/contemporary-error-500-1672x941.png');                    /* Internal server error */
 }
