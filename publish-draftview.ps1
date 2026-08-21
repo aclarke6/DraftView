@@ -112,9 +112,23 @@ if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: SCP of migration bundle failed." -
 # Runs before service restart so the new schema is in place before the new
 # binary starts. All current migrations are additive so the running app is
 # unaffected while the bundle executes.
+#
+# --connection is passed explicitly because the self-contained bundle uses
+# EF's design-time host builder, which walks up the directory tree looking
+# for a .sln/.slnx file to resolve user-secrets. No solution file exists
+# in /var/www/draftview, so the lookup fails with "Solution root not found."
+# Passing --connection bypasses the design-time host entirely.
+# The connection string is extracted from appsettings.Production.json using
+# python3, which is always present on Ubuntu.
 # ---------------------------------------------------------------------------
 Write-Host "Applying EF migrations on server..." -ForegroundColor Cyan
-ssh -i $key $server "chmod +x /tmp/efbundle && cd $remote && ASPNETCORE_ENVIRONMENT=Production /tmp/efbundle && rm /tmp/efbundle"
+$migrateScript = @"
+chmod +x /tmp/efbundle
+CONN=`$(python3 -c "import json; print(json.load(open('$remote/appsettings.Production.json'))['ConnectionStrings']['DefaultConnection'])")
+ASPNETCORE_ENVIRONMENT=Production /tmp/efbundle --connection "`$CONN"
+rm -f /tmp/efbundle
+"@
+ssh -i $key $server $migrateScript
 if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: Migration bundle failed. Aborting - service NOT restarted." -ForegroundColor Red; exit 1 }
 Write-Host "Migrations applied." -ForegroundColor Green
 
