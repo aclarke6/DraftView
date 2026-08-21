@@ -47,15 +47,15 @@
     --color-status-critical: #A53B3B;   /* Scarlet Red */
 
     /* Background tile — aged cream or faded damask wallpaper texture */
-    --background-tile: url('/images/Historic-Light-Background-Tile.png');
+    --background-tile: url('/images/historic-tile-light-1536x1024.png');
 
     /* Hero and error images — Georgian / Napoleonic visual world; shared across light/dark variants */
-    --header-image:       url('/images/Historic-Banner.png');                        /* Header banner — 1774x887 (2:1); replace with 2240x700 panoramic — see issue #77 */
-    --header-image-position: 72% 40%;                                                /* Shift right: avoids the DraftView logo on the left, shows ships + city */
-    --atmosphere-image:   url('/images/Historic-Atmosphere.png');                   /* Letter with wax seal, gloves, fan — candlelit ballroom beyond */
-    --hero-image:         url('/images/Historic-Reader-Dashboard-Hero.png');        /* Regency woman reading by ballroom window */
-    --error-image-403:    url('/images/Historic-403-Access-Denied.png');            /* Redcoat soldier blocking door, 403 ACCESS DENIED plaque */
-    --error-image-404:    url('/images/Historic-404-Not-Found.png');                /* Naval officer over maps, 404 NOT FOUND plaque */
-    --error-image-405:    url('/images/Historic-405-Method-Not-Allowed.png');       /* Press gang alley, man fleeing — 405 METHOD NOT ALLOWED */
-    --error-image-500:    url('/images/Historic-500-Internal-Server-Error.png');    /* Internal server error */
+    --header-image:       url('/images/historic-banner-2240x700.png');                        /* Header banner */
+    --header-image-position: 72% 40%;                                                         /* Shift right: avoids the DraftView logo on the left, shows ships + city */
+    --atmosphere-image:   url('/images/historic-atmosphere-1672x941.png');                   /* Letter with wax seal, gloves, fan — candlelit ballroom beyond */
+    --hero-image:         url('/images/historic-hero-1672x941.png');                         /* Regency woman reading by ballroom window */
+    --error-image-403:    url('/images/historic-error-403-1672x941.png');                    /* Redcoat soldier blocking door, 403 ACCESS DENIED plaque */
+    --error-image-404:    url('/images/historic-error-404-1672x941.png');                    /* Naval officer over maps, 404 NOT FOUND plaque */
+    --error-image-405:    url('/images/historic-error-405-1672x941.png');                    /* Press gang alley, man fleeing — 405 METHOD NOT ALLOWED */
+    --error-image-500:    url('/images/historic-error-500-1672x941.png');                    /* Internal server error */
 }

@@ -47,14 +47,14 @@
     --color-status-critical: #D06C62;   /* Alarm Red */
 
     /* Background tile — near-black charcoal stone */
-    --background-tile: url('/images/Noir-Dark-Background-Tile.png');
+    --background-tile: url('/images/noir-tile-dark-1536x1024.png');
 
     /* Hero and error images — Cold War Spy visual world; shared across light/dark variants */
-    --header-image:       url('/images/Noir.Header.png');                  /* Thames embankment, DraftView sign, St Paul's + Big Ben */
-    --atmosphere-image:   url('/images/Noir-Atmosphere.png');              /* London establishing shot */
-    --hero-image:         url('/images/Noir-Reader-Dashboard-Hero.png');   /* Intelligence Section desk, confidential files */
-    --error-image-403:    url('/images/Noir-403.png');                     /* Section 7 Intelligence door, red ACCESS REQUEST light */
-    --error-image-404:    url('/images/Noir-404.png');                     /* Northfield Platform 7, empty platform */
-    --error-image-405:    url('/images/Noir-405a.png');                    /* Berlin Wall, Achtung Staatsgrenze — alt: Noir-405b.png */
-    --error-image-500:    url('/images/Noir-500.png');                     /* Telephone Exchange, Direct Line Not Available */
+    --header-image:       url('/images/noir-banner-2243x701.png');                  /* Thames embankment, DraftView sign, St Paul's + Big Ben */
+    --atmosphere-image:   url('/images/noir-atmosphere-1536x1024.png');             /* London establishing shot */
+    --hero-image:         url('/images/noir-hero-1536x1024.png');                   /* Intelligence Section desk, confidential files */
+    --error-image-403:    url('/images/noir-error-403-1536x1024.png');              /* Section 7 Intelligence door, red ACCESS REQUEST light */
+    --error-image-404:    url('/images/noir-error-404-1536x1024.png');              /* Northfield Platform 7, empty platform */
+    --error-image-405:    url('/images/noir-error-405-1536x1024.png');              /* Telephone Exchange, Direct Connections by Operator Only */
+    --error-image-500:    url('/images/noir-error-500-1536x1024.png');              /* Telephone Exchange, Direct Line Not Available */
 }
