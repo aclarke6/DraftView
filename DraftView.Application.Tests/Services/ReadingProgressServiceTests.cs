@@ -655,10 +655,17 @@ public class ReadingProgressServiceTests
     // RecordOpen — reader notifications
     // ---------------------------------------------------------------------------
 
-    private static Section MakePublishedDocument(Guid projectId, string title = "Scene 1")
+    private static Section MakeChapter(Guid projectId, string title = "Chapter 1")
+    {
+        var c = Section.CreateFolder(projectId, Guid.NewGuid().ToString(), title, null, 0);
+        c.MarkAsPublishedContainer();
+        return c;
+    }
+
+    private static Section MakePublishedDocument(Guid projectId, string title = "Scene 1", Guid? parentId = null)
     {
         var s = Section.CreateDocument(projectId, Guid.NewGuid().ToString(),
-            title, null, 0, "<p>x</p>", "h", "First Draft");
+            title, parentId, 0, "<p>x</p>", "h", "First Draft");
         s.PublishAsPartOfChapter("h");
         return s;
     }
@@ -672,11 +679,13 @@ public class ReadingProgressServiceTests
         return ev;
     }
 
-    private void SetupNotificationDeps(User author, User reader, Guid userId, Section section)
+    private void SetupNotificationDeps(User author, User reader, Guid userId, Section section, Section? chapter = null)
     {
         _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
         _userRepo.Setup(r => r.GetByIdAsync(userId, default)).ReturnsAsync(reader);
         _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        if (chapter is not null)
+            _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default)).ReturnsAsync(chapter);
         _readEventRepo.Setup(r => r.GetByUserIdAsync(userId, default))
             .ReturnsAsync(new List<ReadEvent>());
         _sectionRepo.Setup(r => r.GetPublishedByProjectIdAsync(section.ProjectId, default))
@@ -689,7 +698,34 @@ public class ReadingProgressServiceTests
     {
         var projectId = Guid.NewGuid();
         var userId    = Guid.NewGuid();
-        var section   = MakePublishedDocument(projectId);
+        var chapter   = MakeChapter(projectId, "Chapter 1");
+        var section   = MakePublishedDocument(projectId, "Scene 1 - A stitch in time.", chapter.Id);
+        var author    = User.Create("a@test.com", "Author Name", Role.Author);
+        var reader    = User.Create("r@test.com", "Reader Name", Role.BetaReader);
+        var sut       = CreateSut();
+
+        _readEventRepo.Setup(r => r.GetAsync(section.Id, userId, default)).ReturnsAsync((ReadEvent?)null);
+        SetupNotificationDeps(author, reader, userId, section, chapter);
+
+        await sut.RecordOpenAsync(section.Id, userId);
+
+        _notificationRepo.Verify(
+            r => r.AddAsync(It.Is<AuthorNotification>(n =>
+                n.EventType == NotificationEventType.ReaderReadNewScene &&
+                n.AuthorId  == author.Id &&
+                n.Title.Contains("Reader Name") &&
+                n.Title.Contains(chapter.Title) &&
+                n.Title.Contains(section.Title)),
+                default),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task RecordOpenAsync_FirstOpen_OrphanedScene_NotificationTitleContainsSceneOnly()
+    {
+        var projectId = Guid.NewGuid();
+        var userId    = Guid.NewGuid();
+        var section   = MakePublishedDocument(projectId, "Orphaned Scene");
         var author    = User.Create("a@test.com", "Author Name", Role.Author);
         var reader    = User.Create("r@test.com", "Reader Name", Role.BetaReader);
         var sut       = CreateSut();
@@ -702,9 +738,7 @@ public class ReadingProgressServiceTests
         _notificationRepo.Verify(
             r => r.AddAsync(It.Is<AuthorNotification>(n =>
                 n.EventType == NotificationEventType.ReaderReadNewScene &&
-                n.AuthorId  == author.Id &&
-                n.Title.Contains("Reader Name") &&
-                n.Title.Contains(section.Title)),
+                n.Title.Contains("Orphaned Scene")),
                 default),
             Times.Once);
     }
