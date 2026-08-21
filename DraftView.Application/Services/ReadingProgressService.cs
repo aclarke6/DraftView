@@ -56,11 +56,18 @@ public class ReadingProgressService(
 
         var now = DateTime.UtcNow;
 
+        var chapterTitle = section.ParentId.HasValue
+            ? (await sectionRepo.GetByIdAsync(section.ParentId.Value, ct))?.Title
+            : null;
+        var locationLabel = chapterTitle is not null
+            ? $"{chapterTitle} / {section.Title}"
+            : section.Title;
+
         await notificationRepo.AddAsync(
             AuthorNotification.Create(
                 author.Id,
                 NotificationEventType.ReaderReadNewScene,
-                $"{reader.DisplayName} read \"{section.Title}\" for the first time",
+                $"{reader.DisplayName} read \"{locationLabel}\" for the first time",
                 null,
                 $"/Author/Section/{sectionId}",
                 now),
