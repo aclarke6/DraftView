@@ -1,6 +1,7 @@
 ﻿# DraftView — Task List
 Last updated: 2026-08-21
 Last deployed: 2026-08-17 13:59 (commit: d51d201)
+Last merged: 2026-08-21 — PR #50 (MT-Sprint cloud phase, all sprints) merged to main (commit: 55fbe64)
 
 ---
 
@@ -11,7 +12,7 @@ Last deployed: 2026-08-17 13:59 (commit: d51d201)
 **Repository:** https://github.com/aclarke6/DraftView
 
 ### Current Test State
-- 862 total, 862 passed, 1 skipped, 0 failed
+- 1,283 total, 1,283 passed, 1 skipped, 0 failed
 - 1 skipped — `SmtpEmailSenderIntegrationTests` (sends real email, manual only)
 
 ### Active Work
@@ -19,7 +20,7 @@ Last deployed: 2026-08-17 13:59 (commit: d51d201)
 |-------|--------|
 | RSprint Series | 🟡 In progress — RS-A to RS-E complete, RS-F next |
 | S-Sprint Series | 🟡 In progress — S-Sprint-1 complete, S-Sprint-2 next |
-| MT-Sprint Series | 🟡 In progress — all 5 sprints complete, awaiting merge; see `MultiTenancy.md` |
+| MT-Sprint Series | 🟡 In progress — cloud phases merged to main (PR #50); local phases and BUG-001 pending; see `MultiTenancy.md` |
 | RD-Sprint Series | 🟡 In progress — RD-Sprint-1 (Continue Reading CTA) merged to main 2026-08-17; see section 3.7 |
 | DR-Sprint Series | ✅ Complete — merged to main 2026-08-17; see section 3.8 |
 | Incremental Refactor | 🟡 In progress — Phase 2a–2e complete, Phase 3 deferred; see section 3.6 |
@@ -157,7 +158,7 @@ Last deployed: 2026-08-17 13:59 (commit: d51d201)
 
 ### 3.4 Multi-Tenancy Sprint Series
 
-**Status:** 🟡 In progress — all 5 sprints complete, awaiting merge
+**Status:** 🟡 In progress — cloud phases merged to main 2026-08-21 (PR #50); local phases and BUG-001 still pending
 
 A second author has expressed interest in the platform. Readers may read
 books from multiple authors. Authors may also be beta readers for other authors. Multi-tenancy
@@ -175,15 +176,13 @@ See `MultiTenancy.md` for full design, migration strategy, and sprint plan.
 
 | Sprint | Deliverable | Status |
 |--------|-------------|--------|
-| MT-Sprint-1 | Account / Tenancy / TenancyMembership entity split | 🟡 In progress — cloud phase complete; local phase pending |
-| MT-Sprint-2 | Subscription enforcement, `IBillingProvider`, billing/provider rollout after go-live | 🟡 In progress — cloud phase complete; local phase pending |
-| MT-Sprint-3 | Author self-serve registration, Dropbox connect per Tenancy | 🟡 In progress — cloud phase complete; local phase pending |
-| MT-Sprint-4 | Reader cross-tenancy identity | 🟡 In progress — cloud phase complete; local phase pending |
+| MT-Sprint-1 | Account / Tenancy / TenancyMembership entity split | ✅ Cloud phase merged (PR #50); local phase pending |
+| MT-Sprint-2 | Subscription enforcement, `IBillingProvider`, billing/provider rollout after go-live | ✅ Cloud phase merged (PR #50); local phase pending |
+| MT-Sprint-3 | Author self-serve registration, Dropbox connect per Tenancy | ✅ Cloud phase merged (PR #50); local phase pending |
+| MT-Sprint-4 | Reader cross-tenancy identity | ✅ Cloud phase merged (PR #50); local phase pending |
 | MT-Sprint-5 | Reader Marketplace (post-revenue) | ⏸ Deferred post-revenue |
 
 **Prerequisite:** Production stable before MT-Sprint-1. Billing/provider rollout is deferred until post-go-live MT-Sprint-2.
-
-**Branch strategy:** All MT-Sprint work (MT-Sprint-1 through MT-Sprint-4) is developed on `claude/multi-tenancy-implementation-m279oe` and is **not merged to `main`** until the full workstream is complete and verified ready for production deployment. PR #50 remains draft until that point.
 
 #### MT-Sprint-1 Progress
 
@@ -199,15 +198,16 @@ See `MultiTenancy.md` for full design, migration strategy, and sprint plan.
 - [x] DI registration in `ServiceCollectionExtensions`
 - [x] Unit tests: `AccountTests` (21 tests), `TenancyTests` (10 tests), `TenancyMembershipTests` (9 tests)
 
-**Local phase required (cannot be done safely without dotnet runtime):**
-- [ ] Generate EF migration: `dotnet ef migrations add AddMultiTenancyEntities --project DraftView.Infrastructure --startup-project DraftView.Web`
-- [ ] Apply migration: `dotnet ef database update --project DraftView.Infrastructure --startup-project DraftView.Web`
-- [ ] Run full test suite: `dotnet test` — confirm all new tests GREEN plus no regressions
+**Local phase:**
+- [x] Generate EF migration: `AddMultiTenancySchema` (merged 2026-08-21, covers MT-Sprint-1 through MT-Sprint-2 tables)
+- [x] Apply migration: `dotnet ef database update` — applied locally 2026-08-21
+- [x] Run full test suite: 1,283 passed, 0 failed (2026-08-21)
 - [ ] `AuthorId` → `TenancyId` rename on `Projects`, `Comments`, `ReaderAccess`, `Invitations`, `AuthorNotifications`, `UserPreferences` — requires build verification
 - [ ] `DropboxConnections.UserId` → `DropboxConnections.TenancyId` rename with data migration
 - [ ] Remove/replace `IUserRepository.GetAllBetaReadersAsync()` (unscoped global query)
 - [ ] `ReaderAccess` transitional decision — keep as bridge or subsume into `TenancyMembership`
 - [ ] Data backfill: map existing `User` records to `Account` + `Tenancy` + author `TenancyMembership`
+- [ ] **BUG-001** — `Account.Activate()` not called on email confirmation (see section 2a)
 
 #### MT-Sprint-3 Progress
 
@@ -243,10 +243,10 @@ See `MultiTenancy.md` for full design, migration strategy, and sprint plan.
 - [x] DI registration: `ITenancySubscriptionRepository`, `IBillingProvider`
 - [x] Unit tests: `TenancySubscriptionTests` (9 tests)
 
-**Local phase required:**
-- [ ] Generate EF migration: `dotnet ef migrations add AddTenancySubscription --project DraftView.Infrastructure --startup-project DraftView.Web`
-- [ ] Apply migration: `dotnet ef database update --project DraftView.Infrastructure --startup-project DraftView.Web`
-- [ ] Run full test suite: `dotnet test` — confirm all new tests GREEN plus no regressions
+**Local phase:**
+- [x] EF migration: `TenancySubscriptions` table included in `AddMultiTenancySchema` (merged 2026-08-21)
+- [x] Apply migration: applied locally 2026-08-21
+- [x] Run full test suite: 1,283 passed, 0 failed (2026-08-21)
 - [ ] Wire reader-count enforcement into reader access grant flow (application service layer)
 - [ ] Seed existing tenancies with a `TenancySubscription` record (Free tier) in the data backfill migration
 
