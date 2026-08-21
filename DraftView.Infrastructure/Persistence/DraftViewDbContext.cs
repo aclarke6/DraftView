@@ -54,6 +54,14 @@ public class DraftViewDbContext : IdentityDbContext<IdentityUser>, IUnitOfWork
     public DbSet<ManualChapter> ManualChapters => Set<ManualChapter>();
     public DbSet<ManualChapterVersion> ManualChapterVersions => Set<ManualChapterVersion>();
 
+    // Multi-tenancy tables (MT-Sprint-1)
+    public DbSet<Account> Accounts => Set<Account>();
+    public DbSet<Tenancy> Tenancies => Set<Tenancy>();
+    public DbSet<TenancyMembership> TenancyMemberships => Set<TenancyMembership>();
+
+    // Multi-tenancy tables (MT-Sprint-2)
+    public DbSet<TenancySubscription> TenancySubscriptions => Set<TenancySubscription>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -88,32 +96,51 @@ public class DraftViewDbContext : IdentityDbContext<IdentityUser>, IUnitOfWork
 
     private void PrepareProtectedEmails()
     {
-        var userEntries = ChangeTracker.Entries<User>()
-            .Where(NeedsProtectedEmailReview);
-
-        foreach (var entry in userEntries)
+        // User entities (existing path)
+        foreach (var entry in ChangeTracker.Entries<User>().Where(NeedsUserProtectedEmailReview))
         {
-            if (!TryCreateProtectedEmailState(entry.Entity, out var protectedEmailState))
+            if (!TryCreateProtectedEmailState(entry.Entity.Email, out var state))
+                continue;
+            if (!ShouldRefreshUserProtectedEmail(entry, state.LookupHmac))
                 continue;
 
-            if (!ShouldRefreshProtectedEmail(entry, protectedEmailState.LookupHmac))
+            entry.Entity.LoadEmailForRuntime(state.NormalizedEmail);
+            entry.Entity.SetProtectedEmail(state.Ciphertext, state.LookupHmac);
+            if (entry.State == EntityState.Unchanged)
+                entry.State = EntityState.Modified;
+        }
+
+        // Account entities (MT-Sprint-1 path — same email protection scheme)
+        foreach (var entry in ChangeTracker.Entries<Account>().Where(NeedsAccountProtectedEmailReview))
+        {
+            if (!TryCreateProtectedEmailState(entry.Entity.Email, out var state))
+                continue;
+            if (!ShouldRefreshAccountProtectedEmail(entry, state.LookupHmac))
                 continue;
 
-            ApplyProtectedEmailState(entry, protectedEmailState);
+            entry.Entity.LoadEmailForRuntime(state.NormalizedEmail);
+            entry.Entity.SetProtectedEmail(state.Ciphertext, state.LookupHmac);
+            if (entry.State == EntityState.Unchanged)
+                entry.State = EntityState.Modified;
         }
     }
 
-    private static bool NeedsProtectedEmailReview(Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<User> entry) =>
+    private static bool NeedsUserProtectedEmailReview(
+        Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<User> entry) =>
         entry.State != EntityState.Detached && entry.State != EntityState.Deleted;
 
-    private bool TryCreateProtectedEmailState(User user, out ProtectedEmailState protectedEmailState)
+    private static bool NeedsAccountProtectedEmailReview(
+        Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<Account> entry) =>
+        entry.State != EntityState.Detached && entry.State != EntityState.Deleted;
+
+    private bool TryCreateProtectedEmailState(string email, out ProtectedEmailState protectedEmailState)
     {
         protectedEmailState = default;
 
-        if (string.IsNullOrWhiteSpace(user.Email))
+        if (string.IsNullOrWhiteSpace(email))
             return false;
 
-        var normalizedEmail = NormalizeEmail(user.Email);
+        var normalizedEmail = NormalizeEmail(email);
         protectedEmailState = new ProtectedEmailState(
             normalizedEmail,
             emailEncryptionService.Encrypt(normalizedEmail),
@@ -122,23 +149,19 @@ public class DraftViewDbContext : IdentityDbContext<IdentityUser>, IUnitOfWork
         return true;
     }
 
-    private static bool ShouldRefreshProtectedEmail(
+    private static bool ShouldRefreshUserProtectedEmail(
         Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<User> entry,
         string lookupHmac) =>
         entry.State == EntityState.Added ||
         string.IsNullOrWhiteSpace(entry.Entity.EmailCiphertext) ||
         !string.Equals(entry.Entity.EmailLookupHmac, lookupHmac, StringComparison.Ordinal);
 
-    private static void ApplyProtectedEmailState(
-        Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<User> entry,
-        ProtectedEmailState protectedEmailState)
-    {
-        entry.Entity.LoadEmailForRuntime(protectedEmailState.NormalizedEmail);
-        entry.Entity.SetProtectedEmail(protectedEmailState.Ciphertext, protectedEmailState.LookupHmac);
-
-        if (entry.State == EntityState.Unchanged)
-            entry.State = EntityState.Modified;
-    }
+    private static bool ShouldRefreshAccountProtectedEmail(
+        Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<Account> entry,
+        string lookupHmac) =>
+        entry.State == EntityState.Added ||
+        string.IsNullOrWhiteSpace(entry.Entity.EmailCiphertext) ||
+        !string.Equals(entry.Entity.EmailLookupHmac, lookupHmac, StringComparison.Ordinal);
 
     private readonly record struct ProtectedEmailState(
         string NormalizedEmail,
@@ -147,4 +170,5 @@ public class DraftViewDbContext : IdentityDbContext<IdentityUser>, IUnitOfWork
 
     public static string NormalizeEmail(string email) => email.Trim();
 }
+
 

@@ -51,7 +51,23 @@ Last deployed: 2026-08-17 13:59 (commit: d51d201)
 ## 2. Open Minor Work
 
 ### 2(a) Bugs
-No open bugs.
+
+- [ ] **BUG-001 — `Account.Activate()` never called on email confirmation**
+
+  **Branch:** `claude/multi-tenancy-implementation-m279oe`
+  **File:** `DraftView.Web/Controllers/OnboardingController.cs` — `ConfirmEmail` action
+
+  `AuthorSelfRegistrationService` creates both a `User` (inactive) and an `Account` (inactive — `Account.Create()` sets `IsActive = false`). When the author confirms their email, `ConfirmEmail` correctly calls `domainUser.Activate()` on the `User` but never retrieves or activates the corresponding `Account`. As a result `Account.IsActive` stays `false` permanently. `Account.RecordLogin()` will throw `UnauthorisedOperationException` on any login attempt, and any future guard on `account.IsActive` will deny access.
+
+  **Fix:** after the `domainUser.Activate()` block, look up the Account by HMAC and activate it in the same `SaveChangesAsync` call:
+  ```csharp
+  var hmac    = hmacService.Compute(identityUser.Email!.Trim());
+  var account = await accountRepo.GetByEmailLookupHmacAsync(hmac, ct);
+  if (account is not null && !account.IsActive)
+      account.Activate();
+  await unitOfWork.SaveChangesAsync(ct);
+  ```
+  `IUserEmailLookupHmacService` and `IAccountRepository` are already injected into `OnboardingController`. Readers do not get `Account` records — `ReaderConfirmEmail` is unaffected.
 
 ### 2(b) Changes
 
@@ -157,15 +173,98 @@ is now a near-term requirement, not a post-revenue concern.
 
 See `MultiTenancy.md` for full design, migration strategy, and sprint plan.
 
-| Sprint | Deliverable |
-|--------|-------------|
-| ~~MT-Sprint-1~~ | ✅ Account / Tenancy / TenancyMembership entity split |
-| ~~MT-Sprint-2~~ | ✅ Subscription enforcement, `IBillingProvider`, billing/provider rollout after go-live |
-| ~~MT-Sprint-3~~ | ✅ Author self-serve registration, Dropbox connect per Tenancy |
-| ~~MT-Sprint-4~~ | ✅ Reader cross-tenancy identity |
-| ~~MT-Sprint-5~~ | ✅ Reader Marketplace (post-revenue) |
+| Sprint | Deliverable | Status |
+|--------|-------------|--------|
+| MT-Sprint-1 | Account / Tenancy / TenancyMembership entity split | 🟡 In progress — cloud phase complete; local phase pending |
+| MT-Sprint-2 | Subscription enforcement, `IBillingProvider`, billing/provider rollout after go-live | 🟡 In progress — cloud phase complete; local phase pending |
+| MT-Sprint-3 | Author self-serve registration, Dropbox connect per Tenancy | 🟡 In progress — cloud phase complete; local phase pending |
+| MT-Sprint-4 | Reader cross-tenancy identity | 🟡 In progress — cloud phase complete; local phase pending |
+| MT-Sprint-5 | Reader Marketplace (post-revenue) | ⏸ Deferred post-revenue |
 
 **Prerequisite:** Production stable before MT-Sprint-1. Billing/provider rollout is deferred until post-go-live MT-Sprint-2.
+
+**Branch strategy:** All MT-Sprint work (MT-Sprint-1 through MT-Sprint-4) is developed on `claude/multi-tenancy-implementation-m279oe` and is **not merged to `main`** until the full workstream is complete and verified ready for production deployment. PR #50 remains draft until that point.
+
+#### MT-Sprint-1 Progress
+
+**Cloud phase complete (PR #claude/multi-tenancy-implementation-m279oe):**
+- [x] `TenancyRole` enum — `DraftView.Domain/Enumerations/TenancyRole.cs`
+- [x] `Account` entity with full invariants and email-protection pattern — `DraftView.Domain/Entities/Account.cs`
+- [x] `Tenancy` entity with MaxBetaReaderCount default (5) — `DraftView.Domain/Entities/Tenancy.cs`
+- [x] `TenancyMembership` entity with soft-delete and restore — `DraftView.Domain/Entities/TenancyMembership.cs`
+- [x] `IAccountRepository`, `ITenancyRepository`, `ITenancyMembershipRepository` interfaces
+- [x] `AccountRepository`, `TenancyRepository`, `TenancyMembershipRepository` implementations
+- [x] EF configurations for all three entities (`AccountConfiguration`, `TenancyConfiguration`, `TenancyMembershipConfiguration`)
+- [x] `DraftViewDbContext` — new DbSets: `Accounts`, `Tenancies`, `TenancyMemberships`
+- [x] DI registration in `ServiceCollectionExtensions`
+- [x] Unit tests: `AccountTests` (21 tests), `TenancyTests` (10 tests), `TenancyMembershipTests` (9 tests)
+
+**Local phase required (cannot be done safely without dotnet runtime):**
+- [ ] Generate EF migration: `dotnet ef migrations add AddMultiTenancyEntities --project DraftView.Infrastructure --startup-project DraftView.Web`
+- [ ] Apply migration: `dotnet ef database update --project DraftView.Infrastructure --startup-project DraftView.Web`
+- [ ] Run full test suite: `dotnet test` — confirm all new tests GREEN plus no regressions
+- [ ] `AuthorId` → `TenancyId` rename on `Projects`, `Comments`, `ReaderAccess`, `Invitations`, `AuthorNotifications`, `UserPreferences` — requires build verification
+- [ ] `DropboxConnections.UserId` → `DropboxConnections.TenancyId` rename with data migration
+- [ ] Remove/replace `IUserRepository.GetAllBetaReadersAsync()` (unscoped global query)
+- [ ] `ReaderAccess` transitional decision — keep as bridge or subsume into `TenancyMembership`
+- [ ] Data backfill: map existing `User` records to `Account` + `Tenancy` + author `TenancyMembership`
+
+#### MT-Sprint-3 Progress
+
+**Cloud phase complete:**
+- [x] `IAuthorRegistrationService` + `AuthorRegistrationResult` — `DraftView.Domain/Interfaces/Services/IAuthorRegistrationService.cs`
+- [x] `AuthorRegistrationService` — atomic Account + Tenancy + TenancyMembership (Author) + TenancySubscription (Free) in single SaveChanges
+- [x] Duplicate-email guard: `I-REG-EMAIL-EXISTS` invariant code
+- [x] `DraftViewDbContext` — extended `PrepareProtectedEmails` to handle Account entities (same AES+HMAC pattern as User)
+- [x] DI registration: `IAuthorRegistrationService`
+- [x] Unit tests: `AuthorRegistrationServiceTests` (8 tests)
+
+**Local phase required:**
+- [ ] Web controller: author registration form (Account/Register route) calling `IAuthorRegistrationService`
+- [ ] Wire ASP.NET Identity `UserManager` to create `IdentityUser` alongside `Account` record
+- [ ] Remove author-only seeding as required onboarding path (move to dev-only tooling)
+- [ ] Tenancy-scoped Dropbox connect flow — `DropboxConnections.TenancyId` (requires AuthorId→TenancyId rename from MT-Sprint-1 local phase)
+
+---
+
+#### MT-Sprint-2 Progress
+
+**Cloud phase complete:**
+- [x] `SubscriptionTier` enum — `DraftView.Domain/Enumerations/SubscriptionTier.cs`
+- [x] `TenancySubscription` entity with tier, provider id, deactivation — `DraftView.Domain/Entities/TenancySubscription.cs`
+- [x] `ITenancySubscriptionRepository` interface
+- [x] `TenancySubscriptionRepository` implementation
+- [x] `TenancySubscriptionConfiguration` EF config (unique index on TenancyId)
+- [x] `IBillingProvider` abstraction — `DraftView.Application/Interfaces/IBillingProvider.cs`
+- [x] `NullBillingProvider` — `DraftView.Infrastructure/Billing/NullBillingProvider.cs`
+- [x] `IReaderAccessRepository.CountActiveReadersForAuthorAsync` — additive reader count method
+- [x] `ReaderAccessRepository.CountActiveReadersForAuthorAsync` — implementation
+- [x] `DraftViewDbContext` — `DbSet<TenancySubscription>` added
+- [x] DI registration: `ITenancySubscriptionRepository`, `IBillingProvider`
+- [x] Unit tests: `TenancySubscriptionTests` (9 tests)
+
+**Local phase required:**
+- [ ] Generate EF migration: `dotnet ef migrations add AddTenancySubscription --project DraftView.Infrastructure --startup-project DraftView.Web`
+- [ ] Apply migration: `dotnet ef database update --project DraftView.Infrastructure --startup-project DraftView.Web`
+- [ ] Run full test suite: `dotnet test` — confirm all new tests GREEN plus no regressions
+- [ ] Wire reader-count enforcement into reader access grant flow (application service layer)
+- [ ] Seed existing tenancies with a `TenancySubscription` record (Free tier) in the data backfill migration
+
+#### MT-Sprint-4 Progress
+
+**Cloud phase complete:**
+- [x] `IProjectRepository.GetAllForReaderAsync(Guid readerId)` — projects accessible via active `ReaderAccess`
+- [x] `ProjectRepository.GetAllForReaderAsync` — EF subquery joining `ReaderAccess` (active, non-revoked)
+- [x] `IReadEventRepository.GetMostRecentByUserIdAsync(Guid userId)` — ordered by `LastOpenedAt DESC`
+- [x] `ReadEventRepository.GetMostRecentByUserIdAsync` — implementation
+- [x] `IReadingProgressService.GetLastReadEventAcrossProjectsAsync(Guid userId)` — cross-project last-read
+- [x] `ReadingProgressService.GetLastReadEventAcrossProjectsAsync` — delegates to repository
+- [x] Unit tests: `ReadingProgressServiceTests` — 3 new tests for `GetLastReadEventAcrossProjectsAsync`
+
+**Local phase required:**
+- [ ] Run full test suite: `dotnet test` — confirm all new tests GREEN plus no regressions
+- [ ] Wire `GetAllForReaderAsync` into reader dashboard service (post-`AuthorId`→`TenancyId` rename)
+- [ ] Wire `GetLastReadEventAcrossProjectsAsync` into reader Continue Reading CTA (cross-project variant)
 
 ---
 

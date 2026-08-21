@@ -1,5 +1,6 @@
 using System.Text;
 using DraftView.Domain.Exceptions;
+using DraftView.Domain.Interfaces.Services;
 using DraftView.Infrastructure.Parsing;
 
 namespace DraftView.Infrastructure.Tests.Parsing;

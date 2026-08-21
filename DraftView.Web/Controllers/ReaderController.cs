@@ -28,6 +28,7 @@ public class ReaderController(
     IPassageAnchorService passageAnchorService,
     ICommentDisplayService commentDisplayService,
     IAccessRequestRepository accessRequestRepo,
+    IAccessRequestService accessRequestService,
     IReaderDashboardService readerDashboardService,
     ILogger<ReaderController> logger)
     : BaseReaderController(projectRepo, sectionRepo, commentService, progressService,
@@ -823,5 +824,110 @@ public class ReaderController(
             : (Guid?)null;
 
         return (prevSceneId, nextSceneId);
+    }
+
+    // -----------------------------------------------------------------------
+    // GET: /Reader/RequestAccess — multi-visit access request page
+    // -----------------------------------------------------------------------
+
+    [HttpGet]
+    public async Task<IActionResult> RequestAccess(CancellationToken ct)
+    {
+        var user = await GetCurrentUserAsync(ct);
+        if (user is null)
+            return Forbid();
+
+        var allProjects     = await ProjectRepo.GetAllAsync(ct);
+        var availableProjects = allProjects
+            .Where(p => p.IsReaderActive)
+            .ToList();
+
+        var existingRequests = await accessRequestRepo.GetVisibleByReaderIdAsync(
+            user.Id, DateTime.UtcNow.Date, ct);
+
+        var pendingItems = existingRequests.Select(r =>
+        {
+            var project = allProjects.FirstOrDefault(p => p.Id == r.ProjectId);
+            return new ReaderDashboardRequestViewModel
+            {
+                Request     = r,
+                ProjectName = project?.Name ?? "Unknown project"
+            };
+        }).ToList();
+
+        return View(new RequestAccessViewModel
+        {
+            AvailableProjects = availableProjects,
+            PendingRequests   = pendingItems
+        });
+    }
+
+    // -----------------------------------------------------------------------
+    // POST: /Reader/RequestAccess
+    // -----------------------------------------------------------------------
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RequestAccess(RequestAccessViewModel model, CancellationToken ct)
+    {
+        var user = await GetCurrentUserAsync(ct);
+        if (user is null)
+            return Forbid();
+
+        var allProjects       = await ProjectRepo.GetAllAsync(ct);
+        var availableProjects = allProjects.Where(p => p.IsReaderActive).ToList();
+        var existingRequests  = await accessRequestRepo.GetVisibleByReaderIdAsync(
+            user.Id, DateTime.UtcNow.Date, ct);
+
+        model.AvailableProjects = availableProjects;
+        model.PendingRequests   = existingRequests.Select(r =>
+        {
+            var project = allProjects.FirstOrDefault(p => p.Id == r.ProjectId);
+            return new ReaderDashboardRequestViewModel
+            {
+                Request     = r,
+                ProjectName = project?.Name ?? "Unknown project"
+            };
+        }).ToList();
+
+        if (!ModelState.IsValid || model.SelectedProjectId is null)
+        {
+            if (model.SelectedProjectId is null)
+                ModelState.AddModelError(nameof(model.SelectedProjectId), "Please select a project.");
+            return View(model);
+        }
+
+        var alreadyRequested = existingRequests.Any(r =>
+            r.ProjectId == model.SelectedProjectId.Value &&
+            r.Status == DraftView.Domain.Enumerations.AccessRequestStatus.Pending);
+        if (alreadyRequested)
+        {
+            ModelState.AddModelError(string.Empty,
+                "You already have a pending request for that project.");
+            return View(model);
+        }
+
+        try
+        {
+            await accessRequestService.SubmitRequestAsync(
+                user.Id, model.SelectedProjectId.Value,
+                model.CoverNote, model.ContactEmail, ct);
+
+            var submittedProject = availableProjects
+                .FirstOrDefault(p => p.Id == model.SelectedProjectId.Value);
+
+            return View(new RequestAccessViewModel
+            {
+                AvailableProjects    = availableProjects,
+                PendingRequests      = model.PendingRequests,
+                RequestSubmitted     = true,
+                SubmittedProjectName = submittedProject?.Name
+            });
+        }
+        catch (InvariantViolationException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return View(model);
+        }
     }
 }

@@ -18,6 +18,9 @@ using Microsoft.AspNetCore.Identity;
 using System;
 using DraftView.Web.Infrastructure;
 using DraftView.Domain.Enumerations;
+using DraftView.Infrastructure.Billing;
+using DraftView.Application.Services;
+using DraftView.Domain.Interfaces.Services;
 
 namespace DraftView.Web.Extensions
 {
@@ -47,6 +50,14 @@ namespace DraftView.Web.Extensions
             services.AddScoped<IAccessRequestRepository, AccessRequestRepository>();
             services.AddScoped<IManualChapterRepository, ManualChapterRepository>();
             services.AddScoped<IManualChapterVersionRepository, ManualChapterVersionRepository>();
+
+            // Multi-tenancy repositories (MT-Sprint-1)
+            services.AddScoped<IAccountRepository, AccountRepository>();
+            services.AddScoped<ITenancyRepository, TenancyRepository>();
+            services.AddScoped<ITenancyMembershipRepository, TenancyMembershipRepository>();
+
+            // Multi-tenancy repositories (MT-Sprint-2)
+            services.AddScoped<ITenancySubscriptionRepository, TenancySubscriptionRepository>();
 
             return services;
         }
@@ -123,6 +134,16 @@ namespace DraftView.Web.Extensions
             services.AddScoped<IChapterFileParserResolver, ChapterFileParserResolver>();
             services.AddScoped<IManualUploadService, ManualUploadService>();
             services.AddSingleton<IMarkdownToHtmlConverter, MarkdownToHtmlConverter>();
+
+            // Billing abstraction (MT-Sprint-2) — NullBillingProvider until a real provider is selected.
+            services.AddSingleton<IBillingProvider, NullBillingProvider>();
+
+            // Author registration (MT-Sprint-3)
+            services.AddScoped<IAuthorRegistrationService, AuthorRegistrationService>();
+            services.AddScoped<IAuthorSelfRegistrationService, AuthorSelfRegistrationService>();
+
+            // Reader self-registration (MT-Sprint-3)
+            services.AddScoped<IReaderSelfRegistrationService, ReaderSelfRegistrationService>();
 
             return services;
         }

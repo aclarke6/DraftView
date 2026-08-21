@@ -988,7 +988,6 @@ public class AuthorController(
             ShowVersionHistory   = d.ShowVersionHistory,
             RetentionLimit       = d.RetentionLimit
         };
-}
 
     // ---------------------------------------------------------------------------
     // Manual Chapters
@@ -1251,3 +1250,4 @@ public class AuthorController(
 
         return RedirectToAction("ManualChapters", new { projectId });
     }
+}

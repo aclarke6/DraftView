@@ -8,10 +8,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace DraftView.Web.Controllers;
 
-public class HomeController(IUserRepository userRepo, IUserPreferencesRepository prefsRepo)
+public class HomeController(IUserRepository userRepo, IUserPreferencesRepository prefsRepo, IProjectRepository projectRepo, IReaderAccessRepository readerAccessRepo)
     : BaseController(userRepo)
 {
-    public IActionResult Index()
+    public async Task<IActionResult> Index()
     {
         if (User.Identity?.IsAuthenticated != true)
             return RedirectToAction("Login", "Account");
@@ -20,7 +20,24 @@ public class HomeController(IUserRepository userRepo, IUserPreferencesRepository
             return RedirectToAction("Dashboard", "Support");
 
         if (User.IsInRole("Author"))
+        {
+            var projects = await projectRepo.GetAllAsync();
+            if (projects.Count == 0)
+                return RedirectToAction("Setup", "Onboarding");
+
             return RedirectToAction("Dashboard", "Author");
+        }
+
+        if (User.IsInRole("BetaReader"))
+        {
+            var user = await GetCurrentUserAsync();
+            if (user is not null)
+            {
+                var access = await readerAccessRepo.GetByReaderIdAsync(user.Id);
+                if (access.Count == 0)
+                    return RedirectToAction("RequestAccess", "Reader");
+            }
+        }
 
         return RedirectToAction("Dashboard", "Reader");
     }

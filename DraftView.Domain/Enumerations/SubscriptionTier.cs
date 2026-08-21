@@ -1,13 +1,18 @@
 namespace DraftView.Domain.Enumerations;
 
 /// <summary>
-/// Represents the author's subscription tier.
-/// Determines version retention limits per section.
-/// Billing integration is deferred — tier is currently fixed at Free.
+/// The subscription tier for a Tenancy.
+/// Limits apply per the billing plan; before billing is live all tenancies operate on
+/// Free Tier semantics but with MaxBetaReaderCount=5 (pre-billing operational default).
 /// </summary>
 public enum SubscriptionTier
 {
-    Free = 0,
-    Paid = 1,
-    Ultimate = 2
+    /// <summary>Free: 3 beta readers, 1 active project.</summary>
+    Free,
+
+    /// <summary>Paid: 10 beta readers, unlimited active projects.</summary>
+    Paid,
+
+    /// <summary>Ultimate: unlimited beta readers and active projects.</summary>
+    Ultimate
 }

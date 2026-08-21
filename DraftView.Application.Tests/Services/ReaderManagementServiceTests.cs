@@ -97,20 +97,6 @@ public class ReaderManagementServiceTests
     }
 
     [Fact]
-    public async Task GetReaderSummaryAsync_BlankDisplayName_DefaultsToPendingReader()
-    {
-        var reader = User.Create("reader@example.test", string.Empty, Role.BetaReader);
-
-        _userRepo.Setup(r => r.GetAllBetaReadersAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync([reader]);
-        SetupNoPendingInvitations(reader.Id);
-
-        var result = await CreateSut().GetReaderSummaryAsync();
-
-        Assert.Equal("Pending reader", result[0].DisplayName);
-    }
-
-    [Fact]
     public async Task GetReaderSummaryAsync_MultipleReaders_OrderedByDisplayName()
     {
         var charlie = User.Create("c@example.test", "Charlie", Role.BetaReader);

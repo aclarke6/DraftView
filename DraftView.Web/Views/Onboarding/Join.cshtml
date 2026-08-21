@@ -1,0 +1,166 @@
+@model DraftView.Web.Models.RegisterAuthorViewModel
+@{
+    Layout = null; // Full-page layout — no site-nav for onboarding
+    ViewData["Title"] = "Join DraftView";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Join DraftView</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/DraftView.Light.css?v=v2026-08-21-3" />
+    <link rel="stylesheet" href="/css/DraftView.Core.css?v=v2026-08-21-3" />
+    <link rel="stylesheet" href="/css/DraftView.Onboarding.css?v=v2026-08-21-3" />
+    <link rel="icon" type="image/png" href="/images/DraftView.Logo.web.png" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; min-height: 100vh; font-family: 'Inter', system-ui, sans-serif; }
+        body { background: #1a1a2e; }
+    </style>
+</head>
+<body>
+
+<!-- Rotating atmosphere backgrounds -->
+<div class="onboarding-bg" id="onboardingBg" aria-hidden="true">
+    <div class="onboarding-bg__slide" data-src="/images/DraftView.Atmosphere.web.jpg"></div>
+    <div class="onboarding-bg__slide" data-src="/images/DraftView.Theme.Crime.Atmosphere.png"></div>
+    <div class="onboarding-bg__slide" data-src="/images/Noir-Atmosphere.png"></div>
+    <div class="onboarding-bg__slide" data-src="/images/Historic-Atmosphere.png"></div>
+    <div class="onboarding-bg__slide" data-src="/images/contemporary-atmosphere.png"></div>
+</div>
+
+<div class="onboarding-page">
+    <div class="onboarding-outer">
+        <div class="onboarding-split">
+
+            <!-- Left: marketing copy -->
+            <div class="onboarding-copy">
+                <img src="/images/DraftView.Logo.web.png" alt="DraftView" class="onboarding-copy__logo" />
+
+                <h1 class="onboarding-copy__headline">
+                    Your story,<br>shared your way.
+                </h1>
+
+                <p class="onboarding-copy__tagline">
+                    DraftView is the private reading room for authors who want to share works-in-progress with beta readers — without losing control over who sees what, or when.
+                </p>
+
+                <ul class="onboarding-copy__features">
+                    <li>Sync chapters directly from Scrivener via Dropbox</li>
+                    <li>Invite readers chapter-by-chapter at your own pace</li>
+                    <li>Collect inline comments and track reading progress</li>
+                    <li>Themes built for the mood of your manuscript</li>
+                    <li>No subscription, no ads — just you and your readers</li>
+                </ul>
+
+                <a href="/Join/FAQ" class="onboarding-copy__faq-link">
+                    Got questions? Read the FAQ &rarr;
+                </a>
+            </div>
+
+            <!-- Right: registration form -->
+            <div class="onboarding-card">
+                <h2 class="onboarding-card__title">Create your author account</h2>
+                <p class="onboarding-card__subtitle">Free forever for a single author workspace.</p>
+
+                @if (!ViewData.ModelState.IsValid && ViewData.ModelState.ErrorCount > 0)
+                {
+                    <div class="onboarding-validation-summary">
+                        @foreach (var ms in ViewData.ModelState.Values)
+                        {
+                            foreach (var error in ms.Errors)
+                            {
+                                <div>@error.ErrorMessage</div>
+                            }
+                        }
+                    </div>
+                }
+
+                <form asp-controller="Onboarding" asp-action="Join" method="post" class="onboarding-form">
+                    @Html.AntiForgeryToken()
+
+                    <div class="onboarding-form__group">
+                        <label asp-for="Email" class="onboarding-form__label"></label>
+                        <input asp-for="Email"
+                               type="email"
+                               class="onboarding-form__input @(ViewData.ModelState["Email"]?.Errors.Count > 0 ? "is-invalid" : "")"
+                               placeholder="you@example.com"
+                               autocomplete="email" />
+                        <span asp-validation-for="Email" class="onboarding-form__error"></span>
+                    </div>
+
+                    <div class="onboarding-form__group">
+                        <label asp-for="DisplayName" class="onboarding-form__label"></label>
+                        <input asp-for="DisplayName"
+                               type="text"
+                               class="onboarding-form__input @(ViewData.ModelState["DisplayName"]?.Errors.Count > 0 ? "is-invalid" : "")"
+                               placeholder="Jane Austen"
+                               autocomplete="name" />
+                        <span asp-validation-for="DisplayName" class="onboarding-form__error"></span>
+                    </div>
+
+                    <div class="onboarding-form__group">
+                        <label asp-for="TenancyName" class="onboarding-form__label"></label>
+                        <input asp-for="TenancyName"
+                               type="text"
+                               class="onboarding-form__input @(ViewData.ModelState["TenancyName"]?.Errors.Count > 0 ? "is-invalid" : "")"
+                               placeholder="Jane's Reading Room" />
+                        <span asp-validation-for="TenancyName" class="onboarding-form__error"></span>
+                        <span class="onboarding-form__hint">This is the name your readers will see.</span>
+                    </div>
+
+                    <button type="submit" class="onboarding-form__submit">
+                        Create my account
+                    </button>
+                </form>
+
+                <p class="onboarding-form__login-link">
+                    Already have an account? <a href="/Account/Login">Sign in</a>
+                </p>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    "use strict";
+
+    var slides = document.querySelectorAll('.onboarding-bg__slide');
+    if (!slides.length) return;
+
+    var current = 0;
+    var intervalMs = 9000; // 9 seconds per image
+
+    // Lazy-load background images
+    function loadSlide(slide) {
+        var src = slide.getAttribute('data-src');
+        if (src && !slide.style.backgroundImage) {
+            slide.style.backgroundImage = 'url("' + src + '")';
+        }
+    }
+
+    // Activate first slide immediately
+    loadSlide(slides[current]);
+    slides[current].classList.add('is-active');
+
+    function advance() {
+        var next = (current + 1) % slides.length;
+        loadSlide(slides[next]);
+
+        slides[current].classList.remove('is-active');
+        slides[next].classList.add('is-active');
+        current = next;
+    }
+
+    setInterval(advance, intervalMs);
+}());
+</script>
+
+</body>
+</html>

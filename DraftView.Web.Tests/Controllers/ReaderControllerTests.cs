@@ -43,6 +43,7 @@ public class ReaderControllerTests
     private readonly Mock<IHumanOverrideService> humanOverrideService = new();
     private readonly Mock<IPassageAnchorService> passageAnchorService = new();
     private readonly Mock<IAccessRequestRepository> accessRequestRepo = new();
+    private readonly Mock<IAccessRequestService> accessRequestService = new();
     private readonly Mock<IReaderDashboardService> readerDashboardService = new();
     private readonly Mock<ILogger<ReaderController>> logger = new();
     private ICommentDisplayService CommentDisplayService =>
@@ -936,6 +937,7 @@ public class ReaderControllerTests
             passageAnchorService.Object,
             CommentDisplayService,
             accessRequestRepo.Object,
+            accessRequestService.Object,
             readerDashboardService.Object,
             logger.Object);
 

@@ -42,7 +42,7 @@ public class ContentNavigationServiceTests
         _sectionRepo.Setup(r => r.GetByProjectIdAsync(projectId, It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var result = await CreateSut().BuildPublishingChapterDataAsync(projectId, ProjectType.Scrivener);
+        var result = await CreateSut().BuildPublishingChapterDataAsync(projectId, ProjectType.ScrivenerDropbox);
 
         Assert.Empty(result);
     }
@@ -56,7 +56,7 @@ public class ContentNavigationServiceTests
         _sectionRepo.Setup(r => r.GetByProjectIdAsync(projectId, It.IsAny<CancellationToken>()))
             .ReturnsAsync([chapter]);
 
-        var result = await CreateSut().BuildPublishingChapterDataAsync(projectId, ProjectType.Scrivener);
+        var result = await CreateSut().BuildPublishingChapterDataAsync(projectId, ProjectType.ScrivenerDropbox);
 
         Assert.Empty(result);
     }
@@ -75,7 +75,7 @@ public class ContentNavigationServiceTests
             .ReturnsAsync([chapter, document]);
         SetupNoVersions(document.Id);
 
-        var result = await CreateSut().BuildPublishingChapterDataAsync(projectId, ProjectType.Scrivener);
+        var result = await CreateSut().BuildPublishingChapterDataAsync(projectId, ProjectType.ScrivenerDropbox);
 
         var chapterData = Assert.Single(result);
         Assert.Equal(chapter.Id, chapterData.Chapter.Id);
@@ -96,7 +96,7 @@ public class ContentNavigationServiceTests
         _sectionRepo.Setup(r => r.GetByProjectIdAsync(projectId, It.IsAny<CancellationToken>()))
             .ReturnsAsync([chapter, document]);
 
-        var result = await CreateSut().BuildPublishingChapterDataAsync(projectId, ProjectType.Scrivener);
+        var result = await CreateSut().BuildPublishingChapterDataAsync(projectId, ProjectType.ScrivenerDropbox);
 
         var chapterData = Assert.Single(result);
         Assert.Empty(chapterData.Documents);
@@ -124,7 +124,7 @@ public class ContentNavigationServiceTests
         _sectionVersionRepo.Setup(r => r.GetAllBySectionIdAsync(document.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync([v1, v2, v3]);
 
-        var result = await CreateSut().BuildPublishingChapterDataAsync(projectId, ProjectType.Scrivener);
+        var result = await CreateSut().BuildPublishingChapterDataAsync(projectId, ProjectType.ScrivenerDropbox);
 
         var docData = Assert.Single(result[0].Documents);
         Assert.True(docData.ShowVersionHistory);
@@ -154,7 +154,7 @@ public class ContentNavigationServiceTests
         _htmlDiffService.Setup(s => s.Compute(It.IsAny<string>(), It.IsAny<string>()))
             .Throws(new InvalidOperationException("diff failure"));
 
-        var result = await CreateSut().BuildPublishingChapterDataAsync(projectId, ProjectType.Scrivener);
+        var result = await CreateSut().BuildPublishingChapterDataAsync(projectId, ProjectType.ScrivenerDropbox);
 
         var docData = Assert.Single(result[0].Documents);
         Assert.Null(docData.Classification);

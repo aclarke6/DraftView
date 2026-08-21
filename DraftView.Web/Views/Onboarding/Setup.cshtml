@@ -1,0 +1,154 @@
+@model DraftView.Web.Models.SetupViewModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Workspace Setup";
+
+    var allDone = Model.TenancyConfigured && Model.ProjectCreated;
+}
+
+<div class="settings-page">
+    <div class="settings-header">
+        <h1 class="settings-header__title">Set up your workspace</h1>
+        <p class="settings-header__subtitle">
+            Complete the steps below to get your first readers reading.
+            You can finish these across multiple sessions — progress is saved automatically.
+        </p>
+    </div>
+
+    @if (allDone)
+    {
+        <div class="toast toast--success" style="position:static; margin-bottom:1.5rem; display:block; opacity:1;">
+            Your workspace is fully set up! Head to your dashboard to manage your project.
+        </div>
+    }
+
+    <!-- Step 1: Workspace / Tenancy -->
+    <div class="settings-section">
+        <div class="settings-section__header">
+            <h2 class="settings-section__title">
+                @if (Model.TenancyConfigured)
+                {
+                    <span class="setup-step__badge setup-step__badge--done">&#10003; Done</span>
+                }
+                else
+                {
+                    <span class="setup-step__badge setup-step__badge--pending">1</span>
+                }
+                Your workspace
+            </h2>
+        </div>
+
+        <div class="settings-section__body">
+            @if (Model.TenancyConfigured)
+            {
+                <p>
+                    Your workspace is named <strong>@Model.TenancyName</strong>.
+                    You can update this in
+                    <a asp-controller="Account" asp-action="Settings">Account Settings</a>.
+                </p>
+            }
+            else
+            {
+                <p>
+                    Your workspace details were not set up during registration.
+                    Please
+                    <a href="/Join">register an author account</a>
+                    to create your workspace, or contact support if you believe this is an error.
+                </p>
+            }
+        </div>
+    </div>
+
+    <!-- Step 2: Connect Dropbox -->
+    <div class="settings-section">
+        <div class="settings-section__header">
+            <h2 class="settings-section__title">
+                <span class="setup-step__badge setup-step__badge--pending">2</span>
+                Connect your manuscript
+            </h2>
+        </div>
+
+        <div class="settings-section__body">
+            <p>
+                DraftView syncs chapters directly from Scrivener via Dropbox.
+                Connect your Dropbox account to get started — or use manual upload
+                to add Word or plain-text chapters one at a time.
+            </p>
+            <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-top:1rem;">
+                <a asp-controller="Dropbox" asp-action="Connect" class="btn btn--primary">
+                    Connect Dropbox
+                </a>
+                <a asp-controller="Author" asp-action="ManualUpload" class="btn btn--secondary">
+                    Upload chapters manually
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 3: Project -->
+    <div class="settings-section">
+        <div class="settings-section__header">
+            <h2 class="settings-section__title">
+                @if (Model.ProjectCreated)
+                {
+                    <span class="setup-step__badge setup-step__badge--done">&#10003; Done</span>
+                }
+                else
+                {
+                    <span class="setup-step__badge setup-step__badge--pending">3</span>
+                }
+                Your first project
+            </h2>
+        </div>
+
+        <div class="settings-section__body">
+            @if (Model.ProjectCreated)
+            {
+                <p>
+                    @(Model.ProjectCount == 1 ? "You have 1 project." : $"You have {Model.ProjectCount} projects.")
+                    Head to your dashboard to publish chapters and invite readers.
+                </p>
+                <a asp-controller="Author" asp-action="Dashboard" class="btn btn--primary">
+                    Go to dashboard
+                </a>
+            }
+            else
+            {
+                <p>
+                    Once you've connected Dropbox, trigger a sync from the dashboard to import
+                    your Scrivener project. Your chapters will appear automatically.
+                </p>
+                <p>
+                    If you're using manual upload, chapters you've uploaded will appear as a project
+                    on the dashboard.
+                </p>
+                <a asp-controller="Author" asp-action="Dashboard" class="btn btn--secondary">
+                    Go to dashboard
+                </a>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .setup-step__badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.6rem;
+        height: 1.6rem;
+        border-radius: 50%;
+        font-size: 0.8rem;
+        font-weight: 700;
+        margin-right: 0.5rem;
+        vertical-align: middle;
+    }
+    .setup-step__badge--done {
+        background: #2e7d32;
+        color: #fff;
+    }
+    .setup-step__badge--pending {
+        background: var(--color-accent, #5b6af0);
+        color: #fff;
+    }
+</style>
