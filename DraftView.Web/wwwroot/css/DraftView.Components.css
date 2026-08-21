@@ -295,7 +295,7 @@
 }
 
 .page-header--image {
-    background-image: url('/images/DraftView.Header.web.jpg');
+    background-image: var(--header-image);
     background-size: cover;
     background-position: center 35%;
     position: relative;
