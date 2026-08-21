@@ -104,6 +104,8 @@ Last deployed: 2026-08-17 13:59 (commit: d51d201)
 
 - [x] CHANGE-008 — Mobile reader: chapter comments page + disable passage-anchor capture on touch — merged 2026-08-16. See `HISTORY.md`.
 - [x] CHANGE-009 — Mobile reader: read-first scene comments — merged 2026-08-16. See `HISTORY.md`.
+- [x] CHANGE-010 — Banner image tokens wired in nav and page-header; settings hero uses `--header-image`; login hero CSS crossfade with `prefers-reduced-motion` guard; author/reader registration links on login page — merged 2026-08-21 (PRs #55, #56, #57).
+- [ ] CHANGE-011 — Default Adventure theme needs a proper panoramic banner asset (~2200×700 px). Current `DraftView.Header.web.jpg` is 420×280 (3:2). CSS token `--header-image` is correctly wired; only the source asset needs replacing. See GitHub Issue #54.
 
 ---
 

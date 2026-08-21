@@ -3,6 +3,8 @@
    -------------------------------------------------------------------------- */
 .settings-hero {
     min-height: 180px;
+    background-image: var(--header-image);
+    background-position: center 40%;
     margin-bottom: var(--space-8);
 }
 

@@ -1,8 +1,8 @@
 ﻿@model LoginViewModel
 @{ ViewData["Title"] = "Sign in"; Layout = "_Layout"; }
 
-<!-- Hero atmosphere image -->
-<div class="site-hero">
+<!-- Hero atmosphere image — rotates between --atmosphere-image and --hero-image -->
+<div class="site-hero login-hero">
     <div class="site-hero__content">
         <img src="~/images/DraftView.Logo.web.png"
              alt="DraftView"
@@ -55,6 +55,17 @@
                 </button>
             </form>
         </div>
+    </div>
+
+    <div style="text-align:center; margin-top:var(--space-6); font-size:var(--text-sm); color:var(--color-text-muted);">
+        <p style="margin-bottom:var(--space-2);">
+            New author?
+            <a href="/Join" style="color:var(--color-accent);">Create an author account</a>
+        </p>
+        <p>
+            New reader?
+            <a href="/ReadersJoin" style="color:var(--color-accent);">Create a reader account</a>
+        </p>
     </div>
 </div>
 
