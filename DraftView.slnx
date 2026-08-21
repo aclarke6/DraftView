@@ -1,7 +1,6 @@
 <Solution>
   <Folder Name="/Docs/">
     <File Path="Docs/ADR-ManualChapterUploadArchitecture.md" />
-    <File Path="Docs/AGENTS.md" />
     <File Path="Docs/CLAUDE_TASK_ManualUpload.md" />
     <File Path="Docs/CLAUDE_TASK_Notifications.md" />
     <File Path="Docs/DraftView Billing Model v2.docx" />
@@ -42,15 +41,12 @@
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".gitignore" />
+    <File Path="AGENTS.md" />
     <File Path="CLAUDE.md" />
     <File Path="appsettings.Production.json" />
     <File Path="start-claude.cmd" />
-    <File Path="Add-AgentRequirements-To-Prompts.ps1" />
-    <File Path="commit-chore.ps1" />
     <File Path="Copy-SourceFiles.ps1" />
-    <File Path="Generate-SSprint-Prompts.ps1" />
     <File Path="Get-CodeFiles.ps1" />
-    <File Path="Get-CodeFiles.Tests.ps1" />
     <File Path="get-dropbox-refresh-token.ps1" />
     <File Path="Get-LineEndings.ps1" />
     <File Path="pg.ps1" />
@@ -59,7 +55,6 @@
     <File Path="start-codex.ps1" />
     <File Path="test-summary.ps1" />
     <File Path="Update-CssVersion.ps1" />
-    <File Path="write-betabooks-importer.ps1" />
   </Folder>
   <Folder Name="/Solution Items/.github/">
     <File Path=".github/copilot-instructions.md" />

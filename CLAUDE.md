@@ -71,6 +71,6 @@ database name in the constructor.
 All project documents (design docs, sprint plans, task files, reference SQL, etc.)
 are in the `Docs/` folder. Key files:
 - `Docs/TASKS.md` — active task list and sprint status
-- `Docs/AGENTS.md` — authoritative execution rules for all coding agents
+- `AGENTS.md` — authoritative execution rules for all coding agents (root, alongside CLAUDE.md)
 - `Docs/HISTORY.md` — completed work log
 - `Docs/MultiTenancy.md` — multi-tenancy design and sprint plan
