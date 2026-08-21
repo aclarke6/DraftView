@@ -21,9 +21,11 @@ public class HomeControllerTests
     [Fact]
     public void Privacy_ReturnsView()
     {
-        var userRepo  = new Mock<IUserRepository>();
-        var prefsRepo = new Mock<IUserPreferencesRepository>();
-        var controller = new HomeController(userRepo.Object, prefsRepo.Object);
+        var userRepo        = new Mock<IUserRepository>();
+        var prefsRepo       = new Mock<IUserPreferencesRepository>();
+        var projectRepo     = new Mock<IProjectRepository>();
+        var readerAccessRepo = new Mock<IReaderAccessRepository>();
+        var controller = new HomeController(userRepo.Object, prefsRepo.Object, projectRepo.Object, readerAccessRepo.Object);
 
         var result = controller.Privacy();
 

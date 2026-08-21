@@ -1,5 +1,5 @@
 ﻿# DraftView — Task List
-Last updated: 2026-08-19
+Last updated: 2026-08-21
 Last deployed: 2026-08-17 13:59 (commit: d51d201)
 
 ---
@@ -51,7 +51,23 @@ Last deployed: 2026-08-17 13:59 (commit: d51d201)
 ## 2. Open Minor Work
 
 ### 2(a) Bugs
-No open bugs.
+
+- [ ] **BUG-001 — `Account.Activate()` never called on email confirmation**
+
+  **Branch:** `claude/multi-tenancy-implementation-m279oe`
+  **File:** `DraftView.Web/Controllers/OnboardingController.cs` — `ConfirmEmail` action
+
+  `AuthorSelfRegistrationService` creates both a `User` (inactive) and an `Account` (inactive — `Account.Create()` sets `IsActive = false`). When the author confirms their email, `ConfirmEmail` correctly calls `domainUser.Activate()` on the `User` but never retrieves or activates the corresponding `Account`. As a result `Account.IsActive` stays `false` permanently. `Account.RecordLogin()` will throw `UnauthorisedOperationException` on any login attempt, and any future guard on `account.IsActive` will deny access.
+
+  **Fix:** after the `domainUser.Activate()` block, look up the Account by HMAC and activate it in the same `SaveChangesAsync` call:
+  ```csharp
+  var hmac    = hmacService.Compute(identityUser.Email!.Trim());
+  var account = await accountRepo.GetByEmailLookupHmacAsync(hmac, ct);
+  if (account is not null && !account.IsActive)
+      account.Activate();
+  await unitOfWork.SaveChangesAsync(ct);
+  ```
+  `IUserEmailLookupHmacService` and `IAccountRepository` are already injected into `OnboardingController`. Readers do not get `Account` records — `ReaderConfirmEmail` is unaffected.
 
 ### 2(b) Changes
 

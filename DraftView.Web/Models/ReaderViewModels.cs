@@ -186,8 +186,8 @@ public class ReaderDashboardRequestViewModel
 
 public class RequestAccessViewModel
 {
-    public IReadOnlyList<Project> AvailableProjects { get; init; } = [];
-    public IReadOnlyList<ReaderDashboardRequestViewModel> PendingRequests { get; init; } = [];
+    public IReadOnlyList<Project> AvailableProjects { get; set; } = [];
+    public IReadOnlyList<ReaderDashboardRequestViewModel> PendingRequests { get; set; } = [];
 
     [Required(ErrorMessage = "Please select a project.")]
     public Guid? SelectedProjectId { get; set; }
