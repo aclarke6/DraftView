@@ -279,6 +279,32 @@
     text-shadow: 0 1px 4px rgba(0,0,0,0.4);
 }
 
+/* Login hero: crossfades between --atmosphere-image and --hero-image */
+.login-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: var(--hero-image, var(--atmosphere-image));
+    background-size: cover;
+    background-position: center 30%;
+    animation: login-hero-crossfade 16s ease-in-out infinite;
+    opacity: 0;
+}
+
+@keyframes login-hero-crossfade {
+    0%   { opacity: 0; }
+    20%  { opacity: 1; }
+    80%  { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .login-hero::before {
+        animation: none;
+        opacity: 0;
+    }
+}
+
 .auth-logo {
     display: block;
     margin: 0 auto var(--space-4);
