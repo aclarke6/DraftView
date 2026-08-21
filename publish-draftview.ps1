@@ -87,11 +87,15 @@ if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: Migration bundle build failed." -F
 Write-Host "Migration bundle built." -ForegroundColor Green
 
 # ---------------------------------------------------------------------------
-# Copy app to server
+# Copy app to server (rsync - only transfers changed files by checksum)
+# --checksum: compare by content not timestamp (build always produces fresh
+#             timestamps even for unchanged files, so timestamp alone would
+#             copy everything every time)
+# --delete:   remove server files no longer in the publish output
 # ---------------------------------------------------------------------------
-Write-Host "Copying app to server..." -ForegroundColor Cyan
-scp -i $key -r "$output/*" "${server}:${remote}"
-if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: SCP of app failed." -ForegroundColor Red; exit 1 }
+Write-Host "Syncing app to server..." -ForegroundColor Cyan
+rsync -az --checksum --delete -e "ssh -i $key" "$output/" "${server}:${remote}/"
+if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: rsync of app failed." -ForegroundColor Red; exit 1 }
 
 Write-Host "Copying production appsettings to server..." -ForegroundColor Cyan
 $prodConfig = "C:\Users\alast\source\repos\DraftView\appsettings.Production.json"
@@ -118,17 +122,22 @@ if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: SCP of migration bundle failed." -
 # for a .sln/.slnx file to resolve user-secrets. No solution file exists
 # in /var/www/draftview, so the lookup fails with "Solution root not found."
 # Passing --connection bypasses the design-time host entirely.
-# The connection string is extracted from appsettings.Production.json using
-# python3, which is always present on Ubuntu.
+#
+# QUOTING: the migration script is a single-quoted PowerShell here-string
+# (@'...'@) so PowerShell makes zero changes to its content. It is piped
+# to "bash -s" rather than passed as a CLI argument, so all bash quoting
+# (single quotes around the python3 -c argument) survives intact.
+# set -e ensures any failure propagates as a non-zero exit code.
 # ---------------------------------------------------------------------------
 Write-Host "Applying EF migrations on server..." -ForegroundColor Cyan
-$migrateScript = @"
+$migrateScript = @'
+set -e
 chmod +x /tmp/efbundle
-CONN=`$(python3 -c "import json; print(json.load(open('$remote/appsettings.Production.json'))['ConnectionStrings']['DefaultConnection'])")
-ASPNETCORE_ENVIRONMENT=Production /tmp/efbundle --connection "`$CONN"
+CONN=$(python3 -c 'import json; print(json.load(open("/var/www/draftview/appsettings.Production.json"))["ConnectionStrings"]["DefaultConnection"])')
+ASPNETCORE_ENVIRONMENT=Production /tmp/efbundle --connection "$CONN"
 rm -f /tmp/efbundle
-"@
-ssh -i $key $server $migrateScript
+'@
+$migrateScript | ssh -i $key $server "bash -s"
 if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: Migration bundle failed. Aborting - service NOT restarted." -ForegroundColor Red; exit 1 }
 Write-Host "Migrations applied." -ForegroundColor Green
 
