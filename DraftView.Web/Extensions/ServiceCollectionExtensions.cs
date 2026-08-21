@@ -19,8 +19,6 @@ using System;
 using DraftView.Web.Infrastructure;
 using DraftView.Domain.Enumerations;
 using DraftView.Infrastructure.Billing;
-using DraftView.Application.Services;
-using DraftView.Domain.Interfaces.Services;
 
 namespace DraftView.Web.Extensions
 {

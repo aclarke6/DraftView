@@ -11,7 +11,6 @@ using System.Web;
 
 namespace DraftView.Web.Controllers;
 
-[AllowAnonymous]
 public class OnboardingController(
     IAuthorSelfRegistrationService registrationService,
     IReaderSelfRegistrationService readerRegistrationService,
@@ -31,6 +30,7 @@ public class OnboardingController(
     // ---------------------------------------------------------------------------
 
     [HttpGet("/Join")]
+    [AllowAnonymous]
     public IActionResult Join()
     {
         if (User.Identity?.IsAuthenticated == true)
@@ -44,6 +44,7 @@ public class OnboardingController(
     // ---------------------------------------------------------------------------
 
     [HttpPost("/Join")]
+    [AllowAnonymous]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Join(RegisterAuthorViewModel model, CancellationToken ct)
     {
@@ -129,6 +130,7 @@ public class OnboardingController(
     // ---------------------------------------------------------------------------
 
     [HttpGet("/Join/EmailSent")]
+    [AllowAnonymous]
     public IActionResult EmailSent() => View();
 
     // ---------------------------------------------------------------------------
@@ -136,6 +138,7 @@ public class OnboardingController(
     // ---------------------------------------------------------------------------
 
     [HttpGet("/Join/ConfirmEmail")]
+    [AllowAnonymous]
     public async Task<IActionResult> ConfirmEmail(string userId, string token, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(token))
@@ -213,6 +216,7 @@ public class OnboardingController(
     // ---------------------------------------------------------------------------
 
     [HttpGet("/Join/FAQ")]
+    [AllowAnonymous]
     public IActionResult FAQ() => View();
 
     // ===========================================================================
@@ -224,6 +228,7 @@ public class OnboardingController(
     // ---------------------------------------------------------------------------
 
     [HttpGet("/ReadersJoin")]
+    [AllowAnonymous]
     public IActionResult ReaderJoin()
     {
         if (User.Identity?.IsAuthenticated == true)
@@ -237,6 +242,7 @@ public class OnboardingController(
     // ---------------------------------------------------------------------------
 
     [HttpPost("/ReadersJoin")]
+    [AllowAnonymous]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ReaderJoin(RegisterReaderViewModel model, CancellationToken ct)
     {
@@ -317,6 +323,7 @@ public class OnboardingController(
     // ---------------------------------------------------------------------------
 
     [HttpGet("/ReadersJoin/EmailSent")]
+    [AllowAnonymous]
     public IActionResult ReaderEmailSent() => View();
 
     // ---------------------------------------------------------------------------
@@ -324,6 +331,7 @@ public class OnboardingController(
     // ---------------------------------------------------------------------------
 
     [HttpGet("/ReadersJoin/ConfirmEmail")]
+    [AllowAnonymous]
     public async Task<IActionResult> ReaderConfirmEmail(string userId, string token, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(token))
