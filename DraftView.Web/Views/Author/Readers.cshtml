@@ -4,11 +4,13 @@
 @model IReadOnlyList<ReaderRowViewModel>
 @{ ViewData["Title"] = "Beta Readers"; }
 
-<div class="page-header">
-    <div>
-        <h1 class="page-title">Beta Readers</h1>
-        <p class="page-subtitle">@Model.Count reader(s)</p>
+<div class="page-header page-header--image">
+    <div class="page-header__inner">
+        <h1 class="page-header__title">Beta Readers</h1>
+        <p class="page-header__subtitle">@Model.Count reader(s)</p>
     </div>
+</div>
+<div class="page-header__actions">
     <a asp-action="InviteReader" class="btn btn--primary">Invite a Reader</a>
 </div>
 

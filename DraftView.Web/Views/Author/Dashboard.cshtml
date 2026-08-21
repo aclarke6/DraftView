@@ -3,12 +3,12 @@
 @model DashboardViewModel
 @{ ViewData["Title"] = "Dashboard"; }
 
-<div class="page-header">
-    <div>
-        <h1 class="page-title">Dashboard</h1>
+<div class="page-header page-header--image">
+    <div class="page-header__inner">
+        <h1 class="page-header__title">Dashboard</h1>
         @if (Model.ActiveProject is not null)
         {
-            <p class="page-subtitle">Active project: @Model.ActiveProject.Name</p>
+            <p class="page-header__subtitle">Active project: @Model.ActiveProject.Name</p>
         }
     </div>
 </div>
