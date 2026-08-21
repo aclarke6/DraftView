@@ -87,15 +87,20 @@ if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: Migration bundle build failed." -F
 Write-Host "Migration bundle built." -ForegroundColor Green
 
 # ---------------------------------------------------------------------------
-# Copy app to server (rsync - only transfers changed files by checksum)
-# --checksum: compare by content not timestamp (build always produces fresh
-#             timestamps even for unchanged files, so timestamp alone would
-#             copy everything every time)
-# --delete:   remove server files no longer in the publish output
+# Copy app to server
+# Uses scp because rsync is not natively available on Windows.
+# To enable incremental transfers install rsync via Chocolatey (choco install
+# rsync) or via WSL, then replace this block with:
+#   rsync -az --checksum --delete -e "ssh -i $key" "$output/" "${server}:${remote}/"
+# (--checksum is required because dotnet publish always produces fresh
+#  timestamps even for unchanged files, so timestamp-based sync copies
+#  everything every time.)
+# appsettings.json is included in $output and arrives here before the
+# migration bundle runs, so the bundle always finds it in its working dir.
 # ---------------------------------------------------------------------------
-Write-Host "Syncing app to server..." -ForegroundColor Cyan
-rsync -az --checksum --delete -e "ssh -i $key" "$output/" "${server}:${remote}/"
-if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: rsync of app failed." -ForegroundColor Red; exit 1 }
+Write-Host "Copying app to server..." -ForegroundColor Cyan
+scp -i $key -r "$output/*" "${server}:${remote}"
+if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: SCP of app failed." -ForegroundColor Red; exit 1 }
 
 Write-Host "Copying production appsettings to server..." -ForegroundColor Cyan
 $prodConfig = "C:\Users\alast\source\repos\DraftView\appsettings.Production.json"
