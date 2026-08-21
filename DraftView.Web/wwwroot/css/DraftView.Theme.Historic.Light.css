@@ -50,7 +50,8 @@
     --background-tile: url('/images/Historic-Light-Background-Tile.png');
 
     /* Hero and error images — Georgian / Napoleonic visual world; shared across light/dark variants */
-    --header-image:       url('/images/Historic-Banner.png');                        /* Header banner */
+    --header-image:       url('/images/Historic-Banner.png');                        /* Header banner — 1774x887 (2:1); replace with 2240x700 panoramic — see issue #77 */
+    --header-image-position: 72% 40%;                                                /* Shift right: avoids the DraftView logo on the left, shows ships + city */
     --atmosphere-image:   url('/images/Historic-Atmosphere.png');                   /* Letter with wax seal, gloves, fan — candlelit ballroom beyond */
     --hero-image:         url('/images/Historic-Reader-Dashboard-Hero.png');        /* Regency woman reading by ballroom window */
     --error-image-403:    url('/images/Historic-403-Access-Denied.png');            /* Redcoat soldier blocking door, 403 ACCESS DENIED plaque */

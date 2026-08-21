@@ -43,7 +43,8 @@
     --background-tile: url('/images/DraftView.Tile.web.jpg');
 
     /* Hero and error images — Adventure theme; shared across light/dark variants */
-    --header-image:       url('/images/DraftView.Header.png');
+    --header-image:       url('/images/DraftView.Header.png');         /* 1536x1024 (1.5:1) — replace with 2240x700 panoramic — see issue #54 */
+    --header-image-position: center 25%;                               /* Show top quarter: avoids worst of the portrait crop */
     --atmosphere-image:   url('/images/DraftView.Atmosphere.web.jpg');
     --hero-image:         url('/images/DraftViewReaderDash.Hero.png');          /* Second atmosphere image for hero rotation */
     --error-image-403:    url('/images/DraftView.403AccessDenied.png');

@@ -7,7 +7,7 @@
 .site-hero.settings-hero {
     min-height: 180px;
     background-image: var(--header-image);
-    background-position: center 40%;
+    background-position: var(--header-image-position);
     margin-bottom: var(--space-8);
 }
 

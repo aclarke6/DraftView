@@ -14,7 +14,7 @@
     z-index: 1000;
     background-image: var(--header-image);
     background-size: cover;
-    background-position: center 40%;
+    background-position: var(--header-image-position);
 }
 
     .site-nav::after {
