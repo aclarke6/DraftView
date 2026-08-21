@@ -2,7 +2,29 @@
 
 ---
 
-## 1. Branch Hierarchy
+## 1. GitHub Issues — Unit of Work
+
+Every sprint, change, and bug has a GitHub Issue as its single source of truth.
+
+| Item type | Issue label | Who acts |
+|-----------|-------------|----------|
+| Bug | "Claude CLI" | Claude fixes and closes |
+| Change / sprint | "Claude CLI" | Claude implements and closes |
+| Bug / change requiring human decision | (no label) | Human decides; Claude may assist |
+
+**Rules:**
+- All sprint detail (phases, design notes, acceptance criteria) lives in the GitHub Issue, not in TASKS.md
+- TASKS.md carries one line per item pointing at the issue number
+- When the same thing breaks again, **reopen the existing issue** with a comment — do not create a new one
+- Claude checks `gh issue list --label "Claude CLI" --state open` at the start of each session and actions results without being asked
+
+**Closing issues:**
+- Reference the fixing commit or PR in the close comment: `gh issue close N --comment "Fixed in PR #X"`
+- The GitHub Issue is the audit trail; HISTORY.md holds the sprint-level summary
+
+---
+
+## 2. Branch Hierarchy
 
 ```
 main
@@ -214,7 +236,7 @@ All of the following must be true. Any single failure is a blocker.
 | **G4 — No dead code** | No commented-out code, unused methods, or unreachable branches introduced. |
 | **G5 — No inline styles** | No `style=""` attributes introduced in any Razor view. All new CSS in the appropriate stylesheet with a component comment. |
 | **G6 — No magic strings** | No string or numeric literals that appear more than once or whose meaning is not self-evident. Named constants or enum values used instead. |
-| **G7 — TASKS.md updated** | Phase item marked complete. Any newly discovered work added. |
+| **G7 — Issue and TASKS.md updated** | GitHub Issue updated with outcome (or closed if complete). TASKS.md priority table reflects current status. Any newly discovered bugs or work items raised as GitHub Issues. |
 | **G8 — Browser verified** | If the phase includes any view change: manually verified in the browser. Both author and reader paths exercised where applicable. |
 
 ---
@@ -231,7 +253,7 @@ All phase gates must already be satisfied. Additionally:
 | **S4 — UAT complete** | Each deliverable in the sprint has been manually verified end-to-end in a production-equivalent environment. Specific scenarios listed in PR description. |
 | **S5 — No sprint branch commits** | The sprint branch contains only merge commits from phase branches. No direct commits to the sprint branch. |
 | **S6 — Architecture document current** | If the sprint introduced any entity, service, or interface not in the architecture document, the document is updated and committed. |
-| **S7 — Known debt registered** | Any debt introduced during the sprint is recorded in the Known Debt section of the architecture document and in TASKS.md. |
+| **S7 — Known debt registered** | Any debt introduced during the sprint is raised as a GitHub Issue (labelled "Claude CLI" if Claude should address it) and listed in TASKS.md. |
 
 ---
 

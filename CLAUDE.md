@@ -18,8 +18,10 @@ No active task file. Consult `Docs/TASKS.md` for the current state of all work t
 and choose the highest-priority open item.
 
 ## How to work
-1. Read `Docs/TASKS.md` fully before starting any task
-2. For implementation tasks, follow the red/green cycle strictly:
+1. Check open "Claude CLI" issues first: `gh issue list --label "Claude CLI" --state open`
+2. Read `Docs/TASKS.md` for priority context before starting any task
+3. All bugs and sprint work runs from a GitHub Issue — read the issue for full detail
+4. For implementation tasks, follow the red/green cycle strictly:
    - Write the stub (NotImplementedException) first
    - Write the failing tests
    - Confirm RED with `dotnet test --filter <TestClass>`
