@@ -36,5 +36,15 @@ public class TenancyMembershipConfiguration : IEntityTypeConfiguration<TenancyMe
             .IsUnique();
 
         builder.HasIndex(m => m.AccountId);
+
+        builder.HasOne<Tenancy>()
+            .WithMany()
+            .HasForeignKey(m => m.TenancyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<Account>()
+            .WithMany()
+            .HasForeignKey(m => m.AccountId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

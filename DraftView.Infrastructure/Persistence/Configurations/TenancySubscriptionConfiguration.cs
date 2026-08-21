@@ -32,5 +32,10 @@ public class TenancySubscriptionConfiguration : IEntityTypeConfiguration<Tenancy
         // One subscription record per tenancy.
         builder.HasIndex(s => s.TenancyId)
             .IsUnique();
+
+        builder.HasOne<Tenancy>()
+            .WithMany()
+            .HasForeignKey(s => s.TenancyId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
