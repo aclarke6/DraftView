@@ -47,15 +47,14 @@
     --color-status-critical: #C0392B;   /* Incident Red */
 
     /* Background tile — pale concrete, cold Glasgow mist */
-    --background-tile: url('/images/DraftView.Theme.Crime.Tile.png');
+    --background-tile: url('/images/crime-tile-light-1672x941.png');
 
     /* Hero and error images — cinematic Glasgow crime world; shared across light/dark variants */
-    --header-image:       url('/images/DraftView.Theme.Crime.Header.png');          /* Clydeside embankment banner — lamps, wet stone, Clyde Arc */
-    --atmosphere-image:   url('/images/DraftView.Theme.Crime.Atmosphere.png');      /* Clydeside skyline — Armadillo, Finnieston Crane, Clyde Arc */
-    --hero-image:         url('/images/DraftView.Theme.Crime.Hero.web.jpg');        /* Figure reading by the Clyde */
-    --bg-image:           url('/images/DraftView.Theme.Crime.Bg.web.jpg');          /* Empty desk, case files, lamp */
-    --error-image-403:    url('/images/DraftView.Theme.Crime.Error.403.web.jpg');   /* Strathclyde Police corridor */
-    --error-image-404:    url('/images/DraftView.Theme.Crime.Error.404.png');        /* Argyle Street crossroads */
-    --error-image-405:    url('/images/DraftView.Theme.Crime.Error.405.web.jpg');   /* Hotel corridor, room 405 — pending */
-    --error-image-500:    url('/images/DraftView.Theme.Crime.Error.500.web.jpg');   /* Incident room, cascading errors */
+    --header-image:       url('/images/crime-banner-2241x702.png');          /* Clydeside embankment banner — lamps, wet stone, Clyde Arc */
+    --atmosphere-image:   url('/images/crime-atmosphere-1672x941.png');      /* Clydeside skyline — Armadillo, Finnieston Crane, Clyde Arc */
+    --hero-image:         url('/images/crime-hero-1672x941.jpg');            /* Figure reading by the Clyde */
+    --error-image-403:    url('/images/crime-error-403-1672x941.jpg');       /* Strathclyde Police corridor */
+    --error-image-404:    url('/images/crime-error-404-1672x941.png');       /* Argyle Street crossroads */
+    --error-image-405:    url('/images/crime-error-405-1672x941.jpg');       /* Hotel corridor, room 405 — pending */
+    --error-image-500:    url('/images/crime-error-500-1672x941.jpg');       /* Incident room, cascading errors */
 }
