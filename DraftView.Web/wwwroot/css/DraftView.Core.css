@@ -13,7 +13,11 @@
    -------------------------------------------------------------------------- */
 :root {
     /* Update for every change */
-    --css-version: "v2026-08-21-5";
+    --css-version: "v2026-08-21-6";
+    /* Banner image focal point — overridden per theme for images that are not 3.2:1 panoramic.
+       Default suits Noir / Crime / Contemporary (all correctly proportioned at ~2240x700).
+       Historic and Adventure override this until replacement panoramic banners are available. */
+    --header-image-position: center 40%;
     /* Colour palette now split into Light and Dark theme files */
     /* Typography */
     --font-ui: 'Inter', system-ui, -apple-system, sans-serif;

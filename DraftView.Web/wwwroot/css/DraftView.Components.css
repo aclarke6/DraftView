@@ -323,7 +323,7 @@
 .page-header--image {
     background-image: var(--header-image);
     background-size: cover;
-    background-position: center 35%;
+    background-position: var(--header-image-position);
     position: relative;
     border-radius: var(--radius-lg);
     overflow: hidden;
