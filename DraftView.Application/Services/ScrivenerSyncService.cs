@@ -125,12 +125,18 @@ public class ScrivenerSyncService(
     {
         seenUuids.Add(node.Uuid);
 
+        var safeTitle = string.IsNullOrWhiteSpace(node.Title) ? "Untitled" : node.Title;
+        if (safeTitle == "Untitled")
+            logger.LogWarning(
+                "Section {Uuid} in project {ProjectId} has a blank title; substituting 'Untitled'.",
+                node.Uuid, projectId);
+
         var existing = await sectionRepo.GetByScrivenerUuidAsync(projectId, node.Uuid, ct);
         var created = false;
 
         if (existing is null)
         {
-            existing = await CreateSectionAsync(node, parentId, projectId, scrivFolderPath, ct);
+            existing = await CreateSectionAsync(node, safeTitle, parentId, projectId, scrivFolderPath, ct);
             await sectionRepo.AddAsync(existing, ct);
             created = true;
             _syncHadChanges = true;
@@ -143,7 +149,7 @@ public class ScrivenerSyncService(
         }
         else
         {
-            await UpdateSectionAsync(existing, node, scrivFolderPath, ct);
+            await UpdateSectionAsync(existing, node, safeTitle, scrivFolderPath, ct);
         }
 
         foreach (var child in node.Children)
@@ -298,22 +304,22 @@ public class ScrivenerSyncService(
         cursor.Length <= 16 ? cursor : cursor[..16];
 
     private async Task<Section> CreateSectionAsync(
-        ParsedBinderNode node, Guid? parentId, Guid projectId,
+        ParsedBinderNode node, string safeTitle, Guid? parentId, Guid projectId,
         string scrivFolderPath, CancellationToken ct)
     {
         if (node.NodeType == ParsedNodeType.Folder)
-            return Section.CreateFolder(projectId, node.Uuid, node.Title, parentId, node.SortOrder);
+            return Section.CreateFolder(projectId, node.Uuid, safeTitle, parentId, node.SortOrder);
 
         var rtf = await converter.ConvertAsync(scrivFolderPath, node.Uuid, ct);
-        return Section.CreateDocument(projectId, node.Uuid, node.Title, parentId,
+        return Section.CreateDocument(projectId, node.Uuid, safeTitle, parentId,
             node.SortOrder, rtf?.Html, rtf?.Hash, node.ScrivenerStatus);
     }
 
     private async Task UpdateSectionAsync(
-        Section existing, ParsedBinderNode node,
+        Section existing, ParsedBinderNode node, string safeTitle,
         string scrivFolderPath, CancellationToken ct)
     {
-        existing.UpdateTitle(node.Title);
+        existing.UpdateTitle(safeTitle);
         existing.UpdateSortOrder(node.SortOrder);
         existing.UpdateScrivenerStatus(node.ScrivenerStatus);
 
