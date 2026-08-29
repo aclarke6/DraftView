@@ -1,6 +1,6 @@
 ﻿# DraftView — Task List
 Last updated: 2026-08-29
-Last deployed: 2026-08-29 10:10 (commit: ed0a292)
+Last deployed: 2026-08-29 20:03 (commit: ad82a86)
 Last merged: 2026-08-29 — PR #87 (CHANGE-019: Recent Activity filter chips + Settings Activity Log) merged to main
 
 ---
