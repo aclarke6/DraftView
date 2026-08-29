@@ -1,6 +1,6 @@
 ﻿# DraftView — Task List
 Last updated: 2026-08-29
-Last deployed: 2026-08-29 20:03 (commit: ad82a86)
+Last deployed: 2026-08-29 23:17 (commit: 8a75172)
 Last merged: 2026-08-29 — PR #90 (CHANGE-021: activity filter groups fix) merged to main
 
 ---
