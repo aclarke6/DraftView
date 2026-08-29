@@ -739,7 +739,8 @@ public class AuthorController(
             ChapterTitle       = detail.ChapterTitle,
             Comments           = detail.Comments,
             ReadCount          = detail.ReadCount,
-            CommentAuthorNames = detail.CommentAuthorNames
+            CommentAuthorNames = detail.CommentAuthorNames,
+            ReaderNames        = detail.ReaderNames
         });
     }
 

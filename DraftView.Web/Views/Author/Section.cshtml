@@ -16,7 +16,7 @@
     <p class="author-section-view__meta">
         <span>@(Model.Section.ScrivenerStatus ?? "-")</span>
         <span class="author-section-view__meta-sep">|</span>
-        <span>Read by @Model.ReadCount reader(s)</span>
+        <span title="@(Model.ReaderNames.Any() ? string.Join(", ", Model.ReaderNames) : "")">Read by @Model.ReadCount reader(s)</span>
     </p>
 
     <div class="card author-section-view__content-card">
