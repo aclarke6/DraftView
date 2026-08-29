@@ -6,6 +6,12 @@ using DraftView.Infrastructure.Persistence.Repositories;
 
 namespace DraftView.Infrastructure.Tests.Persistence;
 
+/// <summary>
+/// Tests for AuthorNotificationRepository.
+/// Covers: add, get by author, get by author and type, delete single, delete all by author,
+/// delete by author and type, prune older than.
+/// Excludes: SaveChanges lifecycle (caller responsibility), concurrent-access scenarios.
+/// </summary>
 public class AuthorNotificationRepositoryTests : IDisposable
 {
     private static readonly Guid AuthorA = Guid.NewGuid();
@@ -29,10 +35,11 @@ public class AuthorNotificationRepositoryTests : IDisposable
     private static AuthorNotification Make(
         Guid authorId,
         DateTime? occurredAt = null,
-        string title = "Test notification") =>
+        string title = "Test notification",
+        NotificationEventType type = NotificationEventType.NewComment) =>
         AuthorNotification.Create(
             authorId,
-            NotificationEventType.NewComment,
+            type,
             title,
             null,
             null,
@@ -175,5 +182,68 @@ public class AuthorNotificationRepositoryTests : IDisposable
         var remaining = await _sut.GetByAuthorIdAsync(AuthorA);
         Assert.Single(remaining);
         Assert.Equal(cutoff.AddDays(1), remaining[0].OccurredAt);
+    }
+
+    // -----------------------------------------------------------------------
+    // GetByAuthorIdAndTypeAsync
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetByAuthorIdAndTypeAsync_ReturnsOnlyMatchingType()
+    {
+        await _sut.AddAsync(Make(AuthorA, type: NotificationEventType.NewComment));
+        await _sut.AddAsync(Make(AuthorA, type: NotificationEventType.ReaderJoined));
+        await _db.SaveChangesAsync();
+
+        var results = await _sut.GetByAuthorIdAndTypeAsync(AuthorA, NotificationEventType.NewComment);
+
+        Assert.Single(results);
+        Assert.Equal(NotificationEventType.NewComment, results[0].EventType);
+    }
+
+    [Fact]
+    public async Task GetByAuthorIdAndTypeAsync_ExcludesOtherAuthors()
+    {
+        await _sut.AddAsync(Make(AuthorA, type: NotificationEventType.NewComment));
+        await _sut.AddAsync(Make(AuthorB, type: NotificationEventType.NewComment));
+        await _db.SaveChangesAsync();
+
+        var results = await _sut.GetByAuthorIdAndTypeAsync(AuthorA, NotificationEventType.NewComment);
+
+        Assert.Single(results);
+        Assert.Equal(AuthorA, results[0].AuthorId);
+    }
+
+    // -----------------------------------------------------------------------
+    // DeleteByAuthorIdAndTypeAsync
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task DeleteByAuthorIdAndTypeAsync_RemovesOnlyMatchingType()
+    {
+        await _sut.AddAsync(Make(AuthorA, type: NotificationEventType.NewComment));
+        await _sut.AddAsync(Make(AuthorA, type: NotificationEventType.ReaderJoined));
+        await _db.SaveChangesAsync();
+
+        await _sut.DeleteByAuthorIdAndTypeAsync(AuthorA, NotificationEventType.NewComment);
+        await _db.SaveChangesAsync();
+
+        var remaining = await _sut.GetByAuthorIdAsync(AuthorA);
+        Assert.Single(remaining);
+        Assert.Equal(NotificationEventType.ReaderJoined, remaining[0].EventType);
+    }
+
+    [Fact]
+    public async Task DeleteByAuthorIdAndTypeAsync_LeavesOtherAuthorsIntact()
+    {
+        await _sut.AddAsync(Make(AuthorA, type: NotificationEventType.NewComment));
+        await _sut.AddAsync(Make(AuthorB, type: NotificationEventType.NewComment));
+        await _db.SaveChangesAsync();
+
+        await _sut.DeleteByAuthorIdAndTypeAsync(AuthorA, NotificationEventType.NewComment);
+        await _db.SaveChangesAsync();
+
+        var bRemaining = await _sut.GetByAuthorIdAsync(AuthorB);
+        Assert.Single(bRemaining);
     }
 }
