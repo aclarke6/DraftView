@@ -27,6 +27,7 @@ public class AccountControllerTests
     private readonly Mock<IUserPreferencesRepository> prefsRepo = new();
     private readonly Mock<IControlledUserEmailService> controlledUserEmailService = new();
     private readonly Mock<IEmailSender> emailSender = new();
+    private readonly Mock<IDashboardService> dashboardService = new();
     private readonly Mock<ILogger<AccountController>> logger = new();
     private readonly Mock<IUserEmailEncryptionService> emailEncryptionService = new();
     private readonly Mock<IUserEmailLookupHmacService> emailLookupHmacService = new();
@@ -79,6 +80,7 @@ public class AccountControllerTests
             prefsRepo.Object,
             controlledUserEmailService.Object,
             emailSender.Object,
+            dashboardService.Object,
             logger.Object
         );
 

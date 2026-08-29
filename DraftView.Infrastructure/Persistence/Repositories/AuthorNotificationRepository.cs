@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Interfaces.Repositories;
+using DraftView.Domain.Notifications;
 
 namespace DraftView.Infrastructure.Persistence.Repositories;
 
@@ -13,6 +14,17 @@ public class AuthorNotificationRepository(DraftViewDbContext db) : IAuthorNotifi
         Guid authorId, CancellationToken ct = default) =>
         await db.AuthorNotifications
             .Where(n => n.AuthorId == authorId)
+            .OrderByDescending(n => n.OccurredAt)
+            .ToListAsync(ct);
+
+    /// <summary>
+    /// Returns all notifications for the given author with the specified event type,
+    /// ordered by most recent first.
+    /// </summary>
+    public async Task<IReadOnlyList<AuthorNotification>> GetByAuthorIdAndTypeAsync(
+        Guid authorId, NotificationEventType type, CancellationToken ct = default) =>
+        await db.AuthorNotifications
+            .Where(n => n.AuthorId == authorId && n.EventType == type)
             .OrderByDescending(n => n.OccurredAt)
             .ToListAsync(ct);
 
@@ -29,6 +41,19 @@ public class AuthorNotificationRepository(DraftViewDbContext db) : IAuthorNotifi
             .Where(n => n.AuthorId == authorId)
             .ToListAsync(ct);
         db.AuthorNotifications.RemoveRange(all);
+    }
+
+    /// <summary>
+    /// Removes all notifications for the given author matching the specified event type.
+    /// Does not call SaveChanges — the caller is responsible for the unit of work.
+    /// </summary>
+    public async Task DeleteByAuthorIdAndTypeAsync(
+        Guid authorId, NotificationEventType type, CancellationToken ct = default)
+    {
+        var items = await db.AuthorNotifications
+            .Where(n => n.AuthorId == authorId && n.EventType == type)
+            .ToListAsync(ct);
+        db.AuthorNotifications.RemoveRange(items);
     }
 
     public async Task PruneOlderThanAsync(Guid authorId, DateTime cutoff, CancellationToken ct = default)

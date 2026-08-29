@@ -165,7 +165,61 @@ a.notification-item__title:hover {
 }
 
 /* --------------------------------------------------------------------------
-   5. Browser Fallbacks
+   5. Notification Filters (Dashboard chips and Settings Activity Log pills)
+   -------------------------------------------------------------------------- */
+.notification-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-5);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.notification-filter {
+    padding: 2px var(--space-3);
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    background: none;
+    color: var(--color-ink-muted);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.1s ease, color 0.1s ease, border-color 0.1s ease;
+    line-height: 1.6;
+}
+
+.notification-filter:hover {
+    background: var(--color-surface-alt, rgba(0,0,0,0.04));
+    color: var(--color-text);
+    border-color: var(--color-ink-muted);
+}
+
+.notification-filter--active {
+    background: var(--color-accent);
+    color: #fff;
+    border-color: var(--color-accent);
+}
+
+.notification-filter--active:hover {
+    background: var(--color-accent);
+    color: #fff;
+    border-color: var(--color-accent);
+}
+
+/* Settings-context overrides: no sticky/max-height constraints */
+.notifications-list--settings {
+    max-height: none;
+    overflow-y: visible;
+}
+
+.settings-activity-actions {
+    padding: var(--space-3) var(--space-5);
+    border-top: 1px solid var(--color-border);
+}
+
+/* --------------------------------------------------------------------------
+   6. Browser Fallbacks
    -------------------------------------------------------------------------- */
 @supports not (color: color-mix(in srgb, red 10%, transparent)) {
     .notification-item__icon--comment {
