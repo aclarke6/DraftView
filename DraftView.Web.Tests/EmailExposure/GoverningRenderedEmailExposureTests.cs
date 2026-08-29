@@ -164,7 +164,7 @@ public class GoverningRenderedEmailExposureTests :
                 var dashboardService = new Mock<IDashboardService>();
                 dashboardService.Setup(s => s.GetEmailHealthSummaryAsync(It.IsAny<CancellationToken>()))
                     .ReturnsAsync(Array.Empty<EmailDeliveryLog>());
-                dashboardService.Setup(s => s.GetNotificationsAsync(authorUser.Id, It.IsAny<CancellationToken>()))
+                dashboardService.Setup(s => s.GetNotificationsAsync(authorUser.Id, It.IsAny<NotificationEventType?>(), It.IsAny<CancellationToken>()))
                     .ReturnsAsync(Array.Empty<AuthorNotification>());
 
                 var publicationService = new Mock<IPublicationService>();

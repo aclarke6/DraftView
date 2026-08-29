@@ -7,6 +7,12 @@ using DraftView.Domain.Notifications;
 
 namespace DraftView.Application.Tests.Services;
 
+/// <summary>
+/// Tests for DashboardService notification methods.
+/// Covers: get notifications (unfiltered, type-filtered, pruning), dismiss single,
+/// dismiss all, dismiss by type.
+/// Excludes: project overview, reader summary, email health (each covered separately).
+/// </summary>
 public class DashboardServiceTests
 {
     private static readonly Guid AuthorId = Guid.NewGuid();
@@ -157,6 +163,91 @@ public class DashboardServiceTests
         await sut.DismissAllNotificationsAsync(AuthorId);
 
         _notificationRepo.Verify(r => r.DeleteAllByAuthorIdAsync(AuthorId, default), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    // -----------------------------------------------------------------------
+    // GetNotificationsAsync — type filter
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetNotificationsAsync_WithTypeFilter_CallsFilteredRepoMethod()
+    {
+        var type = NotificationEventType.NewComment;
+        var n = AuthorNotification.Create(
+            AuthorId, type, "Alice commented", null, null, DateTime.UtcNow);
+        var sut = CreateSut();
+
+        _notificationRepo
+            .Setup(r => r.PruneOlderThanAsync(AuthorId, It.IsAny<DateTime>(), default))
+            .Returns(Task.CompletedTask);
+        _notificationRepo
+            .Setup(r => r.GetByAuthorIdAndTypeAsync(AuthorId, type, default))
+            .ReturnsAsync(new List<AuthorNotification> { n });
+
+        var result = await sut.GetNotificationsAsync(AuthorId, type);
+
+        Assert.Single(result);
+        _notificationRepo.Verify(r => r.GetByAuthorIdAndTypeAsync(AuthorId, type, default), Times.Once);
+        _notificationRepo.Verify(r => r.GetByAuthorIdAsync(AuthorId, default), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetNotificationsAsync_WithNullFilter_CallsUnfilteredRepoMethod()
+    {
+        var sut = CreateSut();
+
+        _notificationRepo
+            .Setup(r => r.PruneOlderThanAsync(AuthorId, It.IsAny<DateTime>(), default))
+            .Returns(Task.CompletedTask);
+        _notificationRepo
+            .Setup(r => r.GetByAuthorIdAsync(AuthorId, default))
+            .ReturnsAsync(new List<AuthorNotification>());
+
+        await sut.GetNotificationsAsync(AuthorId, null);
+
+        _notificationRepo.Verify(r => r.GetByAuthorIdAsync(AuthorId, default), Times.Once);
+        _notificationRepo.Verify(
+            r => r.GetByAuthorIdAndTypeAsync(It.IsAny<Guid>(), It.IsAny<NotificationEventType>(), default),
+            Times.Never);
+    }
+
+    // -----------------------------------------------------------------------
+    // DismissNotificationsByTypeAsync
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task DismissNotificationsByTypeAsync_WithSpecificType_CallsDeleteByType()
+    {
+        var type = NotificationEventType.NewComment;
+        var sut = CreateSut();
+
+        _notificationRepo
+            .Setup(r => r.DeleteByAuthorIdAndTypeAsync(AuthorId, type, default))
+            .Returns(Task.CompletedTask);
+
+        await sut.DismissNotificationsByTypeAsync(AuthorId, type);
+
+        _notificationRepo.Verify(r => r.DeleteByAuthorIdAndTypeAsync(AuthorId, type, default), Times.Once);
+        _notificationRepo.Verify(r => r.DeleteAllByAuthorIdAsync(AuthorId, default), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task DismissNotificationsByTypeAsync_WithNullType_CallsDeleteAll()
+    {
+        var sut = CreateSut();
+
+        _notificationRepo
+            .Setup(r => r.DeleteAllByAuthorIdAsync(AuthorId, default))
+            .Returns(Task.CompletedTask);
+
+        await sut.DismissNotificationsByTypeAsync(AuthorId, null);
+
+        _notificationRepo.Verify(r => r.DeleteAllByAuthorIdAsync(AuthorId, default), Times.Once);
+        _notificationRepo.Verify(
+            r => r.DeleteByAuthorIdAndTypeAsync(It.IsAny<Guid>(), It.IsAny<NotificationEventType>(), default),
+            Times.Never);
         _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
     }
 }
