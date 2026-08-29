@@ -12,7 +12,7 @@ Last merged: 2026-08-29 — PR #85 (Sync resilience: graceful blank-title + surf
 **Repository:** https://github.com/aclarke6/DraftView
 
 ### Current Test State
-- 1,284 total, 1,284 passed, 1 skipped, 0 failed
+- 1,285 total, 1,284 passed, 1 skipped, 0 failed
 - 1 skipped — `SmtpEmailSenderIntegrationTests` (sends real email, manual only)
 
 ---
