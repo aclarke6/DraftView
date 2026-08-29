@@ -1,6 +1,6 @@
 ﻿# DraftView — Task List
 Last updated: 2026-08-29
-Last deployed: 2026-08-21 20:23 (commit: cda3cb7)
+Last deployed: 2026-08-29 10:10 (commit: ed0a292)
 Last merged: 2026-08-29 — PR #85 (Sync resilience: graceful blank-title + surface error in UI) merged to main
 
 ---
