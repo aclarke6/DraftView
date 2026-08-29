@@ -14,7 +14,7 @@ public class DashboardViewModel
     public IReadOnlyList<EmailDeliveryLog> EmailFailures { get; set; } = [];
     public int ActiveReaderCount { get; set; }
     public IReadOnlyList<AuthorNotification> Notifications { get; set; } = [];
-    public NotificationEventType? ActiveTypeFilter { get; set; }
+    public NotificationFilterGroup? ActiveTypeFilter { get; set; }
 }
 
 public class SectionViewModel

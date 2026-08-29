@@ -246,4 +246,37 @@ public class AuthorNotificationRepositoryTests : IDisposable
         var bRemaining = await _sut.GetByAuthorIdAsync(AuthorB);
         Assert.Single(bRemaining);
     }
+
+    // -----------------------------------------------------------------------
+    // GetByAuthorIdAndTypesAsync
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetByAuthorIdAndTypesAsync_ReturnsAllMatchingTypes()
+    {
+        await _sut.AddAsync(Make(AuthorA, type: NotificationEventType.ReaderJoined));
+        await _sut.AddAsync(Make(AuthorA, type: NotificationEventType.ReaderReadNewScene));
+        await _sut.AddAsync(Make(AuthorA, type: NotificationEventType.NewComment));
+        await _db.SaveChangesAsync();
+
+        var types = new[] { NotificationEventType.ReaderJoined, NotificationEventType.ReaderReadNewScene };
+        var results = await _sut.GetByAuthorIdAndTypesAsync(AuthorA, types);
+
+        Assert.Equal(2, results.Count);
+        Assert.All(results, n => Assert.Contains(n.EventType, types));
+    }
+
+    [Fact]
+    public async Task GetByAuthorIdAndTypesAsync_ExcludesOtherAuthors()
+    {
+        await _sut.AddAsync(Make(AuthorA, type: NotificationEventType.ReaderJoined));
+        await _sut.AddAsync(Make(AuthorB, type: NotificationEventType.ReaderJoined));
+        await _db.SaveChangesAsync();
+
+        var types = new[] { NotificationEventType.ReaderJoined };
+        var results = await _sut.GetByAuthorIdAndTypesAsync(AuthorA, types);
+
+        Assert.Single(results);
+        Assert.Equal(AuthorA, results[0].AuthorId);
+    }
 }

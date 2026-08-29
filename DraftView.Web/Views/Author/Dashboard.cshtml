@@ -278,17 +278,17 @@
 
             @{
                 var allClass      = FilterChipClass(Model.ActiveTypeFilter, null);
-                var commentClass  = FilterChipClass(Model.ActiveTypeFilter, NotificationEventType.NewComment);
-                var replyClass    = FilterChipClass(Model.ActiveTypeFilter, NotificationEventType.ReplyToAuthor);
-                var readerClass   = FilterChipClass(Model.ActiveTypeFilter, NotificationEventType.ReaderJoined);
-                var syncClass     = FilterChipClass(Model.ActiveTypeFilter, NotificationEventType.SyncCompleted);
+                var commentClass  = FilterChipClass(Model.ActiveTypeFilter, NotificationFilterGroup.Comments);
+                var replyClass    = FilterChipClass(Model.ActiveTypeFilter, NotificationFilterGroup.Replies);
+                var readerClass   = FilterChipClass(Model.ActiveTypeFilter, NotificationFilterGroup.Readers);
+                var syncClass     = FilterChipClass(Model.ActiveTypeFilter, NotificationFilterGroup.Sync);
             }
             <div class="notification-filters">
                 <a asp-action="Dashboard" class="@allClass">All</a>
-                <a asp-action="Dashboard" asp-route-type="@NotificationEventType.NewComment"    class="@commentClass">Comments</a>
-                <a asp-action="Dashboard" asp-route-type="@NotificationEventType.ReplyToAuthor" class="@replyClass">Replies</a>
-                <a asp-action="Dashboard" asp-route-type="@NotificationEventType.ReaderJoined"  class="@readerClass">Readers</a>
-                <a asp-action="Dashboard" asp-route-type="@NotificationEventType.SyncCompleted" class="@syncClass">Sync</a>
+                <a asp-action="Dashboard" asp-route-type="@NotificationFilterGroup.Comments" class="@commentClass">Comments</a>
+                <a asp-action="Dashboard" asp-route-type="@NotificationFilterGroup.Replies"  class="@replyClass">Replies</a>
+                <a asp-action="Dashboard" asp-route-type="@NotificationFilterGroup.Readers"  class="@readerClass">Readers</a>
+                <a asp-action="Dashboard" asp-route-type="@NotificationFilterGroup.Sync"     class="@syncClass">Sync</a>
             </div>
 
             @if (!Model.Notifications.Any())
@@ -328,7 +328,7 @@
 </div><!-- /dashboard-body -->
 
 @functions {
-    static string FilterChipClass(NotificationEventType? active, NotificationEventType? chip) =>
+    static string FilterChipClass(NotificationFilterGroup? active, NotificationFilterGroup? chip) =>
         "notification-filter" + (active == chip ? " notification-filter--active" : "");
 }
 

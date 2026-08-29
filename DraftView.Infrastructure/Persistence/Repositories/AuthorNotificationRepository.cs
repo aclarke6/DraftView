@@ -28,6 +28,17 @@ public class AuthorNotificationRepository(DraftViewDbContext db) : IAuthorNotifi
             .OrderByDescending(n => n.OccurredAt)
             .ToListAsync(ct);
 
+    /// <summary>
+    /// Returns all notifications for the given author whose event type is in the provided list,
+    /// ordered by most recent first.
+    /// </summary>
+    public async Task<IReadOnlyList<AuthorNotification>> GetByAuthorIdAndTypesAsync(
+        Guid authorId, IReadOnlyList<NotificationEventType> types, CancellationToken ct = default) =>
+        await db.AuthorNotifications
+            .Where(n => n.AuthorId == authorId && types.Contains(n.EventType))
+            .OrderByDescending(n => n.OccurredAt)
+            .ToListAsync(ct);
+
     public async Task DeleteAsync(Guid notificationId, CancellationToken ct = default)
     {
         var n = await db.AuthorNotifications.FindAsync([notificationId], ct);
