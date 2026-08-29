@@ -24,6 +24,7 @@ public class SectionViewModel
     public IReadOnlyList<Comment> Comments { get; set; } = [];
     public IReadOnlyDictionary<Guid, string> CommentAuthorNames { get; set; } = new Dictionary<Guid, string>();
     public int ReadCount { get; set; }
+    public IReadOnlyList<string> ReaderNames { get; set; } = [];
 }
 
 public class ReaderRowViewModel

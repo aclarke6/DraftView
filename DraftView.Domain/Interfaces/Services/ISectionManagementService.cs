@@ -36,6 +36,7 @@ public sealed class SectionDetailDto
     public required IReadOnlyList<Comment> Comments { get; init; }
     public required IReadOnlyDictionary<Guid, string> CommentAuthorNames { get; init; }
     public required int ReadCount { get; init; }
+    public required IReadOnlyList<string> ReaderNames { get; init; }
 }
 
 public interface ISectionManagementService

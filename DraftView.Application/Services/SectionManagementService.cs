@@ -129,13 +129,21 @@ public class SectionManagementService(
             nameMap[uid] = u?.DisplayName ?? "Unknown";
         }
 
+        var readerNames = new List<string>();
+        foreach (var uid in events.Select(e => e.UserId).Distinct())
+        {
+            var u = await userRepository.GetByIdAsync(uid, ct);
+            readerNames.Add(u?.DisplayName ?? "Unknown");
+        }
+
         return new SectionDetailDto
         {
             Section            = section,
             ChapterTitle       = chapterTitle,
             Comments           = comments,
             CommentAuthorNames = nameMap,
-            ReadCount          = events.Count
+            ReadCount          = events.Count,
+            ReaderNames        = readerNames
         };
     }
 
