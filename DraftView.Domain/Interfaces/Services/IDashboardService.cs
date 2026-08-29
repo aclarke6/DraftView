@@ -10,7 +10,7 @@ public interface IDashboardService
     Task<IReadOnlyList<EmailDeliveryLog>> GetEmailHealthSummaryAsync(CancellationToken ct = default);
 
     Task<IReadOnlyList<AuthorNotification>> GetNotificationsAsync(
-        Guid authorId, NotificationEventType? typeFilter = null, CancellationToken ct = default);
+        Guid authorId, NotificationFilterGroup? group = null, CancellationToken ct = default);
 
     Task DismissNotificationAsync(
         Guid notificationId, CancellationToken ct = default);

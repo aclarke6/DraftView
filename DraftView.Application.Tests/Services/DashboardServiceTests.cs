@@ -167,33 +167,55 @@ public class DashboardServiceTests
     }
 
     // -----------------------------------------------------------------------
-    // GetNotificationsAsync — type filter
+    // GetNotificationsAsync — filter group
     // -----------------------------------------------------------------------
 
     [Fact]
-    public async Task GetNotificationsAsync_WithTypeFilter_CallsFilteredRepoMethod()
+    public async Task GetNotificationsAsync_WithFilterGroup_CallsMultiTypeRepoMethod()
     {
-        var type = NotificationEventType.NewComment;
         var n = AuthorNotification.Create(
-            AuthorId, type, "Alice commented", null, null, DateTime.UtcNow);
+            AuthorId, NotificationEventType.NewComment, "Alice commented", null, null, DateTime.UtcNow);
         var sut = CreateSut();
 
         _notificationRepo
             .Setup(r => r.PruneOlderThanAsync(AuthorId, It.IsAny<DateTime>(), default))
             .Returns(Task.CompletedTask);
         _notificationRepo
-            .Setup(r => r.GetByAuthorIdAndTypeAsync(AuthorId, type, default))
+            .Setup(r => r.GetByAuthorIdAndTypesAsync(AuthorId, It.IsAny<IReadOnlyList<NotificationEventType>>(), default))
             .ReturnsAsync(new List<AuthorNotification> { n });
 
-        var result = await sut.GetNotificationsAsync(AuthorId, type);
+        var result = await sut.GetNotificationsAsync(AuthorId, NotificationFilterGroup.Comments);
 
         Assert.Single(result);
-        _notificationRepo.Verify(r => r.GetByAuthorIdAndTypeAsync(AuthorId, type, default), Times.Once);
+        _notificationRepo.Verify(
+            r => r.GetByAuthorIdAndTypesAsync(AuthorId, It.IsAny<IReadOnlyList<NotificationEventType>>(), default),
+            Times.Once);
         _notificationRepo.Verify(r => r.GetByAuthorIdAsync(AuthorId, default), Times.Never);
     }
 
     [Fact]
-    public async Task GetNotificationsAsync_WithNullFilter_CallsUnfilteredRepoMethod()
+    public async Task GetNotificationsAsync_ReadersGroup_IncludesReadNewSceneType()
+    {
+        var sut = CreateSut();
+        IReadOnlyList<NotificationEventType>? capturedTypes = null;
+
+        _notificationRepo
+            .Setup(r => r.PruneOlderThanAsync(AuthorId, It.IsAny<DateTime>(), default))
+            .Returns(Task.CompletedTask);
+        _notificationRepo
+            .Setup(r => r.GetByAuthorIdAndTypesAsync(AuthorId, It.IsAny<IReadOnlyList<NotificationEventType>>(), default))
+            .Callback<Guid, IReadOnlyList<NotificationEventType>, CancellationToken>((_, types, _) => capturedTypes = types)
+            .ReturnsAsync(new List<AuthorNotification>());
+
+        await sut.GetNotificationsAsync(AuthorId, NotificationFilterGroup.Readers);
+
+        Assert.NotNull(capturedTypes);
+        Assert.Contains(NotificationEventType.ReaderReadNewScene, capturedTypes);
+        Assert.Contains(NotificationEventType.ReaderJoined, capturedTypes);
+    }
+
+    [Fact]
+    public async Task GetNotificationsAsync_WithNullGroup_CallsUnfilteredRepoMethod()
     {
         var sut = CreateSut();
 
@@ -208,7 +230,7 @@ public class DashboardServiceTests
 
         _notificationRepo.Verify(r => r.GetByAuthorIdAsync(AuthorId, default), Times.Once);
         _notificationRepo.Verify(
-            r => r.GetByAuthorIdAndTypeAsync(It.IsAny<Guid>(), It.IsAny<NotificationEventType>(), default),
+            r => r.GetByAuthorIdAndTypesAsync(It.IsAny<Guid>(), It.IsAny<IReadOnlyList<NotificationEventType>>(), default),
             Times.Never);
     }
 

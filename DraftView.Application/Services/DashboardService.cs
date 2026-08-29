@@ -12,6 +12,24 @@ public class DashboardService(
     IAuthorNotificationRepository notificationRepo,
     IUnitOfWork unitOfWork) : IDashboardService
 {
+    private static readonly IReadOnlyDictionary<NotificationFilterGroup, NotificationEventType[]> GroupTypes =
+        new Dictionary<NotificationFilterGroup, NotificationEventType[]>
+        {
+            [NotificationFilterGroup.Comments] = [NotificationEventType.NewComment],
+            [NotificationFilterGroup.Replies]  = [NotificationEventType.ReplyToAuthor],
+            [NotificationFilterGroup.Readers]  = [
+                NotificationEventType.ReaderJoined,
+                NotificationEventType.ReaderReadNewScene,
+                NotificationEventType.ReaderReturned,
+                NotificationEventType.ReaderFinishedManuscript,
+                NotificationEventType.AccessRequest,
+            ],
+            [NotificationFilterGroup.Sync] = [
+                NotificationEventType.SyncCompleted,
+                NotificationEventType.ChapterUploaded,
+            ],
+        };
+
     public async Task<IReadOnlyList<Section>> GetProjectOverviewAsync(
         Guid projectId, CancellationToken ct = default) =>
         await sectionRepo.GetPublishedByProjectIdAsync(projectId, ct);
@@ -26,14 +44,14 @@ public class DashboardService(
 
     /// <summary>
     /// Returns notifications for the author, pruning any older than 90 days first.
-    /// When typeFilter is provided, only notifications of that event type are returned.
+    /// When a filter group is provided, only notifications belonging to that group are returned.
     /// </summary>
     public async Task<IReadOnlyList<AuthorNotification>> GetNotificationsAsync(
-        Guid authorId, NotificationEventType? typeFilter = null, CancellationToken ct = default)
+        Guid authorId, NotificationFilterGroup? group = null, CancellationToken ct = default)
     {
         await notificationRepo.PruneOlderThanAsync(authorId, DateTime.UtcNow.AddDays(-90), ct);
-        return typeFilter.HasValue
-            ? await notificationRepo.GetByAuthorIdAndTypeAsync(authorId, typeFilter.Value, ct)
+        return group.HasValue
+            ? await notificationRepo.GetByAuthorIdAndTypesAsync(authorId, GroupTypes[group.Value], ct)
             : await notificationRepo.GetByAuthorIdAsync(authorId, ct);
     }
 
