@@ -106,6 +106,24 @@ ORDER BY "UserName";
 
 ---
 
+## Diagnosing Sync Errors
+
+When a project shows `SyncStatus = Error` in the UI, the stored error message is the first diagnostic:
+
+```bash
+sudo -u postgres psql -d draftview -c 'SELECT "Name", "SyncStatus", "SyncErrorMessage", "LastSyncedAt" FROM "Projects" ORDER BY "LastSyncedAt" DESC;'
+```
+
+The `"SyncErrorMessage"` column contains the exact exception message captured at the point of failure. Common values:
+
+| Message | Cause | Fix |
+|---------|-------|-----|
+| `Section title must not be null or whitespace.` | A document or folder in the Scrivener binder has an empty title | Give it a name in Scrivener and re-sync (since issue #84, the sync service substitutes `"Untitled"` automatically — this should no longer cause an Error) |
+| `No DraftFolder found in project.scrivx.` | The `.scrivx` manifest has no Manuscript/Draft root | Check the Scrivener project structure |
+| `Dropbox not connected.` | OAuth token has expired or been revoked | Reconnect Dropbox in Settings |
+
+---
+
 ## The Three Things That Go Wrong
 
 1. **No quotes** → `column "x" does not exist` — PostgreSQL lowercased your identifier
