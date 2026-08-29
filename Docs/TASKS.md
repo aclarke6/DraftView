@@ -1,7 +1,7 @@
 ﻿# DraftView — Task List
 Last updated: 2026-08-29
 Last deployed: 2026-08-29 10:10 (commit: ed0a292)
-Last merged: 2026-08-29 — PR #85 (Sync resilience: graceful blank-title + surface error in UI) merged to main
+Last merged: 2026-08-29 — PR #87 (CHANGE-019: Recent Activity filter chips + Settings Activity Log) merged to main
 
 ---
 
@@ -12,7 +12,7 @@ Last merged: 2026-08-29 — PR #85 (Sync resilience: graceful blank-title + surf
 **Repository:** https://github.com/aclarke6/DraftView
 
 ### Current Test State
-- 1,285 total, 1,284 passed, 1 skipped, 0 failed
+- 1,293 total, 1,292 passed, 1 skipped, 0 failed
 - 1 skipped — `SmtpEmailSenderIntegrationTests` (sends real email, manual only)
 
 ---

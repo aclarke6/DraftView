@@ -130,6 +130,7 @@ All 5 phases complete and merged to main.
 
 ## Completed Changes
 
+- CHANGE-019 — Recent Activity: filter chips on Dashboard + Activity Log with scoped clear on Settings — merged 2026-08-29. Dashboard gains server-side filter chips (All/Comments/Replies/Readers/Sync) via `?type=X`; "Clear All" removed from Dashboard. Account/Settings gets Activity Log card with same filter pills; "Clear [Type]" (no confirm) when filtered; "Clear All" guarded by `confirm()`. `_NotificationItem.cshtml` partial extracted. `IAuthorNotificationRepository` + `IDashboardService` extended with type-filter methods (TDD, 8 new tests). CSS version `v2026-08-29-1`.
 - CHANGE-009 — Mobile reader: read-first scene comments — merged 2026-08-16. `MobileRead` becomes prose + bottom nav only; `.mobile-comments` section removed; "Scene Comments (N) ›" link navigates to new `GET /Reader/SceneComments/{sceneId}` page; `MobileReadViewModel` carries only `SceneCommentCount` int.
 - CHANGE-008 — Mobile reader: chapter comments page + disable passage-anchor capture on touch — merged 2026-08-16. Passage-anchor creation disabled on mobile; chapter-level comments moved to dedicated `GET /Reader/ChapterComments/{chapterId}` page.
 - CHANGE-006 + CHANGE-007 — Collapsible reader nav and comments toggle — merged 2026-08-15. Collapsible act tree with `›` chevron toggles, panel pin/unpin, `localStorage` state persistence.
