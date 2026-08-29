@@ -1,7 +1,7 @@
 ﻿# DraftView — Task List
 Last updated: 2026-08-29
 Last deployed: 2026-08-29 20:03 (commit: ad82a86)
-Last merged: 2026-08-29 — PR #87 (CHANGE-019: Recent Activity filter chips + Settings Activity Log) merged to main
+Last merged: 2026-08-29 — PR #90 (CHANGE-021: activity filter groups fix) merged to main
 
 ---
 
@@ -12,7 +12,7 @@ Last merged: 2026-08-29 — PR #87 (CHANGE-019: Recent Activity filter chips + S
 **Repository:** https://github.com/aclarke6/DraftView
 
 ### Current Test State
-- 1,293 total, 1,292 passed, 1 skipped, 0 failed
+- 1,296 total, 1,295 passed, 1 skipped, 0 failed
 - 1 skipped — `SmtpEmailSenderIntegrationTests` (sends real email, manual only)
 
 ---
