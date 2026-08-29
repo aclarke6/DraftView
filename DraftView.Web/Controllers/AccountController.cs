@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Interfaces.Services;
+using DraftView.Domain.Notifications;
 using Microsoft.EntityFrameworkCore;
 using DraftView.Infrastructure.Persistence;
 using DraftView.Web.Models;
@@ -22,6 +23,7 @@ public class AccountController(
     IUserPreferencesRepository prefsRepo,
     DraftView.Application.Interfaces.IControlledUserEmailService controlledUserEmailService,
     IEmailSender emailSender,
+    IDashboardService dashboardService,
     ILogger<AccountController> logger) : BaseController(userRepo)
 {
     // ---------------------------------------------------------------------------
@@ -458,7 +460,7 @@ public class AccountController(
     // Settings
     // ---------------------------------------------------------------------------
     [HttpGet]
-    public async Task<IActionResult> Settings()
+    public async Task<IActionResult> Settings(string? type = null)
     {
         var user = await GetCurrentUserAsync();
         if (user is null)
@@ -471,6 +473,8 @@ public class AccountController(
             user.Id,
             DraftView.Application.Contracts.UserEmailAccessPurpose.SelfServiceSettings));
 
+        NotificationEventType? typeFilter = Enum.TryParse<NotificationEventType>(type, out var parsed) ? parsed : null;
+
         var vm = new SettingsViewModel {
             DisplayName = user.DisplayName,
             Email = resolvedEmail,
@@ -481,7 +485,8 @@ public class AccountController(
             ProseFontSize = prefs?.ProseFontSize.ToString() ?? "Medium",
             ReaderBio = prefs?.ReaderBio,
             ReaderGenreInterests = prefs?.ReaderGenreInterests,
-            ReaderPace = prefs?.ReaderPace?.ToString()
+            ReaderPace = prefs?.ReaderPace?.ToString(),
+            ActiveTypeFilter = typeFilter
         };
 
         if (vm.IsAuthor)
@@ -489,9 +494,25 @@ public class AccountController(
             var connection = await GetDropboxConnectionAsync(user.Id);
             vm.DropboxStatus = connection?.Status.ToString();
             vm.DropboxAuthorisedAt = connection?.AuthorisedAt;
+            vm.Notifications = await dashboardService.GetNotificationsAsync(user.Id, typeFilter);
         }
 
         return View(vm);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ClearNotifications(string? type = null)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        NotificationEventType? typeFilter = Enum.TryParse<NotificationEventType>(type, out var parsed) ? parsed : null;
+        await dashboardService.DismissNotificationsByTypeAsync(author.Id, typeFilter);
+
+        return typeFilter.HasValue
+            ? RedirectToAction("Settings", new { type })
+            : RedirectToAction("Settings");
     }
 
     [HttpPost]

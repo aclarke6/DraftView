@@ -1,6 +1,7 @@
 ﻿using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Enumerations;
 using DraftView.Domain.Exceptions;
+using DraftView.Domain.Notifications;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using DraftView.Domain.Entities;
@@ -43,11 +44,13 @@ public class AuthorController(
     // ---------------------------------------------------------------------------
     // Dashboard
     // ---------------------------------------------------------------------------
-    public async Task<IActionResult> Dashboard()
+    public async Task<IActionResult> Dashboard(string? type = null)
     {
         var author = await TryGetCurrentAuthorAsync();
         if (author is null)
             return RedirectToAction("Index", "Reader");
+
+        NotificationEventType? typeFilter = Enum.TryParse<NotificationEventType>(type, out var parsed) ? parsed : null;
 
         var projects          = await projectRepo.GetAllAsync();
         var active            = await projectRepo.GetReaderActiveProjectAsync();
@@ -55,7 +58,7 @@ public class AuthorController(
             ? await publicationService.GetPublishedChaptersAsync(active.Id) : [];
         var failures      = await dashboardService.GetEmailHealthSummaryAsync();
         var readers       = await userRepo.GetAllBetaReadersAsync();
-        var notifications = await dashboardService.GetNotificationsAsync(author.Id);
+        var notifications = await dashboardService.GetNotificationsAsync(author.Id, typeFilter);
 
         return View(new DashboardViewModel
         {
@@ -64,7 +67,8 @@ public class AuthorController(
             PublishedSections = publishedChapters,
             EmailFailures     = failures,
             ActiveReaderCount = readers.Count(r => r.IsActive && !r.IsSoftDeleted),
-            Notifications     = notifications
+            Notifications     = notifications,
+            ActiveTypeFilter  = typeFilter
         });
     }
 
@@ -76,17 +80,6 @@ public class AuthorController(
     public async Task<IActionResult> DismissNotification(Guid notificationId)
     {
         await dashboardService.DismissNotificationAsync(notificationId);
-        return RedirectToAction("Dashboard");
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ClearAllNotifications()
-    {
-        var (author, error) = await RequireCurrentAuthorAsync();
-        if (error is not null || author is null) return error ?? Forbid();
-        
-        await dashboardService.DismissAllNotificationsAsync(author.Id);
         return RedirectToAction("Dashboard");
     }
 

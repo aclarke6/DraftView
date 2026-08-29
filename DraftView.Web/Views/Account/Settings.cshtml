@@ -1,4 +1,5 @@
-﻿@model DraftView.Web.Models.SettingsViewModel
+﻿@using DraftView.Domain.Notifications
+@model DraftView.Web.Models.SettingsViewModel
 @{
     ViewData["Title"] = "Account Settings";
 }
@@ -213,5 +214,81 @@
                 </div>
             }
         </div>
+
+        @if (Model.IsAuthor)
+        {
+            var activeLabel   = SettingsFilterLabel(Model.ActiveTypeFilter);
+            var allClass      = SettingsChipClass(Model.ActiveTypeFilter, null);
+            var commentClass  = SettingsChipClass(Model.ActiveTypeFilter, NotificationEventType.NewComment);
+            var replyClass    = SettingsChipClass(Model.ActiveTypeFilter, NotificationEventType.ReplyToAuthor);
+            var readerClass   = SettingsChipClass(Model.ActiveTypeFilter, NotificationEventType.ReaderJoined);
+            var syncClass     = SettingsChipClass(Model.ActiveTypeFilter, NotificationEventType.SyncCompleted);
+            <div class="card settings-card">
+                <div class="card__header"><span class="card__title">Activity Log</span></div>
+
+                <div class="notification-filters">
+                    <a asp-action="Settings" class="@allClass">All</a>
+                    <a asp-action="Settings" asp-route-type="@NotificationEventType.NewComment"    class="@commentClass">Comments</a>
+                    <a asp-action="Settings" asp-route-type="@NotificationEventType.ReplyToAuthor" class="@replyClass">Replies</a>
+                    <a asp-action="Settings" asp-route-type="@NotificationEventType.ReaderJoined"  class="@readerClass">Readers</a>
+                    <a asp-action="Settings" asp-route-type="@NotificationEventType.SyncCompleted" class="@syncClass">Sync</a>
+                </div>
+
+                @if (Model.Notifications.Any())
+                {
+                    <ul class="notifications-list notifications-list--settings">
+                        @foreach (var n in Model.Notifications)
+                        {
+                            <li class="notification-item">
+                                @await Html.PartialAsync("_NotificationItem", n)
+                                <form asp-controller="Author" asp-action="DismissNotification" method="post" style="display:contents">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="notificationId" value="@n.Id" />
+                                    <button type="submit" class="notification-item__dismiss" aria-label="Dismiss">&#x2715;</button>
+                                </form>
+                            </li>
+                        }
+                    </ul>
+
+                    <div class="settings-activity-actions">
+                        @if (Model.ActiveTypeFilter.HasValue)
+                        {
+                            <form asp-action="ClearNotifications" method="post" style="display:inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="type" value="@Model.ActiveTypeFilter" />
+                                <button type="submit" class="btn btn--ghost btn--sm">Clear @activeLabel</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form asp-action="ClearNotifications" method="post" style="display:inline"
+                                  onsubmit="return confirm('Clear all activity? This cannot be undone.')">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn--ghost btn--sm">Clear All</button>
+                            </form>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="settings-hint" style="margin-top:var(--space-4);">No activity to show.</p>
+                }
+            </div>
+        }
+
     </div>
 </div>
+
+@functions {
+    static string SettingsChipClass(NotificationEventType? active, NotificationEventType? chip) =>
+        "notification-filter" + (active == chip ? " notification-filter--active" : "");
+
+    static string? SettingsFilterLabel(NotificationEventType? type) => type switch
+    {
+        NotificationEventType.NewComment    => "Comments",
+        NotificationEventType.ReplyToAuthor => "Replies",
+        NotificationEventType.ReaderJoined  => "Readers",
+        NotificationEventType.SyncCompleted => "Sync",
+        _                                   => null
+    };
+}

@@ -1,4 +1,5 @@
 ﻿@using DraftView.Domain.Enumerations
+@using DraftView.Domain.Notifications
 @model DashboardViewModel
 @{ ViewData["Title"] = "Dashboard"; }
 
@@ -61,7 +62,7 @@
 <!-- Two-column lower layout: main content left, notifications right -->
 <div class="dashboard-body">
 
-    <!-- â”€â”€ LEFT COLUMN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+    <!-- â"€â"€ LEFT COLUMN â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ -->
     <div class="dashboard-main">
 
         <!-- Projects -->
@@ -256,7 +257,7 @@
 
     </div><!-- /dashboard-main -->
 
-    <!-- â”€â”€ RIGHT COLUMN: NOTIFICATIONS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+    <!-- â"€â"€ RIGHT COLUMN: NOTIFICATIONS â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ -->
     <aside class="dashboard-sidebar">
         <div class="card notifications-panel">
             <div class="card__header">
@@ -269,13 +270,25 @@
                         </span>
                     }
                 </span>
-                @if (Model.Notifications.Any())
+                @if (Model.ActiveTypeFilter.HasValue)
                 {
-                    <form asp-action="ClearAllNotifications" method="post" style="display:inline">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn--ghost btn--sm">Clear all</button>
-                    </form>
+                    <a asp-action="Dashboard" class="btn btn--ghost btn--sm">All</a>
                 }
+            </div>
+
+            @{
+                var allClass      = FilterChipClass(Model.ActiveTypeFilter, null);
+                var commentClass  = FilterChipClass(Model.ActiveTypeFilter, NotificationEventType.NewComment);
+                var replyClass    = FilterChipClass(Model.ActiveTypeFilter, NotificationEventType.ReplyToAuthor);
+                var readerClass   = FilterChipClass(Model.ActiveTypeFilter, NotificationEventType.ReaderJoined);
+                var syncClass     = FilterChipClass(Model.ActiveTypeFilter, NotificationEventType.SyncCompleted);
+            }
+            <div class="notification-filters">
+                <a asp-action="Dashboard" class="@allClass">All</a>
+                <a asp-action="Dashboard" asp-route-type="@NotificationEventType.NewComment"    class="@commentClass">Comments</a>
+                <a asp-action="Dashboard" asp-route-type="@NotificationEventType.ReplyToAuthor" class="@replyClass">Replies</a>
+                <a asp-action="Dashboard" asp-route-type="@NotificationEventType.ReaderJoined"  class="@readerClass">Readers</a>
+                <a asp-action="Dashboard" asp-route-type="@NotificationEventType.SyncCompleted" class="@syncClass">Sync</a>
             </div>
 
             @if (!Model.Notifications.Any())
@@ -299,7 +312,7 @@
                     @foreach (var n in Model.Notifications)
                     {
                         <li class="notification-item">
-                            <partial name="_NotificationItem" model="@n" />
+                            @await Html.PartialAsync("_NotificationItem", n)
                             <form asp-action="DismissNotification" method="post" style="display:contents">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="notificationId" value="@n.Id" />
@@ -314,8 +327,10 @@
 
 </div><!-- /dashboard-body -->
 
-
-
+@functions {
+    static string FilterChipClass(NotificationEventType? active, NotificationEventType? chip) =>
+        "notification-filter" + (active == chip ? " notification-filter--active" : "");
+}
 
 @if (Model.AllProjects.Any(p => p.SyncStatus == SyncStatus.Syncing))
 {
