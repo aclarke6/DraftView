@@ -1,6 +1,4 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using DraftView.Domain.Entities;
-using DraftView.Domain.Notifications;
 
 namespace DraftView.Web.Models;
 
@@ -67,8 +65,6 @@ public class SettingsViewModel
     public string? ReaderBio { get; set; }
     public string? ReaderGenreInterests { get; set; }
     public string? ReaderPace { get; set; }
-    public IReadOnlyList<AuthorNotification> Notifications { get; set; } = [];
-    public NotificationEventType? ActiveTypeFilter { get; set; }
 }
 
 public class UpdateReaderProfileViewModel

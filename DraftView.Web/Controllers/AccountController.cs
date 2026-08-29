@@ -460,7 +460,7 @@ public class AccountController(
     // Settings
     // ---------------------------------------------------------------------------
     [HttpGet]
-    public async Task<IActionResult> Settings(string? type = null)
+    public async Task<IActionResult> Settings()
     {
         var user = await GetCurrentUserAsync();
         if (user is null)
@@ -473,8 +473,6 @@ public class AccountController(
             user.Id,
             DraftView.Application.Contracts.UserEmailAccessPurpose.SelfServiceSettings));
 
-        NotificationEventType? typeFilter = Enum.TryParse<NotificationEventType>(type, out var parsed) ? parsed : null;
-
         var vm = new SettingsViewModel {
             DisplayName = user.DisplayName,
             Email = resolvedEmail,
@@ -485,8 +483,7 @@ public class AccountController(
             ProseFontSize = prefs?.ProseFontSize.ToString() ?? "Medium",
             ReaderBio = prefs?.ReaderBio,
             ReaderGenreInterests = prefs?.ReaderGenreInterests,
-            ReaderPace = prefs?.ReaderPace?.ToString(),
-            ActiveTypeFilter = typeFilter
+            ReaderPace = prefs?.ReaderPace?.ToString()
         };
 
         if (vm.IsAuthor)
@@ -494,7 +491,6 @@ public class AccountController(
             var connection = await GetDropboxConnectionAsync(user.Id);
             vm.DropboxStatus = connection?.Status.ToString();
             vm.DropboxAuthorisedAt = connection?.AuthorisedAt;
-            vm.Notifications = await dashboardService.GetNotificationsAsync(user.Id, typeFilter);
         }
 
         return View(vm);
