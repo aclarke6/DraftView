@@ -1,5 +1,5 @@
 # DraftView — Completed Work History
-Last updated: 2026-08-17
+Last updated: 2026-08-29
 
 ---
 
@@ -80,6 +80,7 @@ All 5 phases complete and merged to main.
 
 ## Bugs Fixed
 
+- Issue #84 — Sync service aborted on blank Scrivener section titles (`InvariantViolationException` → `Error` status with no visible cause in UI). Fixed in PR #85: title sanitized to `"Untitled"` in `ScrivenerSyncService.ReconcileNodeAsync` before reaching domain factories; sync now completes as `Healthy` with a warning log. `SyncErrorMessage` is also surfaced as inline text beneath the Error badge on Author Dashboard so authors can diagnose failures without leaving the page. `PostgreSQL.md` updated with diagnostic query and common error message table (2026-08-29)
 - BUG-025 — `InvitationRepository.GetByUserIdAsync` had no ORDER BY; with multiple invitations per user (cancelled + pending), it could return the cancelled one, making an invited reader appear as Inactive rather than Invited in the Readers list. Fixed by switching the Readers action to `GetPendingByUserIdAsync` (2026-08-15)
 - BUG-024 — Reader was not assigned the `BetaReader` Identity role on invitation acceptance; `AcceptInvitation` POST created the Identity user but never called `AddToRoleAsync`, so the session cookie had no role claim and all reader pages returned 403 Access Denied. Fixed by calling `AddToRoleAsync` immediately after `CreateAsync` (2026-08-15)
 - BUG-023 — ASP.NET Core DataProtection used an ephemeral in-memory key ring that regenerated on every service restart, silently invalidating antiforgery tokens from pre-restart sessions and causing unhandled 500 errors on all form POSTs around a restart. Fixed by persisting keys to `/var/www/draftview-keys`; path is configurable via `DataProtection:KeysPath` (falls back to ephemeral when unset, e.g. in development) (2026-08-15)
