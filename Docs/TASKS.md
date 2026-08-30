@@ -1,7 +1,7 @@
 ﻿# DraftView — Task List
-Last updated: 2026-08-29
+Last updated: 2026-08-30
 Last deployed: 2026-08-29 23:17 (commit: 8a75172)
-Last merged: 2026-08-29 — PR #90 (CHANGE-021: activity filter groups fix) merged to main
+Last merged: 2026-08-30 — PR #98 (Issue #94: remove IsReaderActive gate from reader-path guards) merged to main
 
 ---
 
@@ -12,7 +12,7 @@ Last merged: 2026-08-29 — PR #90 (CHANGE-021: activity filter groups fix) merg
 **Repository:** https://github.com/aclarke6/DraftView
 
 ### Current Test State
-- 1,296 total, 1,295 passed, 1 skipped, 0 failed
+- 1,300 total, 1,300 passed, 1 skipped, 0 failed
 - 1 skipped — `SmtpEmailSenderIntegrationTests` (sends real email, manual only)
 
 ---
