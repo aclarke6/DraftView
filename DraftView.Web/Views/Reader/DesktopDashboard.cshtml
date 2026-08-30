@@ -126,7 +126,8 @@ else
                                                 <td class="reader-dashboard__cell reader-dashboard__cell--comments">
                                                     @if (item.ReaderCommentCount > 0)
                                                     {
-                                                        <span class="reader-dashboard__comment-count">@item.ReaderCommentCount</span>
+                                                        <a href="@Url.Action("Read", "Reader", new { id = item.Chapter.Id })#chapter-comments"
+                                                           class="reader-dashboard__comment-count">@item.ReaderCommentCount</a>
                                                     }
                                                     else
                                                     {
