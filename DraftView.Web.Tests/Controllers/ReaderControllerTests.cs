@@ -920,6 +920,78 @@ public class ReaderControllerTests
         Assert.Equal("MobileChapters", view.ViewName);
     }
 
+    /// <summary>
+    /// Verifies that Dashboard resolves the domain user via ClaimTypes.Email when
+    /// the Identity UserName is a chosen username, not the account email.
+    /// Before the fix, GetByEmailAsync("JennyMoss") returns null → Forbid().
+    /// After the fix, GetByEmailAsync uses the email claim → user found → ViewResult.
+    /// </summary>
+    [Fact]
+    public async Task Dashboard_ReaderWithChosenUsername_ResolvesUserViaEmailClaim()
+    {
+        var user = User.Create("jenny@example.test", "Jenny", Role.BetaReader);
+        user.Activate();
+
+        userRepo.Setup(r => r.GetByEmailAsync("jenny@example.test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        readerAccessRepo.Setup(r => r.GetByReaderIdAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        accessRequestRepo.Setup(r => r.GetVisibleByReaderIdAsync(user.Id, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        readerDashboardService
+            .Setup(r => r.GetReaderChapterCommentCountsAsync(user.Id, It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, int>());
+        readerDashboardService
+            .Setup(r => r.GetCrossProjectResumeTargetAsync(user.Id, It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ResumeTarget?)null);
+
+        var sut = CreateSutWithChosenUsername("JennyMoss", "jenny@example.test", "Mozilla/5.0");
+
+        var result = await sut.Dashboard();
+
+        Assert.IsType<ViewResult>(result);
+    }
+
+    private ReaderController CreateSutWithChosenUsername(string username, string email, string userAgent)
+    {
+        var controller = new ReaderController(
+            projectRepo.Object,
+            sectionRepo.Object,
+            commentService.Object,
+            progressService.Object,
+            userRepo.Object,
+            prefsRepo.Object,
+            readerAccessRepo.Object,
+            sectionVersionRepo.Object,
+            readEventRepo.Object,
+            sectionDiffService.Object,
+            humanOverrideService.Object,
+            passageAnchorService.Object,
+            CommentDisplayService,
+            accessRequestRepo.Object,
+            accessRequestService.Object,
+            readerDashboardService.Object,
+            logger.Object);
+
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(
+                    new ClaimsIdentity(
+                        [
+                            new Claim(ClaimTypes.Name, username),
+                            new Claim(ClaimTypes.Email, email)
+                        ],
+                        "TestAuth"))
+            }
+        };
+
+        controller.ControllerContext.HttpContext.Request.Headers.UserAgent = userAgent;
+
+        return controller;
+    }
+
     private ReaderController CreateSut(User user, string userAgent)
     {
         var controller = new ReaderController(
