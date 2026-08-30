@@ -68,7 +68,7 @@ public class ReaderController(
             return Forbid();
 
         var project = await ProjectRepo.GetByIdAsync(projectId);
-        if (project is null || project.IsSoftDeleted)
+        if (project is null || !project.IsReaderActive || project.IsSoftDeleted)
             return View("NoActiveProject");
 
         var allSections = await SectionRepo.GetByProjectIdAsync(project.Id);
@@ -388,7 +388,7 @@ public class ReaderController(
         foreach (var projectId in projectIds)
         {
             var project = await ProjectRepo.GetByIdAsync(projectId);
-            if (project is null || project.IsSoftDeleted)
+            if (project is null || !project.IsReaderActive || project.IsSoftDeleted)
                 continue;
 
             var allSections = await SectionRepo.GetByProjectIdAsync(project.Id);
@@ -463,7 +463,7 @@ public class ReaderController(
             return View("NoActiveProject");
 
         var project = await ProjectRepo.GetByIdAsync(projectId);
-        if (project is null || project.IsSoftDeleted)
+        if (project is null || !project.IsReaderActive || project.IsSoftDeleted)
             return View("NoActiveProject");
 
         var allSections = await SectionRepo.GetByProjectIdAsync(project.Id);
