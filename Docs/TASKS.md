@@ -1,7 +1,7 @@
 ﻿# DraftView — Task List
-Last updated: 2026-08-30
-Last deployed: 2026-08-29 23:17 (commit: 8a75172)
-Last merged: 2026-08-30 — PR #98 (Issue #94: remove IsReaderActive gate from reader-path guards) merged to main
+Last updated: 2026-08-31
+Last deployed: 2026-08-31 (commit: 3fbb11b) — post Ubuntu 22.04 upgrade; PRs #97–102 included
+Last merged: 2026-08-30 — PR #102 (CHANGE-023: comment count pill as link) merged to main
 
 ---
 
