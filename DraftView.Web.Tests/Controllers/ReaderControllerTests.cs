@@ -921,6 +921,105 @@ public class ReaderControllerTests
     }
 
     /// <summary>
+    /// Verifies that Chapters (mobile entry point) serves content to a reader who has an
+    /// explicit ReaderAccess grant even when the project has IsReaderActive = false.
+    /// Before the fix the IsReaderActive guard returns NoActiveProject for such readers.
+    /// </summary>
+    [Fact]
+    public async Task Chapters_ReaderWithExplicitGrant_ProjectInactive_ShowsMobileChapters()
+    {
+        var authorId = Guid.NewGuid();
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+
+        // IsReaderActive = false by default — the project is closed to new public requests
+        // but the reader already has an explicit grant
+        var project = Project.Create("Test Book", "/Apps/Scrivener/Test", authorId, "project-root");
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
+        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        progressService.Setup(r => r.GetLastReadEventAsync(user.Id, project.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ReadEvent?)null);
+
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0 (iPhone)");
+
+        var result = await sut.Chapters(project.Id);
+
+        var view = Assert.IsType<ViewResult>(result);
+        Assert.Equal("MobileChapters", view.ViewName);
+    }
+
+    /// <summary>
+    /// Verifies that DesktopDashboard includes a project for a reader who has an explicit
+    /// grant even when the project has IsReaderActive = false.
+    /// Before the fix the inner-loop guard skips the project → Projects.Count == 0.
+    /// </summary>
+    [Fact]
+    public async Task Dashboard_Desktop_ExplicitGrant_ProjectInactive_IncludesProjectInDashboard()
+    {
+        var authorId = Guid.NewGuid();
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+
+        var project = Project.Create("Test Book", "/Apps/Scrivener/Test", authorId, "project-root");
+        var access  = ReaderAccess.Grant(user.Id, authorId, project.Id);
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        readerAccessRepo.Setup(r => r.GetByReaderIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync([access]);
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
+        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        accessRequestRepo.Setup(r => r.GetVisibleByReaderIdAsync(user.Id, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        readerDashboardService
+            .Setup(r => r.GetReaderChapterCommentCountsAsync(user.Id, It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, int>());
+        readerDashboardService
+            .Setup(r => r.GetCrossProjectResumeTargetAsync(user.Id, It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ResumeTarget?)null);
+
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0");
+
+        var result = await sut.Dashboard();
+
+        var view    = Assert.IsType<ViewResult>(result);
+        var model   = Assert.IsType<DesktopDashboardViewModel>(view.Model);
+        Assert.Equal(1, model.Projects.Count);
+    }
+
+    /// <summary>
+    /// Verifies that MobileDashboard shows the chapter list to a reader who has an explicit
+    /// grant even when the project has IsReaderActive = false.
+    /// Before the fix the IsReaderActive guard returns NoActiveProject.
+    /// </summary>
+    [Fact]
+    public async Task Dashboard_Mobile_ExplicitGrant_ProjectInactive_ShowsMobileChapters()
+    {
+        var authorId = Guid.NewGuid();
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+
+        var project = Project.Create("Test Book", "/Apps/Scrivener/Test", authorId, "project-root");
+        var access  = ReaderAccess.Grant(user.Id, authorId, project.Id);
+
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        readerAccessRepo.Setup(r => r.GetByReaderIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync([access]);
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
+        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        progressService.Setup(r => r.GetLastReadEventAsync(user.Id, project.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ReadEvent?)null);
+        progressService.Setup(r => r.HasReadSectionAsync(user.Id, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0 (iPhone)");
+
+        var result = await sut.Dashboard();
+
+        var view = Assert.IsType<ViewResult>(result);
+        Assert.Equal("MobileChapters", view.ViewName);
+    }
+
+    /// <summary>
     /// Verifies that Dashboard resolves the domain user via ClaimTypes.Email when
     /// the Identity UserName is a chosen username, not the account email.
     /// Before the fix, GetByEmailAsync("JennyMoss") returns null → Forbid().
