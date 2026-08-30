@@ -24,7 +24,11 @@ public abstract class BaseController(IUserRepository userRepo) : Controller
     {
         if (UserResolved) return CurrentUser;
 
-        var email    = User.Identity?.Name;
+        // Prefer the explicit email claim (added by DraftViewUserClaimsPrincipalFactory).
+        // Fall back to Identity.Name for sessions that pre-date the factory deployment
+        // and for users whose UserName already equals their email.
+        var email = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+                    ?? User.Identity?.Name;
         CurrentUser = email is null ? null : await userRepo.GetByEmailAsync(email, ct);
         UserResolved = true;
         return CurrentUser;
