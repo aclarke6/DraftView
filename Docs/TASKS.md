@@ -1,6 +1,6 @@
 ﻿# DraftView — Task List
 Last updated: 2026-08-31
-Last deployed: 2026-08-31 (commit: 3fbb11b) — post Ubuntu 22.04 upgrade; PRs #97–102 included
+Last deployed: 2026-08-31 00:16 (commit: 2aad8b6)
 Last merged: 2026-08-30 — PR #102 (CHANGE-023: comment count pill as link) merged to main
 
 ---
