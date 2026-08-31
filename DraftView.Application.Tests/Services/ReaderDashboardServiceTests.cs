@@ -277,6 +277,85 @@ public class ReaderDashboardServiceTests
     }
 
     // -----------------------------------------------------------------------
+    // GetChapterHasReadStatusesAsync
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task ChapterHasReadStatuses_EmptyChapterIds_ReturnsEmptyDictionary()
+    {
+        var result = await CreateSut().GetChapterHasReadStatusesAsync(UserId, []);
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task ChapterHasReadStatuses_ChapterFolderHasReadEvent_ReturnsTrue()
+    {
+        var chapterId = Guid.NewGuid();
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapterId, default)).ReturnsAsync([]);
+        _readEventRepo.Setup(r => r.HasReadAsync(chapterId, UserId, default)).ReturnsAsync(true);
+
+        var result = await CreateSut().GetChapterHasReadStatusesAsync(UserId, [chapterId]);
+
+        Assert.True(result[chapterId]);
+    }
+
+    [Fact]
+    public async Task ChapterHasReadStatuses_OnlySceneHasReadEvent_ReturnsTrue()
+    {
+        // Jenny-Bug: reader opened a scene via mobile — no ReadEvent on chapter folder.
+        var chapterId = Guid.NewGuid();
+        var scene = CreateScene(chapterId);
+
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapterId, default)).ReturnsAsync([scene]);
+        _readEventRepo.Setup(r => r.HasReadAsync(chapterId, UserId, default)).ReturnsAsync(false);
+        _readEventRepo.Setup(r => r.HasReadAsync(scene.Id, UserId, default)).ReturnsAsync(true);
+
+        var result = await CreateSut().GetChapterHasReadStatusesAsync(UserId, [chapterId]);
+
+        Assert.True(result[chapterId]);
+    }
+
+    [Fact]
+    public async Task ChapterHasReadStatuses_NoReadEventsAnywhere_ReturnsFalse()
+    {
+        var chapterId = Guid.NewGuid();
+        var scene = CreateScene(chapterId);
+
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapterId, default)).ReturnsAsync([scene]);
+        _readEventRepo.Setup(r => r.HasReadAsync(chapterId, UserId, default)).ReturnsAsync(false);
+        _readEventRepo.Setup(r => r.HasReadAsync(scene.Id, UserId, default)).ReturnsAsync(false);
+
+        var result = await CreateSut().GetChapterHasReadStatusesAsync(UserId, [chapterId]);
+
+        Assert.False(result[chapterId]);
+    }
+
+    [Fact]
+    public async Task ChapterHasReadStatuses_MultipleChapters_CorrectDistribution()
+    {
+        var ch1Id = Guid.NewGuid();
+        var ch2Id = Guid.NewGuid();
+        var scene1 = CreateScene(ch1Id);
+        var scene2 = CreateScene(ch2Id);
+
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(ch1Id, default)).ReturnsAsync([scene1]);
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(ch2Id, default)).ReturnsAsync([scene2]);
+
+        // ch1: scene has been read (mobile path), folder has not
+        _readEventRepo.Setup(r => r.HasReadAsync(ch1Id, UserId, default)).ReturnsAsync(false);
+        _readEventRepo.Setup(r => r.HasReadAsync(scene1.Id, UserId, default)).ReturnsAsync(true);
+
+        // ch2: nothing read
+        _readEventRepo.Setup(r => r.HasReadAsync(ch2Id, UserId, default)).ReturnsAsync(false);
+        _readEventRepo.Setup(r => r.HasReadAsync(scene2.Id, UserId, default)).ReturnsAsync(false);
+
+        var result = await CreateSut().GetChapterHasReadStatusesAsync(UserId, [ch1Id, ch2Id]);
+
+        Assert.True(result[ch1Id]);
+        Assert.False(result[ch2Id]);
+    }
+
+    // -----------------------------------------------------------------------
     // GetChapterChangeStatusesAsync
     // -----------------------------------------------------------------------
 
