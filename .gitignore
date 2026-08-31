@@ -1,6 +1,9 @@
 # PowerShell scripts
 *.ps1
 
+# Temporary scripts — not committed
+Temp/
+
 # Build output
 bin/
 obj/
