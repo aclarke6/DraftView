@@ -52,7 +52,14 @@
                             DraftView.Domain.Enumerations.ChangeClassification.Rewrite  => "change-pill change-pill--rewrite",
                             _ => "change-pill"
                         };
-                        <span class="@pillClass" aria-hidden="true"></span>
+                        var pillTitle = item.DiffClassification switch {
+                            DraftView.Domain.Enumerations.ChangeClassification.Trivial  => "Minor fix — small corrections only",
+                            DraftView.Domain.Enumerations.ChangeClassification.Polish   => "Minor edit — light edits to wording or phrasing",
+                            DraftView.Domain.Enumerations.ChangeClassification.Revision => "Revised — significant reworking of this scene",
+                            DraftView.Domain.Enumerations.ChangeClassification.Rewrite  => "Rewritten — major changes throughout this scene",
+                            _ => "Changed"
+                        };
+                        <span class="@pillClass" title="@pillTitle" aria-hidden="true"></span>
                     }
                 </a>
             }
@@ -150,7 +157,14 @@
                                 DraftView.Domain.Enumerations.ChangeClassification.Rewrite  => "change-pill change-pill--rewrite",
                                 _ => "change-pill"
                             };
-                            <span class="@pillClass" aria-hidden="true"></span>
+                            var pillTitle = item.DiffClassification switch {
+                                DraftView.Domain.Enumerations.ChangeClassification.Trivial  => "Minor fix — small corrections only",
+                                DraftView.Domain.Enumerations.ChangeClassification.Polish   => "Minor edit — light edits to wording or phrasing",
+                                DraftView.Domain.Enumerations.ChangeClassification.Revision => "Revised — significant reworking of this scene",
+                                DraftView.Domain.Enumerations.ChangeClassification.Rewrite  => "Rewritten — major changes throughout this scene",
+                                _ => "Changed"
+                            };
+                            <span class="@pillClass" title="@pillTitle" aria-hidden="true"></span>
                         }
                     </a>
                 }
