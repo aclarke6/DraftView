@@ -823,7 +823,18 @@ public class ReaderController(
             ? diffResult.Paragraphs
             : Array.Empty<ParagraphDiffResult>();
 
-        var diffClassification = diffResult?.Classification;
+        // Pill classification: use the version's stored ChangeClassification when the reader
+        // has not confirmed reading this version. This is independent of ShowDiffOnRevisit
+        // and works for version 1 (no diff computed). Falls back to the computed diff
+        // classification for version 2+ where a real diff exists.
+        var hasUnreadVersion = latestVersion?.ChangeClassification is not null
+            && (readEvent?.LastReadVersionNumber is null
+                || currentVersionNumber > readEvent.LastReadVersionNumber);
+
+        var diffClassification = hasUnreadVersion
+            ? latestVersion!.ChangeClassification
+            : diffResult?.Classification;
+
         var wordCount = CountWords(resolvedHtml);
 
         return (resolvedHtml, currentSectionVersionId, currentVersionNumber, versionLabel,
