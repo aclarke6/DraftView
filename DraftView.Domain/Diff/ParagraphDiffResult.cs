@@ -17,10 +17,28 @@ public sealed class ParagraphDiffResult
     /// <summary>Whether this paragraph was added, removed, or unchanged.</summary>
     public DiffResultType Type { get; }
 
-    public ParagraphDiffResult(string text, string html, DiffResultType type)
+    /// <summary>Words inserted in this paragraph relative to the previous version. Zero for Unchanged/Removed.</summary>
+    public int WordsAdded { get; }
+
+    /// <summary>Words deleted in this paragraph relative to the previous version. Zero for Unchanged/Added.</summary>
+    public int WordsRemoved { get; }
+
+    /// <summary>Total words in the current version of this paragraph. Zero for Removed paragraphs.</summary>
+    public int TotalWords { get; }
+
+    public ParagraphDiffResult(
+        string text,
+        string html,
+        DiffResultType type,
+        int wordsAdded = 0,
+        int wordsRemoved = 0,
+        int totalWords = 0)
     {
-        Text = text;
-        Html = html;
-        Type = type;
+        Text         = text;
+        Html         = html;
+        Type         = type;
+        WordsAdded   = wordsAdded;
+        WordsRemoved = wordsRemoved;
+        TotalWords   = totalWords;
     }
 }

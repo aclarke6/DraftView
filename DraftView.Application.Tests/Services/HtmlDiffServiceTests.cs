@@ -99,37 +99,131 @@ public class HtmlDiffServiceTests
     }
 
     [Fact]
-    public void Compute_ChangedParagraph_DetectsRemovalAndAddition()
+    public void Compute_SingleChangedParagraph_ProducesModified()
     {
-        var from = "<p>Hello</p>";
-        var to = "<p>World</p>";
+        var from = "<p>Hello world</p>";
+        var to = "<p>Hello earth</p>";
 
         var result = _sut.Compute(from, to);
 
-        Assert.Equal(2, result.Count);
-        Assert.Equal(DiffResultType.Removed, result[0].Type);
-        Assert.Equal("Hello", result[0].Text);
-        Assert.Equal(DiffResultType.Added, result[1].Type);
-        Assert.Equal("World", result[1].Text);
+        Assert.Single(result);
+        Assert.Equal(DiffResultType.Modified, result[0].Type);
+    }
+
+    [Fact]
+    public void Compute_ModifiedParagraph_HtmlContainsDelForRemovedWord()
+    {
+        var from = "<p>Hello world</p>";
+        var to = "<p>Hello earth</p>";
+
+        var result = _sut.Compute(from, to);
+
+        Assert.Contains("<del>world</del>", result[0].Html);
+    }
+
+    [Fact]
+    public void Compute_ModifiedParagraph_HtmlContainsInsForInsertedWord()
+    {
+        var from = "<p>Hello world</p>";
+        var to = "<p>Hello earth</p>";
+
+        var result = _sut.Compute(from, to);
+
+        Assert.Contains("<ins>earth</ins>", result[0].Html);
+    }
+
+    [Fact]
+    public void Compute_ModifiedParagraph_PopulatesWordCounts()
+    {
+        var from = "<p>Hello world</p>";
+        var to = "<p>Hello earth</p>";
+
+        var result = _sut.Compute(from, to);
+
+        Assert.Equal(1, result[0].WordsAdded);
+        Assert.Equal(1, result[0].WordsRemoved);
+    }
+
+    [Fact]
+    public void Compute_UnchangedParagraph_HasZeroWordChanges()
+    {
+        var from = "<p>Hello world</p>";
+        var to = "<p>Hello world</p>";
+
+        var result = _sut.Compute(from, to);
+
+        Assert.Equal(0, result[0].WordsAdded);
+        Assert.Equal(0, result[0].WordsRemoved);
+    }
+
+    [Fact]
+    public void Compute_UnchangedParagraph_HasTotalWordsPopulated()
+    {
+        var from = "<p>Hello world today</p>";
+        var to = "<p>Hello world today</p>";
+
+        var result = _sut.Compute(from, to);
+
+        Assert.Equal(3, result[0].TotalWords);
+    }
+
+    [Fact]
+    public void Compute_AddedParagraph_HasWordsAddedEqualToWordCount()
+    {
+        var from = "<p>Hello</p>";
+        var to = "<p>Hello</p><p>Brand new paragraph</p>";
+
+        var result = _sut.Compute(from, to);
+
+        var added = result.Single(r => r.Type == DiffResultType.Added);
+        Assert.Equal(3, added.WordsAdded);
+        Assert.Equal(0, added.WordsRemoved);
+        Assert.Equal(3, added.TotalWords);
+    }
+
+    [Fact]
+    public void Compute_RemovedParagraph_HasWordsRemovedEqualToWordCount()
+    {
+        var from = "<p>Hello</p><p>Gone forever now</p>";
+        var to = "<p>Hello</p>";
+
+        var result = _sut.Compute(from, to);
+
+        var removed = result.Single(r => r.Type == DiffResultType.Removed);
+        Assert.Equal(3, removed.WordsRemoved);
+        Assert.Equal(0, removed.WordsAdded);
+        Assert.Equal(0, removed.TotalWords);
+    }
+
+    [Fact]
+    public void Compute_MismatchedChangedParagraphCounts_KeepsSeparateRemovedAndAdded()
+    {
+        // 2 removed, 1 added — cannot pair 1:1, keep as separate Removed/Added
+        var from = "<p>Para one</p><p>Para two</p>";
+        var to = "<p>Para three</p>";
+
+        var result = _sut.Compute(from, to);
+
+        Assert.Equal(3, result.Count);
+        Assert.Equal(2, result.Count(r => r.Type == DiffResultType.Removed));
+        Assert.Equal(1, result.Count(r => r.Type == DiffResultType.Added));
     }
 
     [Fact]
     public void Compute_MultiParagraph_CorrectSequence()
     {
+        // B replaced by D: 1 Removed + 1 Added -> merged to Modified
         var from = "<p>A</p><p>B</p><p>C</p>";
         var to = "<p>A</p><p>D</p><p>C</p>";
 
         var result = _sut.Compute(from, to);
 
-        Assert.Equal(4, result.Count);
+        Assert.Equal(3, result.Count);
         Assert.Equal(DiffResultType.Unchanged, result[0].Type);
         Assert.Equal("A", result[0].Text);
-        Assert.Equal(DiffResultType.Removed, result[1].Type);
-        Assert.Equal("B", result[1].Text);
-        Assert.Equal(DiffResultType.Added, result[2].Type);
-        Assert.Equal("D", result[2].Text);
-        Assert.Equal(DiffResultType.Unchanged, result[3].Type);
-        Assert.Equal("C", result[3].Text);
+        Assert.Equal(DiffResultType.Modified, result[1].Type);
+        Assert.Equal(DiffResultType.Unchanged, result[2].Type);
+        Assert.Equal("C", result[2].Text);
     }
 
     [Fact]
@@ -146,15 +240,30 @@ public class HtmlDiffServiceTests
     }
 
     [Fact]
-    public void Compute_PreservesOriginalHtml_InResult()
+    public void Compute_PurelyAddedParagraph_PreservesOriginalHtml()
     {
+        // A second paragraph added with no removed counterpart preserves its original HTML.
+        var from = "<p>Hello</p>";
+        var to = "<p>Hello</p><p><em>World</em></p>";
+
+        var result = _sut.Compute(from, to);
+
+        var added = result.Single(r => r.Type == DiffResultType.Added);
+        Assert.Contains("<em>World</em>", added.Html);
+    }
+
+    [Fact]
+    public void Compute_ModifiedParagraph_HtmlContainsDiffSpansNotOriginalInlineTags()
+    {
+        // A modified paragraph produces diff HTML (del/ins), not the original inline markup.
         var from = "<p><strong>Hello</strong></p>";
         var to = "<p><em>World</em></p>";
 
         var result = _sut.Compute(from, to);
 
-        Assert.Equal(2, result.Count);
-        Assert.Contains("<strong>Hello</strong>", result[0].Html);
-        Assert.Contains("<em>World</em>", result[1].Html);
+        Assert.Single(result);
+        Assert.Equal(DiffResultType.Modified, result[0].Type);
+        Assert.Contains("<del>", result[0].Html);
+        Assert.Contains("<ins>", result[0].Html);
     }
 }

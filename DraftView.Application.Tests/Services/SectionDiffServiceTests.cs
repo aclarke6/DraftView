@@ -12,14 +12,16 @@ namespace DraftView.Application.Tests.Services;
 
 /// <summary>
 /// Tests for SectionDiffService.GetDiffForReaderAsync.
-/// Covers: version lookup, reader state handling, diff computation coordination.
-/// Excludes: HTML diff logic (covered in HtmlDiffServiceTests), UI rendering (Web layer).
+/// Covers: version lookup, reader state handling, diff computation coordination,
+/// cooldown gate, ReadingStyle threshold filtering, classification in result.
+/// Excludes: HTML diff logic (HtmlDiffServiceTests), UI rendering (Web layer).
 /// </summary>
 public class SectionDiffServiceTests
 {
     private readonly Mock<ISectionVersionRepository> versionRepo = new();
     private readonly Mock<IHtmlDiffService> htmlDiffService = new();
-    private SectionDiffService Sut => new(versionRepo.Object, htmlDiffService.Object);
+    private readonly Mock<IChangeClassificationService> classificationService = new();
+    private SectionDiffService Sut => new(versionRepo.Object, htmlDiffService.Object, classificationService.Object);
 
     [Fact]
     public async Task GetDiffForReaderAsync_WhenNoVersionExists_ReturnsNull()
@@ -90,6 +92,9 @@ public class SectionDiffServiceTests
                 new("New", "<p>New</p>", DiffResultType.Added)
             });
 
+        classificationService.Setup(s => s.Classify(It.IsAny<IReadOnlyList<ParagraphDiffResult>>()))
+            .Returns(ChangeClassification.Polish);
+
         var result = await Sut.GetDiffForReaderAsync(sectionId, lastReadVersionNumber: 1);
 
         Assert.NotNull(result);
@@ -115,6 +120,9 @@ public class SectionDiffServiceTests
         htmlDiffService.Setup(s => s.Compute(It.IsAny<string>(), It.IsAny<string>()))
             .Returns(new List<ParagraphDiffResult>());
 
+        classificationService.Setup(s => s.Classify(It.IsAny<IReadOnlyList<ParagraphDiffResult>>()))
+            .Returns(ChangeClassification.Polish);
+
         var result = await Sut.GetDiffForReaderAsync(sectionId, lastReadVersionNumber: 5);
 
         Assert.NotNull(result);
@@ -138,6 +146,9 @@ public class SectionDiffServiceTests
         htmlDiffService.Setup(s => s.Compute(It.IsAny<string>(), It.IsAny<string>()))
             .Returns(new List<ParagraphDiffResult>());
 
+        classificationService.Setup(s => s.Classify(It.IsAny<IReadOnlyList<ParagraphDiffResult>>()))
+            .Returns(ChangeClassification.Polish);
+
         await Sut.GetDiffForReaderAsync(sectionId, lastReadVersionNumber: 1);
 
         htmlDiffService.Verify(s => s.Compute("<p>From</p>", "<p>To</p>"), Times.Once);
@@ -159,6 +170,9 @@ public class SectionDiffServiceTests
 
         htmlDiffService.Setup(s => s.Compute(It.IsAny<string>(), It.IsAny<string>()))
             .Returns(new List<ParagraphDiffResult>());
+
+        classificationService.Setup(s => s.Classify(It.IsAny<IReadOnlyList<ParagraphDiffResult>>()))
+            .Returns(ChangeClassification.Polish);
 
         await Sut.GetDiffForReaderAsync(section.Id, lastReadVersionNumber: 1);
 
@@ -186,6 +200,255 @@ public class SectionDiffServiceTests
         Assert.Equal(5, result.CurrentVersionNumber);
         Assert.Empty(result.Paragraphs);
     }
+
+    // ---------------------------------------------------------------------------
+    // Cooldown gate (new overload)
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetDiffForReaderAsync_WhenCooldownActive_ReturnsNull()
+    {
+        var section = CreateSection();
+        var fromVersion = CreateVersionForSection(section, 1, "<p>Old</p>");
+        var latestVersion = CreateVersionForSection(section, 2, "<p>New</p>");
+
+        versionRepo.Setup(r => r.GetLatestAsync(section.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(latestVersion);
+        versionRepo.Setup(r => r.GetAllBySectionIdAsync(section.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<SectionVersion> { fromVersion, latestVersion });
+
+        htmlDiffService.Setup(s => s.Compute(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(new List<ParagraphDiffResult>());
+
+        // Marked as read 12 hours ago, cooldown is 24 hours -> still in cooldown
+        var lastMarkedReadAt = DateTimeOffset.UtcNow.AddHours(-12);
+
+        var result = await Sut.GetDiffForReaderAsync(
+            section.Id, lastReadVersionNumber: 1,
+            lastMarkedReadAt: lastMarkedReadAt,
+            diffCooldownHours: 24,
+            readingStyle: ReadingStyle.BetaReader);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetDiffForReaderAsync_WhenCooldownExpired_ReturnsDiff()
+    {
+        var section = CreateSection();
+        var fromVersion = CreateVersionForSection(section, 1, "<p>Old</p>");
+        var latestVersion = CreateVersionForSection(section, 2, "<p>New</p>");
+
+        versionRepo.Setup(r => r.GetLatestAsync(section.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(latestVersion);
+        versionRepo.Setup(r => r.GetAllBySectionIdAsync(section.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<SectionVersion> { fromVersion, latestVersion });
+
+        htmlDiffService.Setup(s => s.Compute(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(new List<ParagraphDiffResult>());
+
+        classificationService.Setup(s => s.Classify(It.IsAny<IReadOnlyList<ParagraphDiffResult>>()))
+            .Returns(ChangeClassification.Polish);
+
+        // Marked as read 48 hours ago, cooldown is 24 hours -> cooldown expired
+        var lastMarkedReadAt = DateTimeOffset.UtcNow.AddHours(-48);
+
+        var result = await Sut.GetDiffForReaderAsync(
+            section.Id, lastReadVersionNumber: 1,
+            lastMarkedReadAt: lastMarkedReadAt,
+            diffCooldownHours: 24,
+            readingStyle: ReadingStyle.BetaReader);
+
+        Assert.NotNull(result);
+    }
+
+    [Fact]
+    public async Task GetDiffForReaderAsync_WhenLastMarkedReadAtIsNull_NoCooldownApplied()
+    {
+        var section = CreateSection();
+        var fromVersion = CreateVersionForSection(section, 1, "<p>Old</p>");
+        var latestVersion = CreateVersionForSection(section, 2, "<p>New</p>");
+
+        versionRepo.Setup(r => r.GetLatestAsync(section.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(latestVersion);
+        versionRepo.Setup(r => r.GetAllBySectionIdAsync(section.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<SectionVersion> { fromVersion, latestVersion });
+
+        htmlDiffService.Setup(s => s.Compute(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(new List<ParagraphDiffResult>());
+
+        classificationService.Setup(s => s.Classify(It.IsAny<IReadOnlyList<ParagraphDiffResult>>()))
+            .Returns(ChangeClassification.Polish);
+
+        var result = await Sut.GetDiffForReaderAsync(
+            section.Id, lastReadVersionNumber: 1,
+            lastMarkedReadAt: null,
+            diffCooldownHours: 168,
+            readingStyle: ReadingStyle.BetaReader);
+
+        Assert.NotNull(result);
+    }
+
+    [Fact]
+    public async Task GetDiffForReaderAsync_SystemFloor_CooldownZeroTreatedAsOneHour()
+    {
+        var section = CreateSection();
+        var fromVersion = CreateVersionForSection(section, 1, "<p>Old</p>");
+        var latestVersion = CreateVersionForSection(section, 2, "<p>New</p>");
+
+        versionRepo.Setup(r => r.GetLatestAsync(section.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(latestVersion);
+
+        // Marked as read 30 minutes ago; cooldown=0 is floored to 1 hour -> still in cooldown
+        var lastMarkedReadAt = DateTimeOffset.UtcNow.AddMinutes(-30);
+
+        var result = await Sut.GetDiffForReaderAsync(
+            section.Id, lastReadVersionNumber: 1,
+            lastMarkedReadAt: lastMarkedReadAt,
+            diffCooldownHours: 0,
+            readingStyle: ReadingStyle.BetaReader);
+
+        Assert.Null(result);
+    }
+
+    // ---------------------------------------------------------------------------
+    // ReadingStyle threshold (new overload)
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetDiffForReaderAsync_WhenTrivialAndStoryReader_ReturnsNull()
+    {
+        var section = CreateSection();
+        var fromVersion = CreateVersionForSection(section, 1, "<p>Old</p>");
+        var latestVersion = CreateVersionForSection(section, 2, "<p>New</p>");
+
+        versionRepo.Setup(r => r.GetLatestAsync(section.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(latestVersion);
+        versionRepo.Setup(r => r.GetAllBySectionIdAsync(section.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<SectionVersion> { fromVersion, latestVersion });
+
+        htmlDiffService.Setup(s => s.Compute(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(new List<ParagraphDiffResult>());
+
+        classificationService.Setup(s => s.Classify(It.IsAny<IReadOnlyList<ParagraphDiffResult>>()))
+            .Returns(ChangeClassification.Trivial);
+
+        var result = await Sut.GetDiffForReaderAsync(
+            section.Id, lastReadVersionNumber: 1,
+            lastMarkedReadAt: null, diffCooldownHours: 1,
+            readingStyle: ReadingStyle.StoryReader);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetDiffForReaderAsync_WhenTrivialAndBetaReader_ReturnsDiff()
+    {
+        var section = CreateSection();
+        var fromVersion = CreateVersionForSection(section, 1, "<p>Old</p>");
+        var latestVersion = CreateVersionForSection(section, 2, "<p>New</p>");
+
+        versionRepo.Setup(r => r.GetLatestAsync(section.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(latestVersion);
+        versionRepo.Setup(r => r.GetAllBySectionIdAsync(section.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<SectionVersion> { fromVersion, latestVersion });
+
+        htmlDiffService.Setup(s => s.Compute(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(new List<ParagraphDiffResult>());
+
+        classificationService.Setup(s => s.Classify(It.IsAny<IReadOnlyList<ParagraphDiffResult>>()))
+            .Returns(ChangeClassification.Trivial);
+
+        var result = await Sut.GetDiffForReaderAsync(
+            section.Id, lastReadVersionNumber: 1,
+            lastMarkedReadAt: null, diffCooldownHours: 1,
+            readingStyle: ReadingStyle.BetaReader);
+
+        Assert.NotNull(result);
+    }
+
+    [Fact]
+    public async Task GetDiffForReaderAsync_WhenAlphaReaderAndPolishChanges_ReturnsNull()
+    {
+        var section = CreateSection();
+        var fromVersion = CreateVersionForSection(section, 1, "<p>Old</p>");
+        var latestVersion = CreateVersionForSection(section, 2, "<p>New</p>");
+
+        versionRepo.Setup(r => r.GetLatestAsync(section.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(latestVersion);
+        versionRepo.Setup(r => r.GetAllBySectionIdAsync(section.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<SectionVersion> { fromVersion, latestVersion });
+
+        htmlDiffService.Setup(s => s.Compute(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(new List<ParagraphDiffResult>());
+
+        classificationService.Setup(s => s.Classify(It.IsAny<IReadOnlyList<ParagraphDiffResult>>()))
+            .Returns(ChangeClassification.Polish);
+
+        var result = await Sut.GetDiffForReaderAsync(
+            section.Id, lastReadVersionNumber: 1,
+            lastMarkedReadAt: null, diffCooldownHours: 1,
+            readingStyle: ReadingStyle.AlphaReader);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetDiffForReaderAsync_WhenRewriteAndStructureOnly_ReturnsDiff()
+    {
+        var section = CreateSection();
+        var fromVersion = CreateVersionForSection(section, 1, "<p>Old</p>");
+        var latestVersion = CreateVersionForSection(section, 2, "<p>New</p>");
+
+        versionRepo.Setup(r => r.GetLatestAsync(section.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(latestVersion);
+        versionRepo.Setup(r => r.GetAllBySectionIdAsync(section.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<SectionVersion> { fromVersion, latestVersion });
+
+        htmlDiffService.Setup(s => s.Compute(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(new List<ParagraphDiffResult>());
+
+        classificationService.Setup(s => s.Classify(It.IsAny<IReadOnlyList<ParagraphDiffResult>>()))
+            .Returns(ChangeClassification.Rewrite);
+
+        var result = await Sut.GetDiffForReaderAsync(
+            section.Id, lastReadVersionNumber: 1,
+            lastMarkedReadAt: null, diffCooldownHours: 1,
+            readingStyle: ReadingStyle.StructureOnly);
+
+        Assert.NotNull(result);
+    }
+
+    [Fact]
+    public async Task GetDiffForReaderAsync_ResultIncludesClassification()
+    {
+        var section = CreateSection();
+        var fromVersion = CreateVersionForSection(section, 1, "<p>Old</p>");
+        var latestVersion = CreateVersionForSection(section, 2, "<p>New</p>");
+
+        versionRepo.Setup(r => r.GetLatestAsync(section.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(latestVersion);
+        versionRepo.Setup(r => r.GetAllBySectionIdAsync(section.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<SectionVersion> { fromVersion, latestVersion });
+
+        htmlDiffService.Setup(s => s.Compute(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(new List<ParagraphDiffResult>());
+
+        classificationService.Setup(s => s.Classify(It.IsAny<IReadOnlyList<ParagraphDiffResult>>()))
+            .Returns(ChangeClassification.Revision);
+
+        var result = await Sut.GetDiffForReaderAsync(
+            section.Id, lastReadVersionNumber: 1,
+            lastMarkedReadAt: null, diffCooldownHours: 1,
+            readingStyle: ReadingStyle.BetaReader);
+
+        Assert.NotNull(result);
+        Assert.Equal(ChangeClassification.Revision, result.Classification);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------------------------
 
     private static Section CreateSection()
     {

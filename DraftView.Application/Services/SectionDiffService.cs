@@ -1,5 +1,6 @@
 using DraftView.Domain.Contracts;
 using DraftView.Domain.Entities;
+using DraftView.Domain.Enumerations;
 using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Interfaces.Services;
 
@@ -7,22 +8,46 @@ namespace DraftView.Application.Services;
 
 /// <summary>
 /// Computes the diff between what a reader last read and the current version.
-/// Coordinates version lookup and HTML diff computation.
+/// Coordinates version lookup, HTML diff computation, classification, and
+/// reader preference filtering (cooldown and ReadingStyle threshold).
 /// </summary>
 public class SectionDiffService(
     ISectionVersionRepository versionRepo,
-    IHtmlDiffService htmlDiffService) : ISectionDiffService
+    IHtmlDiffService htmlDiffService,
+    IChangeClassificationService classificationService) : ISectionDiffService
 {
+    private const int SystemCooldownFloorHours = 1;
+
     /// <summary>
-    /// Returns the diff for a section from the reader's last read version
-    /// to the current latest version. Returns null if no current version exists.
-    /// Returns a result with HasChanges = false if the reader is on the latest version.
+    /// Legacy overload — no cooldown or threshold filtering.
+    /// Uses BetaReader threshold (all classifications pass). Delegates to the full overload.
+    /// </summary>
+    public Task<SectionDiffResult?> GetDiffForReaderAsync(
+        Guid sectionId,
+        int? lastReadVersionNumber,
+        CancellationToken ct = default)
+        => GetDiffForReaderAsync(
+            sectionId, lastReadVersionNumber,
+            lastMarkedReadAt: null,
+            diffCooldownHours: SystemCooldownFloorHours,
+            readingStyle: ReadingStyle.BetaReader,
+            ct);
+
+    /// <summary>
+    /// Returns the diff filtered by the reader's cooldown and ReadingStyle threshold.
+    /// Returns null when: no version exists, cooldown is active, or classification is below threshold.
     /// </summary>
     public async Task<SectionDiffResult?> GetDiffForReaderAsync(
         Guid sectionId,
         int? lastReadVersionNumber,
+        DateTimeOffset? lastMarkedReadAt,
+        int diffCooldownHours,
+        ReadingStyle readingStyle,
         CancellationToken ct = default)
     {
+        if (IsCooldownActive(lastMarkedReadAt, diffCooldownHours))
+            return null;
+
         var latestVersion = await versionRepo.GetLatestAsync(sectionId, ct);
 
         if (latestVersion is null)
@@ -40,49 +65,63 @@ public class SectionDiffService(
         if (fromVersion is null)
             return CreateHasChangesResultWithoutDiff(lastReadVersionNumber.Value, latestVersion.VersionNumber);
 
-        var diffParagraphs = htmlDiffService.Compute(
-            fromVersion.HtmlContent,
-            latestVersion.HtmlContent);
+        var diffParagraphs = htmlDiffService.Compute(fromVersion.HtmlContent, latestVersion.HtmlContent);
+        var classification  = classificationService.Classify(diffParagraphs);
 
-        return CreateHasChangesResultWithDiff(
-            lastReadVersionNumber.Value,
-            latestVersion.VersionNumber,
-            diffParagraphs);
+        if (!MeetsThreshold(classification, readingStyle))
+            return null;
+
+        return new SectionDiffResult
+        {
+            FromVersionNumber    = lastReadVersionNumber.Value,
+            CurrentVersionNumber = latestVersion.VersionNumber,
+            HasChanges           = true,
+            Paragraphs           = diffParagraphs,
+            Classification       = classification
+        };
+    }
+
+    private static bool IsCooldownActive(DateTimeOffset? lastMarkedReadAt, int diffCooldownHours)
+    {
+        if (lastMarkedReadAt is null)
+            return false;
+
+        var effectiveCooldown = Math.Max(SystemCooldownFloorHours, diffCooldownHours);
+        return DateTimeOffset.UtcNow < lastMarkedReadAt.Value.AddHours(effectiveCooldown);
+    }
+
+    private static bool MeetsThreshold(ChangeClassification? classification, ReadingStyle readingStyle)
+    {
+        if (classification is null)
+            return false;
+
+        var minimum = readingStyle switch
+        {
+            ReadingStyle.BetaReader    => ChangeClassification.Trivial,
+            ReadingStyle.StoryReader   => ChangeClassification.Polish,
+            ReadingStyle.AlphaReader   => ChangeClassification.Revision,
+            ReadingStyle.StructureOnly => ChangeClassification.Rewrite,
+            _                          => ChangeClassification.Polish
+        };
+
+        return classification >= minimum;
     }
 
     private static SectionDiffResult CreateNoChangesResult(int? fromVersionNumber, int currentVersionNumber)
-    {
-        return new SectionDiffResult
+        => new()
         {
-            FromVersionNumber = fromVersionNumber,
+            FromVersionNumber    = fromVersionNumber,
             CurrentVersionNumber = currentVersionNumber,
-            HasChanges = false,
-            Paragraphs = Array.Empty<Domain.Diff.ParagraphDiffResult>()
+            HasChanges           = false,
+            Paragraphs           = Array.Empty<Domain.Diff.ParagraphDiffResult>()
         };
-    }
 
     private static SectionDiffResult CreateHasChangesResultWithoutDiff(int fromVersionNumber, int currentVersionNumber)
-    {
-        return new SectionDiffResult
+        => new()
         {
-            FromVersionNumber = fromVersionNumber,
+            FromVersionNumber    = fromVersionNumber,
             CurrentVersionNumber = currentVersionNumber,
-            HasChanges = true,
-            Paragraphs = Array.Empty<Domain.Diff.ParagraphDiffResult>()
+            HasChanges           = true,
+            Paragraphs           = Array.Empty<Domain.Diff.ParagraphDiffResult>()
         };
-    }
-
-    private static SectionDiffResult CreateHasChangesResultWithDiff(
-        int fromVersionNumber,
-        int currentVersionNumber,
-        IReadOnlyList<Domain.Diff.ParagraphDiffResult> paragraphs)
-    {
-        return new SectionDiffResult
-        {
-            FromVersionNumber = fromVersionNumber,
-            CurrentVersionNumber = currentVersionNumber,
-            HasChanges = true,
-            Paragraphs = paragraphs
-        };
-    }
 }
