@@ -1,7 +1,7 @@
 ﻿# DraftView — Task List
 Last updated: 2026-08-31
 Last deployed: 2026-08-31 14:33 (commit: 9533b12)
-Last merged: 2026-08-31 — PR #109 (#82 PR2: auto-version on sync for ScrivenerDropbox) merged to main
+Last merged: 2026-08-31 — PR #111 (#82 baseline versions for stable sections) merged to main
 
 ---
 
@@ -12,7 +12,7 @@ Last merged: 2026-08-31 — PR #109 (#82 PR2: auto-version on sync for Scrivener
 **Repository:** https://github.com/aclarke6/DraftView
 
 ### Current Test State
-- 1,375 total, 1,375 passed, 1 skipped, 0 failed
+- 1,381 total, 1,381 passed, 1 skipped, 0 failed
 - 1 skipped — `SmtpEmailSenderIntegrationTests` (sends real email, manual only)
 
 ---
