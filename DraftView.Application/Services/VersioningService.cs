@@ -86,6 +86,8 @@ public class VersioningService(
     {
         if (document.NodeType != NodeType.Document || !document.IsPublished || document.IsSoftDeleted)
             return;
+        if (string.IsNullOrEmpty(document.HtmlContent))
+            return;
 
         var maxVersion = await sectionVersionRepository.GetMaxVersionNumberAsync(document.Id, ct);
         if (maxVersion > 0)
@@ -103,6 +105,8 @@ public class VersioningService(
     public async Task CreateVersionFromSyncAsync(Section document, Guid authorId, CancellationToken ct = default)
     {
         if (document.NodeType != NodeType.Document || !document.IsPublished || document.IsSoftDeleted)
+            return;
+        if (string.IsNullOrEmpty(document.HtmlContent))
             return;
 
         if (document.ParentId.HasValue)

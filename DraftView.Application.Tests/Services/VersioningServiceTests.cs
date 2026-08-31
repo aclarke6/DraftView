@@ -1110,6 +1110,30 @@ public class VersioningServiceTests
     // -----------------------------------------------------------------------
 
     [Fact]
+    public async Task EnsureInitialVersionAsync_WhenNoHtmlContent_DoesNotCreateVersion()
+    {
+        // Published scene with no prose content must not cause SectionVersion.Create to throw.
+        var doc = Section.CreateDocumentForUpload(Guid.NewGuid(), "Empty Scene", null, 0);
+        doc.PublishAsPartOfChapter("hash");
+        // HtmlContent is null (no content added yet)
+
+        await _sut.EnsureInitialVersionAsync(doc, Guid.NewGuid());
+
+        _versionRepo.Verify(r => r.AddAsync(It.IsAny<SectionVersion>(), default), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateVersionFromSyncAsync_WhenNoHtmlContent_DoesNotCreateVersion()
+    {
+        var doc = Section.CreateDocumentForUpload(Guid.NewGuid(), "Empty Scene", null, 0);
+        doc.PublishAsPartOfChapter("hash");
+
+        await _sut.CreateVersionFromSyncAsync(doc, Guid.NewGuid());
+
+        _versionRepo.Verify(r => r.AddAsync(It.IsAny<SectionVersion>(), default), Times.Never);
+    }
+
+    [Fact]
     public async Task EnsureInitialVersionAsync_WhenNoVersionExists_CreatesVersion()
     {
         var chapter = MakeChapter(Guid.NewGuid());
