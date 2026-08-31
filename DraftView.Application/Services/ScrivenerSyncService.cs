@@ -115,7 +115,10 @@ public class ScrivenerSyncService(
             if (result.Hash != section.ContentHash)
             {
                 section.UpdateContent(result.Html, result.Hash);
-                section.MarkContentChanged();
+                if (section.IsPublished)
+                    await versioningService.CreateVersionFromSyncAsync(section, project.AuthorId, ct);
+                else
+                    section.MarkContentChanged();
             }
         }
 
