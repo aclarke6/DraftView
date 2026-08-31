@@ -1,7 +1,7 @@
 ﻿# DraftView — Task List
 Last updated: 2026-08-31
 Last deployed: 2026-08-31 14:54 (commit: 3af3de3)
-Last merged: 2026-08-31 — PR #111 (#82 baseline versions for stable sections) merged to main
+Last merged: 2026-08-31 — PR #112 (fix: null classification suppressed badges for pre-versioning readers) merged to main
 
 ---
 
@@ -12,7 +12,7 @@ Last merged: 2026-08-31 — PR #111 (#82 baseline versions for stable sections) 
 **Repository:** https://github.com/aclarke6/DraftView
 
 ### Current Test State
-- 1,381 total, 1,381 passed, 1 skipped, 0 failed
+- 1,382 total, 1,382 passed, 1 skipped, 0 failed
 - 1 skipped — `SmtpEmailSenderIntegrationTests` (sends real email, manual only)
 
 ---
