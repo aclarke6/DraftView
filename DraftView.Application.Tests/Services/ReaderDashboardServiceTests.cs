@@ -408,6 +408,52 @@ public class ReaderDashboardServiceTests
         Assert.Equal(ChangeClassification.Rewrite, result[chapterId]);
     }
 
+    [Fact]
+    public async Task ChapterChangeStatuses_WhenNullLastReadVersionNumber_WithVersionMeetingThreshold_ReturnsClassification()
+    {
+        // Backfill scenario: ReadEvent exists but LastReadVersionNumber is null
+        // (reader credited with a pre-versioning read). Any published version counts as pending.
+        var chapterId = Guid.NewGuid();
+        var scene = CreateScene(chapterId);
+        var readEvent = ReadEvent.Create(scene.Id, UserId); // LastReadVersionNumber stays null
+        var version = CreateVersion(scene, 1, ChangeClassification.Polish);
+
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapterId, default))
+            .ReturnsAsync([scene]);
+        _readEventRepo.Setup(r => r.GetAsync(scene.Id, UserId, default))
+            .ReturnsAsync(readEvent);
+        _sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, default))
+            .ReturnsAsync(version);
+
+        var result = await CreateSut().GetChapterChangeStatusesAsync(
+            UserId, [chapterId], ReadingStyle.StoryReader);
+
+        Assert.Equal(ChangeClassification.Polish, result[chapterId]);
+    }
+
+    [Fact]
+    public async Task ChapterChangeStatuses_WhenNullLastReadVersionNumber_WithClassificationBelowThreshold_ReturnsNull()
+    {
+        // Backfill scenario: ReadEvent exists, LastReadVersionNumber is null,
+        // but the published version is Trivial — below StoryReader threshold.
+        var chapterId = Guid.NewGuid();
+        var scene = CreateScene(chapterId);
+        var readEvent = ReadEvent.Create(scene.Id, UserId);
+        var version = CreateVersion(scene, 1, ChangeClassification.Trivial);
+
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapterId, default))
+            .ReturnsAsync([scene]);
+        _readEventRepo.Setup(r => r.GetAsync(scene.Id, UserId, default))
+            .ReturnsAsync(readEvent);
+        _sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, default))
+            .ReturnsAsync(version);
+
+        var result = await CreateSut().GetChapterChangeStatusesAsync(
+            UserId, [chapterId], ReadingStyle.StoryReader);
+
+        Assert.Null(result[chapterId]);
+    }
+
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------

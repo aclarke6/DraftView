@@ -106,14 +106,17 @@ public class ReaderDashboardService(
             foreach (var scene in documents)
             {
                 var readEvent = await readEventRepo.GetAsync(scene.Id, userId, ct);
-                if (readEvent?.LastReadVersionNumber is null)
+                if (readEvent is null)
                     continue;
 
                 var latestVersion = await sectionVersionRepo.GetLatestAsync(scene.Id, ct);
                 if (latestVersion is null)
                     continue;
 
-                if (latestVersion.VersionNumber <= readEvent.LastReadVersionNumber)
+                // Null LastReadVersionNumber = baseline unknown (pre-versioning read or backfill).
+                // Any published version counts as pending for this reader.
+                if (readEvent.LastReadVersionNumber is not null &&
+                    latestVersion.VersionNumber <= readEvent.LastReadVersionNumber)
                     continue;
 
                 var classification = latestVersion.ChangeClassification;
