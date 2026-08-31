@@ -47,5 +47,18 @@ public class UserPreferencesConfiguration : IEntityTypeConfiguration<UserPrefere
         builder.Property(p => p.ReaderPace)
             .IsRequired(false)
             .HasConversion<string>();
+
+        builder.Property(p => p.ShowDiffOnRevisit)
+            .IsRequired()
+            .HasDefaultValue(false);
+
+        builder.Property(p => p.ReadingStyle)
+            .IsRequired()
+            .HasConversion<string>()
+            .HasDefaultValue(ReadingStyle.StoryReader);
+
+        builder.Property(p => p.DiffCooldownHours)
+            .IsRequired()
+            .HasDefaultValue(24);
     }
 }

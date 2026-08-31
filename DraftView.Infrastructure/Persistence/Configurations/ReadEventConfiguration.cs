@@ -29,6 +29,12 @@ public class ReadEventConfiguration : IEntityTypeConfiguration<ReadEvent>
             .HasColumnName("BannerDismissedAtVersion")
             .IsRequired(false);
 
+        builder.Property(e => e.PreviousReadVersionNumber)
+            .IsRequired(false);
+
+        builder.Property(e => e.LastMarkedReadAt)
+            .IsRequired(false);
+
         builder.HasOne<PassageAnchor>()
             .WithMany()
             .HasForeignKey(r => r.ResumeAnchorId)

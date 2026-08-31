@@ -254,4 +254,70 @@ public class UserPreferencesTests
 
         Assert.Equal(theme, prefs.DisplayTheme);
     }
+
+    // ---------------------------------------------------------------------------
+    // Diff preferences defaults
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateForBetaReader_DiffPreferencesDefaultToOff()
+    {
+        var prefs = UserPreferences.CreateForBetaReader(UserId);
+
+        Assert.False(prefs.ShowDiffOnRevisit);
+        Assert.Equal(ReadingStyle.StoryReader, prefs.ReadingStyle);
+        Assert.Equal(24, prefs.DiffCooldownHours);
+    }
+
+    // ---------------------------------------------------------------------------
+    // UpdateDiffPreferences
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void UpdateDiffPreferences_SetsAllFields()
+    {
+        var prefs = UserPreferences.CreateForBetaReader(UserId);
+
+        prefs.UpdateDiffPreferences(true, ReadingStyle.BetaReader, 72);
+
+        Assert.True(prefs.ShowDiffOnRevisit);
+        Assert.Equal(ReadingStyle.BetaReader, prefs.ReadingStyle);
+        Assert.Equal(72, prefs.DiffCooldownHours);
+    }
+
+    [Fact]
+    public void UpdateDiffPreferences_WithCooldownZero_ThrowsInvariantViolation()
+    {
+        var prefs = UserPreferences.CreateForBetaReader(UserId);
+
+        var ex = Assert.Throws<InvariantViolationException>(
+            () => prefs.UpdateDiffPreferences(true, ReadingStyle.StoryReader, 0));
+
+        Assert.Equal("I-PREF-COOLDOWN", ex.InvariantCode);
+    }
+
+    [Fact]
+    public void UpdateDiffPreferences_WithNegativeCooldown_ThrowsInvariantViolation()
+    {
+        var prefs = UserPreferences.CreateForBetaReader(UserId);
+
+        var ex = Assert.Throws<InvariantViolationException>(
+            () => prefs.UpdateDiffPreferences(true, ReadingStyle.StoryReader, -1));
+
+        Assert.Equal("I-PREF-COOLDOWN", ex.InvariantCode);
+    }
+
+    [Theory]
+    [InlineData(ReadingStyle.BetaReader)]
+    [InlineData(ReadingStyle.StoryReader)]
+    [InlineData(ReadingStyle.AlphaReader)]
+    [InlineData(ReadingStyle.StructureOnly)]
+    public void UpdateDiffPreferences_CanSetEveryReadingStyleValue(ReadingStyle style)
+    {
+        var prefs = UserPreferences.CreateForBetaReader(UserId);
+
+        prefs.UpdateDiffPreferences(false, style, 24);
+
+        Assert.Equal(style, prefs.ReadingStyle);
+    }
 }

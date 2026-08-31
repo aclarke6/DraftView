@@ -15,6 +15,19 @@ public sealed class ReadEvent
     public DateTime LastOpenedAt { get; private set; }
     public int OpenCount { get; private set; }
     public int? LastReadVersionNumber { get; private set; }
+
+    /// <summary>
+    /// The version number read immediately before the current LastReadVersionNumber.
+    /// Stored so that MarkAsUnread can restore the previous diff baseline.
+    /// </summary>
+    public int? PreviousReadVersionNumber { get; private set; }
+
+    /// <summary>
+    /// The timestamp at which the reader last marked this section as read.
+    /// Null until first mark-as-read. Used to enforce the reader's diff cooldown setting.
+    /// </summary>
+    public DateTimeOffset? LastMarkedReadAt { get; private set; }
+
     public Guid? ResumeAnchorId { get; private set; }
 
     /// <summary>
@@ -107,5 +120,32 @@ public sealed class ReadEvent
     public void ClearResumeAnchor()
     {
         ResumeAnchorId = null;
+    }
+
+    /// <summary>
+    /// Records that the reader has read the section at the given version.
+    /// Stores the previous LastReadVersionNumber so MarkAsUnread can restore it.
+    /// </summary>
+    /// <param name="versionNumber">The version number being marked as read (must be >= 1).</param>
+    /// <exception cref="InvariantViolationException">Thrown when version number is less than 1.</exception>
+    public void MarkAsRead(int versionNumber)
+    {
+        if (versionNumber < 1)
+            throw new InvariantViolationException("I-READ-MARK",
+                "Version number must be 1 or greater.");
+
+        PreviousReadVersionNumber = LastReadVersionNumber;
+        LastReadVersionNumber     = versionNumber;
+        LastMarkedReadAt          = DateTimeOffset.UtcNow;
+    }
+
+    /// <summary>
+    /// Reverses the last MarkAsRead, restoring the previous diff baseline.
+    /// Clears LastMarkedReadAt so the cooldown does not suppress the diff.
+    /// </summary>
+    public void MarkAsUnread()
+    {
+        (LastReadVersionNumber, PreviousReadVersionNumber) = (PreviousReadVersionNumber, LastReadVersionNumber);
+        LastMarkedReadAt = null;
     }
 }
