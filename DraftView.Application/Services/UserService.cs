@@ -235,6 +235,15 @@ public class UserService(
         await unitOfWork.SaveChangesAsync(ct);
     }
 
+    public async Task UpdateDiffPreferencesAsync(Guid userId, bool showDiffOnRevisit, ReadingStyle readingStyle, int diffCooldownHours, CancellationToken ct = default)
+    {
+        var prefs = await prefsRepo.GetByUserIdAsync(userId, ct);
+        if (prefs is null) return;
+
+        prefs.UpdateDiffPreferences(showDiffOnRevisit, readingStyle, diffCooldownHours);
+        await unitOfWork.SaveChangesAsync(ct);
+    }
+
     public async Task UpdateReaderProfileAsync(Guid userId, string? bio, string? genreInterests, ReaderPace? pace, CancellationToken ct = default)
     {
         var prefs = await prefsRepo.GetByUserIdAsync(userId, ct)

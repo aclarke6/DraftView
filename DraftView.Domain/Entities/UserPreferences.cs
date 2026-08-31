@@ -34,6 +34,11 @@ public sealed class UserPreferences
     public string? ReaderGenreInterests{get; private set;}
     public ReaderPace? ReaderPace{get; private set;}
 
+    // Reader diff preferences
+    public bool ShowDiffOnRevisit{get; private set;}
+    public ReadingStyle ReadingStyle{get; private set;}
+    public int DiffCooldownHours{get; private set;}
+
 
 
     // ---------------------------------------------------------------------------
@@ -59,7 +64,10 @@ public sealed class UserPreferences
             AuthorTimezone = null,
             DisplayTheme = DisplayTheme.Light,
             ProseFont = ProseFont.SystemSerif,
-            ProseFontSize = ProseFontSize.Medium
+            ProseFontSize = ProseFontSize.Medium,
+            ShowDiffOnRevisit = false,
+            ReadingStyle = ReadingStyle.StoryReader,
+            DiffCooldownHours = 24
         };
     }
 
@@ -82,7 +90,10 @@ public sealed class UserPreferences
             AuthorTimezone = timezone,
             DisplayTheme = DisplayTheme.Light,
             ProseFont = ProseFont.SystemSerif,
-            ProseFontSize = ProseFontSize.Medium
+            ProseFontSize = ProseFontSize.Medium,
+            ShowDiffOnRevisit = false,
+            ReadingStyle = ReadingStyle.StoryReader,
+            DiffCooldownHours = 24
         };
     }
 
@@ -128,6 +139,24 @@ public sealed class UserPreferences
         ReaderBio            = bio;
         ReaderGenreInterests = genreInterests;
         ReaderPace           = pace;
+    }
+
+    /// <summary>
+    /// Updates the reader's diff-on-revisit preferences.
+    /// </summary>
+    /// <param name="showDiffOnRevisit">Whether to show a diff when revisiting an updated chapter.</param>
+    /// <param name="readingStyle">The minimum change classification the reader wants to see.</param>
+    /// <param name="diffCooldownHours">Hours to wait after marking as read before showing new diffs. Must be >= 1.</param>
+    /// <exception cref="InvariantViolationException">Thrown when diffCooldownHours is less than 1.</exception>
+    public void UpdateDiffPreferences(bool showDiffOnRevisit, ReadingStyle readingStyle, int diffCooldownHours)
+    {
+        if (diffCooldownHours < 1)
+            throw new InvariantViolationException("I-PREF-COOLDOWN",
+                "Diff cooldown must be at least 1 hour.");
+
+        ShowDiffOnRevisit = showDiffOnRevisit;
+        ReadingStyle      = readingStyle;
+        DiffCooldownHours = diffCooldownHours;
     }
 
     // ---------------------------------------------------------------------------

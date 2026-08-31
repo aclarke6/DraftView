@@ -1,3 +1,5 @@
+using DraftView.Domain.Enumerations;
+
 namespace DraftView.Domain.Interfaces.Services;
 
 public record ResumeTarget(Guid ChapterId, Guid? SceneId);
@@ -20,4 +22,13 @@ public interface IReaderDashboardService
     /// </summary>
     Task<IReadOnlyDictionary<Guid, int>> GetReaderChapterCommentCountsAsync(
         Guid userId, IReadOnlyList<Guid> chapterIds, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the highest ChangeClassification across all scenes updated since
+    /// the reader last read them, filtered by the reader's ReadingStyle threshold.
+    /// Null means the reader is up to date (or has never read) at their threshold level.
+    /// Every requested chapterId appears as a key.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, ChangeClassification?>> GetChapterChangeStatusesAsync(
+        Guid userId, IReadOnlyList<Guid> chapterIds, ReadingStyle readingStyle, CancellationToken ct = default);
 }

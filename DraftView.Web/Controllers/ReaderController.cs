@@ -30,6 +30,7 @@ public class ReaderController(
     IAccessRequestRepository accessRequestRepo,
     IAccessRequestService accessRequestService,
     IReaderDashboardService readerDashboardService,
+    IReaderDiffService readerDiffService,
     ILogger<ReaderController> logger)
     : BaseReaderController(projectRepo, sectionRepo, commentService, progressService,
                            userRepository, readerAccessRepo, humanOverrideService, passageAnchorService,
@@ -37,6 +38,7 @@ public class ReaderController(
 {
     private readonly IUserPreferencesRepository _userPreferencesRepo = userPreferencesRepo;
     private readonly IPassageAnchorService _passageAnchorService = passageAnchorService;
+    private readonly IReaderDiffService _readerDiffService = readerDiffService;
     private readonly IReaderDashboardService _readerDashboardService = readerDashboardService;
     private static readonly Regex HtmlTagRegex = new("<[^>]+>", RegexOptions.Compiled);
     private static readonly Regex WhitespaceRegex = new("\\s+", RegexOptions.Compiled);
@@ -304,6 +306,36 @@ public class ReaderController(
         return Ok();
     }
 
+    // -----------------------------------------------------------------------
+    // POST: /Reader/MarkAsRead
+    // -----------------------------------------------------------------------
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MarkAsRead(Guid sectionId)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return Forbid();
+
+        await _readerDiffService.MarkAsReadAsync(sectionId, user.Id);
+        return Ok();
+    }
+
+    // -----------------------------------------------------------------------
+    // POST: /Reader/MarkAsUnread
+    // -----------------------------------------------------------------------
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MarkAsUnread(Guid sectionId)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return Forbid();
+
+        await _readerDiffService.MarkAsUnreadAsync(sectionId, user.Id);
+        return Ok();
+    }
+
     /// <summary>
     /// Captures the reader's latest resume position without changing the active resume behavior.
     /// </summary>
@@ -425,15 +457,27 @@ public class ReaderController(
             });
         }
 
-        // Populate comment counts via application service
+        // Populate comment counts and chapter change statuses via application service
         var allChapterIds = viewModel.Projects
             .SelectMany(p => p.PublishedChapters.Select(c => c.Chapter.Id))
             .ToList();
-        var commentCounts = await _readerDashboardService.GetReaderChapterCommentCountsAsync(user.Id, allChapterIds);
+
+        var dashboardPrefs = await _userPreferencesRepo.GetByUserIdAsync(user.Id);
+        var readingStyle   = dashboardPrefs?.ReadingStyle ?? ReadingStyle.StoryReader;
+
+        var commentCounts   = await _readerDashboardService.GetReaderChapterCommentCountsAsync(user.Id, allChapterIds);
+        var changeStatuses  = await _readerDashboardService.GetChapterChangeStatusesAsync(user.Id, allChapterIds, readingStyle);
+
         foreach (var proj in viewModel.Projects)
+        {
             foreach (var ch in proj.PublishedChapters)
+            {
                 if (commentCounts.TryGetValue(ch.Chapter.Id, out var count))
                     ch.ReaderCommentCount = count;
+                if (changeStatuses.TryGetValue(ch.Chapter.Id, out var status))
+                    ch.ChapterChangeClassification = status;
+            }
+        }
 
         // Resolve resume target via application service
         var resumeTarget = await _readerDashboardService.GetCrossProjectResumeTargetAsync(user.Id, projectIds);
@@ -552,14 +596,14 @@ public class ReaderController(
             .OrderBy(s => s.SortOrder)
             .ToList();
 
+        var preferences = await _userPreferencesRepo.GetByUserIdAsync(user.Id);
+        var showDiffOnRevisit = preferences?.ShowDiffOnRevisit ?? false;
+
         var scenesWithComments = new List<SceneWithComments>();
         foreach (var scene in scenes)
         {
             var sceneWithComments = await BuildSceneWithCommentsAsync(
-                scene,
-                user,
-                project?.AuthorId ?? Guid.Empty,
-                isModerator);
+                scene, user, project?.AuthorId ?? Guid.Empty, isModerator, showDiffOnRevisit);
             scenesWithComments.Add(sceneWithComments);
         }
 
@@ -567,7 +611,7 @@ public class ReaderController(
         if (!scenesWithComments.Any())
         {
             var leafContent = await BuildSceneWithCommentsAsync(
-                chapter, user, project?.AuthorId ?? Guid.Empty, isModerator);
+                chapter, user, project?.AuthorId ?? Guid.Empty, isModerator, showDiffOnRevisit);
             scenesWithComments.Add(leafContent);
         }
 
@@ -575,7 +619,6 @@ public class ReaderController(
         var chapterComments    = await BuildCommentDisplayModelsAsync(chapterCommentsRaw, user.Id, project?.AuthorId ?? Guid.Empty, isModerator);
         var breadcrumb         = BuildBreadcrumb(chapter, allSections);
         var topAncestor        = GetTopLevelAncestor(chapter, allSections);
-        var preferences        = await _userPreferencesRepo.GetByUserIdAsync(user.Id);
 
         DesktopSectionContentsViewModel? bookContents = null;
         if (topAncestor is not null)
@@ -649,8 +692,11 @@ public class ReaderController(
 
         await ProgressService.RecordOpenAsync(id, user.Id);
 
-        var (resolvedHtml, currentSectionVersionId, currentVersionNumber, versionLabel, resumeCaptureText, resumeRestoreTarget, diffParagraphs, updatedSinceLastRead, showUpdateBanner) =
-            await ResolveSceneContentAndDiffAsync(scene, user.Id);
+        var preferences       = await _userPreferencesRepo.GetByUserIdAsync(user.Id);
+        var showDiffMobile    = preferences?.ShowDiffOnRevisit ?? false;
+
+        var (resolvedHtml, currentSectionVersionId, currentVersionNumber, versionLabel, resumeCaptureText, resumeRestoreTarget, diffParagraphs, _, updatedSinceLastRead, showUpdateBanner, _, _) =
+            await ResolveSceneContentAndDiffAsync(scene, user.Id, showDiffMobile);
 
         var (prevSceneId, nextSceneId) = section.NodeType == NodeType.Document
             ? GetPrevNextSceneIds(scene.Id, chapter.Id, allSections)
@@ -658,7 +704,6 @@ public class ReaderController(
 
         var commentsRaw       = await CommentService.GetThreadsForSectionAsync(id, user.Id);
         var sceneCommentCount = commentsRaw.Count(c => !c.IsSoftDeleted);
-        var preferences       = await _userPreferencesRepo.GetByUserIdAsync(user.Id);
 
         return View("MobileRead", new MobileReadViewModel {
             Scene                    = scene,
@@ -695,46 +740,56 @@ public class ReaderController(
         Domain.Entities.User user,
         Guid projectAuthorId,
         bool isModerator,
+        bool showDiffOnRevisit,
         CancellationToken ct = default)
     {
         await ProgressService.RecordOpenAsync(scene.Id, user.Id, ct);
 
-        var (resolvedHtml, currentSectionVersionId, currentVersionNumber, versionLabel, resumeCaptureText, resumeRestoreTarget, diffParagraphs, updatedSinceLastRead, showUpdateBanner) =
-            await ResolveSceneContentAndDiffAsync(scene, user.Id, ct);
+        var (resolvedHtml, currentSectionVersionId, currentVersionNumber, versionLabel,
+             resumeCaptureText, resumeRestoreTarget, diffParagraphs, diffClassification,
+             updatedSinceLastRead, showUpdateBanner, diffEnabled, wordCount) =
+            await ResolveSceneContentAndDiffAsync(scene, user.Id, showDiffOnRevisit, ct);
 
         var comments = await CommentService.GetThreadsForSectionAsync(scene.Id, user.Id, ct);
         var displayComments = await BuildCommentDisplayModelsAsync(comments, user.Id, projectAuthorId, isModerator);
 
         return new SceneWithComments
         {
-            Scene = scene,
-            Comments = displayComments,
-            ResolvedHtmlContent = resolvedHtml,
-            CurrentSectionVersionId = currentSectionVersionId,
-            ResumeCaptureText = resumeCaptureText,
-            HasResumeRestoreTarget = resumeRestoreTarget?.HasTarget ?? false,
-            ResumeRestoreStartOffset = resumeRestoreTarget?.StartOffset,
-            ResumeRestoreEndOffset = resumeRestoreTarget?.EndOffset,
-            ResumeRestoreStatus = resumeRestoreTarget?.Status,
+            Scene                        = scene,
+            Comments                     = displayComments,
+            ResolvedHtmlContent          = resolvedHtml,
+            CurrentSectionVersionId      = currentSectionVersionId,
+            ResumeCaptureText            = resumeCaptureText,
+            HasResumeRestoreTarget       = resumeRestoreTarget?.HasTarget ?? false,
+            ResumeRestoreStartOffset     = resumeRestoreTarget?.StartOffset,
+            ResumeRestoreEndOffset       = resumeRestoreTarget?.EndOffset,
+            ResumeRestoreStatus          = resumeRestoreTarget?.Status,
             ResumeRestoreConfidenceScore = resumeRestoreTarget?.ConfidenceScore,
-            ResumeRestoreMatchMethod = resumeRestoreTarget?.MatchMethod,
-            DiffParagraphs = diffParagraphs,
-            UpdatedSinceLastRead = updatedSinceLastRead,
-            ShowUpdateBanner = showUpdateBanner,
-            CurrentVersionNumber = currentVersionNumber,
-            VersionLabel = versionLabel
+            ResumeRestoreMatchMethod     = resumeRestoreTarget?.MatchMethod,
+            DiffParagraphs               = diffParagraphs,
+            DiffClassification           = diffClassification,
+            DiffEnabled                  = diffEnabled,
+            WordCount                    = wordCount,
+            UpdatedSinceLastRead         = updatedSinceLastRead,
+            ShowUpdateBanner             = showUpdateBanner,
+            CurrentVersionNumber         = currentVersionNumber,
+            VersionLabel                 = versionLabel
         };
     }
 
     /// <summary>
     /// Resolves scene content from the latest version (or fallback to working content),
-    /// computes diff if reader has a prior read version, and updates reader progress.
-    /// Returns: (resolvedHtml, currentSectionVersionId, currentVersionNumber, versionLabel, resumeCaptureText, resumeRestoreTarget, diffParagraphs, updatedSinceLastRead, showUpdateBanner)
+    /// and computes diff via ReaderDiffService (applies ShowDiffOnRevisit, cooldown, threshold).
+    /// LastReadVersionNumber is no longer advanced on open — only via explicit mark-as-read.
+    /// Returns: (resolvedHtml, currentSectionVersionId, currentVersionNumber, versionLabel,
+    ///           resumeCaptureText, resumeRestoreTarget, diffParagraphs, diffClassification,
+    ///           updatedSinceLastRead, showUpdateBanner, diffEnabled, wordCount)
     /// </summary>
-    private async Task<(string? resolvedHtml, Guid? currentSectionVersionId, int? currentVersionNumber, string? versionLabel, string resumeCaptureText, ResumeRestoreTargetDto? resumeRestoreTarget, IReadOnlyList<ParagraphDiffResult> diffParagraphs, bool updatedSinceLastRead, bool showUpdateBanner)>
+    private async Task<(string? resolvedHtml, Guid? currentSectionVersionId, int? currentVersionNumber, string? versionLabel, string resumeCaptureText, ResumeRestoreTargetDto? resumeRestoreTarget, IReadOnlyList<ParagraphDiffResult> diffParagraphs, ChangeClassification? diffClassification, bool updatedSinceLastRead, bool showUpdateBanner, bool diffEnabled, int wordCount)>
         ResolveSceneContentAndDiffAsync(
             Section scene,
             Guid userId,
+            bool showDiffOnRevisit,
             CancellationToken ct = default)
     {
         var latestVersion = await sectionVersionRepo.GetLatestAsync(scene.Id, ct);
@@ -744,37 +799,37 @@ public class ReaderController(
         var versionLabel = latestVersion?.VersionLabel;
         var resumeCaptureText = CanonicalizeForCapture(resolvedHtml);
         var resumeRestoreTarget = await ProgressService.GetResumeRestoreTargetAsync(
-            scene.Id,
-            currentSectionVersionId,
-            userId,
-            ct);
+            scene.Id, currentSectionVersionId, userId, ct);
         var readEvent = await readEventRepo.GetAsync(scene.Id, userId, ct);
-        var lastReadVersionNumber = readEvent?.LastReadVersionNumber;
 
-        var diffResult = await sectionDiffService.GetDiffForReaderAsync(
-            scene.Id, lastReadVersionNumber, ct);
-
-        var updatedSinceLastRead = diffResult is not null
-            && diffResult.HasChanges
-            && readEvent?.LastReadVersionNumber is not null
-            && currentVersionNumber.HasValue;
-
-        var showUpdateBanner = diffResult is not null
-            && diffResult.HasChanges
-            && readEvent?.LastReadVersionNumber is not null
+        // Banner and "updated since" are version-comparison concerns — independent of diff preferences.
+        var isUpdatedSinceLastRead = readEvent?.LastReadVersionNumber is not null
             && currentVersionNumber.HasValue
-            && readEvent?.BannerDismissedAtVersion != diffResult.CurrentVersionNumber;
+            && currentVersionNumber.Value > readEvent.LastReadVersionNumber;
 
-        if (latestVersion is not null)
-        {
-            await ProgressService.UpdateLastReadVersionAsync(scene.Id, userId, latestVersion.VersionNumber, ct);
-        }
+        var updatedSinceLastRead = isUpdatedSinceLastRead;
+        var showUpdateBanner = isUpdatedSinceLastRead
+            && readEvent?.BannerDismissedAtVersion != currentVersionNumber;
 
-        var diffParagraphs = latestVersion is null && diffResult?.HasChanges == true
+        // Diff paragraphs respect ShowDiffOnRevisit and ReadingStyle threshold.
+        var diffResult = await _readerDiffService.GetDiffAsync(scene.Id, userId, ct);
+        var diffParagraphs = diffResult?.HasChanges == true
             ? diffResult.Paragraphs
             : Array.Empty<ParagraphDiffResult>();
 
-        return (resolvedHtml, currentSectionVersionId, currentVersionNumber, versionLabel, resumeCaptureText, resumeRestoreTarget, diffParagraphs, updatedSinceLastRead, showUpdateBanner);
+        var diffClassification = diffResult?.Classification;
+        var wordCount = CountWords(resolvedHtml);
+
+        return (resolvedHtml, currentSectionVersionId, currentVersionNumber, versionLabel,
+                resumeCaptureText, resumeRestoreTarget, diffParagraphs, diffClassification,
+                updatedSinceLastRead, showUpdateBanner, showDiffOnRevisit, wordCount);
+    }
+
+    private static int CountWords(string? html)
+    {
+        if (string.IsNullOrWhiteSpace(html)) return 0;
+        var text = HtmlTagRegex.Replace(html, " ");
+        return text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
     }
 
     /// <summary>

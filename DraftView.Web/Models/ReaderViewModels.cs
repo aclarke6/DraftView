@@ -96,6 +96,25 @@ public class SceneWithComments
     public int? CurrentVersionNumber { get; set; }
     public string? VersionLabel { get; set; }
 
+    /// <summary>
+    /// The classification of the diff between the reader's last read version
+    /// and the current version. Null when no diff exists or diff is suppressed.
+    /// Used to render the coloured pill in the "This chapter" nav.
+    /// </summary>
+    public ChangeClassification? DiffClassification { get; set; }
+
+    /// <summary>
+    /// True when the reader's profile has ShowDiffOnRevisit enabled.
+    /// Controls whether the diff toggle and mark-as-read/unread controls are shown.
+    /// </summary>
+    public bool DiffEnabled { get; set; }
+
+    /// <summary>
+    /// Approximate word count of the scene's current content.
+    /// Passed to JS to compute estimated reading time for auto mark-as-read.
+    /// </summary>
+    public int WordCount { get; set; }
+
 }
 
 public class CommentDisplayViewModel
@@ -162,6 +181,13 @@ public class DesktopChapterProgressViewModel
     /// directly to Read rather than expecting a scenes sub-list.
     /// </summary>
     public bool IsLeaf { get; set; }
+
+    /// <summary>
+    /// The highest change classification across all scenes in this chapter since
+    /// the reader last read them, filtered by the reader's ReadingStyle threshold.
+    /// Null when the reader is up to date at their threshold level.
+    /// </summary>
+    public ChangeClassification? ChapterChangeClassification { get; set; }
 }
 
 public enum DiscoveryRequestStatus { None, Pending, Approved, Declined }

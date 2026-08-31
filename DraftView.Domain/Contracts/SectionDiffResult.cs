@@ -1,4 +1,5 @@
 using DraftView.Domain.Diff;
+using DraftView.Domain.Enumerations;
 
 namespace DraftView.Domain.Contracts;
 
@@ -20,4 +21,10 @@ public sealed class SectionDiffResult
     /// <summary>Paragraph-level diff results. Empty when no changes or no prior version.</summary>
     public IReadOnlyList<ParagraphDiffResult> Paragraphs { get; init; }
         = Array.Empty<ParagraphDiffResult>();
+
+    /// <summary>
+    /// The classification of changes in this diff, computed from word-level counts.
+    /// Null when HasChanges is false or paragraphs could not be classified.
+    /// </summary>
+    public ChangeClassification? Classification { get; init; }
 }

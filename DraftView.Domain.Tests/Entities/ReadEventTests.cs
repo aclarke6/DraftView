@@ -234,4 +234,126 @@ public class ReadEventTests
 
         Assert.Null(readEvent.BannerDismissedAtVersion);
     }
+
+    // ---------------------------------------------------------------------------
+    // MarkAsRead
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void Create_PreviousReadVersionNumberIsNull()
+    {
+        var readEvent = ReadEvent.Create(SectionId, UserId);
+
+        Assert.Null(readEvent.PreviousReadVersionNumber);
+    }
+
+    [Fact]
+    public void Create_LastMarkedReadAtIsNull()
+    {
+        var readEvent = ReadEvent.Create(SectionId, UserId);
+
+        Assert.Null(readEvent.LastMarkedReadAt);
+    }
+
+    [Fact]
+    public void MarkAsRead_SetsLastReadVersionNumber()
+    {
+        var readEvent = ReadEvent.Create(SectionId, UserId);
+
+        readEvent.MarkAsRead(5);
+
+        Assert.Equal(5, readEvent.LastReadVersionNumber);
+    }
+
+    [Fact]
+    public void MarkAsRead_StoresPreviousLastReadVersionNumber()
+    {
+        var readEvent = ReadEvent.Create(SectionId, UserId);
+        readEvent.MarkAsRead(3);
+
+        readEvent.MarkAsRead(5);
+
+        Assert.Equal(3, readEvent.PreviousReadVersionNumber);
+    }
+
+    [Fact]
+    public void MarkAsRead_WhenLastReadIsNull_SetsPreviousToNull()
+    {
+        var readEvent = ReadEvent.Create(SectionId, UserId);
+
+        readEvent.MarkAsRead(5);
+
+        Assert.Null(readEvent.PreviousReadVersionNumber);
+    }
+
+    [Fact]
+    public void MarkAsRead_SetsLastMarkedReadAt()
+    {
+        var before = DateTimeOffset.UtcNow;
+        var readEvent = ReadEvent.Create(SectionId, UserId);
+
+        readEvent.MarkAsRead(1);
+
+        Assert.NotNull(readEvent.LastMarkedReadAt);
+        Assert.True(readEvent.LastMarkedReadAt >= before);
+    }
+
+    [Fact]
+    public void MarkAsRead_WithVersionZero_ThrowsInvariantViolation()
+    {
+        var readEvent = ReadEvent.Create(SectionId, UserId);
+
+        var ex = Assert.Throws<InvariantViolationException>(() => readEvent.MarkAsRead(0));
+
+        Assert.Equal("I-READ-MARK", ex.InvariantCode);
+    }
+
+    [Fact]
+    public void MarkAsRead_WithNegativeVersion_ThrowsInvariantViolation()
+    {
+        var readEvent = ReadEvent.Create(SectionId, UserId);
+
+        var ex = Assert.Throws<InvariantViolationException>(() => readEvent.MarkAsRead(-1));
+
+        Assert.Equal("I-READ-MARK", ex.InvariantCode);
+    }
+
+    // ---------------------------------------------------------------------------
+    // MarkAsUnread
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void MarkAsUnread_SwapsLastAndPreviousVersionNumbers()
+    {
+        var readEvent = ReadEvent.Create(SectionId, UserId);
+        readEvent.MarkAsRead(3);
+        readEvent.MarkAsRead(5);
+
+        readEvent.MarkAsUnread();
+
+        Assert.Equal(3, readEvent.LastReadVersionNumber);
+        Assert.Equal(5, readEvent.PreviousReadVersionNumber);
+    }
+
+    [Fact]
+    public void MarkAsUnread_ClearsLastMarkedReadAt()
+    {
+        var readEvent = ReadEvent.Create(SectionId, UserId);
+        readEvent.MarkAsRead(5);
+
+        readEvent.MarkAsUnread();
+
+        Assert.Null(readEvent.LastMarkedReadAt);
+    }
+
+    [Fact]
+    public void MarkAsUnread_WhenPreviousIsNull_SetsLastToNull()
+    {
+        var readEvent = ReadEvent.Create(SectionId, UserId);
+        readEvent.MarkAsRead(5);
+
+        readEvent.MarkAsUnread();
+
+        Assert.Null(readEvent.LastReadVersionNumber);
+    }
 }

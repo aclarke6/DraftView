@@ -101,6 +101,42 @@
 
             @if (Model.IsReader)
             {
+                <div class="card settings-card">
+                    <div class="card__header"><span class="card__title">Change Notifications</span></div>
+                    <div class="card__body">
+                        <p class="settings-hint">Control how you see updates when an author edits chapters you have already read.</p>
+                        <form asp-action="ChangeDiffPreferences" method="post">
+                            @Html.AntiForgeryToken()
+                            <div class="settings-form-stack">
+                                <div class="settings-form-group settings-form-group--toggle">
+                                    <label class="form-label">Show changes when I revisit a chapter</label>
+                                    <input type="checkbox" name="ShowDiffOnRevisit" value="true" @(Model.ShowDiffOnRevisit ? "checked" : "") class="form-checkbox" id="showDiffOnRevisit" />
+                                    <input type="hidden" name="ShowDiffOnRevisit" value="false" />
+                                </div>
+                                <div class="settings-form-group">
+                                    <label class="form-label" for="readingStyle">I am reading as</label>
+                                    <select name="ReadingStyle" id="readingStyle" class="form-input">
+                                        <option value="BetaReader" selected="@(Model.ReadingStyle == "BetaReader")">Beta reader — show everything, including typos</option>
+                                        <option value="StoryReader" selected="@(Model.ReadingStyle == "StoryReader")">Story reader — minor edits and above</option>
+                                        <option value="AlphaReader" selected="@(Model.ReadingStyle == "AlphaReader")">Alpha reader — meaningful revisions and above</option>
+                                        <option value="StructureOnly" selected="@(Model.ReadingStyle == "StructureOnly")">Structure only — major rewrites only</option>
+                                    </select>
+                                </div>
+                                <div class="settings-form-group">
+                                    <label class="form-label" for="diffCooldown">Show new changes after marking as read</label>
+                                    <select name="DiffCooldownHours" id="diffCooldown" class="form-input">
+                                        <option value="1" selected="@(Model.DiffCooldownHours == 1)">Immediately</option>
+                                        <option value="24" selected="@(Model.DiffCooldownHours == 24)">After 24 hours</option>
+                                        <option value="72" selected="@(Model.DiffCooldownHours == 72)">After 3 days</option>
+                                        <option value="168" selected="@(Model.DiffCooldownHours == 168)">After 1 week</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn--primary settings-form-button-inline">Save</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
                 <div class="card settings-card reader-profile-card">
                     <div class="card__header"><span class="card__title">Reader Profile</span></div>
                     <div class="card__body">
