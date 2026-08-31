@@ -1111,4 +1111,132 @@ public class VersioningServiceTests
         section.UpdateContent("<p>content</p>", "hash");
         return section;
     }
+
+    // -----------------------------------------------------------------------
+    // CreateVersionFromSyncAsync — auto-versioning for ScrivenerDropbox sync
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task CreateVersionFromSyncAsync_WithPublishedDocument_CreatesVersion()
+    {
+        var chapter = MakeChapter(Guid.NewGuid());
+        chapter.MarkAsPublishedContainer();
+        var doc = MakeDocument(Guid.NewGuid(), chapter.Id);
+        doc.PublishAsPartOfChapter("hash");
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default)).ReturnsAsync(chapter);
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(doc.Id, default)).ReturnsAsync(0);
+        _versionRepo.Setup(r => r.GetVersionCountAsync(doc.Id, default)).ReturnsAsync(0);
+
+        SectionVersion? added = null;
+        _versionRepo.Setup(r => r.AddAsync(It.IsAny<SectionVersion>(), default))
+            .Callback<SectionVersion, CancellationToken>((v, _) => added = v);
+
+        await _sut.CreateVersionFromSyncAsync(doc, Guid.NewGuid());
+
+        Assert.NotNull(added);
+        Assert.Equal(doc.Id, added!.SectionId);
+    }
+
+    [Fact]
+    public async Task CreateVersionFromSyncAsync_WithUnpublishedDocument_DoesNotCreateVersion()
+    {
+        var doc = MakeDocument(Guid.NewGuid(), null);
+        // Not published — IsPublished = false
+
+        await _sut.CreateVersionFromSyncAsync(doc, Guid.NewGuid());
+
+        _versionRepo.Verify(r => r.AddAsync(It.IsAny<SectionVersion>(), default), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateVersionFromSyncAsync_WithFolderNode_DoesNotCreateVersion()
+    {
+        var folder = MakeChapter(Guid.NewGuid());
+        folder.MarkAsPublishedContainer();
+
+        await _sut.CreateVersionFromSyncAsync(folder, Guid.NewGuid());
+
+        _versionRepo.Verify(r => r.AddAsync(It.IsAny<SectionVersion>(), default), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateVersionFromSyncAsync_WithSoftDeletedDocument_DoesNotCreateVersion()
+    {
+        var chapter = MakeChapter(Guid.NewGuid());
+        var doc = MakeDocument(Guid.NewGuid(), chapter.Id);
+        doc.PublishAsPartOfChapter("hash");
+        doc.SoftDelete();
+
+        await _sut.CreateVersionFromSyncAsync(doc, Guid.NewGuid());
+
+        _versionRepo.Verify(r => r.AddAsync(It.IsAny<SectionVersion>(), default), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateVersionFromSyncAsync_WithLockedParentChapter_DoesNotCreateVersion()
+    {
+        var chapter = MakeChapter(Guid.NewGuid());
+        chapter.MarkAsPublishedContainer();
+        chapter.Lock();
+        var doc = MakeDocument(Guid.NewGuid(), chapter.Id);
+        doc.PublishAsPartOfChapter("hash");
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default)).ReturnsAsync(chapter);
+
+        await _sut.CreateVersionFromSyncAsync(doc, Guid.NewGuid());
+
+        _versionRepo.Verify(r => r.AddAsync(It.IsAny<SectionVersion>(), default), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateVersionFromSyncAsync_DoesNotCallSaveChanges()
+    {
+        // Sync service owns the save — CreateVersionFromSyncAsync must not save independently.
+        var chapter = MakeChapter(Guid.NewGuid());
+        chapter.MarkAsPublishedContainer();
+        var doc = MakeDocument(Guid.NewGuid(), chapter.Id);
+        doc.PublishAsPartOfChapter("hash");
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default)).ReturnsAsync(chapter);
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(doc.Id, default)).ReturnsAsync(0);
+        _versionRepo.Setup(r => r.GetVersionCountAsync(doc.Id, default)).ReturnsAsync(0);
+
+        await _sut.CreateVersionFromSyncAsync(doc, Guid.NewGuid());
+
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateVersionFromSyncAsync_SetsClassification_WhenPreviousVersionExists()
+    {
+        var authorId = Guid.NewGuid();
+        var chapter = MakeChapter(Guid.NewGuid());
+        chapter.MarkAsPublishedContainer();
+        var doc = MakeDocument(Guid.NewGuid(), chapter.Id);
+        doc.PublishAsPartOfChapter("hash");
+
+        var previousVersion = SectionVersion.Create(doc, authorId, 1, 1, 0);
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default)).ReturnsAsync(chapter);
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(doc.Id, default)).ReturnsAsync(1);
+        _versionRepo.Setup(r => r.GetVersionCountAsync(doc.Id, default)).ReturnsAsync(1);
+        _versionRepo.Setup(r => r.GetLatestAsync(doc.Id, default)).ReturnsAsync(previousVersion);
+        _versionRepo.Setup(r => r.GetAllBySectionIdAsync(doc.Id, default))
+            .ReturnsAsync(new List<SectionVersion> { previousVersion });
+
+        _htmlDiffService.Setup(d => d.Compute(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(new List<DraftView.Domain.Diff.ParagraphDiffResult>());
+        _changeClassificationService.Setup(c => c.Classify(It.IsAny<IReadOnlyList<DraftView.Domain.Diff.ParagraphDiffResult>>()))
+            .Returns(ChangeClassification.Polish);
+
+        SectionVersion? added = null;
+        _versionRepo.Setup(r => r.AddAsync(It.IsAny<SectionVersion>(), default))
+            .Callback<SectionVersion, CancellationToken>((v, _) => added = v);
+
+        await _sut.CreateVersionFromSyncAsync(doc, authorId);
+
+        Assert.NotNull(added);
+        Assert.Equal(ChangeClassification.Polish, added!.ChangeClassification);
+    }
 }

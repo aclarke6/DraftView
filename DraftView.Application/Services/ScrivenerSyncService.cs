@@ -22,9 +22,11 @@ public class ScrivenerSyncService(
     IDropboxFileDownloader fileDownloader,
     ILogger<ScrivenerSyncService> logger,
     IAuthorNotificationRepository notificationRepo,
-    IUserRepository userRepo) : ISyncService
+    IUserRepository userRepo,
+    IVersioningService versioningService) : ISyncService
 {
     private bool _syncHadChanges;
+    private Guid _currentAuthorId;
 
     public async Task ParseProjectAsync(Guid projectId, CancellationToken ct = default)
     {
@@ -47,6 +49,7 @@ public class ScrivenerSyncService(
         }
 
         _syncHadChanges = false;
+        _currentAuthorId = project.AuthorId;
 
         try
         {
@@ -230,7 +233,7 @@ public class ScrivenerSyncService(
             {
                 section.UpdateContent(rtf.Html, rtf.Hash);
                 if (section.IsPublished)
-                    section.MarkContentChanged();
+                    await versioningService.CreateVersionFromSyncAsync(section, _currentAuthorId, ct);
             }
         }
     }
@@ -330,7 +333,7 @@ public class ScrivenerSyncService(
             {
                 existing.UpdateContent(rtf.Html, rtf.Hash);
                 if (existing.IsPublished)
-                    existing.MarkContentChanged();
+                    await versioningService.CreateVersionFromSyncAsync(existing, _currentAuthorId, ct);
                 _syncHadChanges = true;
             }
         }

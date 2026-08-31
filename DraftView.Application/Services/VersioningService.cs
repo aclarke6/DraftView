@@ -79,6 +79,27 @@ public class VersioningService(
     }
 
     /// <summary>
+    /// Creates a SectionVersion for a published Document whose content changed during a
+    /// Scrivener sync. Silent no-op when the section is not eligible or the chapter is locked.
+    /// Does not call SaveChanges — the sync service owns persistence for the cycle.
+    /// </summary>
+    public async Task CreateVersionFromSyncAsync(Section document, Guid authorId, CancellationToken ct = default)
+    {
+        if (document.NodeType != NodeType.Document || !document.IsPublished || document.IsSoftDeleted)
+            return;
+
+        if (document.ParentId.HasValue)
+        {
+            var parent = await sectionRepository.GetByIdAsync(document.ParentId.Value, ct);
+            if (parent?.IsLocked == true)
+                return;
+        }
+
+        var subscriptionTier = GetSubscriptionTier();
+        await CreateVersionForDocumentAsync(document, authorId, subscriptionTier, null, ct);
+    }
+
+    /// <summary>
     /// Revokes the latest SectionVersion for a single Document section.
     /// </summary>
     public async Task RevokeLatestVersionAsync(Guid sectionId, Guid authorId, CancellationToken ct = default)
