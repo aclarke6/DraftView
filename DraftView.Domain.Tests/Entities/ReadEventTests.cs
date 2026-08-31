@@ -356,4 +356,60 @@ public class ReadEventTests
 
         Assert.Null(readEvent.LastReadVersionNumber);
     }
+
+    // ---------------------------------------------------------------------------
+    // IsRead — new reader-centric read state
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void Create_IsReadIsFalse()
+    {
+        var readEvent = ReadEvent.Create(SectionId, UserId);
+
+        Assert.False(readEvent.IsRead);
+    }
+
+    [Fact]
+    public void MarkRead_SetsIsReadToTrue()
+    {
+        var readEvent = ReadEvent.Create(SectionId, UserId);
+
+        readEvent.MarkRead();
+
+        Assert.True(readEvent.IsRead);
+    }
+
+    [Fact]
+    public void MarkRead_SetsLastMarkedReadAt()
+    {
+        var before    = DateTimeOffset.UtcNow;
+        var readEvent = ReadEvent.Create(SectionId, UserId);
+
+        readEvent.MarkRead();
+
+        Assert.NotNull(readEvent.LastMarkedReadAt);
+        Assert.True(readEvent.LastMarkedReadAt >= before);
+    }
+
+    [Fact]
+    public void MarkRead_ThenMarkAsUnread_SetsIsReadToFalse()
+    {
+        var readEvent = ReadEvent.Create(SectionId, UserId);
+        readEvent.MarkRead();
+
+        readEvent.MarkAsUnread();
+
+        Assert.False(readEvent.IsRead);
+    }
+
+    [Fact]
+    public void MarkAsUnread_ClearsLastMarkedReadAt_WhenPreviouslyRead()
+    {
+        var readEvent = ReadEvent.Create(SectionId, UserId);
+        readEvent.MarkRead();
+
+        readEvent.MarkAsUnread();
+
+        Assert.Null(readEvent.LastMarkedReadAt);
+    }
 }
