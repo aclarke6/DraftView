@@ -1105,6 +1105,72 @@ public class VersioningServiceTests
         Section.CreateDocument(projectId, Guid.NewGuid().ToString(),
             "Scene 1", chapterId, 0, "<p>content</p>", "hash", status);
 
+    // -----------------------------------------------------------------------
+    // EnsureInitialVersionAsync — creates version 1 if none exists yet
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task EnsureInitialVersionAsync_WhenNoVersionExists_CreatesVersion()
+    {
+        var chapter = MakeChapter(Guid.NewGuid());
+        chapter.MarkAsPublishedContainer();
+        var doc = MakeDocument(Guid.NewGuid(), chapter.Id);
+        doc.PublishAsPartOfChapter("hash");
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default)).ReturnsAsync(chapter);
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(doc.Id, default)).ReturnsAsync(0);
+        _versionRepo.Setup(r => r.GetVersionCountAsync(doc.Id, default)).ReturnsAsync(0);
+
+        SectionVersion? added = null;
+        _versionRepo.Setup(r => r.AddAsync(It.IsAny<SectionVersion>(), default))
+            .Callback<SectionVersion, CancellationToken>((v, _) => added = v);
+
+        await _sut.EnsureInitialVersionAsync(doc, Guid.NewGuid());
+
+        Assert.NotNull(added);
+    }
+
+    [Fact]
+    public async Task EnsureInitialVersionAsync_WhenVersionAlreadyExists_DoesNotCreateAnother()
+    {
+        var doc = MakeDocument(Guid.NewGuid(), null);
+        doc.PublishAsPartOfChapter("hash");
+
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(doc.Id, default)).ReturnsAsync(1);
+
+        await _sut.EnsureInitialVersionAsync(doc, Guid.NewGuid());
+
+        _versionRepo.Verify(r => r.AddAsync(It.IsAny<SectionVersion>(), default), Times.Never);
+    }
+
+    [Fact]
+    public async Task EnsureInitialVersionAsync_WithUnpublishedDocument_DoesNotCreateVersion()
+    {
+        var doc = MakeDocument(Guid.NewGuid(), null);
+        // Not published
+
+        await _sut.EnsureInitialVersionAsync(doc, Guid.NewGuid());
+
+        _versionRepo.Verify(r => r.AddAsync(It.IsAny<SectionVersion>(), default), Times.Never);
+    }
+
+    [Fact]
+    public async Task EnsureInitialVersionAsync_DoesNotCallSaveChanges()
+    {
+        var chapter = MakeChapter(Guid.NewGuid());
+        chapter.MarkAsPublishedContainer();
+        var doc = MakeDocument(Guid.NewGuid(), chapter.Id);
+        doc.PublishAsPartOfChapter("hash");
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default)).ReturnsAsync(chapter);
+        _versionRepo.Setup(r => r.GetMaxVersionNumberAsync(doc.Id, default)).ReturnsAsync(0);
+        _versionRepo.Setup(r => r.GetVersionCountAsync(doc.Id, default)).ReturnsAsync(0);
+
+        await _sut.EnsureInitialVersionAsync(doc, Guid.NewGuid());
+
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private static Section MakeManualDocument(Guid projectId, Guid chapterId)
     {
         var section = Section.CreateDocumentForUpload(projectId, "Scene 1", chapterId, 0);

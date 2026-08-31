@@ -738,6 +738,32 @@ public class ScrivenerSyncServiceTests
     }
 
     [Fact]
+    public async Task DetectContentChangesAsync_WhenPublishedSectionHashUnchanged_CallsEnsureInitialVersion()
+    {
+        // Stable sections (content hasn't changed) still need a baseline version
+        // if none exists. EnsureInitialVersionAsync is a no-op once version 1 exists.
+        var project = MakeProject();
+        var sut     = CreateSut();
+        var section = Section.CreateDocument(project.Id, "SCEN-001", "Scene 1",
+            null, 0, "<p>Same</p>", "samehash", "First Draft");
+        section.PublishAsPartOfChapter("samehash");
+
+        SetupPathResolver(project, "/fake/path");
+
+        _projectRepo.Setup(r => r.GetByIdAsync(project.Id, default)).ReturnsAsync(project);
+        _sectionRepo.Setup(r => r.GetPublishedByProjectIdAsync(project.Id, default))
+            .ReturnsAsync(new List<Section> { section });
+        _converter.Setup(c => c.ConvertAsync("/fake/path", "SCEN-001", default))
+            .ReturnsAsync(new RtfConversionResult { Html = "<p>Same</p>", Hash = "samehash" });
+
+        await sut.DetectContentChangesAsync(project.Id);
+
+        _versioningService.Verify(v =>
+            v.EnsureInitialVersionAsync(section, project.AuthorId, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task DetectContentChangesAsync_WhenHashUnchanged_DoesNotMarkContentChanged()
     {
         var project = MakeProject();

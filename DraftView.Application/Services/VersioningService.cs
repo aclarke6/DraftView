@@ -79,6 +79,23 @@ public class VersioningService(
     }
 
     /// <summary>
+    /// Creates version 1 for a published Document if no SectionVersion exists yet.
+    /// No-op when a version already exists. Does not call SaveChanges.
+    /// </summary>
+    public async Task EnsureInitialVersionAsync(Section document, Guid authorId, CancellationToken ct = default)
+    {
+        if (document.NodeType != NodeType.Document || !document.IsPublished || document.IsSoftDeleted)
+            return;
+
+        var maxVersion = await sectionVersionRepository.GetMaxVersionNumberAsync(document.Id, ct);
+        if (maxVersion > 0)
+            return;
+
+        var subscriptionTier = GetSubscriptionTier();
+        await CreateVersionForDocumentAsync(document, authorId, subscriptionTier, 0, ct);
+    }
+
+    /// <summary>
     /// Creates a SectionVersion for a published Document whose content changed during a
     /// Scrivener sync. Silent no-op when the section is not eligible or the chapter is locked.
     /// Does not call SaveChanges — the sync service owns persistence for the cycle.
