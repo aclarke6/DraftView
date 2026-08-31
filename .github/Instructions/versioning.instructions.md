@@ -16,13 +16,14 @@ The system is divided into two layers. These rules are non-negotiable.
 **Ingestion layer** — writes working state only.
 **Platform layer** — owns versioning, publishing, reader access, notifications.
 
-| Rule | No exceptions |
-|------|---------------|
-| Sync (`ISyncProvider`) writes to `Section.HtmlContent` only | Never touches `SectionVersion` |
-| Import (`IImportProvider`) writes to `Section.HtmlContent` only | Never touches `SectionVersion` |
-| `SectionVersion` records are created only by `VersioningService` | No other class may call `SectionVersion.Create()` |
+| Rule | Scope |
+|------|-------|
+| `SectionVersion` records are created only by `VersioningService` | No other class may call `SectionVersion.Create()` — no exceptions |
 | `SectionVersion.HtmlContent` is immutable after creation | No setter, no update path, no migration to change it |
 | `Section.HtmlContent` is working state — not reader-facing | Readers always read from `SectionVersion` |
+| Import (`IImportProvider`) writes to `Section.HtmlContent` only | Never touches `SectionVersion` — no exceptions |
+| Sync (`ISyncProvider`) — `ScrivenerDropbox` projects | Calls `IVersioningService.CreateVersionFromSyncAsync` for each published Document whose `ContentHash` changed. This is the only case where sync touches versioning. |
+| Sync (`ISyncProvider`) — `Manual` projects | Sync is never triggered. Manual projects use Republish only. |
 
 ---
 
@@ -70,8 +71,12 @@ public static SectionVersion Create(Section section, int authorId)
 
 - Query `Section.HtmlContent` for any purpose other than snapshotting into a version
 - Modify `Section.HtmlContent`
-- Be called from within `ISyncProvider` or `IImportProvider` implementations
+- Be called from within `IImportProvider` implementations
 - Create a version when `HtmlContent` has not changed since the last version (advisory — author may still force republish)
+
+### `CreateVersionFromSyncAsync` (v5.0 — ScrivenerDropbox only)
+
+Called by `ScrivenerSyncService` after updating a published Document's `HtmlContent`. Silent no-op if the section is not published, not a Document, is soft-deleted, or the parent chapter is locked. Does **not** call `unitOfWork.SaveChangesAsync` — the sync service's existing save handles persistence.
 
 ---
 
@@ -114,10 +119,10 @@ public interface ISyncProvider
 ```
 
 - `ScrivenerSyncService` is the current implementation
-- Writes to `Section.HtmlContent` and `Section.ContentHash` only
-- Updates `Project` sync status fields only
-- Never calls `VersioningService`
-- Never creates or modifies `SectionVersion` records
+- Writes to `Section.HtmlContent` and `Section.ContentHash`
+- Updates `Project` sync status fields
+- Calls `IVersioningService.CreateVersionFromSyncAsync` for each published Document whose hash changed (v5.0 — see architecture doc)
+- All other classes must never create or modify `SectionVersion` records
 
 ---
 
