@@ -692,13 +692,37 @@ public class ScrivenerSyncServiceTests
     // ---------------------------------------------------------------------------
 
     [Fact]
-    public async Task DetectContentChangesAsync_WhenHashChanged_MarksContentChanged()
+    public async Task DetectContentChangesAsync_WhenPublishedSectionHashChanged_CallsCreateVersionFromSync()
     {
         var project = MakeProject();
         var sut     = CreateSut();
         var section = Section.CreateDocument(project.Id, "SCEN-001", "Scene 1",
             null, 0, "<p>Old</p>", "oldhash", "First Draft");
         section.PublishAsPartOfChapter("oldhash");
+
+        SetupPathResolver(project, "/fake/path");
+
+        _projectRepo.Setup(r => r.GetByIdAsync(project.Id, default)).ReturnsAsync(project);
+        _sectionRepo.Setup(r => r.GetPublishedByProjectIdAsync(project.Id, default))
+            .ReturnsAsync(new List<Section> { section });
+        _converter.Setup(c => c.ConvertAsync("/fake/path", "SCEN-001", default))
+            .ReturnsAsync(new RtfConversionResult { Html = "<p>New</p>", Hash = "newhash" });
+
+        await sut.DetectContentChangesAsync(project.Id);
+
+        _versioningService.Verify(v =>
+            v.CreateVersionFromSyncAsync(section, project.AuthorId, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task DetectContentChangesAsync_WhenUnpublishedSectionHashChanged_MarksContentChanged()
+    {
+        var project = MakeProject();
+        var sut     = CreateSut();
+        var section = Section.CreateDocument(project.Id, "SCEN-001", "Scene 1",
+            null, 0, "<p>Old</p>", "oldhash", "First Draft");
+        // Not published
 
         SetupPathResolver(project, "/fake/path");
 

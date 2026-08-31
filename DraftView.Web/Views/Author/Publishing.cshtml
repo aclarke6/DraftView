@@ -1,6 +1,8 @@
 ﻿@model PublishingPageViewModel
+@using DraftView.Domain.Enumerations
 @{
     ViewData["Title"] = "Publishing — " + Model.Project.Name;
+    var isScrivener = Model.Project.ProjectType == ProjectType.ScrivenerDropbox;
 }
 
 <h2>@Model.Project.Name — Publishing</h2>
@@ -8,7 +10,14 @@
     <a asp-action="Sections" asp-route-projectId="@Model.Project.Id">&larr; Back to Sections</a>
 </p>
 <p class="page-subtitle">
-    Republish chapters or individual documents. Revoke rolls back to the previous version.
+    @if (isScrivener)
+    {
+        <span>Versions are created automatically when Scrivener syncs. Revoke rolls back to the previous version.</span>
+    }
+    else
+    {
+        <span>Republish chapters or individual documents. Revoke rolls back to the previous version.</span>
+    }
 </p>
 
 <div class="discovery-panel">
@@ -98,7 +107,7 @@ else
                 }
 
                 <div class="publishing-chapter__actions">
-                    @if (chapter.HasChanges && !chapter.Chapter.IsLocked)
+                    @if (!isScrivener && chapter.HasChanges && !chapter.Chapter.IsLocked)
                     {
                         <form asp-action="RepublishChapter" method="post" style="display:inline">
                             @Html.AntiForgeryToken()
@@ -151,7 +160,7 @@ else
                             }
 
                             <div class="publishing-doc__actions">
-                                @if (doc.HasChanges)
+                                @if (!isScrivener && doc.HasChanges)
                                 {
                                     <form asp-action="RepublishDocument" method="post" style="display:inline">
                                         @Html.AntiForgeryToken()
