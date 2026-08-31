@@ -45,6 +45,7 @@ public class ReaderControllerTests
     private readonly Mock<IAccessRequestRepository> accessRequestRepo = new();
     private readonly Mock<IAccessRequestService> accessRequestService = new();
     private readonly Mock<IReaderDashboardService> readerDashboardService = new();
+    private readonly Mock<IReaderDiffService> readerDiffService = new();
     private readonly Mock<ILogger<ReaderController>> logger = new();
     private ICommentDisplayService CommentDisplayService =>
         new DraftView.Application.Services.CommentDisplayService(userRepo.Object, passageAnchorService.Object);
@@ -1070,6 +1071,7 @@ public class ReaderControllerTests
             accessRequestRepo.Object,
             accessRequestService.Object,
             readerDashboardService.Object,
+            readerDiffService.Object,
             logger.Object);
 
         controller.ControllerContext = new ControllerContext
@@ -1110,6 +1112,7 @@ public class ReaderControllerTests
             accessRequestRepo.Object,
             accessRequestService.Object,
             readerDashboardService.Object,
+            readerDiffService.Object,
             logger.Object);
 
         controller.ControllerContext = new ControllerContext

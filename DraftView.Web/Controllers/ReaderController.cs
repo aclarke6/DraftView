@@ -30,6 +30,7 @@ public class ReaderController(
     IAccessRequestRepository accessRequestRepo,
     IAccessRequestService accessRequestService,
     IReaderDashboardService readerDashboardService,
+    IReaderDiffService readerDiffService,
     ILogger<ReaderController> logger)
     : BaseReaderController(projectRepo, sectionRepo, commentService, progressService,
                            userRepository, readerAccessRepo, humanOverrideService, passageAnchorService,
@@ -37,6 +38,7 @@ public class ReaderController(
 {
     private readonly IUserPreferencesRepository _userPreferencesRepo = userPreferencesRepo;
     private readonly IPassageAnchorService _passageAnchorService = passageAnchorService;
+    private readonly IReaderDiffService _readerDiffService = readerDiffService;
     private readonly IReaderDashboardService _readerDashboardService = readerDashboardService;
     private static readonly Regex HtmlTagRegex = new("<[^>]+>", RegexOptions.Compiled);
     private static readonly Regex WhitespaceRegex = new("\\s+", RegexOptions.Compiled);
@@ -301,6 +303,36 @@ public class ReaderController(
             return Forbid();
 
         await ProgressService.DismissBannerAsync(sectionId, user.Id, versionNumber);
+        return Ok();
+    }
+
+    // -----------------------------------------------------------------------
+    // POST: /Reader/MarkAsRead
+    // -----------------------------------------------------------------------
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MarkAsRead(Guid sectionId)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return Forbid();
+
+        await _readerDiffService.MarkAsReadAsync(sectionId, user.Id);
+        return Ok();
+    }
+
+    // -----------------------------------------------------------------------
+    // POST: /Reader/MarkAsUnread
+    // -----------------------------------------------------------------------
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MarkAsUnread(Guid sectionId)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return Forbid();
+
+        await _readerDiffService.MarkAsUnreadAsync(sectionId, user.Id);
         return Ok();
     }
 
