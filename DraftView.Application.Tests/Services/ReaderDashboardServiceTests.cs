@@ -546,11 +546,40 @@ public class ReaderDashboardServiceTests
         return scene;
     }
 
+    [Fact]
+    public async Task ChapterChangeStatuses_WhenNullLastReadVersionNumber_AndNullClassification_ReturnsPolish()
+    {
+        // Production scenario: reader has null LastReadVersionNumber (pre-versioning read)
+        // AND version 1 has null ChangeClassification (no baseline to diff against).
+        // Must still show a badge — we cannot confirm content matches what they read.
+        var chapterId = Guid.NewGuid();
+        var scene = CreateScene(chapterId);
+        var readEvent = ReadEvent.Create(scene.Id, UserId); // LastReadVersionNumber stays null
+
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapterId, default))
+            .ReturnsAsync([scene]);
+        _readEventRepo.Setup(r => r.GetAsync(scene.Id, UserId, default))
+            .ReturnsAsync(readEvent);
+        _sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, default))
+            .ReturnsAsync(CreateVersionNullClassification(scene, 1));
+
+        var result = await CreateSut().GetChapterChangeStatusesAsync(
+            UserId, [chapterId], ReadingStyle.StoryReader);
+
+        Assert.Equal(ChangeClassification.Polish, result[chapterId]);
+    }
+
     private static SectionVersion CreateVersion(Section section, int versionNumber, ChangeClassification classification)
     {
         section.UpdateContent("<p>content</p>", "hash");
         var version = SectionVersion.Create(section, Guid.NewGuid(), versionNumber, 1, 0);
         version.SetChangeClassification(classification);
         return version;
+    }
+
+    private static SectionVersion CreateVersionNullClassification(Section section, int versionNumber)
+    {
+        section.UpdateContent("<p>content</p>", "hash");
+        return SectionVersion.Create(section, Guid.NewGuid(), versionNumber, 1, 0);
     }
 }
