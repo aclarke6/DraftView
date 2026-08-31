@@ -23,7 +23,6 @@ public class ReaderController(
     IReaderAccessRepository readerAccessRepo,
     ISectionVersionRepository sectionVersionRepo,
     IReadEventRepository readEventRepo,
-    ISectionDiffService sectionDiffService,
     IHumanOverrideService humanOverrideService,
     IPassageAnchorService passageAnchorService,
     ICommentDisplayService commentDisplayService,
