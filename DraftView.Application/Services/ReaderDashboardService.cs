@@ -8,7 +8,9 @@ namespace DraftView.Application.Services;
 public class ReaderDashboardService(
     IReadingProgressService progressService,
     ISectionRepository sectionRepo,
-    ICommentRepository commentRepo) : IReaderDashboardService
+    ICommentRepository commentRepo,
+    IReadEventRepository readEventRepo,
+    ISectionVersionRepository sectionVersionRepo) : IReaderDashboardService
 {
     public async Task<ResumeTarget?> GetCrossProjectResumeTargetAsync(
         Guid userId, IReadOnlyList<Guid> projectIds, CancellationToken ct = default)
@@ -74,4 +76,66 @@ public class ReaderDashboardService(
 
         return result;
     }
+
+    /// <summary>
+    /// Returns the highest ChangeClassification across all Document scenes in each chapter
+    /// that have been updated since the reader's last read version, filtered by ReadingStyle.
+    /// Uses the latest SectionVersion.ChangeClassification as an approximation.
+    /// Returns null for a chapter when the reader is up to date at their threshold level.
+    /// </summary>
+    public async Task<IReadOnlyDictionary<Guid, ChangeClassification?>> GetChapterChangeStatusesAsync(
+        Guid userId, IReadOnlyList<Guid> chapterIds, ReadingStyle readingStyle, CancellationToken ct = default)
+    {
+        var result = new Dictionary<Guid, ChangeClassification?>();
+
+        if (chapterIds.Count == 0)
+            return result;
+
+        var minimumTier = MinimumTier(readingStyle);
+
+        foreach (var chapterId in chapterIds)
+        {
+            if (result.ContainsKey(chapterId))
+                continue;
+
+            var scenes = await sectionRepo.GetAllDescendantsAsync(chapterId, ct);
+            var documents = scenes.Where(s => s.NodeType == NodeType.Document && s.IsPublished && !s.IsSoftDeleted);
+
+            ChangeClassification? chapterMax = null;
+
+            foreach (var scene in documents)
+            {
+                var readEvent = await readEventRepo.GetAsync(scene.Id, userId, ct);
+                if (readEvent?.LastReadVersionNumber is null)
+                    continue;
+
+                var latestVersion = await sectionVersionRepo.GetLatestAsync(scene.Id, ct);
+                if (latestVersion is null)
+                    continue;
+
+                if (latestVersion.VersionNumber <= readEvent.LastReadVersionNumber)
+                    continue;
+
+                var classification = latestVersion.ChangeClassification;
+                if (classification is null || classification < minimumTier)
+                    continue;
+
+                if (chapterMax is null || classification > chapterMax)
+                    chapterMax = classification;
+            }
+
+            result[chapterId] = chapterMax;
+        }
+
+        return result;
+    }
+
+    private static ChangeClassification MinimumTier(ReadingStyle style) => style switch
+    {
+        ReadingStyle.BetaReader    => ChangeClassification.Trivial,
+        ReadingStyle.StoryReader   => ChangeClassification.Polish,
+        ReadingStyle.AlphaReader   => ChangeClassification.Revision,
+        ReadingStyle.StructureOnly => ChangeClassification.Rewrite,
+        _                          => ChangeClassification.Polish
+    };
 }

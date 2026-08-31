@@ -963,6 +963,78 @@
     font-weight: var(--font-medium);
 }
 
+.reader-dashboard__status--trivial { color: var(--color-text-muted); }
+.reader-dashboard__status--polish  { color: #b45309; font-weight: var(--font-medium); }
+.reader-dashboard__status--revision { color: #c2410c; font-weight: var(--font-medium); }
+.reader-dashboard__status--rewrite  { color: #dc2626; font-weight: var(--font-medium); }
+
+/* Scene change pill — "This chapter" nav (no text, colour only) */
+.change-pill {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-left: var(--space-2);
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
+.change-pill--trivial  { background: var(--color-text-muted); }
+.change-pill--polish   { background: #d97706; }
+.change-pill--revision { background: #ea580c; }
+.change-pill--rewrite  { background: #dc2626; }
+
+/* Diff controls — toggle + mark-as-read/unread */
+.diff-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+}
+
+.diff-toggle-btn {
+    background: none;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    padding: var(--space-1) var(--space-3);
+    font-size: var(--text-sm);
+}
+
+.diff-toggle-btn:hover { color: var(--color-text); border-color: var(--color-text-muted); }
+
+.diff-mark-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: var(--text-sm);
+    padding: 0;
+}
+
+.diff-mark-btn--read   { color: var(--color-text-muted); }
+.diff-mark-btn--unread { color: var(--color-text-muted); }
+.diff-mark-btn:hover   { color: var(--color-text); }
+
+/* Diff paragraph rendering */
+.diff-para--added   { background: #f0fdf4; border-left: 3px solid #22c55e; padding-left: var(--space-3); }
+.diff-para--removed { background: #fef2f2; border-left: 3px solid #ef4444; padding-left: var(--space-3); }
+
+/* Inline word-level diff (Modified paragraphs) */
+.prose del {
+    color: #dc2626;
+    text-decoration: line-through;
+    background: #fee2e2;
+}
+
+.prose ins {
+    color: #15803d;
+    text-decoration: none;
+    background: #dcfce7;
+}
+
 .reader-dashboard__chapter-link {
     color: var(--color-text);
     font-weight: var(--font-medium);

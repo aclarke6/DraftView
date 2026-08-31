@@ -122,6 +122,7 @@ namespace DraftView.Web.Extensions
             services.AddScoped<ISectionDiffService, SectionDiffService>();
             services.AddScoped<IReaderDashboardService, ReaderDashboardService>();
             services.AddScoped<IReaderDiffService, ReaderDiffService>();
+            // Note: ReaderDashboardService and ReaderDiffService use repositories already registered above.
             services.AddScoped<ISectionManagementService, SectionManagementService>();
             services.AddScoped<IProjectManagementService, ProjectManagementService>();
             services.AddScoped<ICommentDisplayService, CommentDisplayService>();

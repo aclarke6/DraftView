@@ -483,7 +483,10 @@ public class AccountController(
             ProseFontSize = prefs?.ProseFontSize.ToString() ?? "Medium",
             ReaderBio = prefs?.ReaderBio,
             ReaderGenreInterests = prefs?.ReaderGenreInterests,
-            ReaderPace = prefs?.ReaderPace?.ToString()
+            ReaderPace = prefs?.ReaderPace?.ToString(),
+            ShowDiffOnRevisit = prefs?.ShowDiffOnRevisit ?? false,
+            ReadingStyle = prefs?.ReadingStyle.ToString() ?? "StoryReader",
+            DiffCooldownHours = prefs?.DiffCooldownHours ?? 24
         };
 
         if (vm.IsAuthor)
@@ -569,6 +572,35 @@ public class AccountController(
         {
             await userService.UpdateProseFontPreferencesAsync(user.Id, proseFont, proseFontSize);
             TempData["Success"] = "Reading preferences updated.";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction("Settings");
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangeDiffPreferences(ChangeDiffPreferencesViewModel model)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return RedirectToAction("Login");
+
+        if (!Enum.TryParse<DraftView.Domain.Enumerations.ReadingStyle>(model.ReadingStyle, true, out var readingStyle))
+        {
+            TempData["Error"] = "Invalid reading style.";
+            return RedirectToAction("Settings");
+        }
+
+        var cooldownHours = model.DiffCooldownHours > 0 ? model.DiffCooldownHours : 1;
+
+        try
+        {
+            await userService.UpdateDiffPreferencesAsync(user.Id, model.ShowDiffOnRevisit, readingStyle, cooldownHours);
+            TempData["Success"] = "Change notification preferences updated.";
         }
         catch (Exception ex)
         {

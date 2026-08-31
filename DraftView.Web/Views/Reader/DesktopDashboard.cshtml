@@ -1,4 +1,5 @@
 ﻿@model DraftView.Web.Models.DesktopDashboardViewModel
+@using DraftView.Domain.Enumerations
 @{
     ViewData["Title"] = "My Reading";
     var selectedId = Context.Request.Query["projectId"].ToString();
@@ -135,13 +136,29 @@ else
                                                     }
                                                 </td>
                                                 <td class="reader-dashboard__cell reader-dashboard__cell--status">
-                                                    @if (item.HasRead)
+                                                    @if (!item.HasRead)
                                                     {
-                                                        <span class="reader-dashboard__status reader-dashboard__status--read">Read</span>
+                                                        <span class="reader-dashboard__status reader-dashboard__status--new">New</span>
+                                                    }
+                                                    else if (item.ChapterChangeClassification == ChangeClassification.Trivial)
+                                                    {
+                                                        <span class="reader-dashboard__status reader-dashboard__status--trivial">Minor fix</span>
+                                                    }
+                                                    else if (item.ChapterChangeClassification == ChangeClassification.Polish)
+                                                    {
+                                                        <span class="reader-dashboard__status reader-dashboard__status--polish">Minor edit</span>
+                                                    }
+                                                    else if (item.ChapterChangeClassification == ChangeClassification.Revision)
+                                                    {
+                                                        <span class="reader-dashboard__status reader-dashboard__status--revision">Revised</span>
+                                                    }
+                                                    else if (item.ChapterChangeClassification == ChangeClassification.Rewrite)
+                                                    {
+                                                        <span class="reader-dashboard__status reader-dashboard__status--rewrite">Rewritten</span>
                                                     }
                                                     else
                                                     {
-                                                        <span class="reader-dashboard__status reader-dashboard__status--new">New</span>
+                                                        <span class="reader-dashboard__status reader-dashboard__status--read">Read</span>
                                                     }
                                                 </td>
                                             </tr>

@@ -319,4 +319,36 @@ public class UserServiceTests
         Assert.Null(prefs.ReaderPace);
         UnitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
     }
+
+    [Fact]
+    public async Task UpdateDiffPreferencesAsync_ValidUser_UpdatesPrefsAndSaves()
+    {
+        var user = User.Create("reader@example.com", "Reader", Role.BetaReader);
+        var prefs = UserPreferences.CreateForBetaReader(user.Id);
+        var sut = CreateSut();
+
+        PrefsRepo.Setup(r => r.GetByUserIdAsync(user.Id, default))
+            .ReturnsAsync(prefs);
+
+        await sut.UpdateDiffPreferencesAsync(user.Id, true, ReadingStyle.AlphaReader, 72);
+
+        Assert.True(prefs.ShowDiffOnRevisit);
+        Assert.Equal(ReadingStyle.AlphaReader, prefs.ReadingStyle);
+        Assert.Equal(72, prefs.DiffCooldownHours);
+        UnitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateDiffPreferencesAsync_WhenNoPreferences_DoesNotSave()
+    {
+        var user = User.Create("reader@example.com", "Reader", Role.BetaReader);
+        var sut = CreateSut();
+
+        PrefsRepo.Setup(r => r.GetByUserIdAsync(user.Id, default))
+            .ReturnsAsync((UserPreferences?)null);
+
+        await sut.UpdateDiffPreferencesAsync(user.Id, true, ReadingStyle.StoryReader, 24);
+
+        UnitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Never);
+    }
 }

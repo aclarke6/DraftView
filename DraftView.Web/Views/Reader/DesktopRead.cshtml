@@ -41,7 +41,20 @@
             <div class="reader__contents-label">This chapter</div>
             @foreach (var item in Model.Scenes)
             {
-                <a href="#scene-@item.Scene.Id" class="reader__contents-link">@item.Scene.Title@(item.VersionLabel != null ? $" ({item.VersionLabel})" : string.Empty)</a>
+                <a href="#scene-@item.Scene.Id" class="reader__contents-link">
+                    @item.Scene.Title@(item.VersionLabel != null ? $" ({item.VersionLabel})" : string.Empty)
+                    @if (item.DiffClassification.HasValue)
+                    {
+                        var pillClass = item.DiffClassification switch {
+                            DraftView.Domain.Enumerations.ChangeClassification.Trivial  => "change-pill change-pill--trivial",
+                            DraftView.Domain.Enumerations.ChangeClassification.Polish   => "change-pill change-pill--polish",
+                            DraftView.Domain.Enumerations.ChangeClassification.Revision => "change-pill change-pill--revision",
+                            DraftView.Domain.Enumerations.ChangeClassification.Rewrite  => "change-pill change-pill--rewrite",
+                            _ => "change-pill"
+                        };
+                        <span class="@pillClass" aria-hidden="true"></span>
+                    }
+                </a>
             }
             <a href="#chapter-comments"
                    class="reader__contents-link reader__contents-link--muted">
@@ -126,7 +139,20 @@
                 <div class="chapter-sidebar__label">This chapter</div>
                 @foreach (var item in Model.Scenes)
                 {
-                    <a href="#scene-@item.Scene.Id" class="chapter-sidebar__link">@item.Scene.Title@(item.VersionLabel != null ? $" ({item.VersionLabel})" : string.Empty)</a>
+                    <a href="#scene-@item.Scene.Id" class="chapter-sidebar__link">
+                        @item.Scene.Title@(item.VersionLabel != null ? $" ({item.VersionLabel})" : string.Empty)
+                        @if (item.DiffClassification.HasValue)
+                        {
+                            var pillClass = item.DiffClassification switch {
+                                DraftView.Domain.Enumerations.ChangeClassification.Trivial  => "change-pill change-pill--trivial",
+                                DraftView.Domain.Enumerations.ChangeClassification.Polish   => "change-pill change-pill--polish",
+                                DraftView.Domain.Enumerations.ChangeClassification.Revision => "change-pill change-pill--revision",
+                                DraftView.Domain.Enumerations.ChangeClassification.Rewrite  => "change-pill change-pill--rewrite",
+                                _ => "change-pill"
+                            };
+                            <span class="@pillClass" aria-hidden="true"></span>
+                        }
+                    </a>
                 }
 
                 <a href="#chapter-comments"
@@ -272,30 +298,45 @@
                             </div>
                         }
 
+                        @if (item.DiffEnabled && item.HasDiff)
+                        {
+                            <div class="diff-controls"
+                                 data-section-id="@item.Scene.Id"
+                                 data-word-count="@item.WordCount">
+                                <button type="button" class="diff-toggle-btn" data-diff-toggle="@item.Scene.Id">
+                                    <span class="diff-toggle-btn__show">Show changes</span>
+                                    <span class="diff-toggle-btn__hide" hidden>Hide changes</span>
+                                </button>
+                                <button type="button" class="diff-mark-btn diff-mark-btn--read" data-mark-read="@item.Scene.Id">Mark as read</button>
+                                <button type="button" class="diff-mark-btn diff-mark-btn--unread" data-mark-unread="@item.Scene.Id" hidden>Mark as unread</button>
+                            </div>
+                        }
+
                         <div class="scene-prose-shell">
-                            <div class="scene-prose-content prose">
-                                @if (item.HasDiff)
-                                {
-                                    @foreach (var para in item.DiffParagraphs)
-                                    {
-                                        if (para.Type == DiffResultType.Added)
+                            @if (item.DiffEnabled && item.HasDiff)
+                            {
+                                <div class="scene-diff-view" id="diff-@item.Scene.Id" hidden>
+                                    <div class="scene-prose-content prose">
+                                        @foreach (var para in item.DiffParagraphs)
                                         {
-                                            <div class="diff-para diff-para--added">@Html.Raw(para.Html)</div>
+                                            if (para.Type == DiffResultType.Added)
+                                            {
+                                                <div class="diff-para diff-para--added">@Html.Raw(para.Html)</div>
+                                            }
+                                            else if (para.Type == DiffResultType.Removed)
+                                            {
+                                                <div class="diff-para diff-para--removed">@Html.Raw(para.Html)</div>
+                                            }
+                                            else
+                                            {
+                                                @Html.Raw(para.Html)
+                                            }
                                         }
-                                        else if (para.Type == DiffResultType.Removed)
-                                        {
-                                            <div class="diff-para diff-para--removed"></div>
-                                        }
-                                        else
-                                        {
-                                            @Html.Raw(para.Html)
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    @Html.Raw(item.ResolvedHtmlContent ?? "<p><em>The author has not added content to this scene yet.</em></p>")
-                                }
+                                    </div>
+                                </div>
+                            }
+                            <div class="scene-prose-content prose" id="prose-@item.Scene.Id">
+                                @Html.Raw(item.ResolvedHtmlContent ?? "<p><em>The author has not added content to this scene yet.</em></p>")
                             </div>
                         </div>
                     </div>
@@ -1645,6 +1686,101 @@
                     event.preventDefault();
                 }
             });
+        });
+    })();
+
+    // ── Diff toggle, mark-as-read / mark-as-unread ───────────────────────────
+    (function () {
+        var antiForgeryInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        if (!antiForgeryInput) return;
+
+        function postToReader(path, sectionId) {
+            return fetch('/Reader/' + path + '?sectionId=' + sectionId, {
+                method: 'POST',
+                headers: { 'RequestVerificationToken': antiForgeryInput.value }
+            });
+        }
+
+        // Diff view toggle
+        document.querySelectorAll('[data-diff-toggle]').forEach(function (btn) {
+            var sectionId = btn.getAttribute('data-diff-toggle');
+            var diffView  = document.getElementById('diff-' + sectionId);
+            var proseView = document.getElementById('prose-' + sectionId);
+
+            btn.addEventListener('click', function () {
+                var showing = !diffView.hidden;
+                diffView.hidden  = showing;
+                proseView.hidden = !showing;
+                btn.querySelector('.diff-toggle-btn__show').hidden = !showing;
+                btn.querySelector('.diff-toggle-btn__hide').hidden =  showing;
+            });
+        });
+
+        // Mark as read (explicit button)
+        document.querySelectorAll('[data-mark-read]').forEach(function (btn) {
+            var sectionId = btn.getAttribute('data-mark-read');
+            btn.addEventListener('click', function () {
+                postToReader('MarkAsRead', sectionId).then(function () {
+                    // Show mark-as-unread, hide mark-as-read
+                    btn.hidden = true;
+                    var unreadBtn = document.querySelector('[data-mark-unread="' + sectionId + '"]');
+                    if (unreadBtn) unreadBtn.hidden = false;
+                });
+            });
+        });
+
+        // Mark as unread (explicit button)
+        document.querySelectorAll('[data-mark-unread]').forEach(function (btn) {
+            var sectionId = btn.getAttribute('data-mark-unread');
+            btn.addEventListener('click', function () {
+                postToReader('MarkAsUnread', sectionId).then(function () {
+                    btn.hidden = true;
+                    var readBtn = document.querySelector('[data-mark-read="' + sectionId + '"]');
+                    if (readBtn) readBtn.hidden = false;
+                });
+            });
+        });
+
+        // Auto mark-as-read: time + scroll per scene
+        document.querySelectorAll('.diff-controls[data-section-id]').forEach(function (controls) {
+            var sectionId       = controls.getAttribute('data-section-id');
+            var wordCount       = parseInt(controls.getAttribute('data-word-count') || '0', 10);
+            var estimatedSecs   = Math.max(30, Math.floor((wordCount / 200) * 60 * 0.8));
+            var sceneBlock      = document.querySelector('.scene-block[data-section-id="' + sectionId + '"]');
+            if (!sceneBlock) return;
+
+            var activeSeconds   = 0;
+            var scrolledPast75  = false;
+            var marked          = false;
+            var timer;
+
+            // Active time tracking via Page Visibility API
+            function tick() { if (!document.hidden && !marked) activeSeconds++; }
+            timer = setInterval(tick, 1000);
+
+            // Scroll depth tracking
+            function checkScroll() {
+                if (marked) return;
+                var rect   = sceneBlock.getBoundingClientRect();
+                var bottom = rect.bottom;
+                var trigger = window.innerHeight * 0.25;
+                if (bottom < trigger) scrolledPast75 = true;
+                if (scrolledPast75 && activeSeconds >= estimatedSecs) autoMarkAsRead();
+            }
+            window.addEventListener('scroll', checkScroll, { passive: true });
+
+            function autoMarkAsRead() {
+                if (marked) return;
+                marked = true;
+                clearInterval(timer);
+                postToReader('MarkAsRead', sectionId).then(function () {
+                    // Update button states
+                    var readBtn   = document.querySelector('[data-mark-read="' + sectionId + '"]');
+                    var unreadBtn = document.querySelector('[data-mark-unread="' + sectionId + '"]');
+                    if (readBtn)   readBtn.hidden   = true;
+                    if (unreadBtn) unreadBtn.hidden = false;
+                });
+            }
         });
     })();
 </script>

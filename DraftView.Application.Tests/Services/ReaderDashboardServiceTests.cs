@@ -12,14 +12,18 @@ public class ReaderDashboardServiceTests
     private static readonly Guid UserId    = Guid.NewGuid();
     private static readonly Guid ProjectId = Guid.NewGuid();
 
-    private readonly Mock<IReadingProgressService> _progressService = new();
-    private readonly Mock<ISectionRepository>      _sectionRepo     = new();
-    private readonly Mock<ICommentRepository>      _commentRepo     = new();
+    private readonly Mock<IReadingProgressService>   _progressService    = new();
+    private readonly Mock<ISectionRepository>        _sectionRepo        = new();
+    private readonly Mock<ICommentRepository>        _commentRepo        = new();
+    private readonly Mock<IReadEventRepository>      _readEventRepo      = new();
+    private readonly Mock<ISectionVersionRepository> _sectionVersionRepo = new();
 
     private ReaderDashboardService CreateSut() => new(
         _progressService.Object,
         _sectionRepo.Object,
-        _commentRepo.Object);
+        _commentRepo.Object,
+        _readEventRepo.Object,
+        _sectionVersionRepo.Object);
 
     // -----------------------------------------------------------------------
     // GetCrossProjectResumeTargetAsync
@@ -270,5 +274,158 @@ public class ReaderDashboardServiceTests
 
         Assert.Equal(2, result[ch1Id]);
         Assert.Equal(1, result[ch2Id]);
+    }
+
+    // -----------------------------------------------------------------------
+    // GetChapterChangeStatusesAsync
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task ChapterChangeStatuses_EmptyChapterIds_ReturnsEmptyDictionary()
+    {
+        var result = await CreateSut().GetChapterChangeStatusesAsync(
+            UserId, [], ReadingStyle.StoryReader);
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task ChapterChangeStatuses_WhenReaderIsUpToDate_ReturnsNullClassification()
+    {
+        var chapterId = Guid.NewGuid();
+        var scene = CreateScene(chapterId);
+        var readEvent = ReadEvent.Create(scene.Id, UserId);
+        readEvent.MarkAsRead(1);
+
+        var version = CreateVersion(scene, 1, ChangeClassification.Polish);
+
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapterId, default))
+            .ReturnsAsync([scene]);
+        _readEventRepo.Setup(r => r.GetAsync(scene.Id, UserId, default))
+            .ReturnsAsync(readEvent);
+        _sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, default))
+            .ReturnsAsync(version);
+
+        var result = await CreateSut().GetChapterChangeStatusesAsync(
+            UserId, [chapterId], ReadingStyle.StoryReader);
+
+        Assert.Null(result[chapterId]);
+    }
+
+    [Fact]
+    public async Task ChapterChangeStatuses_WhenSceneUpdated_ReturnsMaxClassification()
+    {
+        var chapterId = Guid.NewGuid();
+        var scene = CreateScene(chapterId);
+        var readEvent = ReadEvent.Create(scene.Id, UserId);
+        readEvent.MarkAsRead(1);
+
+        var version = CreateVersion(scene, 2, ChangeClassification.Revision);
+
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapterId, default))
+            .ReturnsAsync([scene]);
+        _readEventRepo.Setup(r => r.GetAsync(scene.Id, UserId, default))
+            .ReturnsAsync(readEvent);
+        _sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, default))
+            .ReturnsAsync(version);
+
+        var result = await CreateSut().GetChapterChangeStatusesAsync(
+            UserId, [chapterId], ReadingStyle.StoryReader);
+
+        Assert.Equal(ChangeClassification.Revision, result[chapterId]);
+    }
+
+    [Fact]
+    public async Task ChapterChangeStatuses_WhenClassificationBelowThreshold_ReturnsNull()
+    {
+        var chapterId = Guid.NewGuid();
+        var scene = CreateScene(chapterId);
+        var readEvent = ReadEvent.Create(scene.Id, UserId);
+        readEvent.MarkAsRead(1);
+
+        // Latest version has Trivial changes — below StoryReader threshold (Polish+)
+        var version = CreateVersion(scene, 2, ChangeClassification.Trivial);
+
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapterId, default))
+            .ReturnsAsync([scene]);
+        _readEventRepo.Setup(r => r.GetAsync(scene.Id, UserId, default))
+            .ReturnsAsync(readEvent);
+        _sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, default))
+            .ReturnsAsync(version);
+
+        var result = await CreateSut().GetChapterChangeStatusesAsync(
+            UserId, [chapterId], ReadingStyle.StoryReader);
+
+        Assert.Null(result[chapterId]);
+    }
+
+    [Fact]
+    public async Task ChapterChangeStatuses_WhenNoReadEvent_ReturnsNullClassification()
+    {
+        var chapterId = Guid.NewGuid();
+        var scene = CreateScene(chapterId);
+
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapterId, default))
+            .ReturnsAsync([scene]);
+        _readEventRepo.Setup(r => r.GetAsync(scene.Id, UserId, default))
+            .ReturnsAsync((ReadEvent?)null);
+        _sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, default))
+            .ReturnsAsync(CreateVersion(scene, 1, ChangeClassification.Polish));
+
+        var result = await CreateSut().GetChapterChangeStatusesAsync(
+            UserId, [chapterId], ReadingStyle.StoryReader);
+
+        // No read event = never read = "New" state, not "Updated" — no classification
+        Assert.Null(result[chapterId]);
+    }
+
+    [Fact]
+    public async Task ChapterChangeStatuses_MultipleScenes_ReturnsMaxAcrossScenes()
+    {
+        var chapterId = Guid.NewGuid();
+        var scene1    = CreateScene(chapterId);
+        var scene2    = CreateScene(chapterId);
+
+        var readEvent1 = ReadEvent.Create(scene1.Id, UserId);
+        readEvent1.MarkAsRead(1);
+        var readEvent2 = ReadEvent.Create(scene2.Id, UserId);
+        readEvent2.MarkAsRead(1);
+
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapterId, default))
+            .ReturnsAsync([scene1, scene2]);
+        _readEventRepo.Setup(r => r.GetAsync(scene1.Id, UserId, default))
+            .ReturnsAsync(readEvent1);
+        _readEventRepo.Setup(r => r.GetAsync(scene2.Id, UserId, default))
+            .ReturnsAsync(readEvent2);
+        _sectionVersionRepo.Setup(r => r.GetLatestAsync(scene1.Id, default))
+            .ReturnsAsync(CreateVersion(scene1, 2, ChangeClassification.Polish));
+        _sectionVersionRepo.Setup(r => r.GetLatestAsync(scene2.Id, default))
+            .ReturnsAsync(CreateVersion(scene2, 2, ChangeClassification.Rewrite));
+
+        var result = await CreateSut().GetChapterChangeStatusesAsync(
+            UserId, [chapterId], ReadingStyle.StoryReader);
+
+        Assert.Equal(ChangeClassification.Rewrite, result[chapterId]);
+    }
+
+    // -----------------------------------------------------------------------
+    // Helpers
+    // -----------------------------------------------------------------------
+
+    private static Section CreateScene(Guid chapterId)
+    {
+        var scene = Section.CreateDocument(
+            Guid.NewGuid(), Guid.NewGuid().ToString(), "Scene",
+            chapterId, 1, "<p>content</p>", "hash", "First Draft");
+        scene.PublishAsPartOfChapter("hash");
+        return scene;
+    }
+
+    private static SectionVersion CreateVersion(Section section, int versionNumber, ChangeClassification classification)
+    {
+        section.UpdateContent("<p>content</p>", "hash");
+        var version = SectionVersion.Create(section, Guid.NewGuid(), versionNumber, 1, 0);
+        version.SetChangeClassification(classification);
+        return version;
     }
 }
