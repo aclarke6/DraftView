@@ -1,7 +1,7 @@
 ﻿# DraftView — Task List
 Last updated: 2026-08-31
 Last deployed: 2026-08-31 00:16 (commit: 2aad8b6)
-Last merged: 2026-08-30 — PR #102 (CHANGE-023: comment count pill as link) merged to main
+Last merged: 2026-08-31 — PR #104 (CHANGE-024: reader version diff — What's Changed) merged to main
 
 ---
 
@@ -12,7 +12,7 @@ Last merged: 2026-08-30 — PR #102 (CHANGE-023: comment count pill as link) mer
 **Repository:** https://github.com/aclarke6/DraftView
 
 ### Current Test State
-- 1,300 total, 1,300 passed, 1 skipped, 0 failed
+- 1,358 total, 1,358 passed, 1 skipped, 0 failed
 - 1 skipped — `SmtpEmailSenderIntegrationTests` (sends real email, manual only)
 
 ---
