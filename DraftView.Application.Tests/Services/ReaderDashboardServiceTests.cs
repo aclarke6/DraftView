@@ -547,14 +547,14 @@ public class ReaderDashboardServiceTests
     }
 
     [Fact]
-    public async Task ChapterChangeStatuses_WhenNullLastReadVersionNumber_AndNullClassification_ReturnsPolish()
+    public async Task ChapterChangeStatuses_WhenNullLastReadVersionNumber_AndNullClassification_ReturnsNull()
     {
-        // Production scenario: reader has null LastReadVersionNumber (pre-versioning read)
-        // AND version 1 has null ChangeClassification (no baseline to diff against).
-        // Must still show a badge — we cannot confirm content matches what they read.
+        // Version 1 with null classification = content has not been flagged as changed
+        // (e.g. stable scene, no diff available). Unchanged scenes show "Read".
+        // The reclassify-changed-scenes script sets Polish on scenes the author changed.
         var chapterId = Guid.NewGuid();
         var scene = CreateScene(chapterId);
-        var readEvent = ReadEvent.Create(scene.Id, UserId); // LastReadVersionNumber stays null
+        var readEvent = ReadEvent.Create(scene.Id, UserId);
 
         _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapterId, default))
             .ReturnsAsync([scene]);
@@ -566,7 +566,7 @@ public class ReaderDashboardServiceTests
         var result = await CreateSut().GetChapterChangeStatusesAsync(
             UserId, [chapterId], ReadingStyle.StoryReader);
 
-        Assert.Equal(ChangeClassification.Polish, result[chapterId]);
+        Assert.Null(result[chapterId]);
     }
 
     private static SectionVersion CreateVersion(Section section, int versionNumber, ChangeClassification classification)

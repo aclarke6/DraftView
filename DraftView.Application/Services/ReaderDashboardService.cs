@@ -156,14 +156,6 @@ public class ReaderDashboardService(
                     continue;
 
                 var classification = latestVersion.ChangeClassification;
-
-                // When the reader has no confirmed read version, we cannot verify the
-                // version content matches what they actually read. Default to Polish so
-                // any unclassified version (e.g. version 1 with no baseline to diff
-                // against) still surfaces as a badge rather than silently showing "Read".
-                if (readEvent.LastReadVersionNumber is null)
-                    classification ??= ChangeClassification.Polish;
-
                 if (classification is null || classification < minimumTier)
                     continue;
 
