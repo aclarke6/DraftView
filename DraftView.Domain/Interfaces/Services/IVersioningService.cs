@@ -70,6 +70,18 @@ public interface IVersioningService
         CancellationToken ct = default);
 
     /// <summary>
+    /// Creates a SectionVersion for a published Document whose content changed during a
+    /// Scrivener sync. Called only by ScrivenerSyncService for ScrivenerDropbox projects.
+    /// Silent no-op when the section is not published, not a Document, is soft-deleted,
+    /// or the parent chapter is locked. Does not call SaveChanges — the sync service
+    /// owns persistence for the entire sync cycle.
+    /// </summary>
+    Task CreateVersionFromSyncAsync(
+        Domain.Entities.Section document,
+        Guid authorId,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Permanently deletes a single historical version.
     /// Throws <see cref="DraftView.Domain.Exceptions.InvariantViolationException"/> if
     /// <paramref name="versionId"/> is the current (latest) version for <paramref name="sectionId"/> —
