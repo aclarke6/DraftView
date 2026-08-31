@@ -1,6 +1,6 @@
 ﻿# DraftView — Task List
 Last updated: 2026-08-31
-Last deployed: 2026-08-31 13:20 (commit: 708b929)
+Last deployed: 2026-08-31 14:33 (commit: 9533b12)
 Last merged: 2026-08-31 — PR #109 (#82 PR2: auto-version on sync for ScrivenerDropbox) merged to main
 
 ---
