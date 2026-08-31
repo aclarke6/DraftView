@@ -120,6 +120,10 @@ public class ScrivenerSyncService(
                 else
                     section.MarkContentChanged();
             }
+            else if (section.IsPublished)
+            {
+                await versioningService.EnsureInitialVersionAsync(section, project.AuthorId, ct);
+            }
         }
 
         await unitOfWork.SaveChangesAsync(ct);

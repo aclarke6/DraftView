@@ -70,6 +70,18 @@ public interface IVersioningService
         CancellationToken ct = default);
 
     /// <summary>
+    /// Creates version 1 for a published Document if no SectionVersion exists yet.
+    /// No-op when a version already exists. Called by ScrivenerSyncService for published
+    /// sections whose content hash is unchanged — ensuring every published section has a
+    /// baseline version even if its content has been stable since auto-versioning deployed.
+    /// Does not call SaveChanges — the sync service owns persistence.
+    /// </summary>
+    Task EnsureInitialVersionAsync(
+        Domain.Entities.Section document,
+        Guid authorId,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Creates a SectionVersion for a published Document whose content changed during a
     /// Scrivener sync. Called only by ScrivenerSyncService for ScrivenerDropbox projects.
     /// Silent no-op when the section is not published, not a Document, is soft-deleted,
