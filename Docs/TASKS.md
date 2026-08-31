@@ -1,6 +1,6 @@
 ﻿# DraftView — Task List
 Last updated: 2026-08-31
-Last deployed: 2026-08-31 12:11 (commit: 9f4b7ab)
+Last deployed: 2026-08-31 13:20 (commit: 708b929)
 Last merged: 2026-08-31 — PR #105 (fix: CHANGE-024 GetChapterChangeStatusesAsync null baseline) merged to main
 
 ---
