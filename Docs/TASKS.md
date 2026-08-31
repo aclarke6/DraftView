@@ -1,6 +1,6 @@
 ﻿# DraftView — Task List
 Last updated: 2026-08-31
-Last deployed: 2026-08-31 00:16 (commit: 2aad8b6)
+Last deployed: 2026-08-31 12:11 (commit: 9f4b7ab)
 Last merged: 2026-08-31 — PR #104 (CHANGE-024: reader version diff — What's Changed) merged to main
 
 ---
