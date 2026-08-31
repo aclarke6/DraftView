@@ -858,7 +858,8 @@ public class ReaderControllerTests
         projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
         sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
         progressService.Setup(r => r.GetLastReadEventAsync(user.Id, project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(readEvent);
-        progressService.Setup(r => r.HasReadSectionAsync(user.Id, chapter.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        readerDashboardService.Setup(r => r.GetChapterHasReadStatusesAsync(user.Id, It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, bool> { { chapter.Id, true } });
 
         var result = await sut.Dashboard();
 
@@ -890,7 +891,8 @@ public class ReaderControllerTests
         projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
         sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
         progressService.Setup(r => r.GetLastReadEventAsync(user.Id, project.Id, It.IsAny<CancellationToken>())).ReturnsAsync((ReadEvent?)null);
-        progressService.Setup(r => r.HasReadSectionAsync(user.Id, chapter.Id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        readerDashboardService.Setup(r => r.GetChapterHasReadStatusesAsync(user.Id, It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, bool> { { chapter.Id, false } });
 
         var result = await sut.Dashboard();
 

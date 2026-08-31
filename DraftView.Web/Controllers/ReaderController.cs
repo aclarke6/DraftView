@@ -88,16 +88,18 @@ public class ReaderController(
             .ThenBy(s => s.SortOrder)
             .ToList();
 
+        var chapterIds = publishedChapters.Select(c => c.Id).ToList();
+        var hasReadStatuses = await _readerDashboardService.GetChapterHasReadStatusesAsync(user.Id, chapterIds);
+
         var chapterRows = new List<MobileChapterRowViewModel>();
         foreach (var chapter in publishedChapters)
         {
-            var hasRead    = await ProgressService.HasReadSectionAsync(user.Id, chapter.Id);
             var sceneCount = allSections.Count(s => s.ParentId == chapter.Id
                                                     && s.NodeType == NodeType.Document
                                                     && s.IsPublished && !s.IsSoftDeleted);
             chapterRows.Add(new MobileChapterRowViewModel {
                 Chapter    = chapter,
-                HasRead    = hasRead,
+                HasRead    = hasReadStatuses.GetValueOrDefault(chapter.Id),
                 SceneCount = sceneCount,
                 IsLeaf     = sceneCount == 0
             });
@@ -439,10 +441,9 @@ public class ReaderController(
             var chaptersWithProgress = new List<DesktopChapterProgressViewModel>();
             foreach (var chapter in publishedChapters)
             {
-                var hasRead = await ProgressService.HasReadSectionAsync(user.Id, chapter.Id);
                 chaptersWithProgress.Add(new DesktopChapterProgressViewModel {
                     Chapter = chapter,
-                    HasRead = hasRead,
+                    HasRead = false,  // populated in batch below
                     IsLeaf  = IsLeafChapter(chapter, allSections)
                 });
             }
@@ -451,12 +452,12 @@ public class ReaderController(
                 ProjectId         = project.Id,
                 ProjectName       = project.Name,
                 TotalChapters     = publishedChapters.Count,
-                ReadChapters      = chaptersWithProgress.Count(c => c.HasRead),
+                ReadChapters      = 0,  // populated in batch below
                 PublishedChapters = chaptersWithProgress
             });
         }
 
-        // Populate comment counts and chapter change statuses via application service
+        // Populate all chapter-level data in batch via application service
         var allChapterIds = viewModel.Projects
             .SelectMany(p => p.PublishedChapters.Select(c => c.Chapter.Id))
             .ToList();
@@ -466,6 +467,7 @@ public class ReaderController(
 
         var commentCounts   = await _readerDashboardService.GetReaderChapterCommentCountsAsync(user.Id, allChapterIds);
         var changeStatuses  = await _readerDashboardService.GetChapterChangeStatusesAsync(user.Id, allChapterIds, readingStyle);
+        var hasReadStatuses = await _readerDashboardService.GetChapterHasReadStatusesAsync(user.Id, allChapterIds);
 
         foreach (var proj in viewModel.Projects)
         {
@@ -475,7 +477,10 @@ public class ReaderController(
                     ch.ReaderCommentCount = count;
                 if (changeStatuses.TryGetValue(ch.Chapter.Id, out var status))
                     ch.ChapterChangeClassification = status;
+                if (hasReadStatuses.TryGetValue(ch.Chapter.Id, out var hasRead))
+                    ch.HasRead = hasRead;
             }
+            proj.ReadChapters = proj.PublishedChapters.Count(c => c.HasRead);
         }
 
         // Resolve resume target via application service
@@ -525,16 +530,18 @@ public class ReaderController(
             .ThenBy(s => s.SortOrder)
             .ToList();
 
+        var chapterIds = publishedChapters.Select(c => c.Id).ToList();
+        var hasReadStatuses = await _readerDashboardService.GetChapterHasReadStatusesAsync(user.Id, chapterIds);
+
         var chapterRows = new List<MobileChapterRowViewModel>();
         foreach (var chapter in publishedChapters)
         {
-            var hasRead    = await ProgressService.HasReadSectionAsync(user.Id, chapter.Id);
             var sceneCount = allSections.Count(s => s.ParentId == chapter.Id
                                                     && s.NodeType == NodeType.Document
                                                     && s.IsPublished && !s.IsSoftDeleted);
             chapterRows.Add(new MobileChapterRowViewModel {
                 Chapter    = chapter,
-                HasRead    = hasRead,
+                HasRead    = hasReadStatuses.GetValueOrDefault(chapter.Id),
                 SceneCount = sceneCount,
                 IsLeaf     = sceneCount == 0
             });

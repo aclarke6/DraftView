@@ -24,6 +24,15 @@ public interface IReaderDashboardService
         Guid userId, IReadOnlyList<Guid> chapterIds, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns true for a chapter if the reader has any ReadEvent on the chapter
+    /// folder OR on any descendant Document scene. Covers both the desktop path
+    /// (where the chapter folder gets a ReadEvent) and the mobile path (where only
+    /// scene nodes get ReadEvents). Every requested chapterId appears as a key.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, bool>> GetChapterHasReadStatusesAsync(
+        Guid userId, IReadOnlyList<Guid> chapterIds, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the highest ChangeClassification across all scenes updated since
     /// the reader last read them, filtered by the reader's ReadingStyle threshold.
     /// Null means the reader is up to date (or has never read) at their threshold level.

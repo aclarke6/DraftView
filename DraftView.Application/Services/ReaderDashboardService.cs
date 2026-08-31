@@ -77,6 +77,42 @@ public class ReaderDashboardService(
         return result;
     }
 
+    public async Task<IReadOnlyDictionary<Guid, bool>> GetChapterHasReadStatusesAsync(
+        Guid userId, IReadOnlyList<Guid> chapterIds, CancellationToken ct = default)
+    {
+        var result = new Dictionary<Guid, bool>();
+
+        if (chapterIds.Count == 0)
+            return result;
+
+        foreach (var chapterId in chapterIds)
+        {
+            if (result.ContainsKey(chapterId))
+                continue;
+
+            if (await readEventRepo.HasReadAsync(chapterId, userId, ct))
+            {
+                result[chapterId] = true;
+                continue;
+            }
+
+            var descendants = await sectionRepo.GetAllDescendantsAsync(chapterId, ct);
+            var hasReadScene = false;
+            foreach (var scene in descendants.Where(s => s.NodeType == NodeType.Document))
+            {
+                if (await readEventRepo.HasReadAsync(scene.Id, userId, ct))
+                {
+                    hasReadScene = true;
+                    break;
+                }
+            }
+
+            result[chapterId] = hasReadScene;
+        }
+
+        return result;
+    }
+
     /// <summary>
     /// Returns the highest ChangeClassification across all Document scenes in each chapter
     /// that have been updated since the reader's last read version, filtered by ReadingStyle.
