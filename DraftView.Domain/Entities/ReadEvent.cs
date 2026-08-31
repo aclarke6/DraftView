@@ -14,6 +14,13 @@ public sealed class ReadEvent
     public DateTime FirstOpenedAt { get; private set; }
     public DateTime LastOpenedAt { get; private set; }
     public int OpenCount { get; private set; }
+
+    /// <summary>
+    /// True when the reader has read the current version of this scene
+    /// (time threshold met or manually marked). False until then.
+    /// </summary>
+    public bool IsRead { get; private set; }
+
     public int? LastReadVersionNumber { get; private set; }
 
     /// <summary>
@@ -145,7 +152,19 @@ public sealed class ReadEvent
     /// </summary>
     public void MarkAsUnread()
     {
+        IsRead = false;
         (LastReadVersionNumber, PreviousReadVersionNumber) = (PreviousReadVersionNumber, LastReadVersionNumber);
         LastMarkedReadAt = null;
+    }
+
+    /// <summary>
+    /// Records that the reader has read the current content of this scene.
+    /// Sets IsRead = true and captures LastMarkedReadAt for cooldown enforcement.
+    /// Called when the time threshold is met or the reader manually marks as read.
+    /// </summary>
+    public void MarkRead()
+    {
+        IsRead           = true;
+        LastMarkedReadAt = DateTimeOffset.UtcNow;
     }
 }
