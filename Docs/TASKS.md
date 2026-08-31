@@ -1,7 +1,7 @@
 ﻿# DraftView — Task List
 Last updated: 2026-08-31
 Last deployed: 2026-08-31 13:20 (commit: 708b929)
-Last merged: 2026-08-31 — PR #105 (fix: CHANGE-024 GetChapterChangeStatusesAsync null baseline) merged to main
+Last merged: 2026-08-31 — PR #109 (#82 PR2: auto-version on sync for ScrivenerDropbox) merged to main
 
 ---
 
@@ -12,7 +12,7 @@ Last merged: 2026-08-31 — PR #105 (fix: CHANGE-024 GetChapterChangeStatusesAsy
 **Repository:** https://github.com/aclarke6/DraftView
 
 ### Current Test State
-- 1,360 total, 1,360 passed, 1 skipped, 0 failed
+- 1,375 total, 1,375 passed, 1 skipped, 0 failed
 - 1 skipped — `SmtpEmailSenderIntegrationTests` (sends real email, manual only)
 
 ---
