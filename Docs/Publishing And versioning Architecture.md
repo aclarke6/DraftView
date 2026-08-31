@@ -1,4 +1,4 @@
-# DraftView Platform Architecture — Publishing and Versioning (v4.3)
+# DraftView Platform Architecture — Publishing and Versioning (v5.0)
 
 ---
 
@@ -13,6 +13,7 @@ See DraftView Git Rules.md for versioning and branching strategy.
 | v4.2 | V-Sprint 1 Phase 1 complete. `SectionVersion`, `ChangeClassification`, `ProjectType` in Domain. `ISectionVersionRepository` + EF implementation. `ReadEvent.LastReadVersionNumber`. `Comment.SectionVersionId`. Migration `AddVersioningAndManualUpload` applied to production 2026-04-17. 529 tests. |
 | v4.3 | V-Sprint 1 Phase 2 complete. `IImportProvider`, `IImportService`, `ISectionTreeService`, `UnsupportedFileTypeException`, `SectionTreeNode` in Domain. `RtfImportProvider`, `ImportService`, `SectionTreeService` in Application. `Section.CreateDocumentForUpload` factory + domain tests. All services registered in DI. Forensic review passed. 558 tests. |
 | v4.4 | Manual chapter upload design recorded in `ADR-ManualChapterUploadArchitecture.md` and `ManualChapterUploadUXSpec.md`. This future `.txt` / `.docx` chapter flow supersedes earlier section-tree assumptions for new manual-upload work. |
+| v5.0 | **Versioning model split by `ProjectType`.** `ScrivenerDropbox` projects: sync auto-creates a `SectionVersion` when a published Document's `ContentHash` changes. `Manual` projects: unchanged — the author creates versions via explicit Republish. `IVersioningService.CreateVersionFromSyncAsync` added. `ScrivenerSyncService` calls `VersioningService` for published changed Documents. The prior absolute invariant "sync never creates versions" is replaced by the `ProjectType`-conditional rule below. Issue #82. |
 
 ---
 
@@ -105,13 +106,17 @@ The platform layer is DraftView's product. It is source-agnostic. It manages the
 
 Sync is provider-agnostic via `ISyncProvider`. The application layer coordinates sync without knowing which provider is in use. `ScrivenerSyncService` is the current concrete implementation.
 
-**Key sync invariant:**
-> Sync never creates versions. Sync only updates working state (`Section.HtmlContent`). The author creates versions. Always.
+**Sync versioning rule — split by `ProjectType`:**
 
-**Key import invariant:**
+| `ProjectType` | Sync behaviour |
+|---|---|
+| `ScrivenerDropbox` | Sync auto-creates a `SectionVersion` when a published Document's `ContentHash` changes. Unpublished Documents are unaffected. Locked chapters are skipped. |
+| `Manual` | Sync is never triggered. This row is included for completeness only. |
+
+For `ScrivenerDropbox` projects, sync *is* the author's publish intent. Requiring a manual Republish after every Scrivener sync creates friction with no product value for this author type.
+
+**Key import invariant (unchanged):**
 > Import never creates versions. Import writes to working state (`Section.HtmlContent`). The author creates versions. Always.
-
-Both invariants are identical in effect. Neither ingestion category has any publishing authority.
 
 ### 3.4 Import Provider Abstraction
 
@@ -282,9 +287,9 @@ The word "scene" does not appear in DraftView's UI or domain vocabulary. DraftVi
 
 ## 7. Publishing Rules
 
-- Republish is the only mechanism for version creation. Never automatic.
-- Sync never creates versions.
-- Import never creates versions.
+- For `Manual` projects: Republish is the only mechanism for version creation. Never automatic.
+- For `ScrivenerDropbox` projects: sync auto-creates a version when a published Document's content changes. Manual Republish is not shown in the author UI for these projects.
+- Import never creates versions (both project types).
 - A `Document` section is publishable when: `NodeType = Document`, `IsSoftDeleted = false`, `HtmlContent` is not null or empty.
 - `ScrivenerStatus` is never used as a publishability gate. Null status is always publishable.
 - Chapter-level Republish is a batch operation creating one `SectionVersion` per non-soft-deleted `Document` descendant.
@@ -423,7 +428,9 @@ public interface ISyncProvider
 
 | Event | Action |
 |-------|--------|
-| Sync runs | `Section.HtmlContent` updated. No version created |
+| Sync runs — `ScrivenerDropbox`, content unchanged | `Section.HtmlContent` confirmed current. No version created |
+| Sync runs — `ScrivenerDropbox`, published Document content changed | `Section.HtmlContent` updated. `SectionVersion` created automatically. Classification computed. Readers see new version |
+| Sync runs — `ScrivenerDropbox`, unpublished Document content changed | `Section.HtmlContent` updated. No version created |
 | File imported | `Section.HtmlContent` updated. No version created |
 | Content changes | `ContentChangedSincePublish` set true |
 | Republish | `SectionVersion` created. Reader sees new version. `Comment.SectionVersionId` set on new comments |
@@ -436,9 +443,9 @@ public interface ISyncProvider
 
 ## 13. Key Constraints
 
-- Republish is the only way to create versions
-- Sync never creates versions
-- Import never creates versions
+- For `Manual` projects: Republish is the only way to create versions
+- For `ScrivenerDropbox` projects: sync auto-creates versions for published Documents whose content changes
+- Import never creates versions (both project types)
 - `NodeType.Document` is the version unit
 - `NodeType.Folder` is a publishing container and batch tool
 - `ScrivenerStatus` is display-only — never a business rule gate
