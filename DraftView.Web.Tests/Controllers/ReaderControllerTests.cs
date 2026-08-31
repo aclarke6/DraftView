@@ -39,7 +39,6 @@ public class ReaderControllerTests
     private readonly Mock<IReaderAccessRepository> readerAccessRepo = new();
     private readonly Mock<ISectionVersionRepository> sectionVersionRepo = new();
     private readonly Mock<IReadEventRepository> readEventRepo = new();
-    private readonly Mock<ISectionDiffService> sectionDiffService = new();
     private readonly Mock<IHumanOverrideService> humanOverrideService = new();
     private readonly Mock<IPassageAnchorService> passageAnchorService = new();
     private readonly Mock<IAccessRequestRepository> accessRequestRepo = new();
@@ -179,8 +178,7 @@ public class ReaderControllerTests
         projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
         sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(latestVersion);
         readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync((ReadEvent?)null);
-        sectionDiffService.Setup(s => s.GetDiffForReaderAsync(scene.Id, It.IsAny<int?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((SectionDiffResult?)null);
+
         progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         commentService.Setup(r => r.GetThreadsForSectionAsync(scene.Id, user.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync([anchoredComment]);
@@ -313,8 +311,7 @@ public class ReaderControllerTests
         projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
         sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync((SectionVersion?)null);
         readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync((ReadEvent?)null);
-        sectionDiffService.Setup(s => s.GetDiffForReaderAsync(scene.Id, It.IsAny<int?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((SectionDiffResult?)null);
+
         progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         commentService.Setup(r => r.GetThreadsForSectionAsync(scene.Id, user.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync([legacyComment]);
@@ -359,8 +356,7 @@ public class ReaderControllerTests
         projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
         sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync((SectionVersion?)null);
         readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync((ReadEvent?)null);
-        sectionDiffService.Setup(s => s.GetDiffForReaderAsync(scene.Id, It.IsAny<int?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((SectionDiffResult?)null);
+
         progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         commentService.Setup(r => r.GetThreadsForSectionAsync(scene.Id, user.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync([orphanedComment]);
@@ -401,14 +397,6 @@ public class ReaderControllerTests
         projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
         sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(latestVersion);
         readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ReadEvent.Create(scene.Id, user.Id));
-        sectionDiffService.Setup(s => s.GetDiffForReaderAsync(scene.Id, It.IsAny<int?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new SectionDiffResult
-            {
-                FromVersionNumber = 1,
-                CurrentVersionNumber = 2,
-                HasChanges = true,
-                Paragraphs = [new DraftView.Domain.Diff.ParagraphDiffResult("Unpublished", "<p>Working unpublished text</p>", DraftView.Domain.Enumerations.DiffResultType.Added)]
-            });
         progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         progressService.Setup(r => r.UpdateLastReadVersionAsync(scene.Id, user.Id, latestVersion.VersionNumber, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         commentService.Setup(r => r.GetThreadsForSectionAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<Comment>());
@@ -448,14 +436,6 @@ public class ReaderControllerTests
         projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
         sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(latestVersion);
         readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(readEvent);
-        sectionDiffService.Setup(s => s.GetDiffForReaderAsync(scene.Id, readEvent.LastReadVersionNumber, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new SectionDiffResult
-            {
-                FromVersionNumber = 1,
-                CurrentVersionNumber = 3,
-                HasChanges = true,
-                Paragraphs = []
-            });
         progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         progressService.Setup(r => r.UpdateLastReadVersionAsync(scene.Id, user.Id, latestVersion.VersionNumber, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         commentService.Setup(r => r.GetThreadsForSectionAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<Comment>());
@@ -491,8 +471,7 @@ public class ReaderControllerTests
         projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
         sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(latestVersion);
         readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ReadEvent.Create(scene.Id, user.Id));
-        sectionDiffService.Setup(s => s.GetDiffForReaderAsync(scene.Id, It.IsAny<int?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((SectionDiffResult?)null);
+
         progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         progressService.Setup(r => r.UpdateLastReadVersionAsync(scene.Id, user.Id, latestVersion.VersionNumber, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         progressService.Setup(r => r.GetResumeRestoreTargetAsync(scene.Id, latestVersion.Id, user.Id, It.IsAny<CancellationToken>()))
@@ -546,8 +525,7 @@ public class ReaderControllerTests
         projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
         sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(latestVersion);
         readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ReadEvent.Create(scene.Id, user.Id));
-        sectionDiffService.Setup(s => s.GetDiffForReaderAsync(scene.Id, It.IsAny<int?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((SectionDiffResult?)null);
+
         progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         progressService.Setup(r => r.UpdateLastReadVersionAsync(scene.Id, user.Id, latestVersion.VersionNumber, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         progressService.Setup(r => r.GetResumeRestoreTargetAsync(scene.Id, latestVersion.Id, user.Id, It.IsAny<CancellationToken>()))
@@ -602,8 +580,7 @@ public class ReaderControllerTests
         projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
         sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(latestVersion);
         readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ReadEvent.Create(scene.Id, user.Id));
-        sectionDiffService.Setup(s => s.GetDiffForReaderAsync(scene.Id, It.IsAny<int?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((SectionDiffResult?)null);
+
         progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         progressService.Setup(r => r.UpdateLastReadVersionAsync(scene.Id, user.Id, latestVersion.VersionNumber, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         progressService.Setup(r => r.GetResumeRestoreTargetAsync(scene.Id, latestVersion.Id, user.Id, It.IsAny<CancellationToken>()))
@@ -1064,7 +1041,6 @@ public class ReaderControllerTests
             readerAccessRepo.Object,
             sectionVersionRepo.Object,
             readEventRepo.Object,
-            sectionDiffService.Object,
             humanOverrideService.Object,
             passageAnchorService.Object,
             CommentDisplayService,
@@ -1105,7 +1081,6 @@ public class ReaderControllerTests
             readerAccessRepo.Object,
             sectionVersionRepo.Object,
             readEventRepo.Object,
-            sectionDiffService.Object,
             humanOverrideService.Object,
             passageAnchorService.Object,
             CommentDisplayService,
