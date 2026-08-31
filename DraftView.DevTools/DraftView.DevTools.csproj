@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\DraftView.Application\DraftView.Application.csproj" />
     <ProjectReference Include="..\DraftView.Infrastructure\DraftView.Infrastructure.csproj" />
     <ProjectReference Include="..\DraftView.Domain\DraftView.Domain.csproj" />
   </ItemGroup>

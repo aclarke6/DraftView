@@ -19,6 +19,15 @@ if (args.Length > 0 && args[0] == "email-test")
 }
 
 // ---------------------------------------------------------------------------
+// backfill-snapshots mode (issue #117 — delete after running on production)
+// ---------------------------------------------------------------------------
+if (args.Length > 0 && args[0] == "backfill-snapshots")
+{
+    Banner("DraftView DevTools — Snapshot Backfill (#117)");
+    return await SnapshotBackfill.RunAsync(args[1..]);
+}
+
+// ---------------------------------------------------------------------------
 // repair-dev-users mode
 // ---------------------------------------------------------------------------
 if (args.Length > 0 && args[0] == "repair-dev-users")
