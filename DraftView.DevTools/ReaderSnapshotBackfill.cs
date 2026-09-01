@@ -6,7 +6,6 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
-using Microsoft.Extensions.Configuration;
 using Npgsql;
 using RtfPipe;
 
@@ -28,7 +27,7 @@ internal static class ReaderSnapshotBackfill
     public static async Task<int> RunAsync(string[] args)
     {
         var scrivPath = GetArg(args, "--scriv")
-            ?? @"C:\Users\alast\Dropbox\Apps\Scrivener\The Fractured Lattice.scriv";
+            ?? "/var/www/draftview-cache/ba3d5ee5-61a9-48a8-8901-aa097d1a4fe1/the fractured lattice.scriv";
         var dryRun = args.Contains("--dry-run");
 
         if (!Directory.Exists(scrivPath))
@@ -37,14 +36,9 @@ internal static class ReaderSnapshotBackfill
             return 1;
         }
 
-        const string webSecretsId = "0e437bf4-da42-4cf8-86cd-072126366d5c";
-        var config = new ConfigurationBuilder()
-            .AddUserSecrets(webSecretsId)
-            .AddEnvironmentVariables()
-            .Build();
-
-        var connString = config.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection not found in user secrets.");
+        var connString = GetArg(args, "--connection")
+            ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+            ?? "Host=/var/run/postgresql;Database=draftview;Username=ubuntu";
 
         Console.WriteLine($"Scriv path : {scrivPath}");
         Console.WriteLine($"Cutoff     : {Cutoff:yyyy-MM-dd}");
@@ -238,7 +232,13 @@ internal static class ReaderSnapshotBackfill
 
     private static SnapshotFile? FindLatestSnapshotOnOrBefore(string scrivPath, string uuid)
     {
-        var snapshotDir = Path.Combine(scrivPath, "Snapshots", $"{uuid}.snapshots");
+        // Case-insensitive search for Snapshots directory (Linux fs is case-sensitive)
+        var scrivDir = new DirectoryInfo(scrivPath);
+        var snapshotsRoot = scrivDir.GetDirectories()
+            .FirstOrDefault(d => d.Name.Equals("Snapshots", StringComparison.OrdinalIgnoreCase));
+        if (snapshotsRoot is null) return null;
+
+        var snapshotDir = Path.Combine(snapshotsRoot.FullName, $"{uuid}.snapshots");
         if (!Directory.Exists(snapshotDir)) return null;
 
         SnapshotFile? latest = null;
