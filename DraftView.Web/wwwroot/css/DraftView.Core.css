@@ -13,7 +13,7 @@
    -------------------------------------------------------------------------- */
 :root {
     /* Update for every change */
-    --css-version: "v2026-09-01-2";
+    --css-version: "v2026-09-01-3";
     /* Banner image focal point — overridden per theme for images that are not 3.2:1 panoramic.
        Default suits Noir / Crime / Contemporary (all correctly proportioned at ~2240x700).
        Historic and Adventure override this until replacement panoramic banners are available. */
@@ -486,14 +486,17 @@ a {
     margin-bottom: var(--space-2);
 }
 
-/* Removed paragraph marker â€” DesktopRead.cshtml / MobileRead.cshtml
-   Renders as a thin red left bar only. Content is intentionally hidden â€”
-   beta readers focus on what is present, not what was deleted. */
+/* Removed paragraph — DesktopRead.cshtml
+   Shows the deleted paragraph as red strikethrough text, clearly separated
+   from the replacement prose below it, matching VS Code deleted line style. */
 .diff-para--removed {
+    background: rgba(239, 68, 68, 0.06);
     border-left: 3px solid var(--color-diff-removed, #ef4444);
-    height: var(--space-3, 12px);
+    padding-left: var(--space-3);
     margin-bottom: var(--space-2);
-    opacity: 0.5;
+    color: var(--color-diff-removed, #ef4444);
+    text-decoration: line-through;
+    opacity: 0.8;
 }
 
 /* Margin indicators — DesktopRead.cshtml
