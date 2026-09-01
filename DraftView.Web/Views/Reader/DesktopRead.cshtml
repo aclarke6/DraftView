@@ -305,6 +305,26 @@
                         }
 
                         <div class="scene-prose-shell">
+                            @if (item.HasDiff)
+                            {
+                                <div class="diff-margin" aria-hidden="true">
+                                    @foreach (var para in item.DiffParagraphs)
+                                    {
+                                        if (para.Type == DiffResultType.Added)
+                                        {
+                                            <div class="diff-margin__mark diff-margin__mark--added"></div>
+                                        }
+                                        else if (para.Type == DiffResultType.Removed)
+                                        {
+                                            <div class="diff-margin__mark diff-margin__mark--removed"></div>
+                                        }
+                                        else
+                                        {
+                                            <div class="diff-margin__mark"></div>
+                                        }
+                                    }
+                                </div>
+                            }
                             @if (item.DiffEnabled && item.HasDiff)
                             {
                                 <div class="scene-diff-view" id="diff-@item.Scene.Id" hidden>

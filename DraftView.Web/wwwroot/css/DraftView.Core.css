@@ -13,7 +13,7 @@
    -------------------------------------------------------------------------- */
 :root {
     /* Update for every change */
-    --css-version: "v2026-08-31-1";
+    --css-version: "v2026-09-01-1";
     /* Banner image focal point — overridden per theme for images that are not 3.2:1 panoramic.
        Default suits Noir / Crime / Contemporary (all correctly proportioned at ~2240x700).
        Historic and Adventure override this until replacement panoramic banners are available. */
@@ -494,6 +494,39 @@ a {
     height: var(--space-3, 12px);
     margin-bottom: var(--space-2);
     opacity: 0.5;
+}
+
+/* Margin indicators — DesktopRead.cshtml
+   A narrow column of coloured marks to the left of the prose showing at a glance
+   which paragraphs have been added, removed, or are unchanged. Visible without
+   requiring the diff toggle to be open. */
+.scene-prose-shell {
+    display: flex;
+    gap: 0;
+}
+
+.diff-margin {
+    display: flex;
+    flex-direction: column;
+    width: 4px;
+    flex-shrink: 0;
+    margin-right: var(--space-3, 12px);
+}
+
+.diff-margin__mark {
+    flex: 1;
+    min-height: 4px;
+    background: transparent;
+}
+
+.diff-margin__mark--added {
+    background: var(--color-diff-added, #22c55e);
+    opacity: 0.7;
+}
+
+.diff-margin__mark--removed {
+    background: var(--color-diff-removed, #ef4444);
+    opacity: 0.7;
 }
 
 /* Change classification indicator â€” Author/Sections.cshtml */

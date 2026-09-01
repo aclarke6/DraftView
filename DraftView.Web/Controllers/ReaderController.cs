@@ -27,6 +27,7 @@ public class ReaderController(
     IAccessRequestRepository accessRequestRepo,
     IAccessRequestService accessRequestService,
     IReaderDashboardService readerDashboardService,
+    IChangeStateService changeStateService,
     ILogger<ReaderController> logger)
     : BaseReaderController(projectRepo, sectionRepo, commentService, progressService,
                            userRepository, readerAccessRepo, humanOverrideService, passageAnchorService,
@@ -35,6 +36,7 @@ public class ReaderController(
     private readonly IUserPreferencesRepository _userPreferencesRepo = userPreferencesRepo;
     private readonly IPassageAnchorService _passageAnchorService = passageAnchorService;
     private readonly IReaderDashboardService _readerDashboardService = readerDashboardService;
+    private readonly IChangeStateService _changeStateService = changeStateService;
     private static readonly Regex HtmlTagRegex = new("<[^>]+>", RegexOptions.Compiled);
     private static readonly Regex WhitespaceRegex = new("\\s+", RegexOptions.Compiled);
 
@@ -729,6 +731,8 @@ public class ReaderController(
             await ResolveSceneContentAsync(scene, user.Id, showDiffOnRevisit, ct);
 
         var isRead = await ProgressService.IsMarkedReadAsync(scene.Id, user.Id, ct);
+        var (changeClassification, diffParagraphs) =
+            await _changeStateService.GetChangeStateWithDiffAsync(scene.Id, user.Id, ct);
         var comments = await CommentService.GetThreadsForSectionAsync(scene.Id, user.Id, ct);
         var displayComments = await BuildCommentDisplayModelsAsync(comments, user.Id, projectAuthorId, isModerator);
 
@@ -744,8 +748,10 @@ public class ReaderController(
             ResumeRestoreStatus          = resumeRestoreTarget?.Status,
             ResumeRestoreConfidenceScore = resumeRestoreTarget?.ConfidenceScore,
             ResumeRestoreMatchMethod     = resumeRestoreTarget?.MatchMethod,
+            DiffParagraphs               = diffParagraphs,
             DiffEnabled                  = showDiffOnRevisit,
             WordCount                    = CountWords(resolvedHtml),
+            ChangeClassification         = changeClassification,
             IsRead                       = isRead
         };
     }
