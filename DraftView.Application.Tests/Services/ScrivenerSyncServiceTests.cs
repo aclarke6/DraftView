@@ -25,8 +25,9 @@ public class ScrivenerSyncServiceTests
     private readonly Mock<IDropboxClientFactory>         _clientFactory     = new();
     private readonly Mock<IDropboxFileDownloader>        _fileDownloader    = new();
     private readonly Mock<ILogger<ScrivenerSyncService>>          _logger           = new();
-    private readonly Mock<IAuthorNotificationRepository> _notificationRepo = new();
-    private readonly Mock<IUserRepository>               _userRepo         = new();
+    private readonly Mock<IAuthorNotificationRepository> _notificationRepo       = new();
+    private readonly Mock<IUserRepository>               _userRepo               = new();
+    private readonly Mock<IChangeNotificationService>    _changeNotificationService = new();
 
     private ScrivenerSyncService CreateSut() => new(
         _projectRepo.Object,
@@ -41,7 +42,8 @@ public class ScrivenerSyncServiceTests
         _fileDownloader.Object,
         _logger.Object,
         _notificationRepo.Object,
-        _userRepo.Object);
+        _userRepo.Object,
+        _changeNotificationService.Object);
 
     public ScrivenerSyncServiceTests()
     {

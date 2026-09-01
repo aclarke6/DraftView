@@ -22,10 +22,12 @@ public class ScrivenerSyncService(
     IDropboxFileDownloader fileDownloader,
     ILogger<ScrivenerSyncService> logger,
     IAuthorNotificationRepository notificationRepo,
-    IUserRepository userRepo) : ISyncService
+    IUserRepository userRepo,
+    IChangeNotificationService changeNotificationService) : ISyncService
 {
     private bool _syncHadChanges;
     private Guid _currentAuthorId;
+    private readonly HashSet<Guid> _contentChangedPublishedSectionIds = [];
 
     public async Task ParseProjectAsync(Guid projectId, CancellationToken ct = default)
     {
@@ -49,6 +51,7 @@ public class ScrivenerSyncService(
 
         _syncHadChanges = false;
         _currentAuthorId = project.AuthorId;
+        _contentChangedPublishedSectionIds.Clear();
 
         try
         {
@@ -88,6 +91,12 @@ public class ScrivenerSyncService(
         }
 
         await unitOfWork.SaveChangesAsync(ct);
+
+        foreach (var sectionId in _contentChangedPublishedSectionIds)
+        {
+            try { await changeNotificationService.SendChangeNotificationsAsync(sectionId, ct); }
+            catch (Exception ex) { logger.LogError(ex, "Change notification failed for section {SectionId}", sectionId); }
+        }
     }
 
     public async Task DetectContentChangesAsync(Guid projectId, CancellationToken ct = default)
@@ -331,6 +340,8 @@ public class ScrivenerSyncService(
             {
                 existing.UpdateContent(rtf.Html, rtf.Hash);
                 _syncHadChanges = true;
+                if (existing.IsPublished)
+                    _contentChangedPublishedSectionIds.Add(existing.Id);
             }
         }
     }
