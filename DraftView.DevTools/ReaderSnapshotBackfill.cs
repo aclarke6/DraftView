@@ -137,7 +137,7 @@ internal static class ReaderSnapshotBackfill
         var names = TargetDisplayNames.Select(n => $"'{n}'").Aggregate((a, b) => $"{a},{b}");
         var sql   = $"""
             SELECT "Id", "DisplayName"
-            FROM   "Users"
+            FROM   "AppUsers"
             WHERE  "DisplayName" IN ({names})
               AND  "Role"        = 'BetaReader'
               AND  "IsSoftDeleted" = false
