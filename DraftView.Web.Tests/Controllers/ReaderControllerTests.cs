@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using DraftView.Domain.Contracts;
+using DraftView.Domain.Diff;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
 using DraftView.Domain.Exceptions;
@@ -43,9 +44,17 @@ public class ReaderControllerTests
     private readonly Mock<IAccessRequestRepository> accessRequestRepo = new();
     private readonly Mock<IAccessRequestService> accessRequestService = new();
     private readonly Mock<IReaderDashboardService> readerDashboardService = new();
+    private readonly Mock<IChangeStateService> changeStateService = new();
     private readonly Mock<ILogger<ReaderController>> logger = new();
     private ICommentDisplayService CommentDisplayService =>
         new DraftView.Application.Services.CommentDisplayService(userRepo.Object, passageAnchorService.Object);
+
+    public ReaderControllerTests()
+    {
+        changeStateService.Setup(s => s.GetChangeStateWithDiffAsync(
+                It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(((ChangeClassification?)null, (IReadOnlyList<ParagraphDiffResult>)Array.Empty<ParagraphDiffResult>())));
+    }
 
     [Fact]
     public async Task Read_DesktopRead_PopulatesModelWithStoredProsePreferences()
@@ -935,6 +944,7 @@ public class ReaderControllerTests
             accessRequestRepo.Object,
             accessRequestService.Object,
             readerDashboardService.Object,
+            changeStateService.Object,
             logger.Object);
 
         controller.ControllerContext = new ControllerContext
@@ -972,6 +982,7 @@ public class ReaderControllerTests
             accessRequestRepo.Object,
             accessRequestService.Object,
             readerDashboardService.Object,
+            changeStateService.Object,
             logger.Object);
 
         controller.ControllerContext = new ControllerContext
@@ -1299,6 +1310,13 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
                         reader.Id,
                         It.IsAny<CancellationToken>()))
                     .ReturnsAsync((ResumeRestoreTargetDto?)null);
+                progressService.Setup(r => r.IsMarkedReadAsync(It.IsAny<Guid>(), reader.Id, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(false);
+
+                var changeStateService = new Mock<IChangeStateService>();
+                changeStateService.Setup(s => s.GetChangeStateWithDiffAsync(
+                        It.IsAny<Guid>(), reader.Id, It.IsAny<CancellationToken>()))
+                    .Returns(Task.FromResult(((ChangeClassification?)null, (IReadOnlyList<ParagraphDiffResult>)Array.Empty<ParagraphDiffResult>())));
 
                 var readEventRepo = new Mock<IReadEventRepository>();
                 readEventRepo.Setup(r => r.GetAsync(It.IsAny<Guid>(), reader.Id, It.IsAny<CancellationToken>()))
@@ -1317,6 +1335,7 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
                 services.RemoveAll<IReaderAccessRepository>();
                 services.RemoveAll<IReadEventRepository>();
                 services.RemoveAll<ISystemStateMessageService>();
+                services.RemoveAll<IChangeStateService>();
 
                 services.AddSingleton(userRepo.Object);
                 services.AddSingleton(prefsRepo.Object);
@@ -1329,6 +1348,7 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
                 services.AddSingleton(systemStateMessageService.Object);
                 services.AddSingleton(humanOverrideService.Object);
                 services.AddSingleton(passageAnchorService.Object);
+                services.AddSingleton(changeStateService.Object);
             });
         }
     }

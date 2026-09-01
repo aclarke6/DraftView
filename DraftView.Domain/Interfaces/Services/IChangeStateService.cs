@@ -1,3 +1,4 @@
+using DraftView.Domain.Diff;
 using DraftView.Domain.Enumerations;
 
 namespace DraftView.Domain.Interfaces.Services;
@@ -18,4 +19,15 @@ public interface IChangeStateService
         Guid sectionId,
         Guid userId,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns both the change classification and the paragraph-level diff results.
+    /// Used by the read view to populate diff toggle and margin indicators.
+    /// Paragraphs is empty when classification is null (up to date) or New (no baseline).
+    /// </summary>
+    Task<(ChangeClassification? Classification, IReadOnlyList<ParagraphDiffResult> Paragraphs)>
+        GetChangeStateWithDiffAsync(
+            Guid sectionId,
+            Guid userId,
+            CancellationToken ct = default);
 }

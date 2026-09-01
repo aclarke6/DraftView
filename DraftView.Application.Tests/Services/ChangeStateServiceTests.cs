@@ -144,4 +144,72 @@ public class ChangeStateServiceTests
 
         _htmlDiffService.Verify(s => s.Compute(OldHtml, CurrentHtml), Times.Once);
     }
+
+    // ---------------------------------------------------------------------------
+    // GetChangeStateWithDiffAsync
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetChangeStateWithDiffAsync_NullSection_ReturnsNewAndEmptyParagraphs()
+    {
+        _sectionRepo.Setup(r => r.GetByIdAsync(SectionId, default))
+            .ReturnsAsync((Section?)null);
+
+        var (classification, paragraphs) = await CreateSut().GetChangeStateWithDiffAsync(SectionId, UserId);
+
+        Assert.Equal(ChangeClassification.New, classification);
+        Assert.Empty(paragraphs);
+    }
+
+    [Fact]
+    public async Task GetChangeStateWithDiffAsync_NoSnapshot_ReturnsNewAndEmptyParagraphs()
+    {
+        _sectionRepo.Setup(r => r.GetByIdAsync(SectionId, default))
+            .ReturnsAsync(MakeSection(CurrentHtml));
+        _snapshotRepo.Setup(r => r.GetAsync(SectionId, UserId, default))
+            .ReturnsAsync((ReaderSnapshot?)null);
+
+        var (classification, paragraphs) = await CreateSut().GetChangeStateWithDiffAsync(SectionId, UserId);
+
+        Assert.Equal(ChangeClassification.New, classification);
+        Assert.Empty(paragraphs);
+        _htmlDiffService.Verify(s => s.Compute(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetChangeStateWithDiffAsync_ContentUnchanged_ReturnsNullAndEmptyParagraphs()
+    {
+        _sectionRepo.Setup(r => r.GetByIdAsync(SectionId, default))
+            .ReturnsAsync(MakeSection(CurrentHtml));
+        _snapshotRepo.Setup(r => r.GetAsync(SectionId, UserId, default))
+            .ReturnsAsync(ReaderSnapshot.Create(SectionId, UserId, CurrentHtml));
+
+        var (classification, paragraphs) = await CreateSut().GetChangeStateWithDiffAsync(SectionId, UserId);
+
+        Assert.Null(classification);
+        Assert.Empty(paragraphs);
+        _htmlDiffService.Verify(s => s.Compute(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetChangeStateWithDiffAsync_ContentDiffers_ReturnsBothClassificationAndParagraphs()
+    {
+        _sectionRepo.Setup(r => r.GetByIdAsync(SectionId, default))
+            .ReturnsAsync(MakeSection(CurrentHtml));
+        _snapshotRepo.Setup(r => r.GetAsync(SectionId, UserId, default))
+            .ReturnsAsync(ReaderSnapshot.Create(SectionId, UserId, OldHtml));
+
+        var diffResult = new[] { new ParagraphDiffResult(
+            "current", CurrentHtml, DiffResultType.Modified,
+            wordsAdded: 20, wordsRemoved: 5, totalWords: 100) };
+        _htmlDiffService.Setup(s => s.Compute(OldHtml, CurrentHtml)).Returns(diffResult);
+        _classificationService.Setup(s => s.Classify(diffResult))
+            .Returns(ChangeClassification.Revision);
+
+        var (classification, paragraphs) = await CreateSut().GetChangeStateWithDiffAsync(SectionId, UserId);
+
+        Assert.Equal(ChangeClassification.Revision, classification);
+        Assert.Single(paragraphs);
+        Assert.Same(diffResult[0], paragraphs[0]);
+    }
 }
