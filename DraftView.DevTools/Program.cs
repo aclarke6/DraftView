@@ -28,6 +28,15 @@ if (args.Length > 0 && args[0] == "backfill-snapshots")
 }
 
 // ---------------------------------------------------------------------------
+// backfill-reader-snapshots mode (issue #128 -- delete after running on production)
+// ---------------------------------------------------------------------------
+if (args.Length > 0 && args[0] == "backfill-reader-snapshots")
+{
+    Banner("DraftView DevTools -- Reader Snapshot Backfill (#128)");
+    return await ReaderSnapshotBackfill.RunAsync(args[1..]);
+}
+
+// ---------------------------------------------------------------------------
 // repair-dev-users mode
 // ---------------------------------------------------------------------------
 if (args.Length > 0 && args[0] == "repair-dev-users")
