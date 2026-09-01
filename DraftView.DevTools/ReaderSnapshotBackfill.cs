@@ -38,7 +38,7 @@ internal static class ReaderSnapshotBackfill
 
         var connString = GetArg(args, "--connection")
             ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-            ?? "Host=/var/run/postgresql;Database=draftview;Username=ubuntu";
+            ?? "Host=localhost;Database=draftview;Username=draftview;Password=xuqgeg-posGys-9zafby";
 
         Console.WriteLine($"Scriv path : {scrivPath}");
         Console.WriteLine($"Cutoff     : {Cutoff:yyyy-MM-dd}");
@@ -238,7 +238,7 @@ internal static class ReaderSnapshotBackfill
             .FirstOrDefault(d => d.Name.Equals("Snapshots", StringComparison.OrdinalIgnoreCase));
         if (snapshotsRoot is null) return null;
 
-        var snapshotDir = Path.Combine(snapshotsRoot.FullName, $"{uuid}.snapshots");
+        var snapshotDir = Path.Combine(snapshotsRoot.FullName, $"{uuid.ToLowerInvariant()}.snapshots");
         if (!Directory.Exists(snapshotDir)) return null;
 
         SnapshotFile? latest = null;

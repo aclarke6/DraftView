@@ -113,6 +113,11 @@
                                     <input type="checkbox" name="ShowDiffOnRevisit" value="true" @(Model.ShowDiffOnRevisit ? "checked" : "") class="form-checkbox" id="showDiffOnRevisit" />
                                     <input type="hidden" name="ShowDiffOnRevisit" value="false" />
                                 </div>
+                                <div class="settings-form-group settings-form-group--toggle">
+                                    <label class="form-label">Show edits by default (red/green inline markup)</label>
+                                    <input type="checkbox" name="ShowEdits" value="true" @(Model.ShowEdits ? "checked" : "") class="form-checkbox" id="showEdits" />
+                                    <input type="hidden" name="ShowEdits" value="false" />
+                                </div>
                                 <div class="settings-form-group">
                                     <label class="form-label" for="readingStyle">I am reading as</label>
                                     <select name="ReadingStyle" id="readingStyle" class="form-input">

@@ -28,6 +28,9 @@ public class ReaderController(
     IAccessRequestService accessRequestService,
     IReaderDashboardService readerDashboardService,
     IChangeStateService changeStateService,
+    IParagraphGroupingService paragraphGroupingService,
+    DraftViewSettings draftViewSettings,
+    IUserService userService,
     ILogger<ReaderController> logger)
     : BaseReaderController(projectRepo, sectionRepo, commentService, progressService,
                            userRepository, readerAccessRepo, humanOverrideService, passageAnchorService,
@@ -37,6 +40,9 @@ public class ReaderController(
     private readonly IPassageAnchorService _passageAnchorService = passageAnchorService;
     private readonly IReaderDashboardService _readerDashboardService = readerDashboardService;
     private readonly IChangeStateService _changeStateService = changeStateService;
+    private readonly IParagraphGroupingService _paragraphGroupingService = paragraphGroupingService;
+    private readonly int _minDiffGroupWords = draftViewSettings.MinDiffGroupWords;
+    private readonly IUserService _userService = userService;
     private static readonly Regex HtmlTagRegex = new("<[^>]+>", RegexOptions.Compiled);
     private static readonly Regex WhitespaceRegex = new("\\s+", RegexOptions.Compiled);
 
@@ -302,6 +308,21 @@ public class ReaderController(
             return Forbid();
 
         await ProgressService.MarkReadAsync(sectionId, user.Id);
+        return Ok();
+    }
+
+    // -----------------------------------------------------------------------
+    // POST: /Reader/SetShowEdits — persists Show/Hide Changes preference
+    // -----------------------------------------------------------------------
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetShowEdits([FromBody] bool showEdits)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return Forbid();
+
+        await _userService.UpdateShowEditsAsync(user.Id, showEdits);
         return Ok();
     }
 
@@ -592,7 +613,7 @@ public class ReaderController(
         foreach (var scene in scenes)
         {
             var sceneWithComments = await BuildSceneWithCommentsAsync(
-                scene, user, project?.AuthorId ?? Guid.Empty, isModerator, showDiffOnRevisit);
+                scene, user, project?.AuthorId ?? Guid.Empty, isModerator, showDiffOnRevisit, preferences);
             scenesWithComments.Add(sceneWithComments);
         }
 
@@ -600,7 +621,7 @@ public class ReaderController(
         if (!scenesWithComments.Any())
         {
             var leafContent = await BuildSceneWithCommentsAsync(
-                chapter, user, project?.AuthorId ?? Guid.Empty, isModerator, showDiffOnRevisit);
+                chapter, user, project?.AuthorId ?? Guid.Empty, isModerator, showDiffOnRevisit, preferences);
             scenesWithComments.Add(leafContent);
         }
 
@@ -723,6 +744,7 @@ public class ReaderController(
         Guid projectAuthorId,
         bool isModerator,
         bool showDiffOnRevisit,
+        UserPreferences? preferences,
         CancellationToken ct = default)
     {
         await ProgressService.RecordOpenAsync(scene.Id, user.Id, ct);
@@ -733,6 +755,11 @@ public class ReaderController(
         var isRead = await ProgressService.IsMarkedReadAsync(scene.Id, user.Id, ct);
         var (changeClassification, diffParagraphs) =
             await _changeStateService.GetChangeStateWithDiffAsync(scene.Id, user.Id, ct);
+
+        var readingStyle  = preferences?.ReadingStyle ?? ReadingStyle.StoryReader;
+        var showEdits     = preferences?.ShowEdits ?? false;
+        var groups        = _paragraphGroupingService.Group(diffParagraphs, readingStyle, _minDiffGroupWords);
+
         var comments = await CommentService.GetThreadsForSectionAsync(scene.Id, user.Id, ct);
         var displayComments = await BuildCommentDisplayModelsAsync(comments, user.Id, projectAuthorId, isModerator);
 
@@ -748,8 +775,8 @@ public class ReaderController(
             ResumeRestoreStatus          = resumeRestoreTarget?.Status,
             ResumeRestoreConfidenceScore = resumeRestoreTarget?.ConfidenceScore,
             ResumeRestoreMatchMethod     = resumeRestoreTarget?.MatchMethod,
-            DiffParagraphs               = diffParagraphs,
-            DiffEnabled                  = showDiffOnRevisit,
+            ParagraphGroups              = groups,
+            ShowEdits                    = showEdits,
             WordCount                    = CountWords(resolvedHtml),
             ChangeClassification         = changeClassification,
             IsRead                       = isRead

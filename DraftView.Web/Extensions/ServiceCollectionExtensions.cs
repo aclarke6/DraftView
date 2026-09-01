@@ -120,6 +120,7 @@ namespace DraftView.Web.Extensions
             services.AddScoped<IHtmlDiffService, HtmlDiffService>();
             services.AddScoped<IChangeStateService, ChangeStateService>();
             services.AddScoped<IChangeNotificationService, ChangeNotificationService>();
+            services.AddScoped<IParagraphGroupingService, ParagraphGroupingService>();
             services.AddScoped<IReaderDashboardService, ReaderDashboardService>();
             services.AddScoped<ISectionManagementService, SectionManagementService>();
             services.AddScoped<IProjectManagementService, ProjectManagementService>();

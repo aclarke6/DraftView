@@ -45,7 +45,10 @@ public class ReaderControllerTests
     private readonly Mock<IAccessRequestService> accessRequestService = new();
     private readonly Mock<IReaderDashboardService> readerDashboardService = new();
     private readonly Mock<IChangeStateService> changeStateService = new();
+    private readonly Mock<IUserService> userService = new();
     private readonly Mock<ILogger<ReaderController>> logger = new();
+    private static readonly DraftViewSettings DefaultSettings = new() { MinDiffGroupWords = 50 };
+    private readonly IParagraphGroupingService paragraphGroupingService = new DraftView.Application.Services.ParagraphGroupingService();
     private ICommentDisplayService CommentDisplayService =>
         new DraftView.Application.Services.CommentDisplayService(userRepo.Object, passageAnchorService.Object);
 
@@ -945,6 +948,9 @@ public class ReaderControllerTests
             accessRequestService.Object,
             readerDashboardService.Object,
             changeStateService.Object,
+            paragraphGroupingService,
+            DefaultSettings,
+            userService.Object,
             logger.Object);
 
         controller.ControllerContext = new ControllerContext
@@ -983,6 +989,9 @@ public class ReaderControllerTests
             accessRequestService.Object,
             readerDashboardService.Object,
             changeStateService.Object,
+            paragraphGroupingService,
+            DefaultSettings,
+            userService.Object,
             logger.Object);
 
         controller.ControllerContext = new ControllerContext
@@ -1336,6 +1345,7 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
                 services.RemoveAll<IReadEventRepository>();
                 services.RemoveAll<ISystemStateMessageService>();
                 services.RemoveAll<IChangeStateService>();
+                services.RemoveAll<IParagraphGroupingService>();
 
                 services.AddSingleton(userRepo.Object);
                 services.AddSingleton(prefsRepo.Object);
@@ -1349,6 +1359,7 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
                 services.AddSingleton(humanOverrideService.Object);
                 services.AddSingleton(passageAnchorService.Object);
                 services.AddSingleton(changeStateService.Object);
+                services.AddSingleton<IParagraphGroupingService>(new DraftView.Application.Services.ParagraphGroupingService());
             });
         }
     }

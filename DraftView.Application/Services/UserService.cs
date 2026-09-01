@@ -244,6 +244,15 @@ public class UserService(
         await unitOfWork.SaveChangesAsync(ct);
     }
 
+    public async Task UpdateShowEditsAsync(Guid userId, bool showEdits, CancellationToken ct = default)
+    {
+        var prefs = await prefsRepo.GetByUserIdAsync(userId, ct);
+        if (prefs is null) return;
+
+        prefs.UpdateShowEdits(showEdits);
+        await unitOfWork.SaveChangesAsync(ct);
+    }
+
     public async Task UpdateReaderProfileAsync(Guid userId, string? bio, string? genreInterests, ReaderPace? pace, CancellationToken ct = default)
     {
         var prefs = await prefsRepo.GetByUserIdAsync(userId, ct)

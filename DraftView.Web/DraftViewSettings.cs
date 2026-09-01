@@ -3,6 +3,7 @@
 public class DraftViewSettings
 {
     public int SyncIntervalMinutes { get; set; } = 5;
+    public int MinDiffGroupWords { get; set; } = 50;
     public string DropboxBasePath { get; set; } = string.Empty;
     public string LocalCachePath { get; set; } = string.Empty;
 

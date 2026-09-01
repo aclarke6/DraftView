@@ -38,6 +38,7 @@ public sealed class UserPreferences
     public bool ShowDiffOnRevisit{get; private set;}
     public ReadingStyle ReadingStyle{get; private set;}
     public int DiffCooldownHours{get; private set;}
+    public bool ShowEdits{get; private set;}
 
 
 
@@ -67,7 +68,8 @@ public sealed class UserPreferences
             ProseFontSize = ProseFontSize.Medium,
             ShowDiffOnRevisit = false,
             ReadingStyle = ReadingStyle.StoryReader,
-            DiffCooldownHours = 24
+            DiffCooldownHours = 24,
+            ShowEdits = false
         };
     }
 
@@ -93,7 +95,8 @@ public sealed class UserPreferences
             ProseFontSize = ProseFontSize.Medium,
             ShowDiffOnRevisit = false,
             ReadingStyle = ReadingStyle.StoryReader,
-            DiffCooldownHours = 24
+            DiffCooldownHours = 24,
+            ShowEdits = false
         };
     }
 
@@ -157,6 +160,11 @@ public sealed class UserPreferences
         ShowDiffOnRevisit = showDiffOnRevisit;
         ReadingStyle      = readingStyle;
         DiffCooldownHours = diffCooldownHours;
+    }
+
+    public void UpdateShowEdits(bool showEdits)
+    {
+        ShowEdits = showEdits;
     }
 
     // ---------------------------------------------------------------------------

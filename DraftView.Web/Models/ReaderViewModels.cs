@@ -3,6 +3,7 @@ using DraftView.Domain.Contracts;
 using DraftView.Domain.Diff;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
+using DraftView.Domain.Interfaces.Services;
 
 namespace DraftView.Web.Models;
 
@@ -57,19 +58,21 @@ public class SceneWithComments
     public PassageAnchorMatchMethod? ResumeRestoreMatchMethod { get; set; }
 
     /// <summary>
-    /// Paragraph-level diff results. Empty until Phase 5 wires up IChangeStateService diff computation.
-    /// When non-empty, the view renders diff paragraphs alongside ResolvedHtmlContent.
+    /// <summary>
+    /// Paragraph groups for threshold-filtered diff rendering.
+    /// Each group has a Classification and ShowDiff flag.
+    /// Empty when the scene has no changes or no snapshot.
     /// </summary>
-    public IReadOnlyList<ParagraphDiffResult> DiffParagraphs { get; set; }
-        = Array.Empty<ParagraphDiffResult>();
+    public IReadOnlyList<ParagraphGroup> ParagraphGroups { get; set; }
+        = Array.Empty<ParagraphGroup>();
 
-    public bool HasDiff => DiffParagraphs.Any(p => p.Type != DiffResultType.Unchanged);
+    public bool HasDiff => ParagraphGroups.Any(g => g.ShowDiff);
 
     /// <summary>
-    /// True when the reader has ShowDiffOnRevisit enabled.
-    /// Controls whether the diff toggle and mark-as-read/unread controls are shown.
+    /// True when the reader's ShowEdits preference is enabled.
+    /// Controls whether inline del/ins markup is rendered.
     /// </summary>
-    public bool DiffEnabled { get; set; }
+    public bool ShowEdits { get; set; }
 
     /// <summary>
     /// Approximate word count passed to JS for auto mark-as-read timing.

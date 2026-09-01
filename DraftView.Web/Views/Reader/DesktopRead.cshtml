@@ -290,14 +290,18 @@
                             <span>@item.Scene.Title</span>
                         </div>
 
-                        @if (item.DiffEnabled && item.HasDiff)
+                        @if (item.HasDiff)
                         {
                             <div class="diff-controls"
                                  data-section-id="@item.Scene.Id"
-                                 data-word-count="@item.WordCount">
-                                <button type="button" class="diff-toggle-btn" data-diff-toggle="@item.Scene.Id">
-                                    <span class="diff-toggle-btn__show">Show changes</span>
-                                    <span class="diff-toggle-btn__hide" hidden>Hide changes</span>
+                                 data-word-count="@item.WordCount"
+                                 data-show-edits="@item.ShowEdits.ToString().ToLowerInvariant()">
+                                <button type="button"
+                                        class="diff-toggle-btn"
+                                        data-diff-toggle="@item.Scene.Id"
+                                        data-show-edits-url="@Url.Action("SetShowEdits", "Reader")">
+                                    <span class="diff-toggle-btn__show" @(item.ShowEdits ? "hidden" : "")>Show Changes</span>
+                                    <span class="diff-toggle-btn__hide" @(item.ShowEdits ? "" : "hidden")>Hide Changes</span>
                                 </button>
                                 <button type="button" class="diff-mark-btn diff-mark-btn--read" data-mark-read="@item.Scene.Id">Mark as read</button>
                                 <button type="button" class="diff-mark-btn diff-mark-btn--unread" data-mark-unread="@item.Scene.Id" hidden>Mark as unread</button>
@@ -308,15 +312,16 @@
                             @if (item.HasDiff)
                             {
                                 <div class="diff-margin" aria-hidden="true">
-                                    @foreach (var para in item.DiffParagraphs)
+                                    @foreach (var group in item.ParagraphGroups)
                                     {
-                                        if (para.Type == DiffResultType.Added)
+                                        if (group.ShowDiff)
                                         {
-                                            <div class="diff-margin__mark diff-margin__mark--added"></div>
-                                        }
-                                        else if (para.Type == DiffResultType.Removed)
-                                        {
-                                            <div class="diff-margin__mark diff-margin__mark--removed"></div>
+                                            var anyAdded   = group.Paragraphs.Any(p => p.Type == DiffResultType.Added || p.Type == DiffResultType.Modified);
+                                            var anyRemoved = group.Paragraphs.Any(p => p.Type == DiffResultType.Removed || p.Type == DiffResultType.Modified);
+                                            var markClass  = anyAdded && anyRemoved ? "diff-margin__mark--modified"
+                                                           : anyAdded               ? "diff-margin__mark--added"
+                                                                                    : "diff-margin__mark--removed";
+                                            <div class="diff-margin__mark @markClass"></div>
                                         }
                                         else
                                         {
@@ -325,30 +330,42 @@
                                     }
                                 </div>
                             }
-                            @if (item.DiffEnabled && item.HasDiff)
-                            {
-                                <div class="scene-diff-view" id="diff-@item.Scene.Id" hidden>
-                                    <div class="scene-prose-content prose">
-                                        @foreach (var para in item.DiffParagraphs)
+                            <div class="scene-prose-content prose" id="prose-@item.Scene.Id">
+                                @if (item.ShowEdits && item.HasDiff)
+                                {
+                                    @foreach (var group in item.ParagraphGroups)
+                                    {
+                                        if (group.ShowDiff)
                                         {
-                                            if (para.Type == DiffResultType.Added)
+                                            foreach (var para in group.Paragraphs)
                                             {
-                                                <div class="diff-para diff-para--added">@Html.Raw(para.Html)</div>
-                                            }
-                                            else if (para.Type == DiffResultType.Removed)
-                                            {
-                                                <div class="diff-para diff-para--removed">@Html.Raw(para.Html)</div>
-                                            }
-                                            else
-                                            {
-                                                @Html.Raw(para.Html)
+                                                if (para.Type == DiffResultType.Removed)
+                                                {
+                                                    <div class="diff-para diff-para--removed">@Html.Raw(para.Html)</div>
+                                                }
+                                                else
+                                                {
+                                                    // Modified paragraphs already contain <del>/<ins> spans from HtmlDiffService
+                                                    // Added/Unchanged paragraphs render cleanly
+                                                    @Html.Raw(para.Html)
+                                                }
                                             }
                                         }
-                                    </div>
-                                </div>
-                            }
-                            <div class="scene-prose-content prose" id="prose-@item.Scene.Id">
-                                @Html.Raw(item.ResolvedHtmlContent ?? "<p><em>The author has not added content to this scene yet.</em></p>")
+                                        else
+                                        {
+                                            // Below threshold — render clean current prose
+                                            foreach (var para in group.Paragraphs)
+                                            {
+                                                if (para.Type != DiffResultType.Removed)
+                                                    @Html.Raw(para.Html)
+                                            }
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    @Html.Raw(item.ResolvedHtmlContent ?? "<p><em>The author has not added content to this scene yet.</em></p>")
+                                }
                             </div>
                         </div>
                     </div>
@@ -1712,18 +1729,32 @@
             });
         }
 
-        // Diff view toggle
+        // Show/Hide Changes toggle — persists preference via POST
+        var showEditsUrl = null;
         document.querySelectorAll('[data-diff-toggle]').forEach(function (btn) {
+            if (!showEditsUrl) showEditsUrl = btn.getAttribute('data-show-edits-url');
             var sectionId = btn.getAttribute('data-diff-toggle');
-            var diffView  = document.getElementById('diff-' + sectionId);
             var proseView = document.getElementById('prose-' + sectionId);
+            var controls  = btn.closest('.diff-controls');
+            var showEdits = controls ? controls.getAttribute('data-show-edits') === 'true' : false;
+
+            // Initialise prose view rendering based on server-set ShowEdits
+            // (the server already rendered the correct content; JS just wires the toggle)
 
             btn.addEventListener('click', function () {
-                var showing = !diffView.hidden;
-                diffView.hidden  = showing;
-                proseView.hidden = !showing;
-                btn.querySelector('.diff-toggle-btn__show').hidden = !showing;
-                btn.querySelector('.diff-toggle-btn__hide').hidden =  showing;
+                showEdits = !showEdits;
+
+                // Reload page so server re-renders prose with correct ShowEdits state
+                fetch(showEditsUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': antiForgeryInput.value
+                    },
+                    body: JSON.stringify(showEdits)
+                }).then(function () {
+                    window.location.reload();
+                });
             });
         });
 
