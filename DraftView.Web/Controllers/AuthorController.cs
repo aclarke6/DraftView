@@ -569,12 +569,14 @@ public class AuthorController(
 
         return View(new SectionViewModel
         {
-            Section            = detail.Section,
-            ChapterTitle       = detail.ChapterTitle,
-            Comments           = detail.Comments,
-            ReadCount          = detail.ReadCount,
-            CommentAuthorNames = detail.CommentAuthorNames,
-            ReaderNames        = detail.ReaderNames
+            Section              = detail.Section,
+            ChapterTitle         = detail.ChapterTitle,
+            Comments             = detail.Comments,
+            CommentAuthorNames   = detail.CommentAuthorNames,
+            ReadCurrentCount     = detail.ReadCurrentCount,
+            NotReadCurrentCount  = detail.NotReadCurrentCount,
+            ReadCurrentNames     = detail.ReadCurrentNames,
+            NotReadCurrentNames  = detail.NotReadCurrentNames
         });
     }
 

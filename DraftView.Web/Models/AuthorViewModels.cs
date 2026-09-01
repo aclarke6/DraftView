@@ -23,8 +23,11 @@ public class SectionViewModel
     public string? ChapterTitle { get; set; }
     public IReadOnlyList<Comment> Comments { get; set; } = [];
     public IReadOnlyDictionary<Guid, string> CommentAuthorNames { get; set; } = new Dictionary<Guid, string>();
-    public int ReadCount { get; set; }
-    public IReadOnlyList<string> ReaderNames { get; set; } = [];
+    public int ReadCurrentCount { get; set; }
+    public int NotReadCurrentCount { get; set; }
+    public IReadOnlyList<string> ReadCurrentNames { get; set; } = [];
+    public IReadOnlyList<string> NotReadCurrentNames { get; set; } = [];
+    public int TotalReadCount => ReadCurrentCount + NotReadCurrentCount;
 }
 
 public class ReaderRowViewModel
