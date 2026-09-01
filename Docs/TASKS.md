@@ -1,6 +1,6 @@
 ﻿# DraftView — Task List
 Last updated: 2026-08-31
-Last deployed: 2026-08-31 16:00 (commit: d72e669)
+Last deployed: 2026-09-01 17:33 (commit: 626e4f2)
 Last merged: 2026-08-31 — PR #112 (fix: null classification suppressed badges for pre-versioning readers) merged to main
 
 ---
