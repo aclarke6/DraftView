@@ -27,7 +27,7 @@ public sealed class SectionsSummaryDto
 /// <summary>
 /// All data required to render the author's section detail page, including
 /// the section itself, its parent chapter title, comments with author names,
-/// and the read count.
+/// and per-reader snapshot-based read state.
 /// </summary>
 public sealed class SectionDetailDto
 {
@@ -35,8 +35,18 @@ public sealed class SectionDetailDto
     public string? ChapterTitle { get; init; }
     public required IReadOnlyList<Comment> Comments { get; init; }
     public required IReadOnlyDictionary<Guid, string> CommentAuthorNames { get; init; }
-    public required int ReadCount { get; init; }
-    public required IReadOnlyList<string> ReaderNames { get; init; }
+
+    /// <summary>Readers whose stored snapshot matches the current HtmlContent — up to date.</summary>
+    public required int ReadCurrentCount { get; init; }
+
+    /// <summary>Readers who have opened the scene but whose snapshot does not match current content.</summary>
+    public required int NotReadCurrentCount { get; init; }
+
+    /// <summary>Display names of readers on the current content version.</summary>
+    public required IReadOnlyList<string> ReadCurrentNames { get; init; }
+
+    /// <summary>Display names of readers not yet on the current content version.</summary>
+    public required IReadOnlyList<string> NotReadCurrentNames { get; init; }
 }
 
 public interface ISectionManagementService

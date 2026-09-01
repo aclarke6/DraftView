@@ -16,7 +16,19 @@
     <p class="author-section-view__meta">
         <span>@(Model.Section.ScrivenerStatus ?? "-")</span>
         <span class="author-section-view__meta-sep">|</span>
-        <span title="@(Model.ReaderNames.Any() ? string.Join(", ", Model.ReaderNames) : "")">Read by @Model.ReadCount reader(s)</span>
+        <span title="@(Model.ReadCurrentNames.Any() ? string.Join(", ", Model.ReadCurrentNames) : "No readers on current version")"
+              class="author-section-view__read-current">@Model.ReadCurrentCount on current</span>
+        @if (Model.NotReadCurrentCount > 0)
+        {
+            <span class="author-section-view__meta-sep">·</span>
+            <span title="@string.Join(", ", Model.NotReadCurrentNames)"
+                  class="author-section-view__read-stale">@Model.NotReadCurrentCount not on current</span>
+        }
+        @if (Model.TotalReadCount > 0)
+        {
+            <span class="author-section-view__meta-sep">·</span>
+            <span class="author-section-view__read-total">@Model.TotalReadCount total</span>
+        }
     </p>
 
     <div class="card author-section-view__content-card">

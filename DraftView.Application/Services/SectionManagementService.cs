@@ -16,7 +16,8 @@ public class SectionManagementService(
     IPublicationService publicationService,
     ICommentService commentService,
     IUserRepository userRepository,
-    IReadEventRepository readEventRepository) : ISectionManagementService
+    IReadEventRepository readEventRepository,
+    IReaderSnapshotRepository snapshotRepository) : ISectionManagementService
 {
     /// <summary>
     /// Loads the project and its full section tree, evaluates publishability
@@ -96,8 +97,9 @@ public class SectionManagementService(
             chapterTitle = parent?.Title;
         }
 
-        var comments = await commentService.GetThreadsForSectionAsync(sectionId, authorId, ct);
-        var events   = await readEventRepository.GetBySectionIdAsync(sectionId, ct);
+        var comments  = await commentService.GetThreadsForSectionAsync(sectionId, authorId, ct);
+        var events    = await readEventRepository.GetBySectionIdAsync(sectionId, ct);
+        var snapshots = await snapshotRepository.GetBySectionIdAsync(sectionId, ct);
 
         var nameMap = new Dictionary<Guid, string>();
         foreach (var uid in comments.Select(c => c.AuthorId).Distinct())
@@ -106,21 +108,31 @@ public class SectionManagementService(
             nameMap[uid] = u?.DisplayName ?? "Unknown";
         }
 
-        var readerNames = new List<string>();
+        var snapshotByUser = snapshots.ToDictionary(s => s.UserId);
+        var readCurrentNames    = new List<string>();
+        var notReadCurrentNames = new List<string>();
+
         foreach (var uid in events.Select(e => e.UserId).Distinct())
         {
-            var u = await userRepository.GetByIdAsync(uid, ct);
-            readerNames.Add(u?.DisplayName ?? "Unknown");
+            var u    = await userRepository.GetByIdAsync(uid, ct);
+            var name = u?.DisplayName ?? "Unknown";
+            if (snapshotByUser.TryGetValue(uid, out var snap) &&
+                snap.HtmlContent == section.HtmlContent)
+                readCurrentNames.Add(name);
+            else
+                notReadCurrentNames.Add(name);
         }
 
         return new SectionDetailDto
         {
-            Section            = section,
-            ChapterTitle       = chapterTitle,
-            Comments           = comments,
-            CommentAuthorNames = nameMap,
-            ReadCount          = events.Count,
-            ReaderNames        = readerNames
+            Section               = section,
+            ChapterTitle          = chapterTitle,
+            Comments              = comments,
+            CommentAuthorNames    = nameMap,
+            ReadCurrentCount      = readCurrentNames.Count,
+            NotReadCurrentCount   = notReadCurrentNames.Count,
+            ReadCurrentNames      = readCurrentNames,
+            NotReadCurrentNames   = notReadCurrentNames
         };
     }
 
