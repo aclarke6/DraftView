@@ -66,6 +66,7 @@ public class SettingsViewModel
     public string? ReaderGenreInterests { get; set; }
     public string? ReaderPace { get; set; }
     public bool ShowDiffOnRevisit { get; set; }
+    public bool ShowEdits { get; set; }
     public string ReadingStyle { get; set; } = "StoryReader";
     public int DiffCooldownHours { get; set; } = 24;
 }
@@ -73,6 +74,7 @@ public class SettingsViewModel
 public class ChangeDiffPreferencesViewModel
 {
     public bool ShowDiffOnRevisit { get; set; }
+    public bool ShowEdits { get; set; }
 
     [Required(ErrorMessage = "Please select a reading style.")]
     public string ReadingStyle { get; set; } = "StoryReader";

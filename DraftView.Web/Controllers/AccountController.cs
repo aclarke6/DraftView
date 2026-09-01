@@ -485,6 +485,7 @@ public class AccountController(
             ReaderGenreInterests = prefs?.ReaderGenreInterests,
             ReaderPace = prefs?.ReaderPace?.ToString(),
             ShowDiffOnRevisit = prefs?.ShowDiffOnRevisit ?? false,
+            ShowEdits = prefs?.ShowEdits ?? false,
             ReadingStyle = prefs?.ReadingStyle.ToString() ?? "StoryReader",
             DiffCooldownHours = prefs?.DiffCooldownHours ?? 24
         };
@@ -600,6 +601,7 @@ public class AccountController(
         try
         {
             await userService.UpdateDiffPreferencesAsync(user.Id, model.ShowDiffOnRevisit, readingStyle, cooldownHours);
+            await userService.UpdateShowEditsAsync(user.Id, model.ShowEdits);
             TempData["Success"] = "Change notification preferences updated.";
         }
         catch (Exception ex)
