@@ -42,6 +42,12 @@ public class ReadingProgressService(
         await unitOfWork.SaveChangesAsync(ct);
     }
 
+    public async Task<bool> IsMarkedReadAsync(Guid sectionId, Guid userId, CancellationToken ct = default)
+    {
+        var readEvent = await readEventRepo.GetAsync(sectionId, userId, ct);
+        return readEvent?.IsRead ?? false;
+    }
+
     public async Task MarkReadAsync(Guid sectionId, Guid userId, CancellationToken ct = default)
     {
         var readEvent = await readEventRepo.GetAsync(sectionId, userId, ct);

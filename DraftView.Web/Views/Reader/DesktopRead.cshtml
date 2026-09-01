@@ -42,17 +42,19 @@
             @foreach (var item in Model.Scenes)
             {
                 <a href="#scene-@item.Scene.Id" class="reader__contents-link">
-                    @item.Scene.Title@(item.VersionLabel != null ? $" ({item.VersionLabel})" : string.Empty)
-                    @if (item.DiffClassification.HasValue)
+                    @item.Scene.Title
+                    @if (item.ChangeClassification.HasValue)
                     {
-                        var pillClass = item.DiffClassification switch {
+                        var pillClass = item.ChangeClassification switch {
+                            DraftView.Domain.Enumerations.ChangeClassification.New      => "change-pill change-pill--new",
                             DraftView.Domain.Enumerations.ChangeClassification.Trivial  => "change-pill change-pill--trivial",
                             DraftView.Domain.Enumerations.ChangeClassification.Polish   => "change-pill change-pill--polish",
                             DraftView.Domain.Enumerations.ChangeClassification.Revision => "change-pill change-pill--revision",
                             DraftView.Domain.Enumerations.ChangeClassification.Rewrite  => "change-pill change-pill--rewrite",
                             _ => "change-pill"
                         };
-                        var pillTitle = item.DiffClassification switch {
+                        var pillTitle = item.ChangeClassification switch {
+                            DraftView.Domain.Enumerations.ChangeClassification.New      => "New — you have not yet read this scene",
                             DraftView.Domain.Enumerations.ChangeClassification.Trivial  => "Minor fix — small corrections only",
                             DraftView.Domain.Enumerations.ChangeClassification.Polish   => "Minor edit — light edits to wording or phrasing",
                             DraftView.Domain.Enumerations.ChangeClassification.Revision => "Revised — significant reworking of this scene",
@@ -147,17 +149,19 @@
                 @foreach (var item in Model.Scenes)
                 {
                     <a href="#scene-@item.Scene.Id" class="chapter-sidebar__link">
-                        @item.Scene.Title@(item.VersionLabel != null ? $" ({item.VersionLabel})" : string.Empty)
-                        @if (item.DiffClassification.HasValue)
+                        @item.Scene.Title
+                        @if (item.ChangeClassification.HasValue)
                         {
-                            var pillClass = item.DiffClassification switch {
+                            var pillClass = item.ChangeClassification switch {
+                                DraftView.Domain.Enumerations.ChangeClassification.New      => "change-pill change-pill--new",
                                 DraftView.Domain.Enumerations.ChangeClassification.Trivial  => "change-pill change-pill--trivial",
                                 DraftView.Domain.Enumerations.ChangeClassification.Polish   => "change-pill change-pill--polish",
                                 DraftView.Domain.Enumerations.ChangeClassification.Revision => "change-pill change-pill--revision",
                                 DraftView.Domain.Enumerations.ChangeClassification.Rewrite  => "change-pill change-pill--rewrite",
                                 _ => "change-pill"
                             };
-                            var pillTitle = item.DiffClassification switch {
+                            var pillTitle = item.ChangeClassification switch {
+                                DraftView.Domain.Enumerations.ChangeClassification.New      => "New — you have not yet read this scene",
                                 DraftView.Domain.Enumerations.ChangeClassification.Trivial  => "Minor fix — small corrections only",
                                 DraftView.Domain.Enumerations.ChangeClassification.Polish   => "Minor edit — light edits to wording or phrasing",
                                 DraftView.Domain.Enumerations.ChangeClassification.Revision => "Revised — significant reworking of this scene",
@@ -267,7 +271,6 @@
                 <div class="scene-block"
                      id="scene-@item.Scene.Id"
                      data-section-id="@item.Scene.Id"
-                     data-section-version-id="@(item.CurrentSectionVersionId?.ToString() ?? string.Empty)"
                      data-resume-capture-text="@item.ResumeCaptureText"
                      data-resume-restore-has-target="@item.HasResumeRestoreTarget.ToString().ToLowerInvariant()"
                      data-resume-restore-start-offset="@(item.ResumeRestoreStartOffset?.ToString() ?? string.Empty)"
@@ -285,32 +288,7 @@
 
                         <div class="scene-heading">
                             <span>@item.Scene.Title</span>
-                            @if (item.VersionLabel != null)
-                            {
-                                <span class="scene-heading__version">@item.VersionLabel</span>
-                            }
                         </div>
-
-                        @if (item.ShowUpdateBanner && item.CurrentVersionNumber.HasValue)
-                        {
-                            <div class="update-banner" data-section-id="@item.Scene.Id" data-version="@item.CurrentVersionNumber">
-                                <div class="update-banner__content">
-                                    <span class="update-banner__version">
-                                        @(item.VersionLabel ?? $"Version {item.CurrentVersionNumber}")
-                                    </span>
-                                </div>
-                                <button type="button" class="update-banner__dismiss" aria-label="Dismiss update notice">
-                                    Dismiss
-                                </button>
-                            </div>
-                        }
-
-                        @if (item.UpdatedSinceLastRead)
-                        {
-                            <div class="scene-updated-notice">
-                                Updated since you last read
-                            </div>
-                        }
 
                         @if (item.DiffEnabled && item.HasDiff)
                         {
@@ -533,7 +511,6 @@
                                                 <input type="hidden" name="sceneId" value="@item.Scene.Id" />
                                                 <input type="hidden" name="SectionId" value="@item.Scene.Id" />
                                                 <input type="hidden" name="PassageAnchorRequest.SectionId" value="@item.Scene.Id" />
-                                                <input type="hidden" name="PassageAnchorRequest.OriginalSectionVersionId" value="@(item.CurrentSectionVersionId?.ToString() ?? string.Empty)" />
                                                 <input type="hidden" name="PassageAnchorRequest.Purpose" value="@c.PassageAnchor.Purpose" />
                                                 <input type="hidden" name="PassageAnchorRequest.SelectedText" value="" />
                                                 <input type="hidden" name="PassageAnchorRequest.NormalizedSelectedText" value="" />

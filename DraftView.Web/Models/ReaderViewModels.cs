@@ -47,14 +47,7 @@ public class SceneWithComments
 {
     public Section Scene { get; set; } = default!;
     public IReadOnlyList<CommentDisplayViewModel> Comments { get; set; } = new List<CommentDisplayViewModel>();
-
-    /// <summary>
-    /// The HTML content to render for this scene. Resolved from the latest
-    /// SectionVersion if one exists, falling back to Section.HtmlContent
-    /// for pre-versioning published sections.
-    /// </summary>
     public string? ResolvedHtmlContent { get; set; }
-    public Guid? CurrentSectionVersionId { get; set; }
     public string ResumeCaptureText { get; set; } = string.Empty;
     public bool HasResumeRestoreTarget { get; set; }
     public int? ResumeRestoreStartOffset { get; set; }
@@ -64,56 +57,36 @@ public class SceneWithComments
     public PassageAnchorMatchMethod? ResumeRestoreMatchMethod { get; set; }
 
     /// <summary>
-    /// Paragraph-level diff results when the reader has a prior read version
-    /// and a newer version exists. Empty when no diff or no changes.
-    /// When non-empty, the view renders diff paragraphs instead of ResolvedHtmlContent.
+    /// Paragraph-level diff results. Empty until Phase 5 wires up IChangeStateService diff computation.
+    /// When non-empty, the view renders diff paragraphs alongside ResolvedHtmlContent.
     /// </summary>
     public IReadOnlyList<ParagraphDiffResult> DiffParagraphs { get; set; }
         = Array.Empty<ParagraphDiffResult>();
 
-    /// <summary>
-    /// True when DiffParagraphs contains highlighted changes to show the reader.
-    /// </summary>
     public bool HasDiff => DiffParagraphs.Any(p => p.Type != DiffResultType.Unchanged);
 
     /// <summary>
-    /// True when the reader has previously read this section and a newer version
-    /// now exists. Drives the "Updated since you last read" inline message.
-    /// False on first read or when the reader is already on the latest version.
-    /// </summary>
-    public bool UpdatedSinceLastRead { get; set; }
-
-    /// <summary>
-    /// True when the update banner should be shown for this scene.
-    /// Requires: reader has read before, a newer version exists, and
-    /// the reader has not yet dismissed the banner at the current version.
-    /// </summary>
-    public bool ShowUpdateBanner { get; set; }
-
-    /// <summary>
-    /// The current version number. Used in the banner label.
-    /// </summary>
-    public int? CurrentVersionNumber { get; set; }
-    public string? VersionLabel { get; set; }
-
-    /// <summary>
-    /// The classification of the diff between the reader's last read version
-    /// and the current version. Null when no diff exists or diff is suppressed.
-    /// Used to render the coloured pill in the "This chapter" nav.
-    /// </summary>
-    public ChangeClassification? DiffClassification { get; set; }
-
-    /// <summary>
-    /// True when the reader's profile has ShowDiffOnRevisit enabled.
+    /// True when the reader has ShowDiffOnRevisit enabled.
     /// Controls whether the diff toggle and mark-as-read/unread controls are shown.
     /// </summary>
     public bool DiffEnabled { get; set; }
 
     /// <summary>
-    /// Approximate word count of the scene's current content.
-    /// Passed to JS to compute estimated reading time for auto mark-as-read.
+    /// Approximate word count passed to JS for auto mark-as-read timing.
     /// </summary>
     public int WordCount { get; set; }
+
+    /// <summary>
+    /// Snapshot-based change state for this scene. Null when reader is up to date.
+    /// New/Trivial/Polish/Revision/Rewrite when content has changed since last read.
+    /// Populated by IChangeStateService in Phase 5.
+    /// </summary>
+    public ChangeClassification? ChangeClassification { get; set; }
+
+    /// <summary>
+    /// True when the reader's ReadEvent has IsRead = true for this scene.
+    /// </summary>
+    public bool IsRead { get; set; }
 
 }
 

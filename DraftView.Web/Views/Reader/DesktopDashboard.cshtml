@@ -136,7 +136,7 @@ else
                                                     }
                                                 </td>
                                                 <td class="reader-dashboard__cell reader-dashboard__cell--status">
-                                                    @if (!item.HasRead)
+                                                    @if (!item.HasRead || item.ChapterChangeClassification == ChangeClassification.New)
                                                     {
                                                         <span class="reader-dashboard__status reader-dashboard__status--new">New</span>
                                                     }

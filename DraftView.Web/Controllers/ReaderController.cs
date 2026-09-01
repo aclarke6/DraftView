@@ -682,8 +682,8 @@ public class ReaderController(
         var preferences       = await _userPreferencesRepo.GetByUserIdAsync(user.Id);
         var showDiffMobile    = preferences?.ShowDiffOnRevisit ?? false;
 
-        var (resolvedHtml, currentSectionVersionId, currentVersionNumber, versionLabel, resumeCaptureText, resumeRestoreTarget, diffParagraphs, _, updatedSinceLastRead, showUpdateBanner, _, _) =
-            await ResolveSceneContentAndDiffAsync(scene, user.Id, showDiffMobile);
+        var (resolvedHtml, resumeCaptureText, resumeRestoreTarget) =
+            await ResolveSceneContentAsync(scene, user.Id, showDiffMobile);
 
         var (prevSceneId, nextSceneId) = section.NodeType == NodeType.Document
             ? GetPrevNextSceneIds(scene.Id, chapter.Id, allSections)
@@ -691,6 +691,8 @@ public class ReaderController(
 
         var commentsRaw       = await CommentService.GetThreadsForSectionAsync(id, user.Id);
         var sceneCommentCount = commentsRaw.Count(c => !c.IsSoftDeleted);
+
+        var isRead = await ProgressService.IsMarkedReadAsync(scene.Id, user.Id);
 
         return View("MobileRead", new MobileReadViewModel {
             Scene                    = scene,
@@ -702,7 +704,6 @@ public class ReaderController(
             ProseFont                = preferences?.ProseFont ?? ProseFont.SystemSerif,
             ProseFontSize            = preferences?.ProseFontSize ?? ProseFontSize.Medium,
             ResolvedHtmlContent      = resolvedHtml,
-            CurrentSectionVersionId  = currentSectionVersionId,
             ResumeCaptureText        = resumeCaptureText,
             HasResumeRestoreTarget   = resumeRestoreTarget?.HasTarget ?? false,
             ResumeRestoreStartOffset = resumeRestoreTarget?.StartOffset,
@@ -710,18 +711,10 @@ public class ReaderController(
             ResumeRestoreStatus      = resumeRestoreTarget?.Status,
             ResumeRestoreConfidenceScore = resumeRestoreTarget?.ConfidenceScore,
             ResumeRestoreMatchMethod = resumeRestoreTarget?.MatchMethod,
-            CurrentVersionNumber     = currentVersionNumber,
-            VersionLabel             = versionLabel,
-            DiffParagraphs           = diffParagraphs,
-            UpdatedSinceLastRead     = updatedSinceLastRead,
-            ShowUpdateBanner         = showUpdateBanner
+            IsRead                   = isRead
         });
     }
 
-    /// <summary>
-    /// Builds a SceneWithComments view model by resolving content, computing diff,
-    /// and loading comments for a scene.
-    /// </summary>
     private async Task<SceneWithComments> BuildSceneWithCommentsAsync(
         Section scene,
         Domain.Entities.User user,
@@ -732,11 +725,10 @@ public class ReaderController(
     {
         await ProgressService.RecordOpenAsync(scene.Id, user.Id, ct);
 
-        var (resolvedHtml, currentSectionVersionId, currentVersionNumber, versionLabel,
-             resumeCaptureText, resumeRestoreTarget, diffParagraphs, diffClassification,
-             updatedSinceLastRead, showUpdateBanner, diffEnabled, wordCount) =
-            await ResolveSceneContentAndDiffAsync(scene, user.Id, showDiffOnRevisit, ct);
+        var (resolvedHtml, resumeCaptureText, resumeRestoreTarget) =
+            await ResolveSceneContentAsync(scene, user.Id, showDiffOnRevisit, ct);
 
+        var isRead = await ProgressService.IsMarkedReadAsync(scene.Id, user.Id, ct);
         var comments = await CommentService.GetThreadsForSectionAsync(scene.Id, user.Id, ct);
         var displayComments = await BuildCommentDisplayModelsAsync(comments, user.Id, projectAuthorId, isModerator);
 
@@ -745,7 +737,6 @@ public class ReaderController(
             Scene                        = scene,
             Comments                     = displayComments,
             ResolvedHtmlContent          = resolvedHtml,
-            CurrentSectionVersionId      = currentSectionVersionId,
             ResumeCaptureText            = resumeCaptureText,
             HasResumeRestoreTarget       = resumeRestoreTarget?.HasTarget ?? false,
             ResumeRestoreStartOffset     = resumeRestoreTarget?.StartOffset,
@@ -753,27 +744,14 @@ public class ReaderController(
             ResumeRestoreStatus          = resumeRestoreTarget?.Status,
             ResumeRestoreConfidenceScore = resumeRestoreTarget?.ConfidenceScore,
             ResumeRestoreMatchMethod     = resumeRestoreTarget?.MatchMethod,
-            DiffParagraphs               = diffParagraphs,
-            DiffClassification           = diffClassification,
-            DiffEnabled                  = diffEnabled,
-            WordCount                    = wordCount,
-            UpdatedSinceLastRead         = updatedSinceLastRead,
-            ShowUpdateBanner             = showUpdateBanner,
-            CurrentVersionNumber         = currentVersionNumber,
-            VersionLabel                 = versionLabel
+            DiffEnabled                  = showDiffOnRevisit,
+            WordCount                    = CountWords(resolvedHtml),
+            IsRead                       = isRead
         };
     }
 
-    /// <summary>
-    /// Resolves scene content from the latest version (or fallback to working content),
-    /// and computes diff via ReaderDiffService (applies ShowDiffOnRevisit, cooldown, threshold).
-    /// LastReadVersionNumber is no longer advanced on open — only via explicit mark-as-read.
-    /// Returns: (resolvedHtml, currentSectionVersionId, currentVersionNumber, versionLabel,
-    ///           resumeCaptureText, resumeRestoreTarget, diffParagraphs, diffClassification,
-    ///           updatedSinceLastRead, showUpdateBanner, diffEnabled, wordCount)
-    /// </summary>
-    private async Task<(string? resolvedHtml, Guid? currentSectionVersionId, int? currentVersionNumber, string? versionLabel, string resumeCaptureText, ResumeRestoreTargetDto? resumeRestoreTarget, IReadOnlyList<ParagraphDiffResult> diffParagraphs, ChangeClassification? diffClassification, bool updatedSinceLastRead, bool showUpdateBanner, bool diffEnabled, int wordCount)>
-        ResolveSceneContentAndDiffAsync(
+    private async Task<(string? resolvedHtml, string resumeCaptureText, ResumeRestoreTargetDto? resumeRestoreTarget)>
+        ResolveSceneContentAsync(
             Section scene,
             Guid userId,
             bool showDiffOnRevisit,
@@ -782,12 +760,7 @@ public class ReaderController(
         var resolvedHtml = scene.HtmlContent;
         var resumeCaptureText = CanonicalizeForCapture(resolvedHtml);
         var resumeRestoreTarget = await ProgressService.GetResumeRestoreTargetAsync(scene.Id, userId, ct);
-        var wordCount = CountWords(resolvedHtml);
-
-        return (resolvedHtml, null, null, null,
-                resumeCaptureText, resumeRestoreTarget,
-                Array.Empty<ParagraphDiffResult>(), null,
-                false, false, showDiffOnRevisit, wordCount);
+        return (resolvedHtml, resumeCaptureText, resumeRestoreTarget);
     }
 
     private static int CountWords(string? html)

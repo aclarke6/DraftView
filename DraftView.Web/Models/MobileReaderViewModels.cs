@@ -93,12 +93,7 @@ public class MobileReadViewModel
     public bool HasPrev => PrevSceneId.HasValue;
     public bool HasNext => NextSceneId.HasValue;
 
-    /// <summary>
-    /// The HTML content to render. Latest SectionVersion if exists,
-    /// fallback to Scene.HtmlContent for pre-versioning sections.
-    /// </summary>
     public string? ResolvedHtmlContent { get; set; }
-    public Guid? CurrentSectionVersionId { get; set; }
     public string ResumeCaptureText { get; set; } = string.Empty;
     public bool HasResumeRestoreTarget { get; set; }
     public int? ResumeRestoreStartOffset { get; set; }
@@ -108,27 +103,14 @@ public class MobileReadViewModel
     public PassageAnchorMatchMethod? ResumeRestoreMatchMethod { get; set; }
 
     /// <summary>
-    /// The VersionNumber of the SectionVersion used to resolve content.
-    /// Null if no version exists yet (pre-versioning section).
+    /// Snapshot-based change state for this scene. Null when reader is up to date.
+    /// Populated by IChangeStateService in Phase 5.
     /// </summary>
-    public int? CurrentVersionNumber { get; set; }
-    public string? VersionLabel { get; set; }
+    public ChangeClassification? ChangeClassification { get; set; }
 
     /// <summary>
-    /// Paragraph-level diff results for this scene. Empty when no changes.
+    /// True when the reader's ReadEvent has IsRead = true for this scene.
     /// </summary>
-    public IReadOnlyList<ParagraphDiffResult> DiffParagraphs { get; set; }
-        = Array.Empty<ParagraphDiffResult>();
-
-    /// <summary>True when the reader has changes to see.</summary>
-    public bool HasDiff => DiffParagraphs.Any(p => p.Type != DiffResultType.Unchanged);
-
-    /// <summary>
-    /// True when the reader has previously read this scene and a newer version exists.
-    /// </summary>
-    public bool UpdatedSinceLastRead { get; set; }
-
-    /// <summary>True when the update banner should be shown.</summary>
-    public bool ShowUpdateBanner { get; set; }
+    public bool IsRead { get; set; }
 
 }
