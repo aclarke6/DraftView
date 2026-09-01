@@ -239,6 +239,55 @@ public class ReadingProgressServiceTests
     }
 
     // ---------------------------------------------------------------------------
+    // IsMarkedReadAsync
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task IsMarkedReadAsync_ReadEventExistsAndIsRead_ReturnsTrue()
+    {
+        var sectionId = Guid.NewGuid();
+        var userId    = Guid.NewGuid();
+        var sut       = CreateSut();
+        var readEvent = ReadEvent.Create(sectionId, userId);
+        readEvent.MarkRead();
+
+        _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default)).ReturnsAsync(readEvent);
+
+        var result = await sut.IsMarkedReadAsync(sectionId, userId);
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task IsMarkedReadAsync_ReadEventExistsButNotRead_ReturnsFalse()
+    {
+        var sectionId = Guid.NewGuid();
+        var userId    = Guid.NewGuid();
+        var sut       = CreateSut();
+        var readEvent = ReadEvent.Create(sectionId, userId);
+
+        _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default)).ReturnsAsync(readEvent);
+
+        var result = await sut.IsMarkedReadAsync(sectionId, userId);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task IsMarkedReadAsync_NoReadEvent_ReturnsFalse()
+    {
+        var sectionId = Guid.NewGuid();
+        var userId    = Guid.NewGuid();
+        var sut       = CreateSut();
+
+        _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default)).ReturnsAsync((ReadEvent?)null);
+
+        var result = await sut.IsMarkedReadAsync(sectionId, userId);
+
+        Assert.False(result);
+    }
+
+    // ---------------------------------------------------------------------------
     // MarkReadAsync
     // ---------------------------------------------------------------------------
 

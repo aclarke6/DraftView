@@ -17,6 +17,7 @@ public interface IReadingProgressService
     /// ReaderSnapshot of the current content as the reader's new baseline.
     /// No-op if no ReadEvent exists (reader has not opened the scene).
     /// </summary>
+    Task<bool> IsMarkedReadAsync(Guid sectionId, Guid userId, CancellationToken ct = default);
     Task MarkReadAsync(Guid sectionId, Guid userId, CancellationToken ct = default);
 
     /// <summary>
