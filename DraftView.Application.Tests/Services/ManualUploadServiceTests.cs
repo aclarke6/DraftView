@@ -29,7 +29,6 @@ public class ManualUploadServiceTests
     private readonly Mock<IChapterFileParser>              _parser           = new();
     private readonly Mock<IUnitOfWork>                     _unitOfWork       = new();
     private readonly Mock<ISectionRepository>              _sectionRepo      = new();
-    private readonly Mock<IVersioningService>              _versioningService = new();
     private readonly Mock<IMarkdownToHtmlConverter>        _markdownConverter = new();
 
     private ManualUploadService CreateSut() => new(
@@ -40,7 +39,6 @@ public class ManualUploadServiceTests
         _parserResolver.Object,
         _unitOfWork.Object,
         _sectionRepo.Object,
-        _versioningService.Object,
         _markdownConverter.Object);
 
     private static Project BuildManualProject()    => Project.CreateManual("Test Book", AuthorId);
@@ -340,13 +338,7 @@ public class ManualUploadServiceTests
         // Chapter updated with linked section id
         _chapterRepo.Verify(r => r.UpdateAsync(It.Is<ManualChapter>(c => c.LinkedSectionId.HasValue), default), Times.Once);
 
-        // SaveChanges called before versioning service
         _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.AtLeastOnce);
-
-        // VersioningService called for the Document section
-        _versioningService.Verify(v => v.RepublishSectionAsync(It.IsAny<Guid>(), AuthorId, default), Times.Once);
-
-        // Returns the folder section Id (a non-empty Guid)
         Assert.NotEqual(Guid.Empty, result);
     }
 
@@ -370,12 +362,7 @@ public class ManualUploadServiceTests
 
         var result = await sut.PublishChapterAsync(chapterId, AuthorId);
 
-        // No new sections added on re-publish
         _sectionRepo.Verify(r => r.AddAsync(It.IsAny<Section>(), default), Times.Never);
-
-        // VersioningService called for the Document section
-        _versioningService.Verify(v => v.RepublishSectionAsync(document.Id, AuthorId, default), Times.Once);
-
         Assert.Equal(folderId, result);
     }
 

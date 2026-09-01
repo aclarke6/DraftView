@@ -16,7 +16,6 @@ namespace DraftView.Application.Services;
 public sealed class PassageAnchorService(
     IPassageAnchorRepository anchorRepo,
     ISectionRepository sectionRepo,
-    ISectionVersionRepository sectionVersionRepo,
     IReaderAccessRepository readerAccessRepo,
     IUserRepository userRepo,
     IAuthorizationFacade authFacade,
@@ -78,10 +77,7 @@ public sealed class PassageAnchorService(
 
         await EnsureAuthorizedAsync(section, currentUserId, ct);
 
-        var latestVersion = await sectionVersionRepo.GetLatestAsync(section.Id, ct);
-        var readerVisibleText = latestVersion is not null
-            ? Canonicalize(latestVersion.HtmlContent)
-            : Canonicalize(section.HtmlContent ?? string.Empty);
+        var readerVisibleText = Canonicalize(section.HtmlContent ?? string.Empty);
 
         var matches = FindExactMatchOffsets(
             readerVisibleText,
@@ -92,7 +88,6 @@ public sealed class PassageAnchorService(
 
         var (startOffset, endOffset) = matches[0];
         return new PassageAnchorMatchDto(
-            latestVersion?.Id,
             startOffset,
             endOffset,
             readerVisibleText[startOffset..endOffset],
@@ -131,17 +126,13 @@ public sealed class PassageAnchorService(
 
         await EnsureAuthorizedAsync(section, currentUserId, ct);
 
-        var latestVersion = await sectionVersionRepo.GetLatestAsync(section.Id, ct);
-        var readerVisibleText = latestVersion is not null
-            ? Canonicalize(latestVersion.HtmlContent)
-            : Canonicalize(section.HtmlContent ?? string.Empty);
+        var readerVisibleText = Canonicalize(section.HtmlContent ?? string.Empty);
 
         var match = FindBestFuzzyMatch(readerVisibleText, anchor.OriginalSnapshot.NormalizedSelectedText);
         if (match is null || !PassageAnchorConfidence.IsFuzzyMatchAcceptable(match.Value.ConfidenceScore))
             return null;
 
         return new PassageAnchorMatchDto(
-            latestVersion?.Id,
             match.Value.StartOffset,
             match.Value.EndOffset,
             readerVisibleText[match.Value.StartOffset..match.Value.EndOffset],
@@ -167,11 +158,9 @@ public sealed class PassageAnchorService(
             ?? throw new EntityNotFoundException(nameof(Section), anchor.SectionId);
 
         await EnsureAuthorizedAsync(section, currentUserId, ct);
-        var latestVersion = await sectionVersionRepo.GetLatestAsync(section.Id, ct);
 
         if (anchor.Status == PassageAnchorStatus.UserRelinked ||
-            (anchor.Status == PassageAnchorStatus.UserRejected &&
-             anchor.Rejection?.TargetSectionVersionId == latestVersion?.Id))
+            anchor.Status == PassageAnchorStatus.UserRejected)
             return Map(anchor);
 
         var resolvedMatch = await ResolveDeterministicMatchAsync(anchorId, currentUserId, ct);
@@ -208,7 +197,6 @@ public sealed class PassageAnchorService(
             request.HtmlSelectorHint);
         var anchor = PassageAnchor.Create(
             section.Id,
-            source.OriginalSectionVersionId,
             request.Purpose,
             currentUserId,
             snapshot);
@@ -244,8 +232,7 @@ public sealed class PassageAnchorService(
     {
         await EnsureAuthorizedAsync(section, currentUserId, ct);
 
-        var latestVersion = await sectionVersionRepo.GetLatestAsync(section.Id, ct);
-        var source = ResolveReaderVisibleSource(section, latestVersion, request.OriginalSectionVersionId);
+        var source = ResolveReaderVisibleSource(section);
 
         ValidateSelection(request, source.ReaderVisibleText);
         return source;
@@ -276,32 +263,14 @@ public sealed class PassageAnchorService(
     /// <summary>
     /// Resolves the exact reader-visible content source, preferring the latest section version when present.
     /// </summary>
-    private static ReaderVisibleSource ResolveReaderVisibleSource(
-        Section section,
-        SectionVersion? latestVersion,
-        Guid? requestedVersionId)
+    private static ReaderVisibleSource ResolveReaderVisibleSource(Section section)
     {
-        if (latestVersion is not null)
-        {
-            if (requestedVersionId != latestVersion.Id)
-                throw new InvariantViolationException(
-                    "I-ANCHOR-VERSION",
-                    "Anchors must be created against the current reader-visible section version.");
-
-            return new ReaderVisibleSource(latestVersion.Id, Canonicalize(latestVersion.HtmlContent));
-        }
-
-        if (requestedVersionId.HasValue)
-            throw new InvariantViolationException(
-                "I-ANCHOR-VERSION",
-                "A section version cannot be specified when no reader-visible version exists.");
-
         if (string.IsNullOrWhiteSpace(section.HtmlContent))
             throw new InvariantViolationException(
                 "I-ANCHOR-CONTENT",
                 "Cannot create an anchor for a section with no reader-visible content.");
 
-        return new ReaderVisibleSource(null, Canonicalize(section.HtmlContent));
+        return new ReaderVisibleSource(Canonicalize(section.HtmlContent));
     }
 
     /// <summary>
@@ -399,10 +368,7 @@ public sealed class PassageAnchorService(
 
         await EnsureAuthorizedAsync(section, currentUserId, ct);
 
-        var latestVersion = await sectionVersionRepo.GetLatestAsync(section.Id, ct);
-        var readerVisibleText = latestVersion is not null
-            ? Canonicalize(latestVersion.HtmlContent)
-            : Canonicalize(section.HtmlContent ?? string.Empty);
+        var readerVisibleText = Canonicalize(section.HtmlContent ?? string.Empty);
 
         var exactMatches = FindExactMatchOffsets(
             readerVisibleText,
@@ -412,7 +378,6 @@ public sealed class PassageAnchorService(
         {
             var (exactStart, exactEnd) = exactMatches[0];
             return new PassageAnchorMatchDto(
-                latestVersion?.Id,
                 exactStart,
                 exactEnd,
                 readerVisibleText[exactStart..exactEnd],
@@ -432,7 +397,6 @@ public sealed class PassageAnchorService(
             return null;
 
         return new PassageAnchorMatchDto(
-            latestVersion?.Id,
             contextMatch.Value.StartOffset,
             contextMatch.Value.EndOffset,
             readerVisibleText[contextMatch.Value.StartOffset..contextMatch.Value.EndOffset],
@@ -534,7 +498,6 @@ public sealed class PassageAnchorService(
         return new PassageAnchorDto(
             anchor.Id,
             anchor.SectionId,
-            anchor.OriginalSectionVersionId,
             anchor.Purpose,
             anchor.CreatedByUserId,
             anchor.CreatedAt,
@@ -553,7 +516,6 @@ public sealed class PassageAnchorService(
             anchor.CurrentMatch is null
                 ? null
                 : new PassageAnchorMatchDto(
-                    anchor.CurrentMatch.TargetSectionVersionId,
                     anchor.CurrentMatch.StartOffset,
                     anchor.CurrentMatch.EndOffset,
                     anchor.CurrentMatch.MatchedText,
@@ -565,7 +527,6 @@ public sealed class PassageAnchorService(
             anchor.Rejection is null
                 ? null
                 : new PassageAnchorRejectionDto(
-                    anchor.Rejection.TargetSectionVersionId,
                     anchor.Rejection.RejectedByUserId,
                     anchor.Rejection.RejectedAt,
                     anchor.Rejection.Reason));
@@ -609,7 +570,6 @@ public sealed class PassageAnchorService(
     private static void PersistResolvedMatch(PassageAnchor anchor, PassageAnchorMatchDto match)
     {
         var currentMatch = PassageAnchorMatch.Create(
-            match.TargetSectionVersionId,
             match.StartOffset,
             match.EndOffset,
             match.MatchedText,
@@ -621,5 +581,5 @@ public sealed class PassageAnchorService(
         anchor.UpdateCurrentMatch(currentMatch);
     }
 
-    private sealed record ReaderVisibleSource(Guid? OriginalSectionVersionId, string ReaderVisibleText);
+    private sealed record ReaderVisibleSource(string ReaderVisibleText);
 }

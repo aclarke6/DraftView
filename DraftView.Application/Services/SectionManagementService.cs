@@ -13,10 +13,7 @@ namespace DraftView.Application.Services;
 public class SectionManagementService(
     IProjectRepository projectRepo,
     ISectionRepository sectionRepo,
-    ISectionVersionRepository sectionVersionRepo,
     IPublicationService publicationService,
-    IHtmlDiffService htmlDiffService,
-    IChangeClassificationService changeClassificationService,
     ICommentService commentService,
     IUserRepository userRepository,
     IReadEventRepository readEventRepository) : ISectionManagementService
@@ -64,26 +61,6 @@ public class SectionManagementService(
 
                 chapterHasChanges.Add(chapter.Id);
 
-                var highestClassification = ChangeClassification.Polish;
-                var hasClassifiableVersion = false;
-
-                foreach (var document in documents)
-                {
-                    var latestVersion = await sectionVersionRepo.GetLatestAsync(document.Id, ct);
-                    if (latestVersion is null) continue;
-
-                    hasClassifiableVersion = true;
-                    var diff = htmlDiffService.Compute(
-                        latestVersion.HtmlContent,
-                        document.HtmlContent ?? string.Empty);
-
-                    var classification = changeClassificationService.Classify(diff);
-                    if (classification.HasValue && classification.Value > highestClassification)
-                        highestClassification = classification.Value;
-                }
-
-                if (hasClassifiableVersion)
-                    classificationMap[chapter.Id] = highestClassification;
             }
             catch
             {

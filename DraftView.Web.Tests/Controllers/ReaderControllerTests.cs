@@ -37,14 +37,12 @@ public class ReaderControllerTests
     private readonly Mock<IUserRepository> userRepo = new();
     private readonly Mock<IUserPreferencesRepository> prefsRepo = new();
     private readonly Mock<IReaderAccessRepository> readerAccessRepo = new();
-    private readonly Mock<ISectionVersionRepository> sectionVersionRepo = new();
     private readonly Mock<IReadEventRepository> readEventRepo = new();
     private readonly Mock<IHumanOverrideService> humanOverrideService = new();
     private readonly Mock<IPassageAnchorService> passageAnchorService = new();
     private readonly Mock<IAccessRequestRepository> accessRequestRepo = new();
     private readonly Mock<IAccessRequestService> accessRequestService = new();
     private readonly Mock<IReaderDashboardService> readerDashboardService = new();
-    private readonly Mock<IReaderDiffService> readerDiffService = new();
     private readonly Mock<ILogger<ReaderController>> logger = new();
     private ICommentDisplayService CommentDisplayService =>
         new DraftView.Application.Services.CommentDisplayService(userRepo.Object, passageAnchorService.Object);
@@ -137,9 +135,6 @@ public class ReaderControllerTests
         chapter.MarkAsPublishedContainer();
         var scene = Section.CreateDocument(project.Id, "scene-uuid", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "scene-hash", "Draft");
         scene.PublishAsPartOfChapter("scene-hash");
-        var latestVersion = SectionVersion.Create(
-            Section.CreateDocument(project.Id, "scene-published", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "scene-hash", "Published"),
-            Guid.NewGuid(), 2, 1, 0);
 
         var anchorId = Guid.NewGuid();
         var anchoredComment = Comment.CreateRoot(
@@ -147,12 +142,10 @@ public class ReaderControllerTests
             user.Id,
             "Anchored scene comment.",
             Visibility.Public,
-            sectionVersionId: latestVersion.Id,
             passageAnchorId: anchorId);
         var anchor = new PassageAnchorDto(
             anchorId,
             scene.Id,
-            latestVersion.Id,
             PassageAnchorPurpose.Comment,
             user.Id,
             DateTime.UtcNow,
@@ -176,7 +169,6 @@ public class ReaderControllerTests
         sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, It.IsAny<CancellationToken>())).ReturnsAsync(chapter);
         sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
         projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
-        sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(latestVersion);
         readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync((ReadEvent?)null);
 
         progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
@@ -211,7 +203,6 @@ public class ReaderControllerTests
                 It.IsAny<string?>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PassageAnchorDto(
-                Guid.NewGuid(),
                 Guid.NewGuid(),
                 Guid.NewGuid(),
                 PassageAnchorPurpose.Comment,
@@ -253,7 +244,6 @@ public class ReaderControllerTests
             .ReturnsAsync(new PassageAnchorDto(
                 Guid.NewGuid(),
                 Guid.NewGuid(),
-                Guid.NewGuid(),
                 PassageAnchorPurpose.Comment,
                 user.Id,
                 DateTime.UtcNow,
@@ -272,7 +262,6 @@ public class ReaderControllerTests
                 null));
 
         var request = new CreatePassageAnchorRequest(
-            Guid.NewGuid(),
             Guid.NewGuid(),
             PassageAnchorPurpose.Comment,
             "Alpha beta",
@@ -309,7 +298,6 @@ public class ReaderControllerTests
         sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, It.IsAny<CancellationToken>())).ReturnsAsync(chapter);
         sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
         projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
-        sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync((SectionVersion?)null);
         readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync((ReadEvent?)null);
 
         progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
@@ -354,7 +342,6 @@ public class ReaderControllerTests
         sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, It.IsAny<CancellationToken>())).ReturnsAsync(chapter);
         sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
         projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
-        sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync((SectionVersion?)null);
         readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync((ReadEvent?)null);
 
         progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
@@ -375,80 +362,6 @@ public class ReaderControllerTests
     }
 
     [Fact]
-    public async Task Read_Desktop_WithVersionAndDiff_DoesNotRenderDiffAsProse()
-    {
-        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
-        user.Activate();
-
-        var project = Project.Create("Project 1", "/Apps/Scrivener/Project1", user.Id, "project-root");
-        var chapter = Section.CreateFolder(project.Id, "chapter-uuid", "Chapter 1", null, 1);
-        chapter.MarkAsPublishedContainer();
-        var scene = Section.CreateDocument(project.Id, "scene-uuid", "Scene 1", chapter.Id, 1, "<p>Working unpublished text</p>", "scene-hash", "Draft");
-        scene.PublishAsPartOfChapter("scene-hash");
-
-        var publishedSection = Section.CreateDocument(project.Id, "scene-published", "Scene 1", chapter.Id, 1, "<p>Published text</p>", "published-hash", "Published");
-        var latestVersion = SectionVersion.Create(publishedSection, Guid.NewGuid(), 1, 1, 0);
-
-        var sut = CreateSut(user, userAgent: "Mozilla/5.0");
-
-        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
-        sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, It.IsAny<CancellationToken>())).ReturnsAsync(chapter);
-        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
-        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
-        sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(latestVersion);
-        readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ReadEvent.Create(scene.Id, user.Id));
-        progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        progressService.Setup(r => r.UpdateLastReadVersionAsync(scene.Id, user.Id, latestVersion.VersionNumber, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        commentService.Setup(r => r.GetThreadsForSectionAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<Comment>());
-
-        var result = await sut.Read(chapter.Id);
-
-        var view = Assert.IsType<ViewResult>(result);
-        var model = Assert.IsType<DesktopChapterReadViewModel>(view.Model);
-        var renderedScene = Assert.Single(model.Scenes);
-        Assert.Equal("<p>Published text</p>", renderedScene.ResolvedHtmlContent);
-        Assert.False(renderedScene.HasDiff);
-    }
-
-    [Fact]
-    public async Task Read_Mobile_WhenBannerShown_WithCurrentVersion_SetsVersionNumber()
-    {
-        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
-        user.Activate();
-
-        var project = Project.Create("Project 1", "/Apps/Scrivener/Project1", user.Id, "project-root");
-        var chapter = Section.CreateFolder(project.Id, "chapter-uuid", "Chapter 1", null, 1);
-        chapter.MarkAsPublishedContainer();
-        var scene = Section.CreateDocument(project.Id, "scene-uuid", "Scene 1", chapter.Id, 1, "<p>Working</p>", "scene-hash", "Draft");
-        scene.PublishAsPartOfChapter("scene-hash");
-
-        var publishedSection = Section.CreateDocument(project.Id, "scene-published", "Scene 1", chapter.Id, 1, "<p>Published text</p>", "published-hash", "Published");
-        var latestVersion = SectionVersion.Create(publishedSection, Guid.NewGuid(), 3, 1, 0);
-        var readEvent = ReadEvent.Create(scene.Id, user.Id);
-        readEvent.UpdateLastReadVersion(1);
-
-        var sut = CreateSut(user, userAgent: "Mozilla/5.0 (iPhone)");
-
-        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
-        sectionRepo.Setup(r => r.GetByIdAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(scene);
-        sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, It.IsAny<CancellationToken>())).ReturnsAsync(chapter);
-        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
-        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
-        sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(latestVersion);
-        readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(readEvent);
-        progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        progressService.Setup(r => r.UpdateLastReadVersionAsync(scene.Id, user.Id, latestVersion.VersionNumber, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        commentService.Setup(r => r.GetThreadsForSectionAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<Comment>());
-
-        var result = await sut.Read(scene.Id);
-
-        var view = Assert.IsType<ViewResult>(result);
-        var model = Assert.IsType<MobileReadViewModel>(view.Model);
-        Assert.True(model.ShowUpdateBanner);
-        Assert.Equal(3, model.CurrentVersionNumber);
-    }
-
-    [Fact]
     public async Task Read_Desktop_WhenResumeRestoreTargetExists_PopulatesSceneResumeRestoreMetadata()
     {
         var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
@@ -459,9 +372,6 @@ public class ReaderControllerTests
         chapter.MarkAsPublishedContainer();
         var scene = Section.CreateDocument(project.Id, "scene-uuid", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "scene-hash", "Draft");
         scene.PublishAsPartOfChapter("scene-hash");
-        var latestVersion = SectionVersion.Create(
-            Section.CreateDocument(project.Id, "scene-published", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "published-hash", "Published"),
-            Guid.NewGuid(), 2, 1, 0);
 
         var sut = CreateSut(user, userAgent: "Mozilla/5.0");
 
@@ -469,16 +379,13 @@ public class ReaderControllerTests
         sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, It.IsAny<CancellationToken>())).ReturnsAsync(chapter);
         sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
         projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
-        sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(latestVersion);
         readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ReadEvent.Create(scene.Id, user.Id));
 
         progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        progressService.Setup(r => r.UpdateLastReadVersionAsync(scene.Id, user.Id, latestVersion.VersionNumber, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        progressService.Setup(r => r.GetResumeRestoreTargetAsync(scene.Id, latestVersion.Id, user.Id, It.IsAny<CancellationToken>()))
+        progressService.Setup(r => r.GetResumeRestoreTargetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ResumeRestoreTargetDto(
                 Guid.NewGuid(),
                 scene.Id,
-                latestVersion.Id,
                 PassageAnchorStatus.Context,
                 true,
                 12,
@@ -513,9 +420,6 @@ public class ReaderControllerTests
         chapter.MarkAsPublishedContainer();
         var scene = Section.CreateDocument(project.Id, "scene-uuid", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "scene-hash", "Draft");
         scene.PublishAsPartOfChapter("scene-hash");
-        var latestVersion = SectionVersion.Create(
-            Section.CreateDocument(project.Id, "scene-published", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "published-hash", "Published"),
-            Guid.NewGuid(), 2, 1, 0);
 
         var sut = CreateSut(user, userAgent: "Mozilla/5.0");
 
@@ -523,16 +427,13 @@ public class ReaderControllerTests
         sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, It.IsAny<CancellationToken>())).ReturnsAsync(chapter);
         sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
         projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
-        sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(latestVersion);
         readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ReadEvent.Create(scene.Id, user.Id));
 
         progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        progressService.Setup(r => r.UpdateLastReadVersionAsync(scene.Id, user.Id, latestVersion.VersionNumber, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        progressService.Setup(r => r.GetResumeRestoreTargetAsync(scene.Id, latestVersion.Id, user.Id, It.IsAny<CancellationToken>()))
+        progressService.Setup(r => r.GetResumeRestoreTargetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ResumeRestoreTargetDto(
                 Guid.NewGuid(),
                 scene.Id,
-                latestVersion.Id,
                 PassageAnchorStatus.Exact,
                 true,
                 0,
@@ -567,9 +468,6 @@ public class ReaderControllerTests
         chapter.MarkAsPublishedContainer();
         var scene = Section.CreateDocument(project.Id, "scene-uuid", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "scene-hash", "Draft");
         scene.PublishAsPartOfChapter("scene-hash");
-        var latestVersion = SectionVersion.Create(
-            Section.CreateDocument(project.Id, "scene-published", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "published-hash", "Published"),
-            Guid.NewGuid(), 2, 1, 0);
 
         var sut = CreateSut(user, userAgent: "Mozilla/5.0 (iPhone)");
 
@@ -578,16 +476,13 @@ public class ReaderControllerTests
         sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, It.IsAny<CancellationToken>())).ReturnsAsync(chapter);
         sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
         projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
-        sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(latestVersion);
         readEventRepo.Setup(r => r.GetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ReadEvent.Create(scene.Id, user.Id));
 
         progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        progressService.Setup(r => r.UpdateLastReadVersionAsync(scene.Id, user.Id, latestVersion.VersionNumber, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        progressService.Setup(r => r.GetResumeRestoreTargetAsync(scene.Id, latestVersion.Id, user.Id, It.IsAny<CancellationToken>()))
+        progressService.Setup(r => r.GetResumeRestoreTargetAsync(scene.Id, user.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ResumeRestoreTargetDto(
                 Guid.NewGuid(),
                 scene.Id,
-                latestVersion.Id,
                 PassageAnchorStatus.Orphaned,
                 false,
                 null,
@@ -618,7 +513,6 @@ public class ReaderControllerTests
         var sut = CreateSut(user, userAgent: "Mozilla/5.0");
         var request = new CaptureResumePositionRequest(
             Guid.NewGuid(),
-            Guid.NewGuid(),
             "Alpha beta",
             "Alpha beta",
             "selected-hash",
@@ -646,7 +540,6 @@ public class ReaderControllerTests
         var sut = CreateSut(user, userAgent: "Mozilla/5.0");
         var request = new CaptureResumePositionRequest(
             Guid.NewGuid(),
-            Guid.NewGuid(),
             string.Empty,
             string.Empty,
             string.Empty,
@@ -672,7 +565,6 @@ public class ReaderControllerTests
         user.Activate();
         var sut = CreateSut(user, userAgent: "Mozilla/5.0");
         var request = new CaptureResumePositionRequest(
-            Guid.NewGuid(),
             Guid.NewGuid(),
             "Alpha beta",
             "Alpha beta",
@@ -700,7 +592,6 @@ public class ReaderControllerTests
         user.Activate();
         var sut = CreateSut(user, userAgent: "Mozilla/5.0");
         var request = new CreatePassageAnchorRequest(
-            Guid.NewGuid(),
             Guid.NewGuid(),
             PassageAnchorPurpose.Comment,
             "Alpha beta",
@@ -730,7 +621,6 @@ public class ReaderControllerTests
         var sut = CreateSut(user, userAgent: "Mozilla/5.0");
         var request = new CreatePassageAnchorRequest(
             Guid.NewGuid(),
-            Guid.NewGuid(),
             PassageAnchorPurpose.Comment,
             string.Empty,
             string.Empty,
@@ -758,7 +648,6 @@ public class ReaderControllerTests
         user.Activate();
         var sut = CreateSut(user, userAgent: "Mozilla/5.0");
         var request = new CreatePassageAnchorRequest(
-            Guid.NewGuid(),
             Guid.NewGuid(),
             PassageAnchorPurpose.Comment,
             "Alpha beta",
@@ -796,7 +685,6 @@ public class ReaderControllerTests
         var urlHelper = new Mock<IUrlHelper>();
         var passageAnchorRequest = new CreatePassageAnchorRequest(
             scene.Id,
-            null,
             PassageAnchorPurpose.Comment,
             "Hello",
             "Hello",
@@ -1041,15 +929,12 @@ public class ReaderControllerTests
             userRepo.Object,
             prefsRepo.Object,
             readerAccessRepo.Object,
-            sectionVersionRepo.Object,
-            readEventRepo.Object,
             humanOverrideService.Object,
             passageAnchorService.Object,
             CommentDisplayService,
             accessRequestRepo.Object,
             accessRequestService.Object,
             readerDashboardService.Object,
-            readerDiffService.Object,
             logger.Object);
 
         controller.ControllerContext = new ControllerContext
@@ -1081,15 +966,12 @@ public class ReaderControllerTests
             userRepo.Object,
             prefsRepo.Object,
             readerAccessRepo.Object,
-            sectionVersionRepo.Object,
-            readEventRepo.Object,
             humanOverrideService.Object,
             passageAnchorService.Object,
             CommentDisplayService,
             accessRequestRepo.Object,
             accessRequestService.Object,
             readerDashboardService.Object,
-            readerDiffService.Object,
             logger.Object);
 
         controller.ControllerContext = new ControllerContext
@@ -1138,26 +1020,6 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
         Assert.Matches(
             new Regex("<div\\s+class=\\\"reader-page\\\"[^>]*data-prose-font=\\\"Humanist\\\"[^>]*data-prose-font-size=\\\"Large\\\"", RegexOptions.IgnoreCase),
             html);
-    }
-
-    [Fact]
-    public async Task Read_Desktop_RendersSceneVersionLabel_WhenVersionExists()
-    {
-        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
-        {
-            AllowAutoRedirect = true,
-            BaseAddress = new Uri("https://localhost")
-        });
-
-        client.DefaultRequestHeaders.Add(TestAuthHandler.HeaderName, TestAuthHandler.ReaderMode);
-
-        var response = await client.GetAsync($"/Reader/Read/{factory.ChapterId}");
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        var html = await response.Content.ReadAsStringAsync();
-
-        Assert.Matches(new Regex("href=\"#scene-[^\"]+\"[^>]*>\\s*Scene 1\\s*\\(Version 1\\.00\\)\\s*</a>", RegexOptions.IgnoreCase), html);
     }
 
     [Fact]
@@ -1315,7 +1177,6 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
         private readonly Section chapter;
         private readonly Section scene;
         private readonly UserPreferences prefs;
-        private readonly SectionVersion latestVersion;
         private readonly Comment anchoredComment;
         private readonly PassageAnchorDto anchoredCommentAnchor;
 
@@ -1336,7 +1197,6 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
             scene.PublishAsPartOfChapter("scene-hash");
 
             var publishedScene = Section.CreateDocument(project.Id, "scene-uuid-version", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "scene-hash", "Published");
-            latestVersion = SectionVersion.Create(publishedScene, ReaderId, 2, 1, 0);
 
             var anchoredCommentAnchorId = Guid.Parse("33333333-3333-3333-3333-333333333333");
             anchoredComment = Comment.CreateRoot(
@@ -1344,12 +1204,10 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
                 reader.Id,
                 "This scene has an anchored comment.",
                 Visibility.Public,
-                sectionVersionId: latestVersion.Id,
                 passageAnchorId: anchoredCommentAnchorId);
             anchoredCommentAnchor = new PassageAnchorDto(
                 anchoredCommentAnchorId,
                 scene.Id,
-                latestVersion.Id,
                 PassageAnchorPurpose.Comment,
                 reader.Id,
                 DateTime.UtcNow,
@@ -1436,15 +1294,8 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
                 var progressService = new Mock<IReadingProgressService>();
                 progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), reader.Id, It.IsAny<CancellationToken>()))
                     .Returns(Task.CompletedTask);
-                progressService.Setup(r => r.UpdateLastReadVersionAsync(
-                        It.IsAny<Guid>(),
-                        reader.Id,
-                        It.IsAny<int>(),
-                        It.IsAny<CancellationToken>()))
-                    .Returns(Task.CompletedTask);
                 progressService.Setup(r => r.GetResumeRestoreTargetAsync(
                         It.IsAny<Guid>(),
-                        It.IsAny<Guid?>(),
                         reader.Id,
                         It.IsAny<CancellationToken>()))
                     .ReturnsAsync((ResumeRestoreTargetDto?)null);
@@ -1452,10 +1303,6 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
                 var readEventRepo = new Mock<IReadEventRepository>();
                 readEventRepo.Setup(r => r.GetAsync(It.IsAny<Guid>(), reader.Id, It.IsAny<CancellationToken>()))
                     .ReturnsAsync((ReadEvent?)null);
-
-                var sectionDiffService = new Mock<ISectionDiffService>();
-                sectionDiffService.Setup(s => s.GetDiffForReaderAsync(It.IsAny<Guid>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
-                    .ReturnsAsync((Domain.Contracts.SectionDiffResult?)null);
 
                 var systemStateMessageService = new Mock<ISystemStateMessageService>();
                 systemStateMessageService.Setup(s => s.GetActiveMessageAsync(It.IsAny<CancellationToken>()))
@@ -1468,13 +1315,8 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
                 services.RemoveAll<ICommentService>();
                 services.RemoveAll<IReadingProgressService>();
                 services.RemoveAll<IReaderAccessRepository>();
-                services.RemoveAll<ISectionVersionRepository>();
                 services.RemoveAll<IReadEventRepository>();
-                services.RemoveAll<ISectionDiffService>();
                 services.RemoveAll<ISystemStateMessageService>();
-
-                var sectionVersionRepo = new Mock<ISectionVersionRepository>();
-                sectionVersionRepo.Setup(r => r.GetLatestAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(latestVersion);
 
                 services.AddSingleton(userRepo.Object);
                 services.AddSingleton(prefsRepo.Object);
@@ -1483,9 +1325,7 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
                 services.AddSingleton(commentService.Object);
                 services.AddSingleton(progressService.Object);
                 services.AddSingleton(Mock.Of<IReaderAccessRepository>());
-                services.AddSingleton(sectionVersionRepo.Object);
                 services.AddSingleton(readEventRepo.Object);
-                services.AddSingleton(sectionDiffService.Object);
                 services.AddSingleton(systemStateMessageService.Object);
                 services.AddSingleton(humanOverrideService.Object);
                 services.AddSingleton(passageAnchorService.Object);

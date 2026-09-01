@@ -10,7 +10,7 @@ public class ReaderDashboardService(
     ISectionRepository sectionRepo,
     ICommentRepository commentRepo,
     IReadEventRepository readEventRepo,
-    ISectionVersionRepository sectionVersionRepo) : IReaderDashboardService
+    IChangeStateService changeStateService) : IReaderDashboardService
 {
     public async Task<ResumeTarget?> GetCrossProjectResumeTargetAsync(
         Guid userId, IReadOnlyList<Guid> projectIds, CancellationToken ct = default)
@@ -115,9 +115,9 @@ public class ReaderDashboardService(
 
     /// <summary>
     /// Returns the highest ChangeClassification across all Document scenes in each chapter
-    /// that have been updated since the reader's last read version, filtered by ReadingStyle.
-    /// Uses the latest SectionVersion.ChangeClassification as an approximation.
-    /// Returns null for a chapter when the reader is up to date at their threshold level.
+    /// that have changed since the reader last read them, filtered by ReadingStyle.
+    /// New (never read) always passes the filter regardless of ReadingStyle.
+    /// Returns null for a chapter when the reader is fully up to date at their threshold.
     /// </summary>
     public async Task<IReadOnlyDictionary<Guid, ChangeClassification?>> GetChapterChangeStatusesAsync(
         Guid userId, IReadOnlyList<Guid> chapterIds, ReadingStyle readingStyle, CancellationToken ct = default)
@@ -145,22 +145,16 @@ public class ReaderDashboardService(
                 if (readEvent is null)
                     continue;
 
-                var latestVersion = await sectionVersionRepo.GetLatestAsync(scene.Id, ct);
-                if (latestVersion is null)
+                var changeState = await changeStateService.GetChangeStateAsync(scene.Id, userId, ct);
+                if (changeState is null)
                     continue;
 
-                // Null LastReadVersionNumber = baseline unknown (pre-versioning read or backfill).
-                // Any published version counts as pending for this reader.
-                if (readEvent.LastReadVersionNumber is not null &&
-                    latestVersion.VersionNumber <= readEvent.LastReadVersionNumber)
+                // New always passes; other states must meet the reader's minimum threshold
+                if (changeState != ChangeClassification.New && changeState < minimumTier)
                     continue;
 
-                var classification = latestVersion.ChangeClassification;
-                if (classification is null || classification < minimumTier)
-                    continue;
-
-                if (chapterMax is null || classification > chapterMax)
-                    chapterMax = classification;
+                if (chapterMax is null || changeState > chapterMax)
+                    chapterMax = changeState;
             }
 
             result[chapterId] = chapterMax;

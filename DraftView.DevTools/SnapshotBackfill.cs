@@ -47,6 +47,7 @@ internal static class SnapshotBackfill
         Console.WriteLine($"Dry run    : {dryRun}");
         Console.WriteLine();
 
+        await PrintDiagnosticsAsync(connString);
         var sections = await GetEligibleSectionsAsync(connString);
         Console.WriteLine($"Eligible sections (1 version, ScrivenerDropbox, published): {sections.Count}");
         Console.WriteLine();
@@ -110,6 +111,29 @@ internal static class SnapshotBackfill
         }
 
         return errors > 0 ? 1 : 0;
+    }
+
+    private static async Task PrintDiagnosticsAsync(string connString)
+    {
+        await using var conn = new NpgsqlConnection(connString);
+        await conn.OpenAsync();
+
+        async Task<long> Count(string sql)
+        {
+            await using var cmd = new NpgsqlCommand(sql, conn);
+            return (long)(await cmd.ExecuteScalarAsync() ?? 0L);
+        }
+
+        var dbName      = (string)(await new NpgsqlCommand("SELECT current_database()", conn).ExecuteScalarAsync() ?? "?");
+        var totalSec    = await Count("SELECT COUNT(*) FROM \"Sections\" WHERE \"NodeType\" = 'Document' AND \"IsPublished\" = true AND \"IsSoftDeleted\" = false");
+        var totalVer    = await Count("SELECT COUNT(*) FROM \"SectionVersions\"");
+        var secWith1Ver = await Count("SELECT COUNT(*) FROM \"Sections\" s WHERE \"NodeType\" = 'Document' AND \"IsPublished\" = true AND \"IsSoftDeleted\" = false AND (SELECT COUNT(*) FROM \"SectionVersions\" sv WHERE sv.\"SectionId\" = s.\"Id\") = 1");
+
+        Console.WriteLine($"Database   : {dbName}");
+        Console.WriteLine($"Published document sections : {totalSec}");
+        Console.WriteLine($"Total SectionVersions       : {totalVer}");
+        Console.WriteLine($"Sections with exactly 1 ver : {secWith1Ver}");
+        Console.WriteLine();
     }
 
     private static async Task<List<SectionRecord>> GetEligibleSectionsAsync(string connString)

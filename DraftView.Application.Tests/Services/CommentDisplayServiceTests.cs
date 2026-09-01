@@ -116,7 +116,7 @@ public class CommentDisplayServiceTests
             passageAnchorId: anchorId);
 
         var anchorDto = new PassageAnchorDto(
-            anchorId, Guid.NewGuid(), null, PassageAnchorPurpose.Comment,
+            anchorId, Guid.NewGuid(), PassageAnchorPurpose.Comment,
             currentUserId, DateTime.UtcNow, PassageAnchorStatus.Exact, null,
             new PassageAnchorSnapshotDto("text", "text", "hash", "pre", "post", 0, 4, "content-hash", null),
             null);

@@ -14,7 +14,6 @@ public class CommentService(
     IUserRepository userRepo,
     IUnitOfWork unitOfWork,
     IAuthorNotificationRepository notificationRepo,
-    ISectionVersionRepository sectionVersionRepo,
     IPassageAnchorService? passageAnchorService = null) : ICommentService
 {
     public async Task<Comment> CreateRootCommentAsync(
@@ -33,7 +32,6 @@ public class CommentService(
             throw new UnauthorisedOperationException(
                 "Beta readers may only comment on published sections.");
 
-        var latestVersion = await sectionVersionRepo.GetLatestAsync(sectionId, ct);
         Guid? passageAnchorId = null;
         if (passageAnchorRequest is not null)
         {
@@ -55,7 +53,6 @@ public class CommentService(
 
         var comment = Comment.CreateRoot(sectionId, userId, body, visibility,
             isReaderComment: user.Role == Role.BetaReader,
-            sectionVersionId: latestVersion?.Id,
             passageAnchorId: passageAnchorId);
         await commentRepo.AddAsync(comment, ct);
         await unitOfWork.SaveChangesAsync(ct);
@@ -97,10 +94,9 @@ public class CommentService(
             throw new UnauthorisedOperationException(
                 "Beta readers may only comment on published sections.");
 
-        var latestVersion = await sectionVersionRepo.GetLatestAsync(parent.SectionId, ct);
         var reply = Comment.CreateReply(
             parent.SectionId, userId, parentCommentId,
-            parent.Visibility, body, requestedVisibility, sectionVersionId: latestVersion?.Id);
+            parent.Visibility, body, requestedVisibility);
         if (user.Role == Role.Author && parent.Status != CommentStatus.AuthorReply)
             parent.MarkDoneByReply();
         await commentRepo.AddAsync(reply, ct);

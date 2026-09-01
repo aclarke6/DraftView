@@ -11,7 +11,6 @@ public sealed class PassageAnchor
 {
     public Guid Id { get; private set; }
     public Guid SectionId { get; private set; }
-    public Guid? OriginalSectionVersionId { get; private set; }
     public PassageAnchorPurpose Purpose { get; private set; }
     public Guid CreatedByUserId { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -28,7 +27,6 @@ public sealed class PassageAnchor
     /// </summary>
     public static PassageAnchor Create(
         Guid sectionId,
-        Guid? originalSectionVersionId,
         PassageAnchorPurpose purpose,
         Guid createdByUserId,
         PassageAnchorSnapshot originalSnapshot)
@@ -49,7 +47,6 @@ public sealed class PassageAnchor
         {
             Id = Guid.NewGuid(),
             SectionId = sectionId,
-            OriginalSectionVersionId = originalSectionVersionId,
             Purpose = purpose,
             CreatedByUserId = createdByUserId,
             CreatedAt = DateTime.UtcNow,
@@ -72,11 +69,9 @@ public sealed class PassageAnchor
             throw new InvariantViolationException("I-ANCHOR-MANUAL",
                 "Automated matches cannot overwrite a manual relink.");
 
-        if (Status == PassageAnchorStatus.UserRejected &&
-            Rejection is not null &&
-            Rejection.TargetSectionVersionId == match.TargetSectionVersionId)
+        if (Status == PassageAnchorStatus.UserRejected)
             throw new InvariantViolationException("I-ANCHOR-REJECTED",
-                "Automated matches cannot overwrite a rejected location for the same target version.");
+                "Automated matches cannot overwrite a user-rejected location. Use manual relink.");
 
         CurrentMatch = match;
         Status = GetStatusForMatchMethod(match.MatchMethod);

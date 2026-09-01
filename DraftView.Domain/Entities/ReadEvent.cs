@@ -1,4 +1,4 @@
-﻿using DraftView.Domain.Exceptions;
+using DraftView.Domain.Exceptions;
 
 namespace DraftView.Domain.Entities;
 
@@ -21,14 +21,6 @@ public sealed class ReadEvent
     /// </summary>
     public bool IsRead { get; private set; }
 
-    public int? LastReadVersionNumber { get; private set; }
-
-    /// <summary>
-    /// The version number read immediately before the current LastReadVersionNumber.
-    /// Stored so that MarkAsUnread can restore the previous diff baseline.
-    /// </summary>
-    public int? PreviousReadVersionNumber { get; private set; }
-
     /// <summary>
     /// The timestamp at which the reader last marked this section as read.
     /// Null until first mark-as-read. Used to enforce the reader's diff cooldown setting.
@@ -36,13 +28,6 @@ public sealed class ReadEvent
     public DateTimeOffset? LastMarkedReadAt { get; private set; }
 
     public Guid? ResumeAnchorId { get; private set; }
-
-    /// <summary>
-    /// The version number at which the reader dismissed the update banner.
-    /// When this equals the current version number, the banner is not shown.
-    /// Null until the reader has dismissed the banner for the first time.
-    /// </summary>
-    public int? BannerDismissedAtVersion { get; private set; }
 
     // ---------------------------------------------------------------------------
     // Constructor
@@ -81,40 +66,28 @@ public sealed class ReadEvent
     }
 
     /// <summary>
-    /// Records the version number most recently read by this reader.
-    /// Called when a reader opens a section that has a current SectionVersion.
+    /// Records that the reader has read the current content of this scene.
+    /// Sets IsRead = true and captures LastMarkedReadAt for cooldown enforcement.
+    /// Called when the time threshold is met or the reader manually marks as read.
     /// </summary>
-    /// <param name="versionNumber">The version number (must be >= 1).</param>
-    /// <exception cref="InvariantViolationException">Thrown when version number is less than 1.</exception>
-    public void UpdateLastReadVersion(int versionNumber)
+    public void MarkRead()
     {
-        if (versionNumber < 1)
-            throw new InvariantViolationException("I-READ-VER",
-                "Version number must be 1 or greater.");
-
-        LastReadVersionNumber = versionNumber;
+        IsRead           = true;
+        LastMarkedReadAt = DateTimeOffset.UtcNow;
     }
 
     /// <summary>
-    /// Records that the reader dismissed the update banner at the given version.
-    /// Subsequent opens of the same version will not show the banner.
+    /// Marks the scene as unread. Clears IsRead and LastMarkedReadAt.
     /// </summary>
-    /// <param name="versionNumber">The version number being dismissed (must be >= 1).</param>
-    /// <exception cref="InvariantViolationException">Thrown when version number is less than 1.</exception>
-    public void DismissBannerAtVersion(int versionNumber)
+    public void MarkAsUnread()
     {
-        if (versionNumber < 1)
-            throw new InvariantViolationException("I-READ-BANNER",
-                "Version number must be 1 or greater.");
-
-        BannerDismissedAtVersion = versionNumber;
+        IsRead           = false;
+        LastMarkedReadAt = null;
     }
 
     /// <summary>
     /// Records the passage anchor that represents the latest resume position.
     /// </summary>
-    /// <param name="resumeAnchorId">The passage anchor id to use for resume.</param>
-    /// <exception cref="InvariantViolationException">Thrown when the anchor id is empty.</exception>
     public void UpdateResumeAnchor(Guid resumeAnchorId)
     {
         if (resumeAnchorId == Guid.Empty)
@@ -127,44 +100,5 @@ public sealed class ReadEvent
     public void ClearResumeAnchor()
     {
         ResumeAnchorId = null;
-    }
-
-    /// <summary>
-    /// Records that the reader has read the section at the given version.
-    /// Stores the previous LastReadVersionNumber so MarkAsUnread can restore it.
-    /// </summary>
-    /// <param name="versionNumber">The version number being marked as read (must be >= 1).</param>
-    /// <exception cref="InvariantViolationException">Thrown when version number is less than 1.</exception>
-    public void MarkAsRead(int versionNumber)
-    {
-        if (versionNumber < 1)
-            throw new InvariantViolationException("I-READ-MARK",
-                "Version number must be 1 or greater.");
-
-        PreviousReadVersionNumber = LastReadVersionNumber;
-        LastReadVersionNumber     = versionNumber;
-        LastMarkedReadAt          = DateTimeOffset.UtcNow;
-    }
-
-    /// <summary>
-    /// Reverses the last MarkAsRead, restoring the previous diff baseline.
-    /// Clears LastMarkedReadAt so the cooldown does not suppress the diff.
-    /// </summary>
-    public void MarkAsUnread()
-    {
-        IsRead = false;
-        (LastReadVersionNumber, PreviousReadVersionNumber) = (PreviousReadVersionNumber, LastReadVersionNumber);
-        LastMarkedReadAt = null;
-    }
-
-    /// <summary>
-    /// Records that the reader has read the current content of this scene.
-    /// Sets IsRead = true and captures LastMarkedReadAt for cooldown enforcement.
-    /// Called when the time threshold is met or the reader manually marks as read.
-    /// </summary>
-    public void MarkRead()
-    {
-        IsRead           = true;
-        LastMarkedReadAt = DateTimeOffset.UtcNow;
     }
 }

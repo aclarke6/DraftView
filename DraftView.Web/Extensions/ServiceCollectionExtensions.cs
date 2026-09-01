@@ -35,7 +35,6 @@ namespace DraftView.Web.Extensions
             services.AddScoped<IInvitationRepository, InvitationRepository>();
             services.AddScoped<IProjectRepository, ProjectRepository>();
             services.AddScoped<ISectionRepository, SectionRepository>();
-            services.AddScoped<ISectionVersionRepository, SectionVersionRepository>();
             services.AddScoped<IReaderSnapshotRepository, ReaderSnapshotRepository>();
             services.AddScoped<IPassageAnchorRepository, PassageAnchorRepository>();
             services.AddScoped<ICommentRepository, CommentRepository>();
@@ -117,13 +116,10 @@ namespace DraftView.Web.Extensions
             services.AddScoped<IDashboardService, DashboardService>();
             services.AddScoped<ISystemStateMessageService, SystemStateMessageService>();
             services.AddScoped<IAccessRequestService, AccessRequestService>();
-            services.AddScoped<IVersioningService, VersioningService>();
             services.AddScoped<IChangeClassificationService, ChangeClassificationService>();
             services.AddScoped<IHtmlDiffService, HtmlDiffService>();
-            services.AddScoped<ISectionDiffService, SectionDiffService>();
+            services.AddScoped<IChangeStateService, ChangeStateService>();
             services.AddScoped<IReaderDashboardService, ReaderDashboardService>();
-            services.AddScoped<IReaderDiffService, ReaderDiffService>();
-            // Note: ReaderDashboardService and ReaderDiffService use repositories already registered above.
             services.AddScoped<ISectionManagementService, SectionManagementService>();
             services.AddScoped<IProjectManagementService, ProjectManagementService>();
             services.AddScoped<ICommentDisplayService, CommentDisplayService>();

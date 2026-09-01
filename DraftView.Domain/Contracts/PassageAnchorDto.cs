@@ -8,7 +8,6 @@ namespace DraftView.Domain.Contracts;
 public sealed record PassageAnchorDto(
     Guid Id,
     Guid SectionId,
-    Guid? OriginalSectionVersionId,
     PassageAnchorPurpose Purpose,
     Guid CreatedByUserId,
     DateTime CreatedAt,

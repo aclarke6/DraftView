@@ -8,7 +8,6 @@ namespace DraftView.Domain.ValueObjects;
 /// </summary>
 public sealed class PassageAnchorMatch
 {
-    public Guid? TargetSectionVersionId { get; private set; }
     public int StartOffset { get; private set; }
     public int EndOffset { get; private set; }
     public string MatchedText { get; private set; } = default!;
@@ -24,7 +23,6 @@ public sealed class PassageAnchorMatch
     /// Creates the current best known match for a passage anchor.
     /// </summary>
     public static PassageAnchorMatch Create(
-        Guid? targetSectionVersionId,
         int startOffset,
         int endOffset,
         string matchedText,
@@ -60,7 +58,6 @@ public sealed class PassageAnchorMatch
 
         return new PassageAnchorMatch
         {
-            TargetSectionVersionId = targetSectionVersionId,
             StartOffset = startOffset,
             EndOffset = endOffset,
             MatchedText = matchedText,

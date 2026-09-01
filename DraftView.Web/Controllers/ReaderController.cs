@@ -21,15 +21,12 @@ public class ReaderController(
     IUserRepository userRepository,
     IUserPreferencesRepository userPreferencesRepo,
     IReaderAccessRepository readerAccessRepo,
-    ISectionVersionRepository sectionVersionRepo,
-    IReadEventRepository readEventRepo,
     IHumanOverrideService humanOverrideService,
     IPassageAnchorService passageAnchorService,
     ICommentDisplayService commentDisplayService,
     IAccessRequestRepository accessRequestRepo,
     IAccessRequestService accessRequestService,
     IReaderDashboardService readerDashboardService,
-    IReaderDiffService readerDiffService,
     ILogger<ReaderController> logger)
     : BaseReaderController(projectRepo, sectionRepo, commentService, progressService,
                            userRepository, readerAccessRepo, humanOverrideService, passageAnchorService,
@@ -37,7 +34,6 @@ public class ReaderController(
 {
     private readonly IUserPreferencesRepository _userPreferencesRepo = userPreferencesRepo;
     private readonly IPassageAnchorService _passageAnchorService = passageAnchorService;
-    private readonly IReaderDiffService _readerDiffService = readerDiffService;
     private readonly IReaderDashboardService _readerDashboardService = readerDashboardService;
     private static readonly Regex HtmlTagRegex = new("<[^>]+>", RegexOptions.Compiled);
     private static readonly Regex WhitespaceRegex = new("\\s+", RegexOptions.Compiled);
@@ -293,21 +289,6 @@ public class ReaderController(
     }
 
     // -----------------------------------------------------------------------
-    // POST: /Reader/DismissBanner
-    // -----------------------------------------------------------------------
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DismissBanner(Guid sectionId, int versionNumber)
-    {
-        var user = await GetCurrentUserAsync();
-        if (user is null)
-            return Forbid();
-
-        await ProgressService.DismissBannerAsync(sectionId, user.Id, versionNumber);
-        return Ok();
-    }
-
-    // -----------------------------------------------------------------------
     // POST: /Reader/MarkAsRead
     // -----------------------------------------------------------------------
     [HttpPost]
@@ -318,7 +299,7 @@ public class ReaderController(
         if (user is null)
             return Forbid();
 
-        await _readerDiffService.MarkAsReadAsync(sectionId, user.Id);
+        await ProgressService.MarkReadAsync(sectionId, user.Id);
         return Ok();
     }
 
@@ -333,7 +314,7 @@ public class ReaderController(
         if (user is null)
             return Forbid();
 
-        await _readerDiffService.MarkAsUnreadAsync(sectionId, user.Id);
+        await ProgressService.MarkUnreadAsync(sectionId, user.Id);
         return Ok();
     }
 
@@ -798,48 +779,15 @@ public class ReaderController(
             bool showDiffOnRevisit,
             CancellationToken ct = default)
     {
-        var latestVersion = await sectionVersionRepo.GetLatestAsync(scene.Id, ct);
-        var resolvedHtml = latestVersion?.HtmlContent ?? scene.HtmlContent;
-        var currentSectionVersionId = latestVersion?.Id;
-        var currentVersionNumber = latestVersion?.VersionNumber;
-        var versionLabel = latestVersion?.VersionLabel;
+        var resolvedHtml = scene.HtmlContent;
         var resumeCaptureText = CanonicalizeForCapture(resolvedHtml);
-        var resumeRestoreTarget = await ProgressService.GetResumeRestoreTargetAsync(
-            scene.Id, currentSectionVersionId, userId, ct);
-        var readEvent = await readEventRepo.GetAsync(scene.Id, userId, ct);
-
-        // Banner and "updated since" are version-comparison concerns — independent of diff preferences.
-        var isUpdatedSinceLastRead = readEvent?.LastReadVersionNumber is not null
-            && currentVersionNumber.HasValue
-            && currentVersionNumber.Value > readEvent.LastReadVersionNumber;
-
-        var updatedSinceLastRead = isUpdatedSinceLastRead;
-        var showUpdateBanner = isUpdatedSinceLastRead
-            && readEvent?.BannerDismissedAtVersion != currentVersionNumber;
-
-        // Diff paragraphs respect ShowDiffOnRevisit and ReadingStyle threshold.
-        var diffResult = await _readerDiffService.GetDiffAsync(scene.Id, userId, ct);
-        var diffParagraphs = diffResult?.HasChanges == true
-            ? diffResult.Paragraphs
-            : Array.Empty<ParagraphDiffResult>();
-
-        // Pill classification: use the version's stored ChangeClassification when the reader
-        // has not confirmed reading this version. This is independent of ShowDiffOnRevisit
-        // and works for version 1 (no diff computed). Falls back to the computed diff
-        // classification for version 2+ where a real diff exists.
-        var hasUnreadVersion = latestVersion?.ChangeClassification is not null
-            && (readEvent?.LastReadVersionNumber is null
-                || currentVersionNumber > readEvent.LastReadVersionNumber);
-
-        var diffClassification = hasUnreadVersion
-            ? latestVersion!.ChangeClassification
-            : diffResult?.Classification;
-
+        var resumeRestoreTarget = await ProgressService.GetResumeRestoreTargetAsync(scene.Id, userId, ct);
         var wordCount = CountWords(resolvedHtml);
 
-        return (resolvedHtml, currentSectionVersionId, currentVersionNumber, versionLabel,
-                resumeCaptureText, resumeRestoreTarget, diffParagraphs, diffClassification,
-                updatedSinceLastRead, showUpdateBanner, showDiffOnRevisit, wordCount);
+        return (resolvedHtml, null, null, null,
+                resumeCaptureText, resumeRestoreTarget,
+                Array.Empty<ParagraphDiffResult>(), null,
+                false, false, showDiffOnRevisit, wordCount);
     }
 
     private static int CountWords(string? html)

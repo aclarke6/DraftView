@@ -8,7 +8,6 @@ namespace DraftView.Domain.Contracts;
 public sealed record ResumeRestoreTargetDto(
     Guid ResumeAnchorId,
     Guid SectionId,
-    Guid? SectionVersionId,
     PassageAnchorStatus Status,
     bool HasTarget,
     int? StartOffset,

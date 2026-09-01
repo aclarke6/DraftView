@@ -6,7 +6,6 @@ namespace DraftView.Domain.Contracts;
 /// Current resolved-location metadata returned for a passage anchor.
 /// </summary>
 public sealed record PassageAnchorMatchDto(
-    Guid? TargetSectionVersionId,
     int StartOffset,
     int EndOffset,
     string MatchedText,
