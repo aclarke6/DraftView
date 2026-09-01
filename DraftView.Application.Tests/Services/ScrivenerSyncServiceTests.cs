@@ -24,10 +24,9 @@ public class ScrivenerSyncServiceTests
     private readonly Mock<IDropboxConnectionChecker>     _connectionChecker = new();
     private readonly Mock<IDropboxClientFactory>         _clientFactory     = new();
     private readonly Mock<IDropboxFileDownloader>        _fileDownloader    = new();
-    private readonly Mock<ILogger<ScrivenerSyncService>>          _logger            = new();
-    private readonly Mock<IAuthorNotificationRepository> _notificationRepo  = new();
-    private readonly Mock<IUserRepository>               _userRepo          = new();
-    private readonly Mock<IVersioningService>            _versioningService = new();
+    private readonly Mock<ILogger<ScrivenerSyncService>>          _logger           = new();
+    private readonly Mock<IAuthorNotificationRepository> _notificationRepo = new();
+    private readonly Mock<IUserRepository>               _userRepo         = new();
 
     private ScrivenerSyncService CreateSut() => new(
         _projectRepo.Object,
@@ -42,8 +41,7 @@ public class ScrivenerSyncServiceTests
         _fileDownloader.Object,
         _logger.Object,
         _notificationRepo.Object,
-        _userRepo.Object,
-        _versioningService.Object);
+        _userRepo.Object);
 
     public ScrivenerSyncServiceTests()
     {
@@ -692,7 +690,7 @@ public class ScrivenerSyncServiceTests
     // ---------------------------------------------------------------------------
 
     [Fact]
-    public async Task DetectContentChangesAsync_WhenPublishedSectionHashChanged_CallsCreateVersionFromSync()
+    public async Task DetectContentChangesAsync_WhenPublishedSectionHashChanged_UpdatesSectionContent()
     {
         var project = MakeProject();
         var sut     = CreateSut();
@@ -710,9 +708,7 @@ public class ScrivenerSyncServiceTests
 
         await sut.DetectContentChangesAsync(project.Id);
 
-        _versioningService.Verify(v =>
-            v.CreateVersionFromSyncAsync(section, project.AuthorId, It.IsAny<CancellationToken>()),
-            Times.Once);
+        Assert.Equal("newhash", section.ContentHash);
     }
 
     [Fact]
@@ -735,32 +731,6 @@ public class ScrivenerSyncServiceTests
         await sut.DetectContentChangesAsync(project.Id);
 
         Assert.True(section.ContentChangedSincePublish);
-    }
-
-    [Fact]
-    public async Task DetectContentChangesAsync_WhenPublishedSectionHashUnchanged_CallsEnsureInitialVersion()
-    {
-        // Stable sections (content hasn't changed) still need a baseline version
-        // if none exists. EnsureInitialVersionAsync is a no-op once version 1 exists.
-        var project = MakeProject();
-        var sut     = CreateSut();
-        var section = Section.CreateDocument(project.Id, "SCEN-001", "Scene 1",
-            null, 0, "<p>Same</p>", "samehash", "First Draft");
-        section.PublishAsPartOfChapter("samehash");
-
-        SetupPathResolver(project, "/fake/path");
-
-        _projectRepo.Setup(r => r.GetByIdAsync(project.Id, default)).ReturnsAsync(project);
-        _sectionRepo.Setup(r => r.GetPublishedByProjectIdAsync(project.Id, default))
-            .ReturnsAsync(new List<Section> { section });
-        _converter.Setup(c => c.ConvertAsync("/fake/path", "SCEN-001", default))
-            .ReturnsAsync(new RtfConversionResult { Html = "<p>Same</p>", Hash = "samehash" });
-
-        await sut.DetectContentChangesAsync(project.Id);
-
-        _versioningService.Verify(v =>
-            v.EnsureInitialVersionAsync(section, project.AuthorId, It.IsAny<CancellationToken>()),
-            Times.Once);
     }
 
     [Fact]
@@ -914,11 +884,11 @@ public class ScrivenerSyncServiceTests
     }
 
     // ---------------------------------------------------------------------------
-    // Auto-versioning on sync (V-Sprint 1 revision — #82)
+    // Sync content update behaviour
     // ---------------------------------------------------------------------------
 
     [Fact]
-    public async Task ParseProjectAsync_WhenPublishedSceneContentChanges_CallsCreateVersionFromSync()
+    public async Task ParseProjectAsync_WhenPublishedSceneContentChanges_UpdatesSectionContent()
     {
         var project = MakeProject();
         project.UpdateDropboxCursor("cursor-old");
@@ -943,71 +913,7 @@ public class ScrivenerSyncServiceTests
 
         await CreateSut().ParseProjectAsync(project.Id);
 
-        _versioningService.Verify(v =>
-            v.CreateVersionFromSyncAsync(scene, project.AuthorId, It.IsAny<CancellationToken>()),
-            Times.Once);
-    }
-
-    [Fact]
-    public async Task ParseProjectAsync_WhenUnpublishedSceneContentChanges_DoesNotCallCreateVersionFromSync()
-    {
-        var project = MakeProject();
-        project.UpdateDropboxCursor("cursor-old");
-
-        var scene = Section.CreateDocument(project.Id, "SCEN-001", "Scene 1", null, 0, "<p>Old</p>", "oldhash", "First Draft");
-        // Not published
-
-        SetupPathResolver(project);
-        SetupParserWithTree(project, new ParsedBinderNode
-        {
-            Uuid = "ROOT-001", Title = "Manuscript", NodeType = ParsedNodeType.Folder,
-            Children = new() { new() { Uuid = "SCEN-001", Title = "Scene 1", NodeType = ParsedNodeType.Document, SortOrder = 0, Children = new() } }
-        });
-
-        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "ROOT-001", default)).ReturnsAsync((Section?)null);
-        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "SCEN-001", default)).ReturnsAsync(scene);
-        _sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, default)).ReturnsAsync(new List<Section> { scene });
-        _converter.Setup(c => c.ConvertAsync(It.IsAny<string>(), "SCEN-001", default))
-            .ReturnsAsync(new RtfConversionResult { Html = "<p>New</p>", Hash = "newhash" });
-        _fileDownloader.Setup(x => x.ListChangedEntriesAsync(project.AuthorId, "cursor-old", default))
-            .ReturnsAsync((new List<DropboxChangedEntry>(), "cursor-new"));
-
-        await CreateSut().ParseProjectAsync(project.Id);
-
-        _versioningService.Verify(v =>
-            v.CreateVersionFromSyncAsync(It.IsAny<Section>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
-            Times.Never);
-    }
-
-    [Fact]
-    public async Task ParseProjectAsync_WhenContentUnchanged_DoesNotCallCreateVersionFromSync()
-    {
-        var project = MakeProject();
-        project.UpdateDropboxCursor("cursor-old");
-
-        var scene = Section.CreateDocument(project.Id, "SCEN-001", "Scene 1", null, 0, "<p>Same</p>", "samehash", "First Draft");
-        scene.PublishAsPartOfChapter("samehash");
-
-        SetupPathResolver(project);
-        SetupParserWithTree(project, new ParsedBinderNode
-        {
-            Uuid = "ROOT-001", Title = "Manuscript", NodeType = ParsedNodeType.Folder,
-            Children = new() { new() { Uuid = "SCEN-001", Title = "Scene 1", NodeType = ParsedNodeType.Document, SortOrder = 0, Children = new() } }
-        });
-
-        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "ROOT-001", default)).ReturnsAsync((Section?)null);
-        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "SCEN-001", default)).ReturnsAsync(scene);
-        _sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, default)).ReturnsAsync(new List<Section> { scene });
-        _converter.Setup(c => c.ConvertAsync(It.IsAny<string>(), "SCEN-001", default))
-            .ReturnsAsync(new RtfConversionResult { Html = "<p>Same</p>", Hash = "samehash" });
-        _fileDownloader.Setup(x => x.ListChangedEntriesAsync(project.AuthorId, "cursor-old", default))
-            .ReturnsAsync((new List<DropboxChangedEntry>(), "cursor-new"));
-
-        await CreateSut().ParseProjectAsync(project.Id);
-
-        _versioningService.Verify(v =>
-            v.CreateVersionFromSyncAsync(It.IsAny<Section>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+        Assert.Equal("newhash", scene.ContentHash);
     }
 
     // ---------------------------------------------------------------------------

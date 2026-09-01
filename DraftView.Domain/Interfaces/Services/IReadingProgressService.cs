@@ -13,22 +13,18 @@ public interface IReadingProgressService
     Task<ReadEvent?> GetLastReadEventAcrossProjectsAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Updates the LastReadVersionNumber on an existing ReadEvent.
-    /// Called when a reader opens a section that has a current SectionVersion.
-    /// Does nothing if no ReadEvent exists for the pair.
+    /// Marks a scene as read: sets IsRead=true on the ReadEvent and captures a
+    /// ReaderSnapshot of the current content as the reader's new baseline.
+    /// No-op if no ReadEvent exists (reader has not opened the scene).
     /// </summary>
-    Task UpdateLastReadVersionAsync(
-        Guid sectionId,
-        Guid userId,
-        int versionNumber,
-        CancellationToken ct = default);
+    Task MarkReadAsync(Guid sectionId, Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Records that the reader dismissed the update banner for a section at a
-    /// specific version. Subsequent views of the same version will not show the banner.
+    /// Marks a scene as unread: sets IsRead=false on the ReadEvent.
+    /// The snapshot is preserved so the change state can still be computed.
     /// No-op if no ReadEvent exists.
     /// </summary>
-    Task DismissBannerAsync(Guid sectionId, Guid userId, int versionNumber, CancellationToken ct = default);
+    Task MarkUnreadAsync(Guid sectionId, Guid userId, CancellationToken ct = default);
 
     Task CaptureResumePositionAsync(
         CaptureResumePositionRequest request,
@@ -37,7 +33,6 @@ public interface IReadingProgressService
 
     Task<ResumeRestoreTargetDto?> GetResumeRestoreTargetAsync(
         Guid sectionId,
-        Guid? currentSectionVersionId,
         Guid userId,
         CancellationToken ct = default);
 }

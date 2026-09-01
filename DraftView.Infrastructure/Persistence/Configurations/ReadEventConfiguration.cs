@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using DraftView.Domain.Entities;
 
@@ -25,12 +25,9 @@ public class ReadEventConfiguration : IEntityTypeConfiguration<ReadEvent>
         builder.Property(r => r.OpenCount)
             .IsRequired();
 
-        builder.Property(e => e.BannerDismissedAtVersion)
-            .HasColumnName("BannerDismissedAtVersion")
-            .IsRequired(false);
-
-        builder.Property(e => e.PreviousReadVersionNumber)
-            .IsRequired(false);
+        builder.Property(r => r.IsRead)
+            .IsRequired()
+            .HasDefaultValue(false);
 
         builder.Property(e => e.LastMarkedReadAt)
             .IsRequired(false);

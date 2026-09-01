@@ -7,7 +7,6 @@ namespace DraftView.Domain.Contracts;
 /// </summary>
 public sealed record CreatePassageAnchorRequest(
     Guid SectionId,
-    Guid? OriginalSectionVersionId,
     PassageAnchorPurpose Purpose,
     string SelectedText,
     string NormalizedSelectedText,

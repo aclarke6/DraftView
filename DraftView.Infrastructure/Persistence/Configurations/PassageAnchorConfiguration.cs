@@ -1,4 +1,4 @@
-﻿using DraftView.Domain.Entities;
+using DraftView.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -9,15 +9,11 @@ namespace DraftView.Infrastructure.Persistence.Configurations;
 /// </summary>
 public class PassageAnchorConfiguration : IEntityTypeConfiguration<PassageAnchor>
 {
-    /// <summary>
-    /// Maps the passage anchor aggregate to additive relational columns.
-    /// </summary>
     public void Configure(EntityTypeBuilder<PassageAnchor> builder)
     {
         builder.HasKey(a => a.Id);
 
         builder.HasIndex(a => a.SectionId);
-        builder.HasIndex(a => a.OriginalSectionVersionId);
         builder.HasIndex(a => a.Purpose);
         builder.HasIndex(a => a.CreatedByUserId);
 
@@ -36,12 +32,6 @@ public class PassageAnchorConfiguration : IEntityTypeConfiguration<PassageAnchor
             .WithMany()
             .HasForeignKey(a => a.SectionId)
             .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne<SectionVersion>()
-            .WithMany()
-            .HasForeignKey(a => a.OriginalSectionVersionId)
-            .OnDelete(DeleteBehavior.Restrict)
-            .IsRequired(false);
 
         builder.OwnsOne(a => a.OriginalSnapshot, snapshot =>
         {
@@ -93,9 +83,6 @@ public class PassageAnchorConfiguration : IEntityTypeConfiguration<PassageAnchor
 
         builder.OwnsOne(a => a.CurrentMatch, match =>
         {
-            match.Property(m => m.TargetSectionVersionId)
-                .HasColumnName("CurrentTargetSectionVersionId");
-
             match.Property(m => m.StartOffset)
                 .HasColumnName("CurrentStartOffset");
 
@@ -126,9 +113,6 @@ public class PassageAnchorConfiguration : IEntityTypeConfiguration<PassageAnchor
 
         builder.OwnsOne(a => a.Rejection, rejection =>
         {
-            rejection.Property(r => r.TargetSectionVersionId)
-                .HasColumnName("RejectedTargetSectionVersionId");
-
             rejection.Property(r => r.RejectedByUserId)
                 .HasColumnName("RejectedByUserId");
 

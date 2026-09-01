@@ -9,7 +9,6 @@ public sealed class Comment
     public Guid SectionId { get; private set; }
     public Guid AuthorId { get; private set; }
     public Guid? ParentCommentId { get; private set; }
-    public Guid? SectionVersionId { get; private set; }
     public Guid? PassageAnchorId { get; private set; }
     public string Body { get; private set; } = default!;
     public Visibility Visibility { get; private set; }
@@ -24,30 +23,27 @@ public sealed class Comment
     public static Comment CreateRoot(
         Guid sectionId, Guid authorId, string body,
         Visibility visibility, bool isReaderComment = true,
-        Guid? sectionVersionId = null,
         Guid? passageAnchorId = null)
     {
         ValidateBody(body);
         return new Comment
         {
-            Id               = Guid.NewGuid(),
-            SectionId        = sectionId,
-            AuthorId         = authorId,
-            ParentCommentId  = null,
-            SectionVersionId = sectionVersionId,
-            PassageAnchorId  = passageAnchorId,
-            Body             = body.Trim(),
-            Visibility       = visibility,
-            Status           = isReaderComment ? CommentStatus.New : CommentStatus.AuthorReply,
-            CreatedAt        = DateTime.UtcNow,
-            IsSoftDeleted    = false
+            Id              = Guid.NewGuid(),
+            SectionId       = sectionId,
+            AuthorId        = authorId,
+            ParentCommentId = null,
+            PassageAnchorId = passageAnchorId,
+            Body            = body.Trim(),
+            Visibility      = visibility,
+            Status          = isReaderComment ? CommentStatus.New : CommentStatus.AuthorReply,
+            CreatedAt       = DateTime.UtcNow,
+            IsSoftDeleted   = false
         };
     }
 
     public static Comment CreateReply(
         Guid sectionId, Guid authorId, Guid parentCommentId,
         Visibility parentVisibility, string body, Visibility requestedVisibility,
-        Guid? sectionVersionId = null,
         Guid? passageAnchorId = null)
     {
         ValidateBody(body);
@@ -56,17 +52,16 @@ public sealed class Comment
             : requestedVisibility;
         return new Comment
         {
-            Id               = Guid.NewGuid(),
-            SectionId        = sectionId,
-            AuthorId         = authorId,
-            ParentCommentId  = parentCommentId,
-            SectionVersionId = sectionVersionId,
-            PassageAnchorId  = passageAnchorId,
-            Body             = body.Trim(),
-            Visibility       = effectiveVisibility,
-            Status           = CommentStatus.AuthorReply,
-            CreatedAt        = DateTime.UtcNow,
-            IsSoftDeleted    = false
+            Id              = Guid.NewGuid(),
+            SectionId       = sectionId,
+            AuthorId        = authorId,
+            ParentCommentId = parentCommentId,
+            PassageAnchorId = passageAnchorId,
+            Body            = body.Trim(),
+            Visibility      = effectiveVisibility,
+            Status          = CommentStatus.AuthorReply,
+            CreatedAt       = DateTime.UtcNow,
+            IsSoftDeleted   = false
         };
     }
 
@@ -74,23 +69,21 @@ public sealed class Comment
         Guid sectionId, Guid authorId, string body,
         Visibility visibility, CommentStatus status, DateTime createdAt,
         Guid? parentCommentId = null,
-        Guid? sectionVersionId = null,
         Guid? passageAnchorId = null)
     {
         ValidateBody(body);
         return new Comment
         {
-            Id               = Guid.NewGuid(),
-            SectionId        = sectionId,
-            AuthorId         = authorId,
-            ParentCommentId  = parentCommentId,
-            SectionVersionId = sectionVersionId,
-            PassageAnchorId  = passageAnchorId,
-            Body             = body.Trim(),
-            Visibility       = visibility,
-            Status           = status,
-            CreatedAt        = createdAt,
-            IsSoftDeleted    = false
+            Id              = Guid.NewGuid(),
+            SectionId       = sectionId,
+            AuthorId        = authorId,
+            ParentCommentId = parentCommentId,
+            PassageAnchorId = passageAnchorId,
+            Body            = body.Trim(),
+            Visibility      = visibility,
+            Status          = status,
+            CreatedAt       = createdAt,
+            IsSoftDeleted   = false
         };
     }
 

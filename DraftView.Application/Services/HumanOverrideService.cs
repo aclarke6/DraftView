@@ -72,7 +72,6 @@ public sealed class HumanOverrideService(
                 "Relink selection must preserve the anchor purpose.");
 
         var match = PassageAnchorMatch.Create(
-            relinkRequest.OriginalSectionVersionId,
             relinkRequest.StartOffset,
             relinkRequest.EndOffset,
             relinkRequest.SelectedText,
@@ -149,7 +148,6 @@ public sealed class HumanOverrideService(
         return new PassageAnchorDto(
             anchor.Id,
             anchor.SectionId,
-            anchor.OriginalSectionVersionId,
             anchor.Purpose,
             anchor.CreatedByUserId,
             anchor.CreatedAt,
@@ -168,7 +166,6 @@ public sealed class HumanOverrideService(
             anchor.CurrentMatch is null
                 ? null
                 : new PassageAnchorMatchDto(
-                    anchor.CurrentMatch.TargetSectionVersionId,
                     anchor.CurrentMatch.StartOffset,
                     anchor.CurrentMatch.EndOffset,
                     anchor.CurrentMatch.MatchedText,
@@ -180,7 +177,6 @@ public sealed class HumanOverrideService(
             anchor.Rejection is null
                 ? null
                 : new PassageAnchorRejectionDto(
-                    anchor.Rejection.TargetSectionVersionId,
                     anchor.Rejection.RejectedByUserId,
                     anchor.Rejection.RejectedAt,
                     anchor.Rejection.Reason));

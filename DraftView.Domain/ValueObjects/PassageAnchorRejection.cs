@@ -7,7 +7,6 @@ namespace DraftView.Domain.ValueObjects;
 /// </summary>
 public sealed class PassageAnchorRejection
 {
-    public Guid? TargetSectionVersionId { get; private set; }
     public Guid RejectedByUserId { get; private set; }
     public DateTime RejectedAt { get; private set; }
     public string? Reason { get; private set; }
@@ -32,7 +31,6 @@ public sealed class PassageAnchorRejection
 
         return new PassageAnchorRejection
         {
-            TargetSectionVersionId = rejectedMatch.TargetSectionVersionId,
             RejectedByUserId = rejectedByUserId,
             RejectedAt = DateTime.UtcNow,
             Reason = reason

@@ -22,7 +22,6 @@ public class ManualUploadService(
     IChapterFileParserResolver parserResolver,
     IUnitOfWork unitOfWork,
     ISectionRepository sectionRepo,
-    IVersioningService versioningService,
     IMarkdownToHtmlConverter markdownConverter) : IManualUploadService
 {
     private const int MaxChaptersPerProject = 250;
@@ -212,7 +211,6 @@ public class ManualUploadService(
             await chapterRepo.UpdateAsync(chapter, ct);
             await unitOfWork.SaveChangesAsync(ct);
 
-            await versioningService.RepublishSectionAsync(document.Id, authorId, ct);
             return folder.Id;
         }
         else
@@ -225,7 +223,6 @@ public class ManualUploadService(
             document.MarkContentChanged();
             await unitOfWork.SaveChangesAsync(ct);
 
-            await versioningService.RepublishSectionAsync(document.Id, authorId, ct);
             return chapter.LinkedSectionId.Value;
         }
     }

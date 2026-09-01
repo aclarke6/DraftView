@@ -19,8 +19,7 @@ public class CommentServiceEditTests
         _sectionRepo.Object,
         _userRepo.Object,
         _unitOfWork.Object,
-        new Mock<IAuthorNotificationRepository>().Object,
-        new Mock<ISectionVersionRepository>().Object);
+        new Mock<IAuthorNotificationRepository>().Object);
 
     [Fact]
     public async Task EditCommentAsync_OwnerEditingOwnRootComment_UpdatesBody()

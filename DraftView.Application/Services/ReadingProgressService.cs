@@ -1,4 +1,4 @@
-﻿using DraftView.Domain.Contracts;
+using DraftView.Domain.Contracts;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
 using DraftView.Domain.Exceptions;
@@ -11,6 +11,7 @@ namespace DraftView.Application.Services;
 public class ReadingProgressService(
     IReadEventRepository readEventRepo,
     ISectionRepository sectionRepo,
+    IReaderSnapshotRepository snapshotRepo,
     IPassageAnchorService passageAnchorService,
     IUnitOfWork unitOfWork,
     IUserRepository userRepo,
@@ -38,6 +39,30 @@ public class ReadingProgressService(
             existing.RecordOpen();
         }
 
+        await unitOfWork.SaveChangesAsync(ct);
+    }
+
+    public async Task MarkReadAsync(Guid sectionId, Guid userId, CancellationToken ct = default)
+    {
+        var readEvent = await readEventRepo.GetAsync(sectionId, userId, ct);
+        if (readEvent is null) return;
+
+        var section = await sectionRepo.GetByIdAsync(sectionId, ct);
+        if (section is null || string.IsNullOrEmpty(section.HtmlContent)) return;
+
+        readEvent.MarkRead();
+        var snapshot = ReaderSnapshot.Create(sectionId, userId, section.HtmlContent);
+        await snapshotRepo.UpsertAsync(snapshot, ct);
+
+        await unitOfWork.SaveChangesAsync(ct);
+    }
+
+    public async Task MarkUnreadAsync(Guid sectionId, Guid userId, CancellationToken ct = default)
+    {
+        var readEvent = await readEventRepo.GetAsync(sectionId, userId, ct);
+        if (readEvent is null) return;
+
+        readEvent.MarkAsUnread();
         await unitOfWork.SaveChangesAsync(ct);
     }
 
@@ -142,33 +167,6 @@ public class ReadingProgressService(
     public Task<ReadEvent?> GetLastReadEventAcrossProjectsAsync(Guid userId, CancellationToken ct = default) =>
         readEventRepo.GetMostRecentByUserIdAsync(userId, ct);
 
-    public async Task UpdateLastReadVersionAsync(
-        Guid sectionId,
-        Guid userId,
-        int versionNumber,
-        CancellationToken ct = default)
-    {
-        var readEvent = await readEventRepo.GetAsync(sectionId, userId, ct);
-        if (readEvent is not null)
-        {
-            readEvent.UpdateLastReadVersion(versionNumber);
-            await unitOfWork.SaveChangesAsync(ct);
-        }
-    }
-
-    public async Task DismissBannerAsync(Guid sectionId, Guid userId, int versionNumber, CancellationToken ct = default)
-    {
-        var readEvent = await readEventRepo.GetAsync(sectionId, userId, ct);
-        if (readEvent is null) return;
-
-        readEvent.DismissBannerAtVersion(versionNumber);
-        await unitOfWork.SaveChangesAsync(ct);
-    }
-
-    /// <summary>
-    /// Persists the reader's latest resume position as a resume-purpose passage anchor
-    /// and stores the anchor id on the current read event.
-    /// </summary>
     public async Task CaptureResumePositionAsync(
         CaptureResumePositionRequest request,
         Guid userId,
@@ -177,7 +175,6 @@ public class ReadingProgressService(
         var anchor = await passageAnchorService.CreateAsync(
             new CreatePassageAnchorRequest(
                 request.SectionId,
-                request.OriginalSectionVersionId,
                 PassageAnchorPurpose.Resume,
                 request.SelectedText,
                 request.NormalizedSelectedText,
@@ -202,13 +199,8 @@ public class ReadingProgressService(
         await unitOfWork.SaveChangesAsync(ct);
     }
 
-    /// <summary>
-    /// Resolves the reader's latest stored resume anchor into a view-safe target for the
-    /// currently reader-visible section version, preserving safe fallback when no target exists.
-    /// </summary>
     public async Task<ResumeRestoreTargetDto?> GetResumeRestoreTargetAsync(
         Guid sectionId,
-        Guid? currentSectionVersionId,
         Guid userId,
         CancellationToken ct = default)
     {
@@ -229,13 +221,11 @@ public class ReadingProgressService(
         if (anchor.SectionId != sectionId)
             return null;
 
-        if (anchor.Status == PassageAnchorStatus.Original &&
-            anchor.OriginalSectionVersionId == currentSectionVersionId)
+        if (anchor.Status == PassageAnchorStatus.Original)
         {
             return new ResumeRestoreTargetDto(
                 anchor.Id,
                 sectionId,
-                currentSectionVersionId,
                 anchor.Status,
                 true,
                 anchor.OriginalSnapshot.StartOffset,
@@ -245,13 +235,11 @@ public class ReadingProgressService(
                 PassageAnchorMatchMethod.Exact);
         }
 
-        if (anchor.CurrentMatch is not null &&
-            anchor.CurrentMatch.TargetSectionVersionId == currentSectionVersionId)
+        if (anchor.CurrentMatch is not null)
         {
             return new ResumeRestoreTargetDto(
                 anchor.Id,
                 sectionId,
-                currentSectionVersionId,
                 anchor.Status,
                 true,
                 anchor.CurrentMatch.StartOffset,
@@ -264,7 +252,6 @@ public class ReadingProgressService(
         return new ResumeRestoreTargetDto(
             anchor.Id,
             sectionId,
-            currentSectionVersionId,
             anchor.Status,
             false,
             null,

@@ -5,7 +5,6 @@ namespace DraftView.Domain.Contracts;
 /// </summary>
 public sealed record CaptureResumePositionRequest(
     Guid SectionId,
-    Guid? OriginalSectionVersionId,
     string SelectedText,
     string NormalizedSelectedText,
     string SelectedTextHash,

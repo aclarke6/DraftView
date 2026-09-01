@@ -26,7 +26,6 @@ public class AuthorControllerTests
     private readonly Mock<IProjectDiscoveryService> discoveryService = new();
     private readonly Mock<ISyncProgressTracker> progressTracker = new();
     private readonly Mock<ISyncOrchestrationService> syncOrchestrationService = new();
-    private readonly Mock<IVersioningService> versioningService = new();
     private readonly Mock<IImportService> importService = new();
     private readonly Mock<ISectionTreeService> sectionTreeService = new();
     private readonly Mock<IUnitOfWork> unitOfWork = new();
@@ -68,7 +67,6 @@ public class AuthorControllerTests
             discoveryService.Object,
             progressTracker.Object,
             syncOrchestrationService.Object,
-            versioningService.Object,
             importService.Object,
             sectionTreeService.Object,
             logger.Object,
@@ -439,177 +437,6 @@ public class AuthorControllerTests
     }
 
     [Fact]
-    public async Task RepublishChapter_CallsVersioningService_WithCorrectChapterId()
-    {
-        var author = User.Create("author@example.test", "Author", Role.Author);
-        var chapterId = Guid.NewGuid();
-        var projectId = Guid.NewGuid();
-        var sut = CreateSut();
-        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
-
-        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(author);
-
-        await sut.RepublishChapter(chapterId, projectId);
-
-        versioningService.Verify(v => v.RepublishChapterAsync(chapterId, author.Id, default), Times.Once);
-    }
-
-    [Fact]
-    public async Task RepublishChapter_SetsTempDataSuccess_WhenRepublishSucceeds()
-    {
-        var author = User.Create("author@example.test", "Author", Role.Author);
-        var sut = CreateSut();
-        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
-
-        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(author);
-
-        await sut.RepublishChapter(Guid.NewGuid(), Guid.NewGuid());
-
-        Assert.Equal("Chapter republished. Readers will see the updated content.", sut.TempData["Success"]);
-    }
-
-    [Fact]
-    public async Task RepublishChapter_SetsTempDataError_WhenVersioningServiceThrows()
-    {
-        var author = User.Create("author@example.test", "Author", Role.Author);
-        var chapterId = Guid.NewGuid();
-        var sut = CreateSut();
-        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
-
-        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(author);
-        versioningService.Setup(v => v.RepublishChapterAsync(chapterId, author.Id, default))
-            .ThrowsAsync(new InvariantViolationException("I-VER-NO-DOCS", "No documents"));
-
-        await sut.RepublishChapter(chapterId, Guid.NewGuid());
-
-        Assert.Equal("No documents", sut.TempData["Error"]);
-    }
-
-    [Fact]
-    public async Task RepublishChapter_RedirectsToSections_AfterRepublish()
-    {
-        var author = User.Create("author@example.test", "Author", Role.Author);
-        var chapterId = Guid.NewGuid();
-        var projectId = Guid.NewGuid();
-        var sut = CreateSut();
-        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
-
-        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(author);
-
-        var result = await sut.RepublishChapter(chapterId, projectId);
-
-        var redirect = Assert.IsType<RedirectResult>(result);
-        Assert.Contains($"#section-{chapterId}", redirect.Url);
-    }
-
-    [Fact]
-    public async Task RepublishDocument_CallsVersioningService_WithCorrectSectionId()
-    {
-        var author = User.Create("author@example.test", "Author", Role.Author);
-        var sectionId = Guid.NewGuid();
-        var projectId = Guid.NewGuid();
-        var sut = CreateSut();
-        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
-
-        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(author);
-
-        await sut.RepublishDocument(sectionId, projectId);
-
-        versioningService.Verify(v => v.RepublishSectionAsync(sectionId, author.Id, default), Times.Once);
-    }
-
-    [Fact]
-    public async Task RevokeDocument_CallsVersioningService_WithCorrectSectionId()
-    {
-        var author = User.Create("author@example.test", "Author", Role.Author);
-        var sectionId = Guid.NewGuid();
-        var projectId = Guid.NewGuid();
-        var sut = CreateSut();
-        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
-
-        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(author);
-
-        await sut.RevokeDocument(sectionId, projectId);
-
-        versioningService.Verify(v => v.RevokeLatestVersionAsync(sectionId, author.Id, default), Times.Once);
-    }
-
-    [Fact]
-    public async Task LockChapter_CallsVersioningService_WithCorrectChapterId()
-    {
-        var author = User.Create("author@example.test", "Author", Role.Author);
-        var chapterId = Guid.NewGuid();
-        var projectId = Guid.NewGuid();
-        var sut = CreateSut();
-        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
-
-        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(author);
-
-        await sut.LockChapter(chapterId, projectId);
-
-        versioningService.Verify(v => v.LockChapterAsync(chapterId, author.Id, default), Times.Once);
-    }
-
-    [Fact]
-    public async Task UnlockChapter_CallsVersioningService_WithCorrectChapterId()
-    {
-        var author = User.Create("author@example.test", "Author", Role.Author);
-        var chapterId = Guid.NewGuid();
-        var projectId = Guid.NewGuid();
-        var sut = CreateSut();
-        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
-
-        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(author);
-
-        await sut.UnlockChapter(chapterId, projectId);
-
-        versioningService.Verify(v => v.UnlockChapterAsync(chapterId, author.Id, default), Times.Once);
-    }
-
-    [Fact]
-    public async Task ScheduleChapter_CallsVersioningService_WithCorrectChapterIdAndDate()
-    {
-        var author = User.Create("author@example.test", "Author", Role.Author);
-        var chapterId = Guid.NewGuid();
-        var projectId = Guid.NewGuid();
-        var scheduledAt = DateTime.Today.AddDays(1);
-        var sut = CreateSut();
-        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
-
-        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(author);
-
-        await sut.ScheduleChapter(chapterId, projectId, scheduledAt);
-
-        versioningService.Verify(v => v.ScheduleChapterAsync(chapterId, author.Id, scheduledAt.ToUniversalTime(), default), Times.Once);
-    }
-
-    [Fact]
-    public async Task ClearChapterSchedule_CallsVersioningService_WithCorrectChapterId()
-    {
-        var author = User.Create("author@example.test", "Author", Role.Author);
-        var chapterId = Guid.NewGuid();
-        var projectId = Guid.NewGuid();
-        var sut = CreateSut();
-        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
-
-        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(author);
-
-        await sut.ClearChapterSchedule(chapterId, projectId);
-
-        versioningService.Verify(v => v.ClearScheduleAsync(chapterId, author.Id, default), Times.Once);
-    }
-
-    [Fact]
     public async Task CreateSection_CallsSectionTreeService_WithCorrectArguments()
     {
         var author = User.Create("author@example.test", "Author", Role.Author);
@@ -677,45 +504,6 @@ public class AuthorControllerTests
         await sut.DeleteSection(sectionId, projectId);
 
         sectionTreeService.Verify(s => s.DeleteSectionAsync(sectionId, author.Id, default), Times.Once);
-    }
-
-    [Fact]
-    public async Task DeleteVersion_CallsVersioningServiceDeleteVersionAsync()
-    {
-        var author = User.Create("author@example.test", "Author", Role.Author);
-        var versionId = Guid.NewGuid();
-        var sectionId = Guid.NewGuid();
-        var sut = CreateSut();
-        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
-
-        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(author);
-
-        await sut.DeleteVersion(versionId, sectionId, Guid.NewGuid());
-
-        versioningService.Verify(v => v.DeleteVersionAsync(versionId, sectionId, It.IsAny<CancellationToken>()), Times.Once);
-        Assert.Equal("Version deleted.", sut.TempData["Success"]);
-    }
-
-    [Fact]
-    public async Task DeleteVersion_WhenServiceThrowsInvariantViolation_SetsErrorMessage()
-    {
-        var author = User.Create("author@example.test", "Author", Role.Author);
-        var versionId = Guid.NewGuid();
-        var sectionId = Guid.NewGuid();
-        var sut = CreateSut();
-        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
-
-        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(author);
-        versioningService
-            .Setup(v => v.DeleteVersionAsync(versionId, sectionId, It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new InvariantViolationException(
-                "I-VER-DEL-LATEST", "The current version cannot be deleted. Use Revoke instead."));
-
-        await sut.DeleteVersion(versionId, sectionId, Guid.NewGuid());
-
-        Assert.Equal("The current version cannot be deleted. Use Revoke instead.", sut.TempData["Error"]);
     }
 
     // -----------------------------------------------------------------------

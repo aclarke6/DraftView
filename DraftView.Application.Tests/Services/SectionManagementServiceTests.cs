@@ -17,23 +17,17 @@ namespace DraftView.Application.Tests.Services;
 /// </summary>
 public class SectionManagementServiceTests
 {
-    private readonly Mock<IProjectRepository>            _projectRepo                 = new();
-    private readonly Mock<ISectionRepository>             _sectionRepo                 = new();
-    private readonly Mock<ISectionVersionRepository>       _sectionVersionRepo          = new();
-    private readonly Mock<IPublicationService>              _publicationService          = new();
-    private readonly Mock<IHtmlDiffService>                  _htmlDiffService             = new();
-    private readonly Mock<IChangeClassificationService>        _changeClassificationService = new();
-    private readonly Mock<ICommentService>                      _commentService              = new();
-    private readonly Mock<IUserRepository>                       _userRepository              = new();
-    private readonly Mock<IReadEventRepository>                   _readEventRepository         = new();
+    private readonly Mock<IProjectRepository>  _projectRepo        = new();
+    private readonly Mock<ISectionRepository>  _sectionRepo        = new();
+    private readonly Mock<IPublicationService> _publicationService = new();
+    private readonly Mock<ICommentService>     _commentService     = new();
+    private readonly Mock<IUserRepository>     _userRepository     = new();
+    private readonly Mock<IReadEventRepository> _readEventRepository = new();
 
     private SectionManagementService CreateSut() => new(
         _projectRepo.Object,
         _sectionRepo.Object,
-        _sectionVersionRepo.Object,
         _publicationService.Object,
-        _htmlDiffService.Object,
-        _changeClassificationService.Object,
         _commentService.Object,
         _userRepository.Object,
         _readEventRepository.Object);
@@ -96,7 +90,6 @@ public class SectionManagementServiceTests
         chapter.MarkAsPublishedContainer();
 
         var document = Section.CreateDocument(project.Id, "s1", "Scene 1", chapter.Id, 0, "<p>old</p>", "h1", "First Draft");
-        var version = SectionVersion.Create(document, Guid.NewGuid(), 1, 1, 0);
         document.UpdateContent("<p>new</p>", "h2");
         document.MarkContentChanged();
 
@@ -104,17 +97,10 @@ public class SectionManagementServiceTests
         _sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, default))
             .ReturnsAsync(new List<Section> { chapter, document });
         _publicationService.Setup(p => p.CanPublishAsync(It.IsAny<Guid>(), default)).ReturnsAsync(false);
-        _sectionVersionRepo.Setup(r => r.GetLatestAsync(document.Id, default)).ReturnsAsync(version);
-        _htmlDiffService.Setup(d => d.Compute(version.HtmlContent, document.HtmlContent))
-            .Returns(new List<ParagraphDiffResult>());
-        _changeClassificationService
-            .Setup(c => c.Classify(It.IsAny<IReadOnlyList<ParagraphDiffResult>>()))
-            .Returns(ChangeClassification.Rewrite);
 
         var result = await CreateSut().GetSectionsSummaryAsync(project.Id);
 
         Assert.Contains(chapter.Id, result!.ChapterHasChanges);
-        Assert.Equal(ChangeClassification.Rewrite, result.ClassificationMap[chapter.Id]);
     }
 
     [Fact]

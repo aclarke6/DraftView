@@ -16,8 +16,7 @@ public class CommentServiceTests
     private readonly Mock<IUserRepository>               _userRepo         = new();
     private readonly Mock<IUnitOfWork>                   _unitOfWork       = new();
     private readonly Mock<IAuthorNotificationRepository> _notificationRepo = new();
-    private readonly Mock<ISectionVersionRepository>     _versionRepo      = new();
-    private readonly Mock<IPassageAnchorService>         _passageAnchorService = new();
+    private readonly Mock<IPassageAnchorService> _passageAnchorService = new();
 
     private CommentService CreateSut() => new(
         _commentRepo.Object,
@@ -25,7 +24,6 @@ public class CommentServiceTests
         _userRepo.Object,
         _unitOfWork.Object,
         _notificationRepo.Object,
-        _versionRepo.Object,
         _passageAnchorService.Object);
 
     private static Section MakePublishedSection()
@@ -45,7 +43,6 @@ public class CommentServiceTests
     private static CreatePassageAnchorRequest CreatePassageAnchorRequest(Guid sectionId) =>
         new(
             sectionId,
-            null,
             PassageAnchorPurpose.Comment,
             "Alpha beta",
             "Alpha beta",
@@ -95,7 +92,6 @@ public class CommentServiceTests
 
         _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
         _userRepo.Setup(r => r.GetByIdAsync(reader.Id, default)).ReturnsAsync(reader);
-        _versionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync((SectionVersion?)null);
         _passageAnchorService.Setup(s => s.CreateAsync(
                 It.Is<CreatePassageAnchorRequest>(r =>
                     r.SectionId == section.Id &&
@@ -105,7 +101,6 @@ public class CommentServiceTests
             .ReturnsAsync(new PassageAnchorDto(
                 anchorId,
                 section.Id,
-                null,
                 PassageAnchorPurpose.Comment,
                 reader.Id,
                 DateTime.UtcNow,
@@ -384,76 +379,4 @@ public class CommentServiceTests
             Times.Never);
     }
 
-    // ---------------------------------------------------------------------------
-    // SectionVersionId anchoring
-    // ---------------------------------------------------------------------------
-
-    [Fact]
-    public async Task CreateRootCommentAsync_SetsCurrentSectionVersionId_WhenVersionExists()
-    {
-        var section = MakePublishedSection();
-        var reader  = MakeBetaReader();
-        reader.Activate();
-        var sut = CreateSut();
-
-        var version = SectionVersion.Create(section, Guid.NewGuid(), 1, 1, 0);
-        var versionRepo = new Mock<ISectionVersionRepository>();
-        versionRepo.Setup(r => r.GetLatestAsync(section.Id, default))
-            .ReturnsAsync(version);
-
-        var sutWithVersion = new CommentService(
-            _commentRepo.Object,
-            _sectionRepo.Object,
-            _userRepo.Object,
-            _unitOfWork.Object,
-            _notificationRepo.Object,
-            versionRepo.Object,
-            _passageAnchorService.Object);
-
-        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
-        _userRepo.Setup(r => r.GetByIdAsync(reader.Id, default)).ReturnsAsync(reader);
-
-        Comment? added = null;
-        _commentRepo.Setup(r => r.AddAsync(It.IsAny<Comment>(), default))
-            .Callback<Comment, CancellationToken>((c, _) => added = c);
-
-        await sutWithVersion.CreateRootCommentAsync(section.Id, reader.Id, "Great!", Visibility.Public);
-
-        Assert.NotNull(added);
-        Assert.Equal(version.Id, added!.SectionVersionId);
-    }
-
-    [Fact]
-    public async Task CreateRootCommentAsync_SetsNullSectionVersionId_WhenNoVersionExists()
-    {
-        var section = MakePublishedSection();
-        var reader  = MakeBetaReader();
-        reader.Activate();
-        var sut = CreateSut();
-
-        var versionRepo = new Mock<ISectionVersionRepository>();
-        versionRepo.Setup(r => r.GetLatestAsync(section.Id, default))
-            .ReturnsAsync((SectionVersion?)null);
-
-        var sutWithVersion = new CommentService(
-            _commentRepo.Object,
-            _sectionRepo.Object,
-            _userRepo.Object,
-            _unitOfWork.Object,
-            _notificationRepo.Object,
-            versionRepo.Object,
-            _passageAnchorService.Object);
-
-        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
-        _userRepo.Setup(r => r.GetByIdAsync(reader.Id, default)).ReturnsAsync(reader);
-
-        Comment? added = null;
-        _commentRepo.Setup(r => r.AddAsync(It.IsAny<Comment>(), default))
-            .Callback<Comment, CancellationToken>((c, _) => added = c);
-
-        await sutWithVersion.CreateRootCommentAsync(section.Id, reader.Id, "Great!", Visibility.Public);
-
-        Assert.NotNull(added);
-        Assert.Null(added!.SectionVersionId);
-    }
 }

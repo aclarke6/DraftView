@@ -195,7 +195,6 @@ public class PassageAnchorRepositoryTests
     {
         return PassageAnchor.Create(
             sectionId ?? Guid.NewGuid(),
-            Guid.NewGuid(),
             PassageAnchorPurpose.Comment,
             Guid.NewGuid(),
             PassageAnchorSnapshot.Create(
@@ -212,7 +211,6 @@ public class PassageAnchorRepositoryTests
     private static PassageAnchorMatch CreateMatch()
     {
         return PassageAnchorMatch.Create(
-            Guid.NewGuid(),
             11,
             24,
             "selected text",

@@ -42,14 +42,12 @@ public class HumanOverrideServiceTests
         var owner = MakeUser("owner@example.test", "Owner", Role.BetaReader);
         var project = Project.Create("Project", "/tmp/project", author.Id, "root");
         var section = MakePublishedSection(project.Id);
-        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
-        var anchor = CreateAnchor(section, version, author.Id);
+        var anchor = CreateAnchor(section, author.Id);
         var comment = Comment.CreateRoot(
             section.Id,
             owner.Id,
             "Anchored comment.",
             Visibility.Public,
-            sectionVersionId: version.Id,
             passageAnchorId: anchor.Id);
         var sut = CreateSut();
 
@@ -66,14 +64,12 @@ public class HumanOverrideServiceTests
         var otherUser = MakeUser("reader@example.test", "Reader", Role.BetaReader);
         var project = Project.Create("Project", "/tmp/project", author.Id, "root");
         var section = MakePublishedSection(project.Id);
-        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
-        var anchor = CreateAnchor(section, version, otherUser.Id);
+        var anchor = CreateAnchor(section, otherUser.Id);
         var comment = Comment.CreateRoot(
             section.Id,
             otherUser.Id,
             "Anchored comment.",
             Visibility.Public,
-            sectionVersionId: version.Id,
             passageAnchorId: anchor.Id);
         var sut = CreateSut();
 
@@ -90,14 +86,12 @@ public class HumanOverrideServiceTests
         var otherUser = MakeUser("reader@example.test", "Reader", Role.BetaReader);
         var project = Project.Create("Project", "/tmp/project", author.Id, "root");
         var section = MakePublishedSection(project.Id);
-        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
-        var anchor = CreateAnchor(section, version, author.Id);
+        var anchor = CreateAnchor(section, author.Id);
         var comment = Comment.CreateRoot(
             section.Id,
             author.Id,
             "Anchored comment.",
             Visibility.Public,
-            sectionVersionId: version.Id,
             passageAnchorId: anchor.Id);
         var sut = CreateSut();
 
@@ -115,8 +109,7 @@ public class HumanOverrideServiceTests
         var support = MakeUser("support@example.test", "Support", Role.SystemSupport);
         var project = Project.Create("Project", "/tmp/project", author.Id, "root");
         var section = MakePublishedSection(project.Id);
-        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
-        var anchor = CreateAnchor(section, version, author.Id);
+        var anchor = CreateAnchor(section, author.Id);
         var sut = CreateSut();
 
         SetupAnchorGraph(anchor, section, project, Array.Empty<Comment>());
@@ -133,15 +126,13 @@ public class HumanOverrideServiceTests
         var owner = MakeUser("owner@example.test", "Owner", Role.BetaReader);
         var project = Project.Create("Project", "/tmp/project", author.Id, "root");
         var section = MakePublishedSection(project.Id);
-        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
-        var anchor = CreateAnchor(section, version, owner.Id);
-        anchor.UpdateCurrentMatch(CreateMatch(version.Id));
+        var anchor = CreateAnchor(section, owner.Id);
+        anchor.UpdateCurrentMatch(CreateMatch());
         var comment = Comment.CreateRoot(
             section.Id,
             owner.Id,
             "Anchored comment.",
             Visibility.Public,
-            sectionVersionId: version.Id,
             passageAnchorId: anchor.Id);
         var sut = CreateSut();
 
@@ -154,7 +145,6 @@ public class HumanOverrideServiceTests
         Assert.Equal(PassageAnchorStatus.UserRejected, result.Status);
         Assert.Null(result.CurrentMatch);
         Assert.NotNull(result.Rejection);
-        Assert.Equal(version.Id, result.Rejection!.TargetSectionVersionId);
         Assert.Equal(owner.Id, result.Rejection.RejectedByUserId);
         Assert.Equal("wrong place", result.Rejection.Reason);
         _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
@@ -167,18 +157,15 @@ public class HumanOverrideServiceTests
         var owner = MakeUser("owner@example.test", "Owner", Role.BetaReader);
         var project = Project.Create("Project", "/tmp/project", author.Id, "root");
         var section = MakePublishedSection(project.Id);
-        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
-        var anchor = CreateAnchor(section, version, owner.Id);
+        var anchor = CreateAnchor(section, owner.Id);
         var comment = Comment.CreateRoot(
             section.Id,
             owner.Id,
             "Anchored comment.",
             Visibility.Public,
-            sectionVersionId: version.Id,
             passageAnchorId: anchor.Id);
         var request = new CreatePassageAnchorRequest(
             section.Id,
-            version.Id,
             PassageAnchorPurpose.Comment,
             "Alpha beta",
             "Alpha beta",
@@ -220,19 +207,17 @@ public class HumanOverrideServiceTests
             .ReturnsAsync(comments);
     }
 
-    private static PassageAnchorMatch CreateMatch(Guid targetVersionId) =>
+    private static PassageAnchorMatch CreateMatch() =>
         PassageAnchorMatch.Create(
-            targetVersionId,
             0,
             10,
             "Alpha beta",
             95,
             PassageAnchorMatchMethod.Exact);
 
-    private static PassageAnchor CreateAnchor(Section section, SectionVersion version, Guid createdByUserId) =>
+    private static PassageAnchor CreateAnchor(Section section, Guid createdByUserId) =>
         PassageAnchor.Create(
             section.Id,
-            version.Id,
             PassageAnchorPurpose.Comment,
             createdByUserId,
             PassageAnchorSnapshot.Create(

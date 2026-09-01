@@ -12,14 +12,9 @@ namespace DraftView.Application.Services;
 /// </summary>
 public class ImportService(
     ISectionRepository sectionRepository,
-    ISectionVersionRepository sectionVersionRepository,
     IUnitOfWork unitOfWork,
     IEnumerable<IImportProvider> importProviders) : IImportService
 {
-    /// <summary>
-    /// Resolves the import provider for the file extension, converts the stream,
-    /// and writes the resulting HTML to the target section.
-    /// </summary>
     public Task ImportAsync(
         Guid projectId,
         Guid sectionId,
@@ -48,10 +43,7 @@ public class ImportService(
 
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(html)));
         section.UpdateContent(html, hash);
-
-        var latestVersion = await sectionVersionRepository.GetLatestAsync(sectionId, cancellationToken);
-        if (latestVersion is not null)
-            section.MarkContentChanged();
+        section.MarkContentChanged();
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
     }

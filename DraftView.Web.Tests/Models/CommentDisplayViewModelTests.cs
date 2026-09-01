@@ -120,13 +120,11 @@ public class CommentDisplayViewModelTests
             body: "test body",
             visibility: Visibility.Public,
             isReaderComment: true,
-            sectionVersionId: null,
             passageAnchorId: passageAnchorId);
 
     private static PassageAnchorDto MakeAnchorDto(PassageAnchorStatus status) => new(
         Id: Guid.NewGuid(),
         SectionId: Guid.NewGuid(),
-        OriginalSectionVersionId: null,
         Purpose: PassageAnchorPurpose.Comment,
         CreatedByUserId: Guid.NewGuid(),
         CreatedAt: DateTime.UtcNow,

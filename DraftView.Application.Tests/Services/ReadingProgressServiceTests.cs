@@ -20,6 +20,7 @@ public class ReadingProgressServiceTests
 {
     private readonly Mock<IReadEventRepository>          _readEventRepo       = new();
     private readonly Mock<ISectionRepository>            _sectionRepo         = new();
+    private readonly Mock<IReaderSnapshotRepository>     _snapshotRepo        = new();
     private readonly Mock<IPassageAnchorService>         _passageAnchorService = new();
     private readonly Mock<IUnitOfWork>                   _unitOfWork          = new();
     private readonly Mock<IUserRepository>               _userRepo            = new();
@@ -28,6 +29,7 @@ public class ReadingProgressServiceTests
     private ReadingProgressService CreateSut() => new(
         _readEventRepo.Object,
         _sectionRepo.Object,
+        _snapshotRepo.Object,
         _passageAnchorService.Object,
         _unitOfWork.Object,
         _userRepo.Object,
@@ -237,69 +239,98 @@ public class ReadingProgressServiceTests
     }
 
     // ---------------------------------------------------------------------------
-    // UpdateLastReadVersionAsync
+    // MarkReadAsync
     // ---------------------------------------------------------------------------
 
     [Fact]
-    public async Task UpdateLastReadVersionAsync_UpdatesVersionNumber_WhenReadEventExists()
+    public async Task MarkReadAsync_ReadEventExists_WithContent_MarksReadAndUpsertsSnapshot()
     {
         var sectionId = Guid.NewGuid();
         var userId    = Guid.NewGuid();
         var sut       = CreateSut();
-
         var readEvent = ReadEvent.Create(sectionId, userId);
-        _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default))
-            .ReturnsAsync(readEvent);
+        var section   = MakePublishedSection(Guid.NewGuid());
 
-        await sut.UpdateLastReadVersionAsync(sectionId, userId, 3);
+        _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default)).ReturnsAsync(readEvent);
+        _sectionRepo.Setup(r => r.GetByIdAsync(sectionId, default)).ReturnsAsync(section);
 
-        Assert.Equal(3, readEvent.LastReadVersionNumber);
+        ReaderSnapshot? upserted = null;
+        _snapshotRepo.Setup(r => r.UpsertAsync(It.IsAny<ReaderSnapshot>(), default))
+            .Callback<ReaderSnapshot, CancellationToken>((s, _) => upserted = s)
+            .Returns(Task.CompletedTask);
+
+        await sut.MarkReadAsync(sectionId, userId);
+
+        Assert.True(readEvent.IsRead);
+        Assert.NotNull(upserted);
+        Assert.Equal(sectionId, upserted!.SectionId);
+        Assert.Equal(userId, upserted.UserId);
         _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
     }
 
     [Fact]
-    public async Task UpdateLastReadVersionAsync_DoesNotThrow_WhenNoReadEventExists()
+    public async Task MarkReadAsync_NoReadEvent_IsNoOp()
     {
         var sectionId = Guid.NewGuid();
         var userId    = Guid.NewGuid();
         var sut       = CreateSut();
 
-        _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default))
-            .ReturnsAsync((ReadEvent?)null);
+        _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default)).ReturnsAsync((ReadEvent?)null);
 
-        await sut.UpdateLastReadVersionAsync(sectionId, userId, 3);
+        await sut.MarkReadAsync(sectionId, userId);
 
+        _snapshotRepo.Verify(r => r.UpsertAsync(It.IsAny<ReaderSnapshot>(), default), Times.Never);
         _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Never);
     }
 
     [Fact]
-    public async Task DismissBannerAsync_SetsBannerDismissedAtVersion_WhenReadEventExists()
+    public async Task MarkReadAsync_SectionNotFound_IsNoOp()
     {
         var sectionId = Guid.NewGuid();
         var userId    = Guid.NewGuid();
         var sut       = CreateSut();
-
         var readEvent = ReadEvent.Create(sectionId, userId);
-        _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default))
-            .ReturnsAsync(readEvent);
 
-        await sut.DismissBannerAsync(sectionId, userId, 4);
+        _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default)).ReturnsAsync(readEvent);
+        _sectionRepo.Setup(r => r.GetByIdAsync(sectionId, default)).ReturnsAsync((Section?)null);
 
-        Assert.Equal(4, readEvent.BannerDismissedAtVersion);
+        await sut.MarkReadAsync(sectionId, userId);
+
+        _snapshotRepo.Verify(r => r.UpsertAsync(It.IsAny<ReaderSnapshot>(), default), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Never);
+    }
+
+    // ---------------------------------------------------------------------------
+    // MarkUnreadAsync
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task MarkUnreadAsync_ReadEventExists_MarksUnreadAndSaves()
+    {
+        var sectionId = Guid.NewGuid();
+        var userId    = Guid.NewGuid();
+        var sut       = CreateSut();
+        var readEvent = ReadEvent.Create(sectionId, userId);
+        readEvent.MarkRead();
+
+        _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default)).ReturnsAsync(readEvent);
+
+        await sut.MarkUnreadAsync(sectionId, userId);
+
+        Assert.False(readEvent.IsRead);
         _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
     }
 
     [Fact]
-    public async Task DismissBannerAsync_DoesNotThrow_WhenNoReadEventExists()
+    public async Task MarkUnreadAsync_NoReadEvent_IsNoOp()
     {
         var sectionId = Guid.NewGuid();
         var userId    = Guid.NewGuid();
         var sut       = CreateSut();
 
-        _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default))
-            .ReturnsAsync((ReadEvent?)null);
+        _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default)).ReturnsAsync((ReadEvent?)null);
 
-        await sut.DismissBannerAsync(sectionId, userId, 4);
+        await sut.MarkUnreadAsync(sectionId, userId);
 
         _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Never);
     }
@@ -326,7 +357,6 @@ public class ReadingProgressServiceTests
             .ReturnsAsync(new PassageAnchorDto(
                 anchorId,
                 sectionId,
-                request.OriginalSectionVersionId,
                 PassageAnchorPurpose.Resume,
                 userId,
                 DateTime.UtcNow,
@@ -366,7 +396,6 @@ public class ReadingProgressServiceTests
             .ReturnsAsync(new PassageAnchorDto(
                 anchorId,
                 sectionId,
-                request.OriginalSectionVersionId,
                 PassageAnchorPurpose.Resume,
                 userId,
                 DateTime.UtcNow,
@@ -416,7 +445,6 @@ public class ReadingProgressServiceTests
     public async Task GetResumeRestoreTargetAsync_OriginalAnchorOnCurrentVersion_ReturnsExactTarget()
     {
         var sectionId = Guid.NewGuid();
-        var versionId = Guid.NewGuid();
         var userId = Guid.NewGuid();
         var anchorId = Guid.NewGuid();
         var readEvent = ReadEvent.Create(sectionId, userId);
@@ -429,7 +457,6 @@ public class ReadingProgressServiceTests
             .ReturnsAsync(new PassageAnchorDto(
                 anchorId,
                 sectionId,
-                versionId,
                 PassageAnchorPurpose.Resume,
                 userId,
                 DateTime.UtcNow,
@@ -447,7 +474,7 @@ public class ReadingProgressServiceTests
                     "#scene"),
                 null));
 
-        var result = await sut.GetResumeRestoreTargetAsync(sectionId, versionId, userId);
+        var result = await sut.GetResumeRestoreTargetAsync(sectionId, userId);
 
         Assert.NotNull(result);
         Assert.True(result!.HasTarget);
@@ -462,7 +489,6 @@ public class ReadingProgressServiceTests
     public async Task GetResumeRestoreTargetAsync_ContextMatchedAnchor_ReturnsCurrentMatchMetadata()
     {
         var sectionId = Guid.NewGuid();
-        var versionId = Guid.NewGuid();
         var userId = Guid.NewGuid();
         var anchorId = Guid.NewGuid();
         var readEvent = ReadEvent.Create(sectionId, userId);
@@ -475,7 +501,6 @@ public class ReadingProgressServiceTests
             .ReturnsAsync(new PassageAnchorDto(
                 anchorId,
                 sectionId,
-                Guid.NewGuid(),
                 PassageAnchorPurpose.Resume,
                 userId,
                 DateTime.UtcNow,
@@ -492,7 +517,6 @@ public class ReadingProgressServiceTests
                     "content-hash",
                     "#scene"),
                 new PassageAnchorMatchDto(
-                    versionId,
                     12,
                     22,
                     "Alpha beta",
@@ -502,7 +526,7 @@ public class ReadingProgressServiceTests
                     null,
                     "Context matched.")));
 
-        var result = await sut.GetResumeRestoreTargetAsync(sectionId, versionId, userId);
+        var result = await sut.GetResumeRestoreTargetAsync(sectionId, userId);
 
         Assert.NotNull(result);
         Assert.True(result!.HasTarget);
@@ -517,8 +541,6 @@ public class ReadingProgressServiceTests
     public async Task GetResumeRestoreTargetAsync_ExactCrossVersionMatch_ReturnsExactCrossVersionTarget()
     {
         var sectionId = Guid.NewGuid();
-        var originalVersionId = Guid.NewGuid();
-        var currentVersionId = Guid.NewGuid();
         var userId = Guid.NewGuid();
         var anchorId = Guid.NewGuid();
         var readEvent = ReadEvent.Create(sectionId, userId);
@@ -531,7 +553,6 @@ public class ReadingProgressServiceTests
             .ReturnsAsync(new PassageAnchorDto(
                 anchorId,
                 sectionId,
-                originalVersionId,
                 PassageAnchorPurpose.Resume,
                 userId,
                 DateTime.UtcNow,
@@ -548,7 +569,6 @@ public class ReadingProgressServiceTests
                     "content-hash",
                     "#scene"),
                 new PassageAnchorMatchDto(
-                    currentVersionId,
                     0,
                     10,
                     "Alpha beta",
@@ -558,7 +578,7 @@ public class ReadingProgressServiceTests
                     null,
                     null)));
 
-        var result = await sut.GetResumeRestoreTargetAsync(sectionId, currentVersionId, userId);
+        var result = await sut.GetResumeRestoreTargetAsync(sectionId, userId);
 
         Assert.NotNull(result);
         Assert.True(result!.HasTarget);
@@ -573,7 +593,6 @@ public class ReadingProgressServiceTests
     public async Task GetResumeRestoreTargetAsync_OrphanedAnchor_ReturnsSafeFallback()
     {
         var sectionId = Guid.NewGuid();
-        var versionId = Guid.NewGuid();
         var userId = Guid.NewGuid();
         var anchorId = Guid.NewGuid();
         var readEvent = ReadEvent.Create(sectionId, userId);
@@ -586,7 +605,6 @@ public class ReadingProgressServiceTests
             .ReturnsAsync(new PassageAnchorDto(
                 anchorId,
                 sectionId,
-                versionId,
                 PassageAnchorPurpose.Resume,
                 userId,
                 DateTime.UtcNow,
@@ -604,7 +622,7 @@ public class ReadingProgressServiceTests
                     "#scene"),
                 null));
 
-        var result = await sut.GetResumeRestoreTargetAsync(sectionId, versionId, userId);
+        var result = await sut.GetResumeRestoreTargetAsync(sectionId, userId);
 
         Assert.NotNull(result);
         Assert.False(result!.HasTarget);
@@ -619,7 +637,6 @@ public class ReadingProgressServiceTests
     public async Task GetResumeRestoreTargetAsync_InaccessibleAnchor_PropagatesUnauthorisedOperationException()
     {
         var sectionId = Guid.NewGuid();
-        var versionId = Guid.NewGuid();
         var userId = Guid.NewGuid();
         var anchorId = Guid.NewGuid();
         var readEvent = ReadEvent.Create(sectionId, userId);
@@ -632,14 +649,13 @@ public class ReadingProgressServiceTests
             .ThrowsAsync(new UnauthorisedOperationException("Forbidden"));
 
         await Assert.ThrowsAsync<UnauthorisedOperationException>(
-            () => sut.GetResumeRestoreTargetAsync(sectionId, versionId, userId));
+            () => sut.GetResumeRestoreTargetAsync(sectionId, userId));
     }
 
     private static CaptureResumePositionRequest CreateCaptureRequest(Guid sectionId)
     {
         return new CaptureResumePositionRequest(
             sectionId,
-            Guid.NewGuid(),
             "Alpha beta",
             "Alpha beta",
             "selected-hash",

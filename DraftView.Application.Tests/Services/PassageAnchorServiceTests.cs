@@ -21,7 +21,6 @@ public class PassageAnchorServiceTests
 {
     private readonly Mock<IPassageAnchorRepository> _anchorRepo = new();
     private readonly Mock<ISectionRepository> _sectionRepo = new();
-    private readonly Mock<ISectionVersionRepository> _sectionVersionRepo = new();
     private readonly Mock<IReaderAccessRepository> _readerAccessRepo = new();
     private readonly Mock<IUserRepository> _userRepo = new();
     private readonly Mock<IAuthorizationFacade> _authFacade = new();
@@ -30,7 +29,6 @@ public class PassageAnchorServiceTests
     private PassageAnchorService CreateSut() => new(
         _anchorRepo.Object,
         _sectionRepo.Object,
-        _sectionVersionRepo.Object,
         _readerAccessRepo.Object,
         _userRepo.Object,
         _authFacade.Object,
@@ -41,13 +39,11 @@ public class PassageAnchorServiceTests
     {
         var reader = MakeReader();
         var section = MakePublishedSection();
-        var version = SectionVersion.Create(section, Guid.NewGuid(), 1, 1, 0);
-        var request = CreateRequest(section.Id, version.Id, "Alpha beta");
+        var request = CreateRequest(section.Id, "Alpha beta");
         var sut = CreateSut();
 
         _userRepo.Setup(r => r.GetByIdAsync(reader.Id, default)).ReturnsAsync(reader);
         _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
-        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
         _readerAccessRepo.Setup(r => r.GetByReaderAndProjectAsync(reader.Id, section.ProjectId, default))
             .ReturnsAsync(ReaderAccess.Grant(reader.Id, Guid.NewGuid(), section.ProjectId));
         _authFacade.Setup(f => f.IsBetaReader()).Returns(true);
@@ -61,7 +57,6 @@ public class PassageAnchorServiceTests
 
         Assert.NotNull(added);
         Assert.Equal(section.Id, result.SectionId);
-        Assert.Equal(version.Id, result.OriginalSectionVersionId);
         Assert.Equal(PassageAnchorStatus.Original, result.Status);
         Assert.Equal("Alpha beta", result.OriginalSnapshot.SelectedText);
         _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
@@ -72,13 +67,11 @@ public class PassageAnchorServiceTests
     {
         var reader = MakeReader();
         var section = MakePublishedSection();
-        var version = SectionVersion.Create(section, Guid.NewGuid(), 1, 1, 0);
-        var request = CreateRequest(section.Id, version.Id, "Wrong text");
+        var request = CreateRequest(section.Id, "Wrong text");
         var sut = CreateSut();
 
         _userRepo.Setup(r => r.GetByIdAsync(reader.Id, default)).ReturnsAsync(reader);
         _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
-        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
         _readerAccessRepo.Setup(r => r.GetByReaderAndProjectAsync(reader.Id, section.ProjectId, default))
             .ReturnsAsync(ReaderAccess.Grant(reader.Id, Guid.NewGuid(), section.ProjectId));
         _authFacade.Setup(f => f.IsBetaReader()).Returns(true);
@@ -91,13 +84,11 @@ public class PassageAnchorServiceTests
     {
         var reader = MakeReader();
         var section = MakePublishedSection();
-        var version = SectionVersion.Create(section, Guid.NewGuid(), 1, 1, 0);
-        var request = CreateRequest(section.Id, version.Id, "Alpha beta");
+        var request = CreateRequest(section.Id, "Alpha beta");
         var sut = CreateSut();
 
         _userRepo.Setup(r => r.GetByIdAsync(reader.Id, default)).ReturnsAsync(reader);
         _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
-        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
         _readerAccessRepo.Setup(r => r.GetByReaderAndProjectAsync(reader.Id, section.ProjectId, default))
             .ReturnsAsync(ReaderAccess.Grant(reader.Id, Guid.NewGuid(), section.ProjectId));
         _authFacade.Setup(f => f.IsBetaReader()).Returns(true);
@@ -122,13 +113,11 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, Guid.NewGuid(), 1, 1, 0);
-        var request = CreateRequest(section.Id, version.Id, "Alpha beta");
+        var request = CreateRequest(section.Id, "Alpha beta");
         var sut = CreateSut();
 
         _userRepo.Setup(r => r.GetByIdAsync(reader.Id, default)).ReturnsAsync(reader);
         _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
-        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
         _readerAccessRepo.Setup(r => r.GetByReaderAndProjectAsync(reader.Id, section.ProjectId, default))
             .ReturnsAsync(ReaderAccess.Grant(reader.Id, Guid.NewGuid(), section.ProjectId));
         _authFacade.Setup(f => f.IsBetaReader()).Returns(true);
@@ -143,13 +132,11 @@ public class PassageAnchorServiceTests
     {
         var reader = MakeReader();
         var section = MakePublishedSection();
-        var version = SectionVersion.Create(section, Guid.NewGuid(), 1, 1, 0);
-        var request = CreateRequest(section.Id, version.Id, "Alpha beta");
+        var request = CreateRequest(section.Id, "Alpha beta");
         var sut = CreateSut();
 
         _userRepo.Setup(r => r.GetByIdAsync(reader.Id, default)).ReturnsAsync(reader);
         _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
-        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
         _authFacade.Setup(f => f.IsBetaReader()).Returns(true);
         _readerAccessRepo.Setup(r => r.GetByReaderAndProjectAsync(reader.Id, section.ProjectId, default))
             .ReturnsAsync((ReaderAccess?)null);
@@ -162,13 +149,11 @@ public class PassageAnchorServiceTests
     {
         var reader = MakeReader();
         var section = MakePublishedSection();
-        var version = SectionVersion.Create(section, Guid.NewGuid(), 1, 1, 0);
-        var request = CreateRequest(section.Id, version.Id, "Alpha beta");
+        var request = CreateRequest(section.Id, "Alpha beta");
         var sut = CreateSut();
 
         _userRepo.Setup(r => r.GetByIdAsync(reader.Id, default)).ReturnsAsync(reader);
         _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
-        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
         _authFacade.Setup(f => f.IsBetaReader()).Returns(true);
         _readerAccessRepo.Setup(r => r.GetByReaderAndProjectAsync(reader.Id, section.ProjectId, default))
             .ReturnsAsync((ReaderAccess?)null);
@@ -182,7 +167,6 @@ public class PassageAnchorServiceTests
     {
         var reader = MakeReader();
         var section = MakePublishedSection();
-        var version = SectionVersion.Create(section, Guid.NewGuid(), 1, 1, 0);
         var snapshot = PassageAnchorSnapshot.Create(
             "Alpha beta",
             "Alpha beta",
@@ -194,7 +178,6 @@ public class PassageAnchorServiceTests
             "content-hash");
         var anchor = PassageAnchor.Create(
             section.Id,
-            version.Id,
             PassageAnchorPurpose.Comment,
             reader.Id,
             snapshot);
@@ -229,10 +212,8 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
-            version.Id,
             PassageAnchorPurpose.Comment,
             author.Id,
             PassageAnchorSnapshot.Create(
@@ -248,14 +229,12 @@ public class PassageAnchorServiceTests
 
         _anchorRepo.Setup(r => r.GetByIdAsync(anchor.Id, default)).ReturnsAsync(anchor);
         _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
-        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
         _userRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
         _authFacade.Setup(f => f.IsAuthor()).Returns(true);
 
         var result = await sut.TryResolveExactMatchAsync(anchor.Id, author.Id);
 
         Assert.NotNull(result);
-        Assert.Equal(version.Id, result!.TargetSectionVersionId);
         Assert.Equal(0, result.StartOffset);
         Assert.Equal(10, result.EndOffset);
         Assert.Equal(100, result.ConfidenceScore);
@@ -276,10 +255,8 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
-            version.Id,
             PassageAnchorPurpose.Comment,
             author.Id,
             PassageAnchorSnapshot.Create(
@@ -295,7 +272,6 @@ public class PassageAnchorServiceTests
 
         _anchorRepo.Setup(r => r.GetByIdAsync(anchor.Id, default)).ReturnsAsync(anchor);
         _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
-        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
         _userRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
         _authFacade.Setup(f => f.IsAuthor()).Returns(true);
 
@@ -318,10 +294,8 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
-            version.Id,
             PassageAnchorPurpose.Comment,
             author.Id,
             PassageAnchorSnapshot.Create(
@@ -337,14 +311,12 @@ public class PassageAnchorServiceTests
 
         _anchorRepo.Setup(r => r.GetByIdAsync(anchor.Id, default)).ReturnsAsync(anchor);
         _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
-        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
         _userRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
         _authFacade.Setup(f => f.IsAuthor()).Returns(true);
 
         var result = await sut.TryResolveContextMatchAsync(anchor.Id, author.Id);
 
         Assert.NotNull(result);
-        Assert.Equal(version.Id, result!.TargetSectionVersionId);
         Assert.Equal(80, result.ConfidenceScore);
         Assert.Equal(PassageAnchorMatchMethod.Context, result.MatchMethod);
         Assert.Equal(24, result.StartOffset);
@@ -365,10 +337,8 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
-            version.Id,
             PassageAnchorPurpose.Comment,
             author.Id,
             PassageAnchorSnapshot.Create(
@@ -384,7 +354,6 @@ public class PassageAnchorServiceTests
 
         _anchorRepo.Setup(r => r.GetByIdAsync(anchor.Id, default)).ReturnsAsync(anchor);
         _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
-        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
         _userRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
         _authFacade.Setup(f => f.IsAuthor()).Returns(true);
 
@@ -407,10 +376,8 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
-            version.Id,
             PassageAnchorPurpose.Comment,
             author.Id,
             PassageAnchorSnapshot.Create(
@@ -426,14 +393,12 @@ public class PassageAnchorServiceTests
 
         _anchorRepo.Setup(r => r.GetByIdAsync(anchor.Id, default)).ReturnsAsync(anchor);
         _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
-        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
         _userRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
         _authFacade.Setup(f => f.IsAuthor()).Returns(true);
 
         var result = await sut.TryResolveFuzzyMatchAsync(anchor.Id, author.Id);
 
         Assert.NotNull(result);
-        Assert.Equal(version.Id, result!.TargetSectionVersionId);
         Assert.Equal(PassageAnchorMatchMethod.Fuzzy, result.MatchMethod);
         Assert.Equal(80, result.ConfidenceScore);
         Assert.Equal(0, result.StartOffset);
@@ -454,10 +419,8 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
-            version.Id,
             PassageAnchorPurpose.Comment,
             author.Id,
             PassageAnchorSnapshot.Create(
@@ -473,7 +436,6 @@ public class PassageAnchorServiceTests
 
         _anchorRepo.Setup(r => r.GetByIdAsync(anchor.Id, default)).ReturnsAsync(anchor);
         _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
-        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
         _userRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
         _authFacade.Setup(f => f.IsAuthor()).Returns(true);
 
@@ -496,10 +458,8 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
-            version.Id,
             PassageAnchorPurpose.Comment,
             author.Id,
             PassageAnchorSnapshot.Create(
@@ -515,7 +475,6 @@ public class PassageAnchorServiceTests
 
         _anchorRepo.Setup(r => r.GetByIdAsync(anchor.Id, default)).ReturnsAsync(anchor);
         _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
-        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
         _userRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
         _authFacade.Setup(f => f.IsAuthor()).Returns(true);
 
@@ -524,7 +483,6 @@ public class PassageAnchorServiceTests
         Assert.Equal(PassageAnchorStatus.Exact, result.Status);
         Assert.NotNull(result.CurrentMatch);
         Assert.Equal(PassageAnchorMatchMethod.Exact, result.CurrentMatch!.MatchMethod);
-        Assert.Equal(version.Id, result.CurrentMatch.TargetSectionVersionId);
         _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
     }
 
@@ -542,10 +500,8 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
-            version.Id,
             PassageAnchorPurpose.Comment,
             author.Id,
             PassageAnchorSnapshot.Create(
@@ -561,7 +517,6 @@ public class PassageAnchorServiceTests
 
         _anchorRepo.Setup(r => r.GetByIdAsync(anchor.Id, default)).ReturnsAsync(anchor);
         _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
-        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
         _userRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
         _authFacade.Setup(f => f.IsAuthor()).Returns(true);
 
@@ -587,10 +542,8 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
-            version.Id,
             PassageAnchorPurpose.Comment,
             author.Id,
             PassageAnchorSnapshot.Create(
@@ -606,7 +559,6 @@ public class PassageAnchorServiceTests
 
         _anchorRepo.Setup(r => r.GetByIdAsync(anchor.Id, default)).ReturnsAsync(anchor);
         _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
-        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
         _userRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
         _authFacade.Setup(f => f.IsAuthor()).Returns(true);
 
@@ -632,10 +584,8 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
-            version.Id,
             PassageAnchorPurpose.Comment,
             author.Id,
             PassageAnchorSnapshot.Create(
@@ -651,7 +601,6 @@ public class PassageAnchorServiceTests
 
         _anchorRepo.Setup(r => r.GetByIdAsync(anchor.Id, default)).ReturnsAsync(anchor);
         _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
-        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
         _userRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
         _authFacade.Setup(f => f.IsAuthor()).Returns(true);
 
@@ -676,10 +625,8 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
-            version.Id,
             PassageAnchorPurpose.Comment,
             author.Id,
             PassageAnchorSnapshot.Create(
@@ -693,7 +640,6 @@ public class PassageAnchorServiceTests
                 "content-hash"));
         anchor.Relink(
             PassageAnchorMatch.Create(
-                version.Id,
                 0,
                 10,
                 "Alpha beta",
@@ -730,10 +676,8 @@ public class PassageAnchorServiceTests
             "section-hash",
             "Draft");
         section.PublishAsPartOfChapter("section-hash");
-        var version = SectionVersion.Create(section, author.Id, 1, 1, 0);
         var anchor = PassageAnchor.Create(
             section.Id,
-            version.Id,
             PassageAnchorPurpose.Comment,
             author.Id,
             PassageAnchorSnapshot.Create(
@@ -747,7 +691,6 @@ public class PassageAnchorServiceTests
                 "content-hash"));
         anchor.UpdateCurrentMatch(
             PassageAnchorMatch.Create(
-                version.Id,
                 0,
                 10,
                 "Alpha beta",
@@ -758,7 +701,6 @@ public class PassageAnchorServiceTests
 
         _anchorRepo.Setup(r => r.GetByIdAsync(anchor.Id, default)).ReturnsAsync(anchor);
         _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
-        _sectionVersionRepo.Setup(r => r.GetLatestAsync(section.Id, default)).ReturnsAsync(version);
         _userRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
         _authFacade.Setup(f => f.IsAuthor()).Returns(true);
 
@@ -807,12 +749,10 @@ public class PassageAnchorServiceTests
     /// </summary>
     private static CreatePassageAnchorRequest CreateRequest(
         Guid sectionId,
-        Guid versionId,
         string normalizedSelectedText)
     {
         return new CreatePassageAnchorRequest(
             sectionId,
-            versionId,
             PassageAnchorPurpose.Comment,
             "Alpha beta",
             normalizedSelectedText,
