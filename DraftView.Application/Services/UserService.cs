@@ -262,6 +262,19 @@ public class UserService(
         await unitOfWork.SaveChangesAsync(ct);
     }
 
+    /// <summary>
+    /// Updates the reader-return notification threshold for the author's preferences.
+    /// Has no effect if the user has no preferences row.
+    /// </summary>
+    public async Task UpdateReaderReturnThresholdAsync(Guid userId, int days, CancellationToken ct = default)
+    {
+        var prefs = await prefsRepo.GetByUserIdAsync(userId, ct);
+        if (prefs is null) return;
+
+        prefs.UpdateReaderReturnThreshold(days);
+        await unitOfWork.SaveChangesAsync(ct);
+    }
+
     public async Task UpdateReaderProfileAsync(Guid userId, string? bio, string? genreInterests, ReaderPace? pace, CancellationToken ct = default)
     {
         var prefs = await prefsRepo.GetByUserIdAsync(userId, ct)

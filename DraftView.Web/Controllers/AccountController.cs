@@ -487,6 +487,7 @@ public class AccountController(
             ShowDiffOnRevisit = prefs?.ShowDiffOnRevisit ?? false,
             ShowEdits = prefs?.ShowEdits ?? false,
             NotifyAuthorOnCommentActivity = prefs?.NotifyAuthorOnCommentActivity ?? true,
+            ReaderReturnThresholdDays = prefs?.ReaderReturnThresholdDays ?? 7,
             ReadingStyle = prefs?.ReadingStyle.ToString() ?? "StoryReader",
             DiffCooldownHours = prefs?.DiffCooldownHours ?? 24
         };
@@ -625,6 +626,27 @@ public class AccountController(
         {
             await userService.UpdateAuthorCommentEmailPreferenceAsync(user.Id, model.NotifyAuthorOnCommentActivity);
             TempData["Success"] = "Author comment email preference updated.";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction("Settings");
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangeReaderReturnThreshold(ChangeReaderReturnThresholdViewModel model)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return RedirectToAction("Login");
+
+        try
+        {
+            await userService.UpdateReaderReturnThresholdAsync(user.Id, model.ReaderReturnThresholdDays);
+            TempData["Success"] = "Reader return notification threshold updated.";
         }
         catch (Exception ex)
         {

@@ -64,5 +64,9 @@ public class UserPreferencesConfiguration : IEntityTypeConfiguration<UserPrefere
         builder.Property(p => p.NotifyAuthorOnCommentActivity)
             .IsRequired()
             .HasDefaultValue(true);
+
+        builder.Property(p => p.ReaderReturnThresholdDays)
+            .IsRequired()
+            .HasDefaultValue(7);
     }
 }

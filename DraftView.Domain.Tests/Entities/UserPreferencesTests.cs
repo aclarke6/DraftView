@@ -191,6 +191,65 @@ public class UserPreferencesTests
     }
 
     // ---------------------------------------------------------------------------
+    // ReaderReturnThresholdDays
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CreateForAuthor_DefaultsReaderReturnThresholdDaysTo7()
+    {
+        var prefs = UserPreferences.CreateForAuthor(UserId, AuthorDigestMode.Immediate, null, "Europe/London");
+
+        Assert.Equal(7, prefs.ReaderReturnThresholdDays);
+    }
+
+    [Theory]
+    [InlineData(7)]
+    [InlineData(14)]
+    [InlineData(21)]
+    [InlineData(28)]
+    public void UpdateReaderReturnThreshold_ValidDays_UpdatesProperty(int days)
+    {
+        var prefs = UserPreferences.CreateForAuthor(UserId, AuthorDigestMode.Immediate, null, "Europe/London");
+
+        prefs.UpdateReaderReturnThreshold(days);
+
+        Assert.Equal(days, prefs.ReaderReturnThresholdDays);
+    }
+
+    [Fact]
+    public void UpdateReaderReturnThreshold_ZeroDays_ThrowsInvariantViolation()
+    {
+        var prefs = UserPreferences.CreateForAuthor(UserId, AuthorDigestMode.Immediate, null, "Europe/London");
+
+        var ex = Assert.Throws<InvariantViolationException>(
+            () => prefs.UpdateReaderReturnThreshold(0));
+
+        Assert.Equal("I-PREF-RETURN-THRESHOLD", ex.InvariantCode);
+    }
+
+    [Fact]
+    public void UpdateReaderReturnThreshold_NegativeDays_ThrowsInvariantViolation()
+    {
+        var prefs = UserPreferences.CreateForAuthor(UserId, AuthorDigestMode.Immediate, null, "Europe/London");
+
+        var ex = Assert.Throws<InvariantViolationException>(
+            () => prefs.UpdateReaderReturnThreshold(-1));
+
+        Assert.Equal("I-PREF-RETURN-THRESHOLD", ex.InvariantCode);
+    }
+
+    [Fact]
+    public void UpdateReaderReturnThreshold_CalledTwice_LastValueWins()
+    {
+        var prefs = UserPreferences.CreateForAuthor(UserId, AuthorDigestMode.Immediate, null, "Europe/London");
+
+        prefs.UpdateReaderReturnThreshold(14);
+        prefs.UpdateReaderReturnThreshold(21);
+
+        Assert.Equal(21, prefs.ReaderReturnThresholdDays);
+    }
+
+    // ---------------------------------------------------------------------------
     // Reader profile (ReaderBio, ReaderGenreInterests, ReaderPace)
     // ---------------------------------------------------------------------------
 

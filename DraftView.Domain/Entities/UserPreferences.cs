@@ -25,6 +25,7 @@ public sealed class UserPreferences
     public int? AuthorDigestIntervalHours{get; private set;}
     public string? AuthorTimezone{get; private set;}
     public bool NotifyAuthorOnCommentActivity{get; private set;}
+    public int ReaderReturnThresholdDays{get; private set;}
 
     // Reader prose preferences
     public ProseFont ProseFont{get; private set;}
@@ -93,6 +94,7 @@ public sealed class UserPreferences
             AuthorDigestIntervalHours = digestMode == Enumerations.AuthorDigestMode.Digest ? digestIntervalHours : null,
             AuthorTimezone = timezone,
             NotifyAuthorOnCommentActivity = true,
+            ReaderReturnThresholdDays = 7,
             DisplayTheme = DisplayTheme.Light,
             ProseFont = ProseFont.SystemSerif,
             ProseFontSize = ProseFontSize.Medium,
@@ -137,6 +139,19 @@ public sealed class UserPreferences
     public void UpdateAuthorCommentEmailPreference(bool notifyAuthorOnCommentActivity)
     {
         NotifyAuthorOnCommentActivity = notifyAuthorOnCommentActivity;
+    }
+
+    /// <summary>
+    /// Updates the number of days a reader must be absent before their return triggers a notification.
+    /// </summary>
+    /// <exception cref="InvariantViolationException">Thrown when days is less than 1.</exception>
+    public void UpdateReaderReturnThreshold(int days)
+    {
+        if (days < 1)
+            throw new InvariantViolationException("I-PREF-RETURN-THRESHOLD",
+                "Reader return threshold must be at least 1 day.");
+
+        ReaderReturnThresholdDays = days;
     }
 
     public void UpdateProseFontPreferences(ProseFont proseFont, ProseFontSize proseFontSize)

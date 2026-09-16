@@ -366,4 +366,32 @@ public class UserServiceTests
         Assert.False(prefs.NotifyAuthorOnCommentActivity);
         UnitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
     }
+
+    [Fact]
+    public async Task UpdateReaderReturnThresholdAsync_WhenPreferencesExist_UpdatesAndSaves()
+    {
+        var author = MakeAuthor();
+        var prefs = UserPreferences.CreateForAuthor(author.Id, AuthorDigestMode.Immediate, null, "Europe/London");
+        var sut = CreateSut();
+
+        PrefsRepo.Setup(r => r.GetByUserIdAsync(author.Id, default)).ReturnsAsync(prefs);
+
+        await sut.UpdateReaderReturnThresholdAsync(author.Id, 14);
+
+        Assert.Equal(14, prefs.ReaderReturnThresholdDays);
+        UnitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateReaderReturnThresholdAsync_WhenPreferencesNull_DoesNothing()
+    {
+        var author = MakeAuthor();
+        var sut = CreateSut();
+
+        PrefsRepo.Setup(r => r.GetByUserIdAsync(author.Id, default)).ReturnsAsync((UserPreferences?)null);
+
+        await sut.UpdateReaderReturnThresholdAsync(author.Id, 14);
+
+        UnitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Never);
+    }
 }

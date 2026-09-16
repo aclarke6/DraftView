@@ -1,7 +1,7 @@
 ﻿# DraftView — Task List
 Last updated: 2026-09-16
 Last deployed: 2026-09-16 17:11 (commit: abd1643)
-Last merged: 2026-08-31 — PR #112 (fix: null classification suppressed badges for pre-versioning readers) merged to main
+Last merged: 2026-09-16 — PRs #142/#143/#145 (comment email alerts, dwell-time read gate, dashboard sync filter) merged to main
 
 ---
 
@@ -12,7 +12,7 @@ Last merged: 2026-08-31 — PR #112 (fix: null classification suppressed badges 
 **Repository:** https://github.com/aclarke6/DraftView
 
 ### Current Test State
-- 1,382 total, 1,382 passed, 1 skipped, 0 failed
+- 1,284 total, 1,284 passed, 1 skipped, 0 failed
 - 1 skipped — `SmtpEmailSenderIntegrationTests` (sends real email, manual only)
 
 ---
@@ -79,7 +79,6 @@ Last merged: 2026-08-31 — PR #112 (fix: null classification suppressed badges 
 
 | # | Item | Issue | Status |
 |---|------|-------|--------|
-| 0 | Email author when a comment is posted | [#141](https://github.com/aclarke6/DraftView/issues/141) | In progress |
 | 1 | CHANGE-006: Collapsible reader nav + panel pin/unpin | [#64](https://github.com/aclarke6/DraftView/issues/64) | Open |
 | 2 | CHANGE-011: Panoramic banner asset (~2200x700 px) | [#54](https://github.com/aclarke6/DraftView/issues/54) | Open — asset needed |
 | 3 | RS-H: Reader Insight | [#66](https://github.com/aclarke6/DraftView/issues/66) | Open — follows RS-F |

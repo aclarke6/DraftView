@@ -25,6 +25,7 @@ public class ReadingProgressServiceTests
     private readonly Mock<IUnitOfWork>                   _unitOfWork          = new();
     private readonly Mock<IUserRepository>               _userRepo            = new();
     private readonly Mock<IAuthorNotificationRepository> _notificationRepo    = new();
+    private readonly Mock<IUserPreferencesRepository>    _prefsRepo           = new();
 
     private ReadingProgressService CreateSut() => new(
         _readEventRepo.Object,
@@ -33,7 +34,8 @@ public class ReadingProgressServiceTests
         _passageAnchorService.Object,
         _unitOfWork.Object,
         _userRepo.Object,
-        _notificationRepo.Object);
+        _notificationRepo.Object,
+        _prefsRepo.Object);
 
     private static Section MakePublishedSection(Guid projectId)
     {
@@ -918,6 +920,75 @@ public class ReadingProgressServiceTests
 
         _readEventRepo.Setup(r => r.GetAsync(section.Id, userId, default)).ReturnsAsync((ReadEvent?)null);
         SetupNotificationDeps(author, reader, userId, section);
+
+        await sut.RecordOpenAsync(section.Id, userId);
+
+        _notificationRepo.Verify(
+            r => r.AddAsync(It.Is<AuthorNotification>(n =>
+                n.EventType == NotificationEventType.ReaderReturned),
+                default),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task RecordOpenAsync_FirstOpen_WithPreviousEventsBeyondConfiguredThreshold_WritesReaderReturnedNotification()
+    {
+        var projectId = Guid.NewGuid();
+        var userId    = Guid.NewGuid();
+        var section   = MakePublishedDocument(projectId);
+        var author    = User.Create("a@test.com", "Author Name", Role.Author);
+        var reader    = User.Create("r@test.com", "Reader Name", Role.BetaReader);
+        var authorPrefs = UserPreferences.CreateForAuthor(author.Id, AuthorDigestMode.Immediate, null, "Europe/London");
+        authorPrefs.UpdateReaderReturnThreshold(14);
+        var sut = CreateSut();
+
+        var eventJustWithin14Days = MakeOldReadEvent(Guid.NewGuid(), userId, daysAgo: 15);
+
+        _readEventRepo.Setup(r => r.GetAsync(section.Id, userId, default)).ReturnsAsync((ReadEvent?)null);
+        _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
+        _userRepo.Setup(r => r.GetByIdAsync(userId, default)).ReturnsAsync(reader);
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _readEventRepo.Setup(r => r.GetByUserIdAsync(userId, default))
+            .ReturnsAsync(new List<ReadEvent> { eventJustWithin14Days });
+        _prefsRepo.Setup(r => r.GetByUserIdAsync(author.Id, default)).ReturnsAsync(authorPrefs);
+        _sectionRepo.Setup(r => r.GetPublishedByProjectIdAsync(section.ProjectId, default))
+            .ReturnsAsync(new List<Section> { section });
+        _readEventRepo.Setup(r => r.HasReadAsync(section.Id, userId, default)).ReturnsAsync(false);
+
+        await sut.RecordOpenAsync(section.Id, userId);
+
+        _notificationRepo.Verify(
+            r => r.AddAsync(It.Is<AuthorNotification>(n =>
+                n.EventType == NotificationEventType.ReaderReturned &&
+                n.AuthorId  == author.Id),
+                default),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task RecordOpenAsync_FirstOpen_WithPreviousEventsWithinConfiguredThreshold_DoesNotWriteReaderReturned()
+    {
+        var projectId = Guid.NewGuid();
+        var userId    = Guid.NewGuid();
+        var section   = MakePublishedDocument(projectId);
+        var author    = User.Create("a@test.com", "Author Name", Role.Author);
+        var reader    = User.Create("r@test.com", "Reader Name", Role.BetaReader);
+        var authorPrefs = UserPreferences.CreateForAuthor(author.Id, AuthorDigestMode.Immediate, null, "Europe/London");
+        authorPrefs.UpdateReaderReturnThreshold(14);
+        var sut = CreateSut();
+
+        var eventWithin14Days = MakeOldReadEvent(Guid.NewGuid(), userId, daysAgo: 10);
+
+        _readEventRepo.Setup(r => r.GetAsync(section.Id, userId, default)).ReturnsAsync((ReadEvent?)null);
+        _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
+        _userRepo.Setup(r => r.GetByIdAsync(userId, default)).ReturnsAsync(reader);
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _readEventRepo.Setup(r => r.GetByUserIdAsync(userId, default))
+            .ReturnsAsync(new List<ReadEvent> { eventWithin14Days });
+        _prefsRepo.Setup(r => r.GetByUserIdAsync(author.Id, default)).ReturnsAsync(authorPrefs);
+        _sectionRepo.Setup(r => r.GetPublishedByProjectIdAsync(section.ProjectId, default))
+            .ReturnsAsync(new List<Section> { section });
+        _readEventRepo.Setup(r => r.HasReadAsync(section.Id, userId, default)).ReturnsAsync(false);
 
         await sut.RecordOpenAsync(section.Id, userId);
 

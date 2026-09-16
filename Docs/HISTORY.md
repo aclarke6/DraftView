@@ -78,6 +78,12 @@ All 5 phases complete and merged to main.
 
 ---
 
+## Changes and Features
+
+- Issue #146 — Configurable reader-return notification threshold. Replaced hardcoded 7-day constant in `ReadingProgressService` with a per-author `ReaderReturnThresholdDays` preference (default 7). Authors can select 1/2/3/4 weeks on Account Settings. One EF migration. (2026-09-16)
+
+---
+
 ## Bugs Fixed
 
 - Issue #144 — Author Dashboard default Recent Activity now suppresses `Sync completed` entries while leaving the Sync filter available for on-demand review. Account Settings no longer presents the Activity Log rows as unsaved checkbox preferences; they are now clear-only controls with guidance back to the Dashboard filter. (2026-09-16)
