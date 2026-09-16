@@ -60,6 +60,9 @@ else
                         </td>
                         <td>
                             <div class="actions-cell">
+                                <a asp-action="SendNote" asp-route-readerId="@r.Id"
+                                   class="comment-action-btn"
+                                   title="Send a note to @r.DisplayName">@Html.Raw(Icons.Send())</a>
                                 @if (r.Status == ReaderStatus.Active)
                                 {
                                     <form asp-action="ImpersonateReader" method="post">

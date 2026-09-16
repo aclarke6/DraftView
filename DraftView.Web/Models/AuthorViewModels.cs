@@ -247,3 +247,17 @@ public class ManualChapterVersionRowViewModel
     public DateTime CreatedAt { get; init; }
     public int ContentLength { get; init; }
 }
+
+public class SendNoteViewModel
+{
+    public Guid RecipientId { get; set; }
+    public string RecipientDisplayName { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Please enter a subject.")]
+    [StringLength(200, ErrorMessage = "Subject must be 200 characters or fewer.")]
+    public string Subject { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Please enter a message.")]
+    [StringLength(4000, ErrorMessage = "Message must be 4000 characters or fewer.")]
+    public string Body { get; set; } = string.Empty;
+}

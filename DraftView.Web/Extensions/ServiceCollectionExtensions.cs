@@ -45,6 +45,7 @@ namespace DraftView.Web.Extensions
             services.AddScoped<IReaderAccessRepository, ReaderAccessRepository>();
             services.AddScoped<ISystemStateMessageRepository, SystemStateMessageRepository>();
             services.AddScoped<IAuthorNotificationRepository, AuthorNotificationRepository>();
+            services.AddScoped<IReaderMessageRepository, ReaderMessageRepository>();
             services.AddScoped<IAccessRequestRepository, AccessRequestRepository>();
             services.AddScoped<IManualChapterRepository, ManualChapterRepository>();
             services.AddScoped<IManualChapterVersionRepository, ManualChapterVersionRepository>();
@@ -143,6 +144,7 @@ namespace DraftView.Web.Extensions
 
             // Reader self-registration (MT-Sprint-3)
             services.AddScoped<IReaderSelfRegistrationService, ReaderSelfRegistrationService>();
+            services.AddScoped<IReaderMessageService, ReaderMessageService>();
 
             return services;
         }

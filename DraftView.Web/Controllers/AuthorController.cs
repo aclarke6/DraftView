@@ -38,7 +38,8 @@ public class AuthorController(
     IReaderManagementService readerManagementService,
     IManualUploadService manualUploadService,
     IManualChapterRepository manualChapterRepo,
-    IManualChapterVersionRepository manualChapterVersionRepo) : BaseController(userRepo)
+    IManualChapterVersionRepository manualChapterVersionRepo,
+    IReaderMessageService readerMessageService) : BaseController(userRepo)
 {
     // ---------------------------------------------------------------------------
     // Dashboard
@@ -553,6 +554,52 @@ public class AuthorController(
 
         await userService.DeactivateUserAsync(userId, author.Id);
         TempData["Success"] = "Reader deactivated.";
+        return RedirectToAction("Readers");
+    }
+
+    // ---------------------------------------------------------------------------
+    // Send note to reader
+    // ---------------------------------------------------------------------------
+    [HttpGet]
+    public async Task<IActionResult> SendNote(Guid readerId)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        var recipient = await userRepo.GetByIdAsync(readerId);
+        if (recipient is null) return NotFound();
+
+        return View(new SendNoteViewModel
+        {
+            RecipientId          = readerId,
+            RecipientDisplayName = recipient.DisplayName
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SendNote(SendNoteViewModel model)
+    {
+        var (author, error) = await RequireCurrentAuthorAsync();
+        if (error is not null || author is null) return error ?? Forbid();
+
+        if (!ModelState.IsValid)
+        {
+            var recipient = await userRepo.GetByIdAsync(model.RecipientId);
+            model.RecipientDisplayName = recipient?.DisplayName ?? string.Empty;
+            return View(model);
+        }
+
+        try
+        {
+            await readerMessageService.SendAsync(author.Id, model.RecipientId, model.Subject, model.Body);
+            TempData["Success"] = $"Your note to {model.RecipientDisplayName} was sent.";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
         return RedirectToAction("Readers");
     }
 

@@ -9,7 +9,8 @@ public class ConsoleEmailSender : IEmailSender
         string toName,
         string subject,
         string htmlBody,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? replyToEmail = null)
     {
         var sep = new string('-', 60);
         Console.ForegroundColor = ConsoleColor.Cyan;
@@ -19,6 +20,8 @@ public class ConsoleEmailSender : IEmailSender
         Console.WriteLine(sep);
         Console.ResetColor();
         Console.WriteLine($"  To:      {toName} <{toEmail}>");
+        if (!string.IsNullOrWhiteSpace(replyToEmail))
+            Console.WriteLine($"  Reply-To: {replyToEmail}");
         Console.WriteLine($"  Subject: {subject}");
         Console.WriteLine();
         Console.WriteLine(htmlBody);
