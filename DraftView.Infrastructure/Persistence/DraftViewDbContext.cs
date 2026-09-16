@@ -50,6 +50,7 @@ public class DraftViewDbContext : IdentityDbContext<IdentityUser>, IUnitOfWork
     public DbSet<ReaderAccess> ReaderAccess { get; set; } = default!;
     public DbSet<SystemStateMessage> SystemStateMessages { get; set; } = default!;
     public DbSet<AuthorNotification> AuthorNotifications => Set<AuthorNotification>();
+    public DbSet<ReaderMessage> ReaderMessages => Set<ReaderMessage>();
     public DbSet<AccessRequest> AccessRequests => Set<AccessRequest>();
     public DbSet<ManualChapter> ManualChapters => Set<ManualChapter>();
     public DbSet<ManualChapterVersion> ManualChapterVersions => Set<ManualChapterVersion>();

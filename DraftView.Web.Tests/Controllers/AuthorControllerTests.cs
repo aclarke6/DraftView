@@ -39,6 +39,7 @@ public class AuthorControllerTests
     private readonly Mock<IProjectManagementService> projectManagementService = new();
     private readonly Mock<IContentNavigationService> contentNavigationService = new();
     private readonly Mock<IReaderManagementService> readerManagementService = new();
+    private readonly Mock<IReaderMessageService> readerMessageService = new();
     private readonly Mock<IManualUploadService> manualUploadService = new();
     private readonly Mock<IManualChapterRepository> manualChapterRepo = new();
     private readonly Mock<IManualChapterVersionRepository> manualChapterVersionRepo = new();
@@ -81,7 +82,8 @@ public class AuthorControllerTests
             readerManagementService.Object,
             manualUploadService.Object,
             manualChapterRepo.Object,
-            manualChapterVersionRepo.Object);
+            manualChapterVersionRepo.Object,
+            readerMessageService.Object);
 
         controller.ControllerContext = new ControllerContext
         {

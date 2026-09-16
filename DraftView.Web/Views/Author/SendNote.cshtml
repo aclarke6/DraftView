@@ -1,0 +1,46 @@
+@model DraftView.Web.Models.SendNoteViewModel
+@{
+    ViewData["Title"] = $"Send a note to {Model.RecipientDisplayName}";
+}
+
+<div class="page-header page-header--image">
+    <div class="page-header__inner">
+        <h1 class="page-header__title">Send a note to @Model.RecipientDisplayName</h1>
+        <p class="page-header__subtitle">This will be emailed from DraftView. Your email address will be visible in the reply-to field.</p>
+    </div>
+</div>
+
+<div class="settings-page">
+    <div class="settings-layout">
+        <div class="settings-layout__main">
+            <div class="card settings-card">
+                <div class="card__body">
+                    <form asp-action="SendNote" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="RecipientId" value="@Model.RecipientId" />
+                        <input type="hidden" name="RecipientDisplayName" value="@Model.RecipientDisplayName" />
+
+                        <div class="settings-form-field" style="margin-bottom: var(--space-4);">
+                            <label class="form-label" for="Subject">Subject</label>
+                            <input type="text" id="Subject" name="Subject" value="@Model.Subject"
+                                   class="form-input" maxlength="200" required />
+                            <span asp-validation-for="Subject" class="field-validation-error"></span>
+                        </div>
+
+                        <div class="settings-form-field" style="margin-bottom: var(--space-4);">
+                            <label class="form-label" for="Body">Message</label>
+                            <textarea id="Body" name="Body" class="form-input"
+                                      rows="8" maxlength="4000" required>@Model.Body</textarea>
+                            <span asp-validation-for="Body" class="field-validation-error"></span>
+                        </div>
+
+                        <div class="settings-form-row">
+                            <button type="submit" class="btn btn--primary">Send</button>
+                            <a asp-action="Readers" class="btn btn--ghost">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
