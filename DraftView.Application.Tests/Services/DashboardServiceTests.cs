@@ -127,6 +127,32 @@ public class DashboardServiceTests
             Times.Once);
     }
 
+    [Fact]
+    public async Task GetNotificationsAsync_DefaultFeed_ExcludesSyncCompletedNotifications()
+    {
+        var commentNotification = AuthorNotification.Create(
+            AuthorId, NotificationEventType.NewComment, "Alice commented", null, null, DateTime.UtcNow);
+        var syncNotification = AuthorNotification.Create(
+            AuthorId, NotificationEventType.SyncCompleted, "Sync completed for Novel", null, null, DateTime.UtcNow);
+        var uploadNotification = AuthorNotification.Create(
+            AuthorId, NotificationEventType.ChapterUploaded, "Chapter uploaded", null, null, DateTime.UtcNow);
+        var sut = CreateSut();
+
+        _notificationRepo
+            .Setup(r => r.PruneOlderThanAsync(AuthorId, It.IsAny<DateTime>(), default))
+            .Returns(Task.CompletedTask);
+        _notificationRepo
+            .Setup(r => r.GetByAuthorIdAsync(AuthorId, default))
+            .ReturnsAsync([commentNotification, syncNotification, uploadNotification]);
+
+        var result = await sut.GetNotificationsAsync(AuthorId);
+
+        Assert.Equal(2, result.Count);
+        Assert.DoesNotContain(result, n => n.EventType == NotificationEventType.SyncCompleted);
+        Assert.Contains(result, n => n.EventType == NotificationEventType.NewComment);
+        Assert.Contains(result, n => n.EventType == NotificationEventType.ChapterUploaded);
+    }
+
     // -----------------------------------------------------------------------
     // DismissNotificationAsync
     // -----------------------------------------------------------------------

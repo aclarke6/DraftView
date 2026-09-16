@@ -1,5 +1,5 @@
 # DraftView — Completed Work History
-Last updated: 2026-08-31
+Last updated: 2026-09-16
 
 ---
 
@@ -80,6 +80,7 @@ All 5 phases complete and merged to main.
 
 ## Bugs Fixed
 
+- Issue #144 — Author Dashboard default Recent Activity now suppresses `Sync completed` entries while leaving the Sync filter available for on-demand review. Account Settings no longer presents the Activity Log rows as unsaved checkbox preferences; they are now clear-only controls with guidance back to the Dashboard filter. (2026-09-16)
 - Issue #96 — `GetCurrentUserAsync` used `User.Identity.Name` (the Identity `UserName`) as the email address for HMAC domain-user lookup. Readers who chose a custom username at invitation acceptance (e.g. `JennyMoss`) had `UserName ≠ Email`, so the lookup returned null and every controller action returned `Forbid()` → AccessDenied. Fixed by reading `ClaimTypes.Email` first (already present in the sign-in cookie via the default Identity `UserClaimsPrincipalFactory`), falling back to `User.Identity.Name` for sessions where `UserName == Email`. Confirmed on production: Jenny was unblocked immediately after deploy without requiring a role or data change. Fixed in PR #97, `BaseController.GetCurrentUserAsync()` (2026-08-30)
 - Issue #94 — `IsReaderActive` flag incorrectly gated readers with explicit `ReaderAccess` grants in `ReaderController`. `DesktopDashboard`, `MobileDashboard`, and `Chapters` all checked `!project.IsReaderActive` before serving content to readers, but `IsReaderActive` controls only the public request-access flow — it must not affect readers already granted explicit access. `IsSoftDeleted` is the correct gate. Removed `!project.IsReaderActive` from all three guards. Fixed in PR #98 (2026-08-30)
 - Issue #84 — Sync service aborted on blank Scrivener section titles (`InvariantViolationException` → `Error` status with no visible cause in UI). Fixed in PR #85: title sanitized to `"Untitled"` in `ScrivenerSyncService.ReconcileNodeAsync` before reaching domain factories; sync now completes as `Healthy` with a warning log. `SyncErrorMessage` is also surfaced as inline text beneath the Error badge on Author Dashboard so authors can diagnose failures without leaving the page. `PostgreSQL.md` updated with diagnostic query and common error message table (2026-08-29)

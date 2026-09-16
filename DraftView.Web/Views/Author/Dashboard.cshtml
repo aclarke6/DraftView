@@ -272,7 +272,7 @@
                 </span>
                 @if (Model.ActiveTypeFilter.HasValue)
                 {
-                    <a asp-action="Dashboard" class="btn btn--ghost btn--sm">All</a>
+                    <a asp-action="Dashboard" class="btn btn--ghost btn--sm">Default</a>
                 }
             </div>
 
@@ -284,7 +284,7 @@
                 var syncClass     = FilterChipClass(Model.ActiveTypeFilter, NotificationFilterGroup.Sync);
             }
             <div class="notification-filters">
-                <a asp-action="Dashboard" class="@allClass">All</a>
+                <a asp-action="Dashboard" class="@allClass">Default</a>
                 <a asp-action="Dashboard" asp-route-type="@NotificationFilterGroup.Comments" class="@commentClass">Comments</a>
                 <a asp-action="Dashboard" asp-route-type="@NotificationFilterGroup.Replies"  class="@replyClass">Replies</a>
                 <a asp-action="Dashboard" asp-route-type="@NotificationFilterGroup.Readers"  class="@readerClass">Readers</a>
@@ -379,7 +379,6 @@
         setTimeout(pollSyncStatus, 2000);
     </script>
 }
-
 
 
 

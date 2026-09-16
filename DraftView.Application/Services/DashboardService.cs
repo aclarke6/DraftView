@@ -52,7 +52,9 @@ public class DashboardService(
         await notificationRepo.PruneOlderThanAsync(authorId, DateTime.UtcNow.AddDays(-90), ct);
         return group.HasValue
             ? await notificationRepo.GetByAuthorIdAndTypesAsync(authorId, GroupTypes[group.Value], ct)
-            : await notificationRepo.GetByAuthorIdAsync(authorId, ct);
+            : (await notificationRepo.GetByAuthorIdAsync(authorId, ct))
+                .Where(notification => notification.EventType != NotificationEventType.SyncCompleted)
+                .ToList();
     }
 
     public async Task DismissNotificationAsync(
