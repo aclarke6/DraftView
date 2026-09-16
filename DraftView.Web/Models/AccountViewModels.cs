@@ -67,6 +67,7 @@ public class SettingsViewModel
     public string? ReaderPace { get; set; }
     public bool ShowDiffOnRevisit { get; set; }
     public bool ShowEdits { get; set; }
+    public bool NotifyAuthorOnCommentActivity { get; set; }
     public string ReadingStyle { get; set; } = "StoryReader";
     public int DiffCooldownHours { get; set; } = 24;
 }
@@ -80,6 +81,11 @@ public class ChangeDiffPreferencesViewModel
     public string ReadingStyle { get; set; } = "StoryReader";
 
     public int DiffCooldownHours { get; set; } = 24;
+}
+
+public class ChangeAuthorCommentEmailPreferenceViewModel
+{
+    public bool NotifyAuthorOnCommentActivity { get; set; } = true;
 }
 
 public class UpdateReaderProfileViewModel

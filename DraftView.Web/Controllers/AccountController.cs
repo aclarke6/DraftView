@@ -486,6 +486,7 @@ public class AccountController(
             ReaderPace = prefs?.ReaderPace?.ToString(),
             ShowDiffOnRevisit = prefs?.ShowDiffOnRevisit ?? false,
             ShowEdits = prefs?.ShowEdits ?? false,
+            NotifyAuthorOnCommentActivity = prefs?.NotifyAuthorOnCommentActivity ?? true,
             ReadingStyle = prefs?.ReadingStyle.ToString() ?? "StoryReader",
             DiffCooldownHours = prefs?.DiffCooldownHours ?? 24
         };
@@ -603,6 +604,27 @@ public class AccountController(
             await userService.UpdateDiffPreferencesAsync(user.Id, model.ShowDiffOnRevisit, readingStyle, cooldownHours);
             await userService.UpdateShowEditsAsync(user.Id, model.ShowEdits);
             TempData["Success"] = "Change notification preferences updated.";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToAction("Settings");
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangeAuthorCommentEmailPreference(ChangeAuthorCommentEmailPreferenceViewModel model)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return RedirectToAction("Login");
+
+        try
+        {
+            await userService.UpdateAuthorCommentEmailPreferenceAsync(user.Id, model.NotifyAuthorOnCommentActivity);
+            TempData["Success"] = "Author comment email preference updated.";
         }
         catch (Exception ex)
         {
@@ -791,8 +813,6 @@ public class AccountController(
         return await connectionRepo.GetByUserIdAsync(userId);
     }
 }
-
-
 
 
 

@@ -6,6 +6,7 @@ using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Interfaces.Services;
 using DraftView.Domain.Notifications;
 using Microsoft.Extensions.Configuration;
+using System.Net;
 
 namespace DraftView.Application.Services;
 
@@ -270,9 +271,13 @@ public class CommentService(
             return;
 
         var commentLink = BuildAuthorCommentLink(section.Id, comment.Id);
+        var encodedDisplayName = WebUtility.HtmlEncode(commentAuthor.DisplayName);
+        var encodedSectionTitle = WebUtility.HtmlEncode(section.Title);
+        var encodedCommentBody = WebUtility.HtmlEncode(comment.Body);
+
         var subject = $"{commentAuthor.DisplayName} {actionText} \"{section.Title}\"";
-        var body = $"<p>{commentAuthor.DisplayName} posted on <strong>{section.Title}</strong>.</p>" +
-                   $"<p>{comment.Body}</p>" +
+        var body = $"<p>{encodedDisplayName} posted on <strong>{encodedSectionTitle}</strong>.</p>" +
+                   $"<p>{encodedCommentBody}</p>" +
                    $"<p><a href=\"{commentLink}\">Open in DraftView</a></p>";
 
         await emailSender.SendAsync(

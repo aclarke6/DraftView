@@ -54,7 +54,7 @@
         if (c.Visibility == Visibility.Private)
             commentClasses += " author-section-comment--private";
 
-        <div class="@commentClasses">
+        <div id="comment-@c.Id" class="@commentClasses">
             <div class="author-section-comment__header">
                 <div class="author-section-comment__meta">
                     <strong class="author-section-comment__author">@authorName</strong>
@@ -129,4 +129,3 @@
         _ => string.Empty
     };
 }
-

@@ -9,6 +9,7 @@ using DraftView.Application.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -416,6 +417,34 @@ public class AccountControllerTests
     }
 
     [Fact]
+    public async Task Settings_AuthorRole_LoadsAuthorCommentEmailPreference()
+    {
+        var user = Domain.Entities.User.Create("author@example.test", "Author", Domain.Enumerations.Role.Author);
+        var prefs = UserPreferences.CreateForAuthor(user.Id, AuthorDigestMode.Immediate, null, "Europe/London");
+        prefs.UpdateAuthorCommentEmailPreference(false);
+        var sut = CreateSut(AuthenticatedUserWithRole("author@example.test", Domain.Enumerations.Role.Author.ToString()));
+        var dropboxRepo = new Mock<IDropboxConnectionRepository>();
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection()
+            .AddSingleton(dropboxRepo.Object)
+            .BuildServiceProvider();
+        sut.ControllerContext.HttpContext.RequestServices = services;
+
+        userRepo.Setup(r => r.GetByEmailAsync("author@example.test"))
+            .ReturnsAsync(user);
+        prefsRepo.Setup(r => r.GetByUserIdAsync(user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(prefs);
+        controlledUserEmailService
+            .Setup(s => s.GetEmailAsync(It.IsAny<DraftView.Application.Contracts.UserEmailAccessRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("author@example.test");
+
+        var result = await sut.Settings();
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<SettingsViewModel>(view.Model);
+        Assert.False(model.NotifyAuthorOnCommentActivity);
+    }
+
+    [Fact]
     public async Task ChangeProseFontPreferences_ValidModel_CallsUpdateServiceAndRedirectsToSettings()
     {
         var user = Domain.Entities.User.Create("reader@example.test", "Reader", Domain.Enumerations.Role.BetaReader);
@@ -437,6 +466,28 @@ public class AccountControllerTests
             user.Id,
             ProseFont.SansSerif,
             ProseFontSize.ExtraLarge,
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ChangeAuthorCommentEmailPreference_ValidModel_CallsUpdateServiceAndRedirectsToSettings()
+    {
+        var user = Domain.Entities.User.Create("author@example.test", "Author", Domain.Enumerations.Role.Author);
+        var sut = CreateSut(AuthenticatedUserWithRole("author@example.test", Domain.Enumerations.Role.Author.ToString()));
+        sut.TempData = new TempDataDictionary(sut.HttpContext, Mock.Of<ITempDataProvider>());
+
+        userRepo.Setup(r => r.GetByEmailAsync("author@example.test")).ReturnsAsync(user);
+
+        var result = await sut.ChangeAuthorCommentEmailPreference(new ChangeAuthorCommentEmailPreferenceViewModel
+        {
+            NotifyAuthorOnCommentActivity = false
+        });
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Settings", redirect.ActionName);
+        userService.Verify(s => s.UpdateAuthorCommentEmailPreferenceAsync(
+            user.Id,
+            false,
             It.IsAny<CancellationToken>()), Times.Once);
     }
 

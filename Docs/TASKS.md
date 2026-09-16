@@ -1,5 +1,5 @@
 ﻿# DraftView — Task List
-Last updated: 2026-08-31
+Last updated: 2026-09-16
 Last deployed: 2026-09-01 23:19 (commit: 318df31)
 Last merged: 2026-08-31 — PR #112 (fix: null classification suppressed badges for pre-versioning readers) merged to main
 
@@ -79,6 +79,7 @@ Last merged: 2026-08-31 — PR #112 (fix: null classification suppressed badges 
 
 | # | Item | Issue | Status |
 |---|------|-------|--------|
+| 0 | Email author when a comment is posted | [#141](https://github.com/aclarke6/DraftView/issues/141) | In progress |
 | 1 | CHANGE-006: Collapsible reader nav + panel pin/unpin | [#64](https://github.com/aclarke6/DraftView/issues/64) | Open |
 | 2 | CHANGE-011: Panoramic banner asset (~2200x700 px) | [#54](https://github.com/aclarke6/DraftView/issues/54) | Open — asset needed |
 | 3 | RS-H: Reader Insight | [#66](https://github.com/aclarke6/DraftView/issues/66) | Open — follows RS-F |

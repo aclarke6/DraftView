@@ -60,5 +60,9 @@ public class UserPreferencesConfiguration : IEntityTypeConfiguration<UserPrefere
         builder.Property(p => p.DiffCooldownHours)
             .IsRequired()
             .HasDefaultValue(24);
+
+        builder.Property(p => p.NotifyAuthorOnCommentActivity)
+            .IsRequired()
+            .HasDefaultValue(true);
     }
 }
