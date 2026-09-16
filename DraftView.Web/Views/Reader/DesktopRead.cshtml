@@ -297,6 +297,7 @@
                             <div class="diff-controls"
                                  data-section-id="@item.Scene.Id"
                                  data-word-count="@item.WordCount"
+                                 data-is-read="@item.IsRead.ToString().ToLowerInvariant()"
                                  data-show-edits="@item.ShowEdits.ToString().ToLowerInvariant()">
                                 <button type="button"
                                         class="diff-toggle-btn"
@@ -305,8 +306,19 @@
                                     <span class="diff-toggle-btn__show" @(item.ShowEdits ? "hidden" : "")>Show Changes</span>
                                     <span class="diff-toggle-btn__hide" @(item.ShowEdits ? "" : "hidden")>Hide Changes</span>
                                 </button>
-                                <button type="button" class="diff-mark-btn diff-mark-btn--read" data-mark-read="@item.Scene.Id" disabled>Mark as read</button>
-                                <button type="button" class="diff-mark-btn diff-mark-btn--unread" data-mark-unread="@item.Scene.Id" hidden>Mark as unread</button>
+                                <button type="button"
+                                        class="diff-mark-btn diff-mark-btn--read"
+                                        data-mark-read="@item.Scene.Id"
+                                        disabled="@item.IsRead"
+                                        hidden="@item.IsRead">
+                                    Mark as read
+                                </button>
+                                <button type="button"
+                                        class="diff-mark-btn diff-mark-btn--unread"
+                                        data-mark-unread="@item.Scene.Id"
+                                        hidden="@(!item.IsRead)">
+                                    Mark as unread
+                                </button>
                             </div>
                         }
 
@@ -1768,53 +1780,25 @@
             });
         });
 
-        // Mark as read (explicit button)
-        document.querySelectorAll('[data-mark-read]').forEach(function (btn) {
-            var sectionId = btn.getAttribute('data-mark-read');
-            btn.addEventListener('click', function () {
-                if (btn.disabled) {
-                    return;
-                }
-
-                postToReader('MarkAsRead', sectionId).then(function () {
-                    // Show mark-as-unread, hide mark-as-read
-                    btn.hidden = true;
-                    var unreadBtn = document.querySelector('[data-mark-unread="' + sectionId + '"]');
-                    if (unreadBtn) unreadBtn.hidden = false;
-                });
-            });
-        });
-
-        // Mark as unread (explicit button)
-        document.querySelectorAll('[data-mark-unread]').forEach(function (btn) {
-            var sectionId = btn.getAttribute('data-mark-unread');
-            btn.addEventListener('click', function () {
-                postToReader('MarkAsUnread', sectionId).then(function () {
-                    btn.hidden = true;
-                    var readBtn = document.querySelector('[data-mark-read="' + sectionId + '"]');
-                    if (readBtn) readBtn.hidden = false;
-                });
-            });
-        });
-
         // Auto mark-as-read: time + scroll per scene
         document.querySelectorAll('.diff-controls[data-section-id]').forEach(function (controls) {
             var sectionId       = controls.getAttribute('data-section-id');
             var wordCount       = parseInt(controls.getAttribute('data-word-count') || '0', 10);
+            var isRead          = controls.getAttribute('data-is-read') === 'true';
             var estimatedSecs   = Math.max(minimumReadDwellSeconds, Math.ceil((wordCount / readerWordsPerMinute) * 60));
             var sceneBlock      = document.querySelector('.scene-block[data-section-id="' + sectionId + '"]');
             if (!sceneBlock) return;
 
-            var activeSeconds   = 0;
+            var activeSeconds   = isRead ? estimatedSecs : 0;
             var scrolledPast75  = false;
-            var marked          = false;
+            var marked          = isRead;
             var timer;
             var readBtn         = document.querySelector('[data-mark-read="' + sectionId + '"]');
             var unreadBtn       = document.querySelector('[data-mark-unread="' + sectionId + '"]');
 
             function syncReadButtonState() {
                 if (readBtn) {
-                    readBtn.disabled = activeSeconds < estimatedSecs;
+                    readBtn.disabled = marked || activeSeconds < estimatedSecs;
                 }
             }
 
@@ -1823,10 +1807,13 @@
                 if (!document.hidden && !marked) {
                     activeSeconds++;
                     syncReadButtonState();
+                    if (scrolledPast75 && activeSeconds >= estimatedSecs) autoMarkAsRead();
                 }
             }
-            timer = setInterval(tick, 1000);
             syncReadButtonState();
+            if (!marked) {
+                timer = setInterval(tick, 1000);
+            }
 
             // Scroll depth tracking
             function checkScroll() {
@@ -1838,6 +1825,33 @@
                 if (scrolledPast75 && activeSeconds >= estimatedSecs) autoMarkAsRead();
             }
             window.addEventListener('scroll', checkScroll, { passive: true });
+
+            if (readBtn) {
+                readBtn.addEventListener('click', function () {
+                    if (readBtn.disabled || marked) {
+                        return;
+                    }
+
+                    autoMarkAsRead();
+                });
+            }
+
+            if (unreadBtn) {
+                unreadBtn.addEventListener('click', function () {
+                    postToReader('MarkAsUnread', sectionId).then(function () {
+                        marked = false;
+                        activeSeconds = 0;
+                        unreadBtn.hidden = true;
+                        if (readBtn) {
+                            readBtn.hidden = false;
+                        }
+                        syncReadButtonState();
+                        clearInterval(timer);
+                        timer = setInterval(tick, 1000);
+                        checkScroll();
+                    });
+                });
+            }
 
             function autoMarkAsRead() {
                 if (marked) return;

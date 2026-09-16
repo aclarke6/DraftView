@@ -60,7 +60,6 @@ public class SceneWithComments
     public PassageAnchorMatchMethod? ResumeRestoreMatchMethod { get; set; }
 
     /// <summary>
-    /// <summary>
     /// Paragraph groups for threshold-filtered diff rendering.
     /// Each group has a Classification and ShowDiff flag.
     /// Empty when the scene has no changes or no snapshot.
