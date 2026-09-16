@@ -481,4 +481,33 @@ public class CommentServiceTests
             Times.Never);
     }
 
+    [Fact]
+    public async Task CreateRootCommentAsync_WhenAppBaseUrlIsInvalid_UsesRelativeCommentLinkInEmail()
+    {
+        var section = MakePublishedSection();
+        var reader = MakeBetaReader();
+        reader.Activate();
+        var author = MakeAuthor();
+        var authorPrefs = UserPreferences.CreateForAuthor(author.Id, AuthorDigestMode.Immediate, null, "Europe/London");
+        var sut = CreateSut();
+        _config.Setup(c => c["App:BaseUrl"]).Returns("not-a-valid-absolute-url");
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _userRepo.Setup(r => r.GetByIdAsync(reader.Id, default)).ReturnsAsync(reader);
+        _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
+        _prefsRepo.Setup(r => r.GetByUserIdAsync(author.Id, default)).ReturnsAsync(authorPrefs);
+        _commentRepo.Setup(r => r.AddAsync(It.IsAny<Comment>(), default)).Returns(Task.CompletedTask);
+
+        var result = await sut.CreateRootCommentAsync(section.Id, reader.Id, "Comment body.", Visibility.Public);
+
+        _emailSender.Verify(
+            s => s.SendAsync(
+                author.Email,
+                author.DisplayName,
+                It.IsAny<string>(),
+                It.Is<string>(body => body.Contains($"/Author/Section/{section.Id}#comment-{result.Id}")),
+                default),
+            Times.Once);
+    }
+
 }

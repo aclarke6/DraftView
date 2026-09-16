@@ -276,7 +276,7 @@ public class CommentService(
         var encodedCommentBody = WebUtility.HtmlEncode(comment.Body);
 
         var subject = $"{commentAuthor.DisplayName} {actionText} \"{section.Title}\"";
-        var body = $"<p>{encodedDisplayName} posted on <strong>{encodedSectionTitle}</strong>.</p>" +
+        var body = $"<p>{encodedDisplayName} {actionText} <strong>{encodedSectionTitle}</strong>.</p>" +
                    $"<p>{encodedCommentBody}</p>" +
                    $"<p><a href=\"{commentLink}\">Open in DraftView</a></p>";
 
@@ -293,6 +293,11 @@ public class CommentService(
         var relativePath = $"/Author/Section/{sectionId}#comment-{commentId}";
         var configuredBaseUrl = configuration["App:BaseUrl"]?.TrimEnd('/');
         if (string.IsNullOrWhiteSpace(configuredBaseUrl))
+            return relativePath;
+
+        if (!Uri.TryCreate(configuredBaseUrl, UriKind.Absolute, out var uri) ||
+            string.IsNullOrWhiteSpace(uri.Scheme) ||
+            string.IsNullOrWhiteSpace(uri.Host))
             return relativePath;
 
         return $"{configuredBaseUrl}{relativePath}";
