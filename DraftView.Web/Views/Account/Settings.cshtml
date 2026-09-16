@@ -276,12 +276,10 @@
             <div class="card settings-card">
                 <div class="card__header"><span class="card__title">Activity Log</span></div>
                 <div class="card__body">
+                    <p class="settings-hint">Recent Activity lives on the Dashboard. Sync completed items are only shown when you choose the Sync filter there.</p>
                     <ul class="activity-clear-list">
                         <li class="activity-clear-row">
-                            <label class="activity-clear-label">
-                                <input type="checkbox" class="activity-clear-check" checked />
-                                Comments
-                            </label>
+                            <span class="activity-clear-label">Comments</span>
                             <form asp-action="ClearNotifications" method="post">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="type" value="NewComment" />
@@ -289,10 +287,7 @@
                             </form>
                         </li>
                         <li class="activity-clear-row">
-                            <label class="activity-clear-label">
-                                <input type="checkbox" class="activity-clear-check" checked />
-                                Replies
-                            </label>
+                            <span class="activity-clear-label">Replies</span>
                             <form asp-action="ClearNotifications" method="post">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="type" value="ReplyToAuthor" />
@@ -300,10 +295,7 @@
                             </form>
                         </li>
                         <li class="activity-clear-row">
-                            <label class="activity-clear-label">
-                                <input type="checkbox" class="activity-clear-check" checked />
-                                Readers
-                            </label>
+                            <span class="activity-clear-label">Readers</span>
                             <form asp-action="ClearNotifications" method="post">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="type" value="ReaderJoined" />
@@ -311,10 +303,7 @@
                             </form>
                         </li>
                         <li class="activity-clear-row">
-                            <label class="activity-clear-label">
-                                <input type="checkbox" class="activity-clear-check" checked />
-                                Sync
-                            </label>
+                            <span class="activity-clear-label">Sync</span>
                             <form asp-action="ClearNotifications" method="post">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="type" value="SyncCompleted" />
