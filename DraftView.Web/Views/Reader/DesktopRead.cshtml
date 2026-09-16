@@ -1756,7 +1756,6 @@
         document.querySelectorAll('[data-diff-toggle]').forEach(function (btn) {
             if (!showEditsUrl) showEditsUrl = btn.getAttribute('data-show-edits-url');
             var sectionId = btn.getAttribute('data-diff-toggle');
-            var proseView = document.getElementById('prose-' + sectionId);
             var controls  = btn.closest('.diff-controls');
             var showEdits = controls ? controls.getAttribute('data-show-edits') === 'true' : false;
 
@@ -1792,19 +1791,20 @@
             var activeSeconds   = isRead ? estimatedSecs : 0;
             var scrolledPast75  = false;
             var marked          = isRead;
+            var markingRead     = false;
             var timer;
             var readBtn         = document.querySelector('[data-mark-read="' + sectionId + '"]');
             var unreadBtn       = document.querySelector('[data-mark-unread="' + sectionId + '"]');
 
             function syncReadButtonState() {
                 if (readBtn) {
-                    readBtn.disabled = marked || activeSeconds < estimatedSecs;
+                    readBtn.disabled = marked || markingRead || activeSeconds < estimatedSecs;
                 }
             }
 
             // Active time tracking via Page Visibility API
             function tick() {
-                if (!document.hidden && !marked) {
+                if (!document.hidden && !marked && !markingRead) {
                     activeSeconds++;
                     syncReadButtonState();
                     if (scrolledPast75 && activeSeconds >= estimatedSecs) autoMarkAsRead();
@@ -1817,7 +1817,7 @@
 
             // Scroll depth tracking
             function checkScroll() {
-                if (marked) return;
+                if (marked || markingRead) return;
                 var rect   = sceneBlock.getBoundingClientRect();
                 var bottom = rect.bottom;
                 var trigger = window.innerHeight * 0.25;
@@ -1840,7 +1840,9 @@
                 unreadBtn.addEventListener('click', function () {
                     postToReader('MarkAsUnread', sectionId).then(function () {
                         marked = false;
+                        markingRead = false;
                         activeSeconds = 0;
+                        scrolledPast75 = false;
                         unreadBtn.hidden = true;
                         if (readBtn) {
                             readBtn.hidden = false;
@@ -1848,20 +1850,32 @@
                         syncReadButtonState();
                         clearInterval(timer);
                         timer = setInterval(tick, 1000);
-                        checkScroll();
                     });
                 });
             }
 
             function autoMarkAsRead() {
-                if (marked) return;
-                marked = true;
+                if (marked || markingRead) return;
+                markingRead = true;
                 clearInterval(timer);
-                postToReader('MarkAsRead', sectionId).then(function () {
+                syncReadButtonState();
+                postToReader('MarkAsRead', sectionId)
+                    .then(function (response) {
+                        if (!response.ok) {
+                            throw new Error('MarkAsRead failed');
+                        }
+
+                        marked = true;
+                        markingRead = false;
                     // Update button states
-                    if (readBtn)   readBtn.hidden   = true;
-                    if (unreadBtn) unreadBtn.hidden = false;
-                });
+                        if (readBtn)   readBtn.hidden   = true;
+                        if (unreadBtn) unreadBtn.hidden = false;
+                    })
+                    .catch(function () {
+                        markingRead = false;
+                        syncReadButtonState();
+                        timer = setInterval(tick, 1000);
+                    });
             }
         });
     })();
