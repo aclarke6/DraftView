@@ -42,6 +42,8 @@ public class DesktopChapterReadViewModel
     public bool CurrentUserIsModerator { get; set; }
     public ProseFont ProseFont { get; set; } = ProseFont.SystemSerif;
     public ProseFontSize ProseFontSize { get; set; } = ProseFontSize.Medium;
+    public int ReaderWordsPerMinute { get; set; } = 200;
+    public int MinimumReadDwellSeconds { get; set; } = 60;
 }
 
 public class SceneWithComments
@@ -57,7 +59,6 @@ public class SceneWithComments
     public int? ResumeRestoreConfidenceScore { get; set; }
     public PassageAnchorMatchMethod? ResumeRestoreMatchMethod { get; set; }
 
-    /// <summary>
     /// <summary>
     /// Paragraph groups for threshold-filtered diff rendering.
     /// Each group has a Classification and ShowDiff flag.

@@ -42,6 +42,8 @@ public class ReaderController(
     private readonly IChangeStateService _changeStateService = changeStateService;
     private readonly IParagraphGroupingService _paragraphGroupingService = paragraphGroupingService;
     private readonly int _minDiffGroupWords = draftViewSettings.MinDiffGroupWords;
+    private readonly int _readerWordsPerMinute = Math.Max(1, draftViewSettings.ReaderWordsPerMinute);
+    private readonly int _minimumReadDwellSeconds = Math.Max(1, draftViewSettings.MinimumReadDwellSeconds);
     private readonly IUserService _userService = userService;
     private static readonly Regex HtmlTagRegex = new("<[^>]+>", RegexOptions.Compiled);
     private static readonly Regex WhitespaceRegex = new("\\s+", RegexOptions.Compiled);
@@ -656,7 +658,9 @@ public class ReaderController(
             CurrentUserId          = user.Id,
             CurrentUserIsModerator = isModerator,
             ProseFont              = preferences?.ProseFont ?? ProseFont.SystemSerif,
-            ProseFontSize          = preferences?.ProseFontSize ?? ProseFontSize.Medium
+            ProseFontSize          = preferences?.ProseFontSize ?? ProseFontSize.Medium,
+            ReaderWordsPerMinute   = _readerWordsPerMinute,
+            MinimumReadDwellSeconds = _minimumReadDwellSeconds
         });
     }
 

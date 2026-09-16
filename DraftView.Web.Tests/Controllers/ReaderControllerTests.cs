@@ -1011,6 +1011,11 @@ public class ReaderControllerTests
     }
 }
 
+/// <summary>
+/// Rendered output regressions for desktop and mobile reader views.
+/// Covers: model-driven reader attributes, anchor/resume wiring, and mobile/desktop rendering differences.
+/// Excludes: browser-side timing behavior after the HTML is delivered.
+/// </summary>
 public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRenderingRegressionTests.ReaderReadFactory>
 {
     private readonly ReaderReadFactory factory;
@@ -1039,6 +1044,28 @@ public class ReaderReadRenderingRegressionTests : IClassFixture<ReaderReadRender
 
         Assert.Matches(
             new Regex("<div\\s+class=\\\"reader-page\\\"[^>]*data-prose-font=\\\"Humanist\\\"[^>]*data-prose-font-size=\\\"Large\\\"", RegexOptions.IgnoreCase),
+            html);
+    }
+
+    [Fact]
+    public async Task Read_Desktop_RendersConfiguredReadDwellAttributes()
+    {
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = true,
+            BaseAddress = new Uri("https://localhost")
+        });
+
+        client.DefaultRequestHeaders.Add(TestAuthHandler.HeaderName, TestAuthHandler.ReaderMode);
+
+        var response = await client.GetAsync($"/Reader/Read/{factory.ChapterId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Matches(
+            new Regex("<div\\s+class=\\\"reader-page\\\"[^>]*data-reader-words-per-minute=\\\"200\\\"[^>]*data-minimum-read-dwell-seconds=\\\"60\\\"", RegexOptions.IgnoreCase),
             html);
     }
 

@@ -26,7 +26,9 @@
 
 <div class="reader-page"
      data-prose-font="@Model.ProseFont"
-     data-prose-font-size="@Model.ProseFontSize">
+     data-prose-font-size="@Model.ProseFontSize"
+     data-reader-words-per-minute="@Model.ReaderWordsPerMinute"
+     data-minimum-read-dwell-seconds="@Model.MinimumReadDwellSeconds">
 
     <button type="button"
             class="reader__contents-toggle"
@@ -295,6 +297,7 @@
                             <div class="diff-controls"
                                  data-section-id="@item.Scene.Id"
                                  data-word-count="@item.WordCount"
+                                 data-is-read="@item.IsRead.ToString().ToLowerInvariant()"
                                  data-show-edits="@item.ShowEdits.ToString().ToLowerInvariant()">
                                 <button type="button"
                                         class="diff-toggle-btn"
@@ -303,8 +306,19 @@
                                     <span class="diff-toggle-btn__show" @(item.ShowEdits ? "hidden" : "")>Show Changes</span>
                                     <span class="diff-toggle-btn__hide" @(item.ShowEdits ? "" : "hidden")>Hide Changes</span>
                                 </button>
-                                <button type="button" class="diff-mark-btn diff-mark-btn--read" data-mark-read="@item.Scene.Id">Mark as read</button>
-                                <button type="button" class="diff-mark-btn diff-mark-btn--unread" data-mark-unread="@item.Scene.Id" hidden>Mark as unread</button>
+                                <button type="button"
+                                        class="diff-mark-btn diff-mark-btn--read"
+                                        data-mark-read="@item.Scene.Id"
+                                        disabled="@item.IsRead"
+                                        hidden="@item.IsRead">
+                                    Mark as read
+                                </button>
+                                <button type="button"
+                                        class="diff-mark-btn diff-mark-btn--unread"
+                                        data-mark-unread="@item.Scene.Id"
+                                        hidden="@(!item.IsRead)">
+                                    Mark as unread
+                                </button>
                             </div>
                         }
 
@@ -1720,7 +1734,15 @@
     // ── Diff toggle, mark-as-read / mark-as-unread ───────────────────────────
     (function () {
         var antiForgeryInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        var readerPage = document.querySelector('.reader-page');
         if (!antiForgeryInput) return;
+
+        var readerWordsPerMinute = readerPage
+            ? Math.max(1, parseInt(readerPage.getAttribute('data-reader-words-per-minute') || '200', 10) || 200)
+            : 200;
+        var minimumReadDwellSeconds = readerPage
+            ? Math.max(1, parseInt(readerPage.getAttribute('data-minimum-read-dwell-seconds') || '60', 10) || 60)
+            : 60;
 
         function postToReader(path, sectionId) {
             return fetch('/Reader/' + path + '?sectionId=' + sectionId, {
@@ -1734,7 +1756,6 @@
         document.querySelectorAll('[data-diff-toggle]').forEach(function (btn) {
             if (!showEditsUrl) showEditsUrl = btn.getAttribute('data-show-edits-url');
             var sectionId = btn.getAttribute('data-diff-toggle');
-            var proseView = document.getElementById('prose-' + sectionId);
             var controls  = btn.closest('.diff-controls');
             var showEdits = controls ? controls.getAttribute('data-show-edits') === 'true' : false;
 
@@ -1758,51 +1779,45 @@
             });
         });
 
-        // Mark as read (explicit button)
-        document.querySelectorAll('[data-mark-read]').forEach(function (btn) {
-            var sectionId = btn.getAttribute('data-mark-read');
-            btn.addEventListener('click', function () {
-                postToReader('MarkAsRead', sectionId).then(function () {
-                    // Show mark-as-unread, hide mark-as-read
-                    btn.hidden = true;
-                    var unreadBtn = document.querySelector('[data-mark-unread="' + sectionId + '"]');
-                    if (unreadBtn) unreadBtn.hidden = false;
-                });
-            });
-        });
-
-        // Mark as unread (explicit button)
-        document.querySelectorAll('[data-mark-unread]').forEach(function (btn) {
-            var sectionId = btn.getAttribute('data-mark-unread');
-            btn.addEventListener('click', function () {
-                postToReader('MarkAsUnread', sectionId).then(function () {
-                    btn.hidden = true;
-                    var readBtn = document.querySelector('[data-mark-read="' + sectionId + '"]');
-                    if (readBtn) readBtn.hidden = false;
-                });
-            });
-        });
-
         // Auto mark-as-read: time + scroll per scene
         document.querySelectorAll('.diff-controls[data-section-id]').forEach(function (controls) {
             var sectionId       = controls.getAttribute('data-section-id');
             var wordCount       = parseInt(controls.getAttribute('data-word-count') || '0', 10);
-            var estimatedSecs   = Math.max(30, Math.floor((wordCount / 200) * 60 * 0.8));
+            var isRead          = controls.getAttribute('data-is-read') === 'true';
+            var estimatedSecs   = Math.max(minimumReadDwellSeconds, Math.ceil((wordCount / readerWordsPerMinute) * 60));
             var sceneBlock      = document.querySelector('.scene-block[data-section-id="' + sectionId + '"]');
             if (!sceneBlock) return;
 
-            var activeSeconds   = 0;
+            var activeSeconds   = isRead ? estimatedSecs : 0;
             var scrolledPast75  = false;
-            var marked          = false;
+            var marked          = isRead;
+            var markingRead     = false;
             var timer;
+            var readBtn         = document.querySelector('[data-mark-read="' + sectionId + '"]');
+            var unreadBtn       = document.querySelector('[data-mark-unread="' + sectionId + '"]');
+
+            function syncReadButtonState() {
+                if (readBtn) {
+                    readBtn.disabled = marked || markingRead || activeSeconds < estimatedSecs;
+                }
+            }
 
             // Active time tracking via Page Visibility API
-            function tick() { if (!document.hidden && !marked) activeSeconds++; }
-            timer = setInterval(tick, 1000);
+            function tick() {
+                if (!document.hidden && !marked && !markingRead) {
+                    activeSeconds++;
+                    syncReadButtonState();
+                    if (scrolledPast75 && activeSeconds >= estimatedSecs) autoMarkAsRead();
+                }
+            }
+            syncReadButtonState();
+            if (!marked) {
+                timer = setInterval(tick, 1000);
+            }
 
             // Scroll depth tracking
             function checkScroll() {
-                if (marked) return;
+                if (marked || markingRead) return;
                 var rect   = sceneBlock.getBoundingClientRect();
                 var bottom = rect.bottom;
                 var trigger = window.innerHeight * 0.25;
@@ -1811,17 +1826,56 @@
             }
             window.addEventListener('scroll', checkScroll, { passive: true });
 
-            function autoMarkAsRead() {
-                if (marked) return;
-                marked = true;
-                clearInterval(timer);
-                postToReader('MarkAsRead', sectionId).then(function () {
-                    // Update button states
-                    var readBtn   = document.querySelector('[data-mark-read="' + sectionId + '"]');
-                    var unreadBtn = document.querySelector('[data-mark-unread="' + sectionId + '"]');
-                    if (readBtn)   readBtn.hidden   = true;
-                    if (unreadBtn) unreadBtn.hidden = false;
+            if (readBtn) {
+                readBtn.addEventListener('click', function () {
+                    if (readBtn.disabled || marked) {
+                        return;
+                    }
+
+                    autoMarkAsRead();
                 });
+            }
+
+            if (unreadBtn) {
+                unreadBtn.addEventListener('click', function () {
+                    postToReader('MarkAsUnread', sectionId).then(function () {
+                        marked = false;
+                        markingRead = false;
+                        activeSeconds = 0;
+                        scrolledPast75 = false;
+                        unreadBtn.hidden = true;
+                        if (readBtn) {
+                            readBtn.hidden = false;
+                        }
+                        syncReadButtonState();
+                        clearInterval(timer);
+                        timer = setInterval(tick, 1000);
+                    });
+                });
+            }
+
+            function autoMarkAsRead() {
+                if (marked || markingRead) return;
+                markingRead = true;
+                clearInterval(timer);
+                syncReadButtonState();
+                postToReader('MarkAsRead', sectionId)
+                    .then(function (response) {
+                        if (!response.ok) {
+                            throw new Error('MarkAsRead failed');
+                        }
+
+                        marked = true;
+                        markingRead = false;
+                    // Update button states
+                        if (readBtn)   readBtn.hidden   = true;
+                        if (unreadBtn) unreadBtn.hidden = false;
+                    })
+                    .catch(function () {
+                        markingRead = false;
+                        syncReadButtonState();
+                        timer = setInterval(tick, 1000);
+                    });
             }
         });
     })();
