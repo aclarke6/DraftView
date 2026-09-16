@@ -1,6 +1,6 @@
 ﻿# DraftView — Task List
 Last updated: 2026-09-16
-Last deployed: 2026-09-16 17:11 (commit: abd1643)
+Last deployed: 2026-09-16 18:23 (commit: 8eb8d45)
 Last merged: 2026-09-16 — PRs #142/#143/#145 (comment email alerts, dwell-time read gate, dashboard sync filter) merged to main
 
 ---
