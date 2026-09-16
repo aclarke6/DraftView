@@ -42,6 +42,8 @@ public class DesktopChapterReadViewModel
     public bool CurrentUserIsModerator { get; set; }
     public ProseFont ProseFont { get; set; } = ProseFont.SystemSerif;
     public ProseFontSize ProseFontSize { get; set; } = ProseFontSize.Medium;
+    public int ReaderWordsPerMinute { get; set; } = 200;
+    public int MinimumReadDwellSeconds { get; set; } = 60;
 }
 
 public class SceneWithComments

@@ -311,6 +311,7 @@ The word "scene" does not appear in DraftView's UI or domain vocabulary. DraftVi
 - Fallback to `Section.HtmlContent` for pre-versioning published sections (temporary, removed once all sections have been republished at least once).
 - Readers cannot browse or compare versions.
 - `ReadEvent.LastReadVersionNumber` drives update messaging.
+- Scene read-state changes are deferred client-side until the reader has remained on the scene for at least the estimated reading time, subject to a configurable minimum dwell floor.
 
 ### 9.1 Update Messaging
 

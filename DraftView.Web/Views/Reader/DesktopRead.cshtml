@@ -26,7 +26,9 @@
 
 <div class="reader-page"
      data-prose-font="@Model.ProseFont"
-     data-prose-font-size="@Model.ProseFontSize">
+     data-prose-font-size="@Model.ProseFontSize"
+     data-reader-words-per-minute="@Model.ReaderWordsPerMinute"
+     data-minimum-read-dwell-seconds="@Model.MinimumReadDwellSeconds">
 
     <button type="button"
             class="reader__contents-toggle"
@@ -303,7 +305,7 @@
                                     <span class="diff-toggle-btn__show" @(item.ShowEdits ? "hidden" : "")>Show Changes</span>
                                     <span class="diff-toggle-btn__hide" @(item.ShowEdits ? "" : "hidden")>Hide Changes</span>
                                 </button>
-                                <button type="button" class="diff-mark-btn diff-mark-btn--read" data-mark-read="@item.Scene.Id">Mark as read</button>
+                                <button type="button" class="diff-mark-btn diff-mark-btn--read" data-mark-read="@item.Scene.Id" disabled>Mark as read</button>
                                 <button type="button" class="diff-mark-btn diff-mark-btn--unread" data-mark-unread="@item.Scene.Id" hidden>Mark as unread</button>
                             </div>
                         }
@@ -1720,7 +1722,15 @@
     // ── Diff toggle, mark-as-read / mark-as-unread ───────────────────────────
     (function () {
         var antiForgeryInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        var readerPage = document.querySelector('.reader-page');
         if (!antiForgeryInput) return;
+
+        var readerWordsPerMinute = readerPage
+            ? Math.max(1, parseInt(readerPage.getAttribute('data-reader-words-per-minute') || '200', 10) || 200)
+            : 200;
+        var minimumReadDwellSeconds = readerPage
+            ? Math.max(1, parseInt(readerPage.getAttribute('data-minimum-read-dwell-seconds') || '60', 10) || 60)
+            : 60;
 
         function postToReader(path, sectionId) {
             return fetch('/Reader/' + path + '?sectionId=' + sectionId, {
@@ -1762,6 +1772,10 @@
         document.querySelectorAll('[data-mark-read]').forEach(function (btn) {
             var sectionId = btn.getAttribute('data-mark-read');
             btn.addEventListener('click', function () {
+                if (btn.disabled) {
+                    return;
+                }
+
                 postToReader('MarkAsRead', sectionId).then(function () {
                     // Show mark-as-unread, hide mark-as-read
                     btn.hidden = true;
@@ -1787,7 +1801,7 @@
         document.querySelectorAll('.diff-controls[data-section-id]').forEach(function (controls) {
             var sectionId       = controls.getAttribute('data-section-id');
             var wordCount       = parseInt(controls.getAttribute('data-word-count') || '0', 10);
-            var estimatedSecs   = Math.max(30, Math.floor((wordCount / 200) * 60 * 0.8));
+            var estimatedSecs   = Math.max(minimumReadDwellSeconds, Math.ceil((wordCount / readerWordsPerMinute) * 60));
             var sceneBlock      = document.querySelector('.scene-block[data-section-id="' + sectionId + '"]');
             if (!sceneBlock) return;
 
@@ -1795,10 +1809,24 @@
             var scrolledPast75  = false;
             var marked          = false;
             var timer;
+            var readBtn         = document.querySelector('[data-mark-read="' + sectionId + '"]');
+            var unreadBtn       = document.querySelector('[data-mark-unread="' + sectionId + '"]');
+
+            function syncReadButtonState() {
+                if (readBtn) {
+                    readBtn.disabled = activeSeconds < estimatedSecs;
+                }
+            }
 
             // Active time tracking via Page Visibility API
-            function tick() { if (!document.hidden && !marked) activeSeconds++; }
+            function tick() {
+                if (!document.hidden && !marked) {
+                    activeSeconds++;
+                    syncReadButtonState();
+                }
+            }
             timer = setInterval(tick, 1000);
+            syncReadButtonState();
 
             // Scroll depth tracking
             function checkScroll() {
@@ -1817,8 +1845,6 @@
                 clearInterval(timer);
                 postToReader('MarkAsRead', sectionId).then(function () {
                     // Update button states
-                    var readBtn   = document.querySelector('[data-mark-read="' + sectionId + '"]');
-                    var unreadBtn = document.querySelector('[data-mark-unread="' + sectionId + '"]');
                     if (readBtn)   readBtn.hidden   = true;
                     if (unreadBtn) unreadBtn.hidden = false;
                 });
