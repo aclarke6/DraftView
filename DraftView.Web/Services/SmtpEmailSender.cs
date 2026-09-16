@@ -12,7 +12,8 @@ public class SmtpEmailSender(IConfiguration config) : IEmailSender
         string toName,
         string subject,
         string htmlBody,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? replyToEmail = null)
     {
         var host = config["Email:Smtp:Host"] ?? "localhost";
         var port = int.Parse(config["Email:Smtp:Port"] ?? "587");
@@ -24,6 +25,8 @@ public class SmtpEmailSender(IConfiguration config) : IEmailSender
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(fromName, fromAddr));
         message.To.Add(new MailboxAddress(toName, toEmail));
+        if (!string.IsNullOrWhiteSpace(replyToEmail))
+            message.ReplyTo.Add(new MailboxAddress(string.Empty, replyToEmail));
         message.Subject = subject;
         message.Body = new TextPart("html") { Text = htmlBody };
 
