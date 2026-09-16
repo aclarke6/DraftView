@@ -4,6 +4,8 @@ using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
 using DraftView.Domain.Exceptions;
 using DraftView.Domain.Interfaces.Repositories;
+using DraftView.Domain.Interfaces.Services;
+using Microsoft.Extensions.Configuration;
 
 namespace DraftView.Application.Tests.Services;
 
@@ -18,7 +20,7 @@ public class CommentServiceDeleteTests
         var userRepo = new Mock<IUserRepository>();
         var unitOfWork = new Mock<IUnitOfWork>();
 
-        var sut = new CommentService(commentRepo.Object, sectionRepo.Object, userRepo.Object, unitOfWork.Object, new Mock<IAuthorNotificationRepository>().Object);
+        var sut = new CommentService(commentRepo.Object, sectionRepo.Object, userRepo.Object, unitOfWork.Object, new Mock<IAuthorNotificationRepository>().Object, new Mock<IUserPreferencesRepository>().Object, new Mock<IEmailSender>().Object, new Mock<IConfiguration>().Object);
 
         var section = MakePublishedSection();
         var owner = MakeBetaReader();
@@ -57,7 +59,7 @@ public class CommentServiceDeleteTests
         var userRepo = new Mock<IUserRepository>();
         var unitOfWork = new Mock<IUnitOfWork>();
 
-        var sut = new CommentService(commentRepo.Object, sectionRepo.Object, userRepo.Object, unitOfWork.Object, new Mock<IAuthorNotificationRepository>().Object);
+        var sut = new CommentService(commentRepo.Object, sectionRepo.Object, userRepo.Object, unitOfWork.Object, new Mock<IAuthorNotificationRepository>().Object, new Mock<IUserPreferencesRepository>().Object, new Mock<IEmailSender>().Object, new Mock<IConfiguration>().Object);
 
         var section = MakePublishedSection();
         var owner = MakeBetaReader();
@@ -97,7 +99,7 @@ public class CommentServiceDeleteTests
         var userRepo = new Mock<IUserRepository>();
         var unitOfWork = new Mock<IUnitOfWork>();
 
-        var sut = new CommentService(commentRepo.Object, sectionRepo.Object, userRepo.Object, unitOfWork.Object, new Mock<IAuthorNotificationRepository>().Object);
+        var sut = new CommentService(commentRepo.Object, sectionRepo.Object, userRepo.Object, unitOfWork.Object, new Mock<IAuthorNotificationRepository>().Object, new Mock<IUserPreferencesRepository>().Object, new Mock<IEmailSender>().Object, new Mock<IConfiguration>().Object);
 
         var section = MakePublishedSection();
         var owner = MakeBetaReader();
@@ -135,7 +137,7 @@ public class CommentServiceDeleteTests
         var userRepo = new Mock<IUserRepository>();
         var unitOfWork = new Mock<IUnitOfWork>();
 
-        var sut = new CommentService(commentRepo.Object, sectionRepo.Object, userRepo.Object, unitOfWork.Object, new Mock<IAuthorNotificationRepository>().Object);
+        var sut = new CommentService(commentRepo.Object, sectionRepo.Object, userRepo.Object, unitOfWork.Object, new Mock<IAuthorNotificationRepository>().Object, new Mock<IUserPreferencesRepository>().Object, new Mock<IEmailSender>().Object, new Mock<IConfiguration>().Object);
 
         var section = MakePublishedSection();
         var owner = MakeBetaReader();
@@ -174,7 +176,7 @@ public class CommentServiceDeleteTests
         var userRepo = new Mock<IUserRepository>();
         var unitOfWork = new Mock<IUnitOfWork>();
 
-        var sut = new CommentService(commentRepo.Object, sectionRepo.Object, userRepo.Object, unitOfWork.Object, new Mock<IAuthorNotificationRepository>().Object);
+        var sut = new CommentService(commentRepo.Object, sectionRepo.Object, userRepo.Object, unitOfWork.Object, new Mock<IAuthorNotificationRepository>().Object, new Mock<IUserPreferencesRepository>().Object, new Mock<IEmailSender>().Object, new Mock<IConfiguration>().Object);
 
         var section = MakePublishedSection();
         var owner = MakeBetaReader();
@@ -212,7 +214,7 @@ public class CommentServiceDeleteTests
         var userRepo = new Mock<IUserRepository>();
         var unitOfWork = new Mock<IUnitOfWork>();
 
-        var sut = new CommentService(commentRepo.Object, sectionRepo.Object, userRepo.Object, unitOfWork.Object, new Mock<IAuthorNotificationRepository>().Object);
+        var sut = new CommentService(commentRepo.Object, sectionRepo.Object, userRepo.Object, unitOfWork.Object, new Mock<IAuthorNotificationRepository>().Object, new Mock<IUserPreferencesRepository>().Object, new Mock<IEmailSender>().Object, new Mock<IConfiguration>().Object);
 
         var section = MakePublishedSection();
         var owner = MakeBetaReader();
@@ -253,7 +255,7 @@ public class CommentServiceDeleteTests
         var userRepo = new Mock<IUserRepository>();
         var unitOfWork = new Mock<IUnitOfWork>();
 
-        var sut = new CommentService(commentRepo.Object, sectionRepo.Object, userRepo.Object, unitOfWork.Object, new Mock<IAuthorNotificationRepository>().Object);
+        var sut = new CommentService(commentRepo.Object, sectionRepo.Object, userRepo.Object, unitOfWork.Object, new Mock<IAuthorNotificationRepository>().Object, new Mock<IUserPreferencesRepository>().Object, new Mock<IEmailSender>().Object, new Mock<IConfiguration>().Object);
 
         var section = MakePublishedSection();
         var owner = MakeBetaReader();
@@ -295,7 +297,7 @@ public class CommentServiceDeleteTests
         var userRepo = new Mock<IUserRepository>();
         var unitOfWork = new Mock<IUnitOfWork>();
 
-        var sut = new CommentService(commentRepo.Object, sectionRepo.Object, userRepo.Object, unitOfWork.Object, new Mock<IAuthorNotificationRepository>().Object);
+        var sut = new CommentService(commentRepo.Object, sectionRepo.Object, userRepo.Object, unitOfWork.Object, new Mock<IAuthorNotificationRepository>().Object, new Mock<IUserPreferencesRepository>().Object, new Mock<IEmailSender>().Object, new Mock<IConfiguration>().Object);
 
         var user = MakeBetaReader();
         user.Activate();
@@ -323,7 +325,7 @@ public class CommentServiceDeleteTests
         var userRepo = new Mock<IUserRepository>();
         var unitOfWork = new Mock<IUnitOfWork>();
 
-        var sut = new CommentService(commentRepo.Object, sectionRepo.Object, userRepo.Object, unitOfWork.Object, new Mock<IAuthorNotificationRepository>().Object);
+        var sut = new CommentService(commentRepo.Object, sectionRepo.Object, userRepo.Object, unitOfWork.Object, new Mock<IAuthorNotificationRepository>().Object, new Mock<IUserPreferencesRepository>().Object, new Mock<IEmailSender>().Object, new Mock<IConfiguration>().Object);
 
         var section = MakePublishedSection();
         var owner = MakeBetaReader();
@@ -360,7 +362,7 @@ public class CommentServiceDeleteTests
         var userRepo = new Mock<IUserRepository>();
         var unitOfWork = new Mock<IUnitOfWork>();
 
-        var sut = new CommentService(commentRepo.Object, sectionRepo.Object, userRepo.Object, unitOfWork.Object, new Mock<IAuthorNotificationRepository>().Object);
+        var sut = new CommentService(commentRepo.Object, sectionRepo.Object, userRepo.Object, unitOfWork.Object, new Mock<IAuthorNotificationRepository>().Object, new Mock<IUserPreferencesRepository>().Object, new Mock<IEmailSender>().Object, new Mock<IConfiguration>().Object);
 
         var section = MakePublishedSection();
         var owner = MakeBetaReader();
@@ -401,7 +403,7 @@ public class CommentServiceDeleteTests
         var userRepo = new Mock<IUserRepository>();
         var unitOfWork = new Mock<IUnitOfWork>();
 
-        var sut = new CommentService(commentRepo.Object, sectionRepo.Object, userRepo.Object, unitOfWork.Object, new Mock<IAuthorNotificationRepository>().Object);
+        var sut = new CommentService(commentRepo.Object, sectionRepo.Object, userRepo.Object, unitOfWork.Object, new Mock<IAuthorNotificationRepository>().Object, new Mock<IUserPreferencesRepository>().Object, new Mock<IEmailSender>().Object, new Mock<IConfiguration>().Object);
 
         var section = MakePublishedSection();
         var owner = MakeBetaReader();
@@ -456,4 +458,3 @@ public class CommentServiceDeleteTests
     private static User MakeAuthor() =>
         User.Create("author@example.com", "Author", Role.Author);
 }
-

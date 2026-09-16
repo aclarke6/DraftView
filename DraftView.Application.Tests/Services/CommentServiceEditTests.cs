@@ -4,6 +4,8 @@ using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
 using DraftView.Domain.Exceptions;
 using DraftView.Domain.Interfaces.Repositories;
+using DraftView.Domain.Interfaces.Services;
+using Microsoft.Extensions.Configuration;
 
 namespace DraftView.Application.Tests.Services;
 
@@ -19,7 +21,10 @@ public class CommentServiceEditTests
         _sectionRepo.Object,
         _userRepo.Object,
         _unitOfWork.Object,
-        new Mock<IAuthorNotificationRepository>().Object);
+        new Mock<IAuthorNotificationRepository>().Object,
+        new Mock<IUserPreferencesRepository>().Object,
+        new Mock<IEmailSender>().Object,
+        new Mock<IConfiguration>().Object);
 
     [Fact]
     public async Task EditCommentAsync_OwnerEditingOwnRootComment_UpdatesBody()
@@ -351,4 +356,3 @@ public class CommentServiceEditTests
     private static User MakeAuthor() =>
         User.Create("author@example.com", "Author", Role.Author);
 }
-

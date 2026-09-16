@@ -351,4 +351,19 @@ public class UserServiceTests
 
         UnitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Never);
     }
+
+    [Fact]
+    public async Task UpdateAuthorCommentEmailPreferenceAsync_WhenPreferencesExist_UpdatesAndSaves()
+    {
+        var author = MakeAuthor();
+        var prefs = UserPreferences.CreateForAuthor(author.Id, AuthorDigestMode.Immediate, null, "Europe/London");
+        var sut = CreateSut();
+
+        PrefsRepo.Setup(r => r.GetByUserIdAsync(author.Id, default)).ReturnsAsync(prefs);
+
+        await sut.UpdateAuthorCommentEmailPreferenceAsync(author.Id, false);
+
+        Assert.False(prefs.NotifyAuthorOnCommentActivity);
+        UnitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
 }

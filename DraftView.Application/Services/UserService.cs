@@ -253,6 +253,15 @@ public class UserService(
         await unitOfWork.SaveChangesAsync(ct);
     }
 
+    public async Task UpdateAuthorCommentEmailPreferenceAsync(Guid userId, bool notifyAuthorOnCommentActivity, CancellationToken ct = default)
+    {
+        var prefs = await prefsRepo.GetByUserIdAsync(userId, ct);
+        if (prefs is null) return;
+
+        prefs.UpdateAuthorCommentEmailPreference(notifyAuthorOnCommentActivity);
+        await unitOfWork.SaveChangesAsync(ct);
+    }
+
     public async Task UpdateReaderProfileAsync(Guid userId, string? bio, string? genreInterests, ReaderPace? pace, CancellationToken ct = default)
     {
         var prefs = await prefsRepo.GetByUserIdAsync(userId, ct)
@@ -321,6 +330,5 @@ public class UserService(
             && string.Equals(address.Address, value, StringComparison.OrdinalIgnoreCase);
     }
 }
-
 
 

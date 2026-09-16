@@ -5,6 +5,8 @@ using DraftView.Domain.Exceptions;
 using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Interfaces.Services;
 using DraftView.Domain.Notifications;
+using Microsoft.Extensions.Configuration;
+using System.Net;
 
 namespace DraftView.Application.Services;
 
@@ -14,6 +16,9 @@ public class CommentService(
     IUserRepository userRepo,
     IUnitOfWork unitOfWork,
     IAuthorNotificationRepository notificationRepo,
+    IUserPreferencesRepository prefsRepo,
+    IEmailSender emailSender,
+    IConfiguration configuration,
     IPassageAnchorService? passageAnchorService = null) : ICommentService
 {
     public async Task<Comment> CreateRootCommentAsync(
@@ -56,6 +61,14 @@ public class CommentService(
             passageAnchorId: passageAnchorId);
         await commentRepo.AddAsync(comment, ct);
         await unitOfWork.SaveChangesAsync(ct);
+
+        if (user.Role != Role.Author)
+            await SendAuthorCommentEmailIfEnabledAsync(
+                section,
+                comment,
+                user,
+                "commented on",
+                ct);
 
         if (user.Role == Role.BetaReader)
         {
@@ -101,6 +114,14 @@ public class CommentService(
             parent.MarkDoneByReply();
         await commentRepo.AddAsync(reply, ct);
         await unitOfWork.SaveChangesAsync(ct);
+
+        if (user.Role != Role.Author)
+            await SendAuthorCommentEmailIfEnabledAsync(
+                section,
+                reply,
+                user,
+                "replied on",
+                ct);
 
         var siteAuthor = await userRepo.GetAuthorAsync(ct);
         if (siteAuthor is not null && parent.AuthorId == siteAuthor.Id && user.Role == Role.BetaReader)
@@ -232,6 +253,54 @@ public class CommentService(
         if (string.IsNullOrWhiteSpace(body)) return string.Empty;
         var t = body.Trim();
         return t.Length <= max ? t : t[..max].TrimEnd() + "\u2026";
+    }
+
+    private async Task SendAuthorCommentEmailIfEnabledAsync(
+        Section section,
+        Comment comment,
+        User commentAuthor,
+        string actionText,
+        CancellationToken ct)
+    {
+        var siteAuthor = await userRepo.GetAuthorAsync(ct);
+        if (siteAuthor is null)
+            return;
+
+        var preferences = await prefsRepo.GetByUserIdAsync(siteAuthor.Id, ct);
+        if (preferences is not null && !preferences.NotifyAuthorOnCommentActivity)
+            return;
+
+        var commentLink = BuildAuthorCommentLink(section.Id, comment.Id);
+        var encodedDisplayName = WebUtility.HtmlEncode(commentAuthor.DisplayName);
+        var encodedSectionTitle = WebUtility.HtmlEncode(section.Title);
+        var encodedCommentBody = WebUtility.HtmlEncode(comment.Body);
+
+        var subject = $"{commentAuthor.DisplayName} {actionText} \"{section.Title}\"";
+        var body = $"<p>{encodedDisplayName} {actionText} <strong>{encodedSectionTitle}</strong>.</p>" +
+                   $"<p>{encodedCommentBody}</p>" +
+                   $"<p><a href=\"{commentLink}\">Open in DraftView</a></p>";
+
+        await emailSender.SendAsync(
+            siteAuthor.Email,
+            siteAuthor.DisplayName,
+            subject,
+            body,
+            ct);
+    }
+
+    private string BuildAuthorCommentLink(Guid sectionId, Guid commentId)
+    {
+        var relativePath = $"/Author/Section/{sectionId}#comment-{commentId}";
+        var configuredBaseUrl = configuration["App:BaseUrl"]?.TrimEnd('/');
+        if (string.IsNullOrWhiteSpace(configuredBaseUrl))
+            return relativePath;
+
+        if (!Uri.TryCreate(configuredBaseUrl, UriKind.Absolute, out var uri) ||
+            string.IsNullOrWhiteSpace(uri.Scheme) ||
+            string.IsNullOrWhiteSpace(uri.Host))
+            return relativePath;
+
+        return $"{configuredBaseUrl}{relativePath}";
     }
 
     /// <summary>

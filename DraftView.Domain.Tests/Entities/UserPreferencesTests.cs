@@ -41,6 +41,7 @@ public class UserPreferencesTests
         Assert.Equal(AuthorDigestMode.Immediate, prefs.AuthorDigestMode);
         Assert.Null(prefs.AuthorDigestIntervalHours);
         Assert.Equal("Europe/London", prefs.AuthorTimezone);
+        Assert.True(prefs.NotifyAuthorOnCommentActivity);
     }
 
     [Fact]
@@ -177,6 +178,16 @@ public class UserPreferencesTests
             () => prefs.UpdateAuthorPreferences(AuthorDigestMode.Digest, null, "Europe/London"));
 
         Assert.Equal("I-19-INTERVAL", ex.InvariantCode);
+    }
+
+    [Fact]
+    public void UpdateAuthorCommentEmailPreference_UpdatesFlag()
+    {
+        var prefs = UserPreferences.CreateForAuthor(UserId, AuthorDigestMode.Immediate, null, "Europe/London");
+
+        prefs.UpdateAuthorCommentEmailPreference(false);
+
+        Assert.False(prefs.NotifyAuthorOnCommentActivity);
     }
 
     // ---------------------------------------------------------------------------

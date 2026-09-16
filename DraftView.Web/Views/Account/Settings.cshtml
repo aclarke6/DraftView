@@ -258,6 +258,22 @@
         @if (Model.IsAuthor)
         {
             <div class="card settings-card">
+                <div class="card__header"><span class="card__title">Author Email Notifications</span></div>
+                <div class="card__body">
+                    <p class="settings-hint">Send me an email when a beta reader posts a comment or reply.</p>
+                    <form asp-action="ChangeAuthorCommentEmailPreference" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="settings-form-group settings-form-group--toggle">
+                            <label class="form-label">Email me for new comments and replies</label>
+                            <input type="checkbox" name="NotifyAuthorOnCommentActivity" value="true" @(Model.NotifyAuthorOnCommentActivity ? "checked" : "") class="form-checkbox" />
+                            <input type="hidden" name="NotifyAuthorOnCommentActivity" value="false" />
+                        </div>
+                        <button type="submit" class="btn btn--primary settings-form-button-inline">Save</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card settings-card">
                 <div class="card__header"><span class="card__title">Activity Log</span></div>
                 <div class="card__body">
                     <ul class="activity-clear-list">

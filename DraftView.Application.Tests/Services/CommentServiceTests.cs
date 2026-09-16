@@ -6,6 +6,7 @@ using DraftView.Domain.Enumerations;
 using DraftView.Domain.Exceptions;
 using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Interfaces.Services;
+using Microsoft.Extensions.Configuration;
 
 namespace DraftView.Application.Tests.Services;
 
@@ -16,7 +17,15 @@ public class CommentServiceTests
     private readonly Mock<IUserRepository>               _userRepo         = new();
     private readonly Mock<IUnitOfWork>                   _unitOfWork       = new();
     private readonly Mock<IAuthorNotificationRepository> _notificationRepo = new();
-    private readonly Mock<IPassageAnchorService> _passageAnchorService = new();
+    private readonly Mock<IPassageAnchorService>         _passageAnchorService = new();
+    private readonly Mock<IUserPreferencesRepository>    _prefsRepo        = new();
+    private readonly Mock<IEmailSender>                  _emailSender      = new();
+    private readonly Mock<IConfiguration>                _config           = new();
+
+    public CommentServiceTests()
+    {
+        _config.Setup(c => c["App:BaseUrl"]).Returns("https://draftview.test");
+    }
 
     private CommentService CreateSut() => new(
         _commentRepo.Object,
@@ -24,6 +33,9 @@ public class CommentServiceTests
         _userRepo.Object,
         _unitOfWork.Object,
         _notificationRepo.Object,
+        _prefsRepo.Object,
+        _emailSender.Object,
+        _config.Object,
         _passageAnchorService.Object);
 
     private static Section MakePublishedSection()
@@ -323,6 +335,36 @@ public class CommentServiceTests
             Times.Never);
     }
 
+    [Fact]
+    public async Task CreateRootCommentAsync_SendsAuthorEmailWithFullCommentAndLink_WhenReaderComments()
+    {
+        var section = MakePublishedSection();
+        var reader = MakeBetaReader();
+        reader.Activate();
+        var author = MakeAuthor();
+        var authorPrefs = UserPreferences.CreateForAuthor(author.Id, AuthorDigestMode.Immediate, null, "Europe/London");
+        var sut = CreateSut();
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _userRepo.Setup(r => r.GetByIdAsync(reader.Id, default)).ReturnsAsync(reader);
+        _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
+        _prefsRepo.Setup(r => r.GetByUserIdAsync(author.Id, default)).ReturnsAsync(authorPrefs);
+        _commentRepo.Setup(r => r.AddAsync(It.IsAny<Comment>(), default)).Returns(Task.CompletedTask);
+
+        var result = await sut.CreateRootCommentAsync(section.Id, reader.Id, "Full comment body with detail.", Visibility.Public);
+
+        _emailSender.Verify(
+            s => s.SendAsync(
+                author.Email,
+                author.DisplayName,
+                It.Is<string>(subject => subject.Contains("commented", StringComparison.OrdinalIgnoreCase)),
+                It.Is<string>(body =>
+                    body.Contains("Full comment body with detail.") &&
+                    body.Contains($"https://draftview.test/Author/Section/{section.Id}#comment-{result.Id}")),
+                default),
+            Times.Once);
+    }
+
     // ---------------------------------------------------------------------------
     // Notifications — CreateReply
     // ---------------------------------------------------------------------------
@@ -377,6 +419,95 @@ public class CommentServiceTests
         _notificationRepo.Verify(
             r => r.AddAsync(It.IsAny<AuthorNotification>(), default),
             Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateReplyAsync_SendsAuthorEmail_WhenBetaReaderRepliesAndAuthorPreferenceEnabled()
+    {
+        var section = MakePublishedSection();
+        var parentAuthor = MakeBetaReader();
+        parentAuthor.Activate();
+        var replyingReader = User.Create("reader2@example.com", "Reader Two", Role.BetaReader);
+        replyingReader.Activate();
+        var author = MakeAuthor();
+        var authorPrefs = UserPreferences.CreateForAuthor(author.Id, AuthorDigestMode.Immediate, null, "Europe/London");
+        var parent = Comment.CreateRoot(section.Id, parentAuthor.Id, "Parent comment.", Visibility.Public);
+        var sut = CreateSut();
+
+        _commentRepo.Setup(r => r.GetByIdAsync(parent.Id, default)).ReturnsAsync(parent);
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _userRepo.Setup(r => r.GetByIdAsync(replyingReader.Id, default)).ReturnsAsync(replyingReader);
+        _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
+        _prefsRepo.Setup(r => r.GetByUserIdAsync(author.Id, default)).ReturnsAsync(authorPrefs);
+        _commentRepo.Setup(r => r.AddAsync(It.IsAny<Comment>(), default)).Returns(Task.CompletedTask);
+
+        var reply = await sut.CreateReplyAsync(parent.Id, replyingReader.Id, "Reader reply body.", Visibility.Public);
+
+        _emailSender.Verify(
+            s => s.SendAsync(
+                author.Email,
+                author.DisplayName,
+                It.Is<string>(subject => subject.Contains("replied", StringComparison.OrdinalIgnoreCase)),
+                It.Is<string>(body =>
+                    body.Contains("Reader reply body.") &&
+                    body.Contains($"https://draftview.test/Author/Section/{section.Id}#comment-{reply.Id}")),
+                default),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateReplyAsync_DoesNotSendAuthorEmail_WhenAuthorHasOptedOut()
+    {
+        var section = MakePublishedSection();
+        var parent = Comment.CreateRoot(section.Id, MakeBetaReader().Id, "Parent comment.", Visibility.Public);
+        var replyingReader = User.Create("reader3@example.com", "Reader Three", Role.BetaReader);
+        replyingReader.Activate();
+        var author = MakeAuthor();
+        var authorPrefs = UserPreferences.CreateForAuthor(author.Id, AuthorDigestMode.Immediate, null, "Europe/London");
+        authorPrefs.UpdateAuthorCommentEmailPreference(false);
+        var sut = CreateSut();
+
+        _commentRepo.Setup(r => r.GetByIdAsync(parent.Id, default)).ReturnsAsync(parent);
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _userRepo.Setup(r => r.GetByIdAsync(replyingReader.Id, default)).ReturnsAsync(replyingReader);
+        _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
+        _prefsRepo.Setup(r => r.GetByUserIdAsync(author.Id, default)).ReturnsAsync(authorPrefs);
+        _commentRepo.Setup(r => r.AddAsync(It.IsAny<Comment>(), default)).Returns(Task.CompletedTask);
+
+        await sut.CreateReplyAsync(parent.Id, replyingReader.Id, "Reader reply body.", Visibility.Public);
+
+        _emailSender.Verify(
+            s => s.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), default),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateRootCommentAsync_WhenAppBaseUrlIsInvalid_UsesRelativeCommentLinkInEmail()
+    {
+        var section = MakePublishedSection();
+        var reader = MakeBetaReader();
+        reader.Activate();
+        var author = MakeAuthor();
+        var authorPrefs = UserPreferences.CreateForAuthor(author.Id, AuthorDigestMode.Immediate, null, "Europe/London");
+        var sut = CreateSut();
+        _config.Setup(c => c["App:BaseUrl"]).Returns("not-a-valid-absolute-url");
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _userRepo.Setup(r => r.GetByIdAsync(reader.Id, default)).ReturnsAsync(reader);
+        _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
+        _prefsRepo.Setup(r => r.GetByUserIdAsync(author.Id, default)).ReturnsAsync(authorPrefs);
+        _commentRepo.Setup(r => r.AddAsync(It.IsAny<Comment>(), default)).Returns(Task.CompletedTask);
+
+        var result = await sut.CreateRootCommentAsync(section.Id, reader.Id, "Comment body.", Visibility.Public);
+
+        _emailSender.Verify(
+            s => s.SendAsync(
+                author.Email,
+                author.DisplayName,
+                It.IsAny<string>(),
+                It.Is<string>(body => body.Contains($"/Author/Section/{section.Id}#comment-{result.Id}")),
+                default),
+            Times.Once);
     }
 
 }
