@@ -24,6 +24,7 @@ public sealed class UserPreferences
     public AuthorDigestMode? AuthorDigestMode{get; private set;}
     public int? AuthorDigestIntervalHours{get; private set;}
     public string? AuthorTimezone{get; private set;}
+    public bool NotifyAuthorOnCommentActivity{get; private set;}
 
     // Reader prose preferences
     public ProseFont ProseFont{get; private set;}
@@ -63,6 +64,7 @@ public sealed class UserPreferences
             AuthorDigestMode = null,
             AuthorDigestIntervalHours = null,
             AuthorTimezone = null,
+            NotifyAuthorOnCommentActivity = false,
             DisplayTheme = DisplayTheme.Light,
             ProseFont = ProseFont.SystemSerif,
             ProseFontSize = ProseFontSize.Medium,
@@ -90,6 +92,7 @@ public sealed class UserPreferences
             AuthorDigestMode = digestMode,
             AuthorDigestIntervalHours = digestMode == Enumerations.AuthorDigestMode.Digest ? digestIntervalHours : null,
             AuthorTimezone = timezone,
+            NotifyAuthorOnCommentActivity = true,
             DisplayTheme = DisplayTheme.Light,
             ProseFont = ProseFont.SystemSerif,
             ProseFontSize = ProseFontSize.Medium,
@@ -129,6 +132,11 @@ public sealed class UserPreferences
     public void UpdateDisplayTheme(DisplayTheme displayTheme)
     {
         DisplayTheme = displayTheme;
+    }
+
+    public void UpdateAuthorCommentEmailPreference(bool notifyAuthorOnCommentActivity)
+    {
+        NotifyAuthorOnCommentActivity = notifyAuthorOnCommentActivity;
     }
 
     public void UpdateProseFontPreferences(ProseFont proseFont, ProseFontSize proseFontSize)

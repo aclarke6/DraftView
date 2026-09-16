@@ -16,10 +16,10 @@ public interface IUserService
     Task UpdateProseFontPreferencesAsync(Guid userId, ProseFont proseFont, ProseFontSize proseFontSize, CancellationToken ct = default);
     Task UpdateDiffPreferencesAsync(Guid userId, bool showDiffOnRevisit, ReadingStyle readingStyle, int diffCooldownHours, CancellationToken ct = default);
     Task UpdateShowEditsAsync(Guid userId, bool showEdits, CancellationToken ct = default);
+    Task UpdateAuthorCommentEmailPreferenceAsync(Guid userId, bool notifyAuthorOnCommentActivity, CancellationToken ct = default);
     Task UpdateEmailAsync(Guid userId, string email, CancellationToken ct = default);
     Task UpdateReaderProfileAsync(Guid userId, string? bio, string? genreInterests, DraftView.Domain.Enumerations.ReaderPace? pace, CancellationToken ct = default);
     Task ResendInvitationAsync(Guid userId, Guid authorId, CancellationToken ct = default);
 }
-
 
 
