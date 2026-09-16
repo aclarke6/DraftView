@@ -15,9 +15,10 @@ public class ReadingProgressService(
     IPassageAnchorService passageAnchorService,
     IUnitOfWork unitOfWork,
     IUserRepository userRepo,
-    IAuthorNotificationRepository notificationRepo) : IReadingProgressService
+    IAuthorNotificationRepository notificationRepo,
+    IUserPreferencesRepository prefsRepo) : IReadingProgressService
 {
-    private static readonly TimeSpan ReturnThreshold = TimeSpan.FromDays(7);
+    private const int DefaultReturnThresholdDays = 7;
 
     public async Task RecordOpenAsync(
         Guid sectionId, Guid userId, CancellationToken ct = default)
@@ -106,8 +107,12 @@ public class ReadingProgressService(
 
         if (previousEvents.Count > 0)
         {
+            var authorPrefs = await prefsRepo.GetByUserIdAsync(author.Id, ct);
+            var thresholdDays = authorPrefs?.ReaderReturnThresholdDays ?? DefaultReturnThresholdDays;
+            var returnThreshold = TimeSpan.FromDays(thresholdDays);
+
             var lastActive = previousEvents.Max(e => e.LastOpenedAt);
-            if (now - lastActive >= ReturnThreshold)
+            if (now - lastActive >= returnThreshold)
             {
                 var daysAway = (int)(now - lastActive).TotalDays;
                 await notificationRepo.AddAsync(

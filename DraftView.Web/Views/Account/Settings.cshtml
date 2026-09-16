@@ -274,6 +274,28 @@
             </div>
 
             <div class="card settings-card">
+                <div class="card__header"><span class="card__title">Reader Return Notifications</span></div>
+                <div class="card__body">
+                    <p class="settings-hint">Notify me when a reader returns after being away for at least:</p>
+                    <form asp-action="ChangeReaderReturnThreshold" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="settings-form-row">
+                            <div class="settings-form-field">
+                                <label class="form-label">Absence threshold</label>
+                                <select name="ReaderReturnThresholdDays" class="form-input">
+                                    <option value="7"  selected="@(Model.ReaderReturnThresholdDays == 7)">1 week</option>
+                                    <option value="14" selected="@(Model.ReaderReturnThresholdDays == 14)">2 weeks</option>
+                                    <option value="21" selected="@(Model.ReaderReturnThresholdDays == 21)">3 weeks</option>
+                                    <option value="28" selected="@(Model.ReaderReturnThresholdDays == 28)">4 weeks</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn--primary settings-form-button">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card settings-card">
                 <div class="card__header"><span class="card__title">Activity Log</span></div>
                 <div class="card__body">
                     <p class="settings-hint">Recent Activity lives on the Dashboard. Sync completed items are only shown when you choose the Sync filter there.</p>
