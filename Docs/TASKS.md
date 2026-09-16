@@ -12,7 +12,7 @@ Last merged: 2026-09-16 — PRs #142/#143/#145 (comment email alerts, dwell-time
 **Repository:** https://github.com/aclarke6/DraftView
 
 ### Current Test State
-- 1,284 total, 1,284 passed, 1 skipped, 0 failed
+- 1,300 total, 1,300 passed, 1 skipped, 0 failed
 - 1 skipped — `SmtpEmailSenderIntegrationTests` (sends real email, manual only)
 
 ---

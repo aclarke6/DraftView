@@ -80,6 +80,7 @@ All 5 phases complete and merged to main.
 
 ## Changes and Features
 
+- Issue #147 — Author note to reader. `ReaderMessage` entity, `IReaderMessageService`, sent-log repository, and compose page at `Author/SendNote`. Email icon added per reader row on the Readers page; email sent from DraftView address with Reply-To set to the author's email. Dashboard activity button deferred — `AuthorNotification` carries no `RecipientUserId`; requires a separate schema change to enable. `IEmailSender` extended with optional `replyToEmail` parameter. (2026-09-16)
 - Issue #146 — Configurable reader-return notification threshold. Replaced hardcoded 7-day constant in `ReadingProgressService` with a per-author `ReaderReturnThresholdDays` preference (default 7). Authors can select 1/2/3/4 weeks on Account Settings. One EF migration. (2026-09-16)
 
 ---
