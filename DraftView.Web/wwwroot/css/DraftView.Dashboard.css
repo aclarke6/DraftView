@@ -139,6 +139,100 @@
     display: none;
 }
 
+/* Author/Dashboard shared card and status helpers */
+.dashboard-email-health__value--danger,
+.dashboard-email-health__sub--danger {
+    color: var(--color-danger);
+}
+
+.dashboard-email-health__value--success {
+    color: var(--color-success);
+}
+
+.dashboard-table-card--spaced {
+    margin-bottom: var(--space-8);
+}
+
+.table-wrapper--plain {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.dashboard-project-link {
+    font-weight: var(--font-medium);
+}
+
+.projects-table__sync-error {
+    font-size: var(--text-xs);
+    color: var(--color-danger);
+    margin-top: var(--space-1);
+    max-width: 200px;
+    line-height: 1.3;
+}
+
+.projects-table__sync-count {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    margin-top: 2px;
+}
+
+.projects-table__sync-progress {
+    margin-top: var(--space-1);
+    width: 120px;
+    height: 4px;
+    background: var(--color-border);
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+}
+
+.projects-table__sync-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: var(--color-accent);
+    border-radius: 2px;
+    position: absolute;
+    transition: width 0.4s ease;
+}
+
+.dashboard-placeholder {
+    color: var(--color-ink-subtle);
+    font-size: var(--text-sm);
+}
+
+.dashboard-form-inline {
+    display: inline;
+}
+
+.dashboard-empty-state {
+    padding: var(--space-10);
+}
+
+.dashboard-empty-state__body {
+    margin-bottom: var(--space-5);
+}
+
+.dashboard-activity-count {
+    font-size: var(--text-xs);
+    margin-left: var(--space-2);
+}
+
+.notifications-empty__icon {
+    color: var(--color-ink-subtle);
+    margin-bottom: var(--space-3);
+}
+
+.notifications-empty__text {
+    color: var(--color-ink-muted);
+    font-size: var(--text-sm);
+    margin: 0;
+}
+
+.dashboard-form-contents {
+    display: contents;
+}
+
 .dashboard-progress {
     padding: 0 var(--space-4) var(--space-4);
 }
