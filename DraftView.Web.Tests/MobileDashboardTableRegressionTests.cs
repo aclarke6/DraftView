@@ -2,33 +2,42 @@
 
 namespace DraftView.Web.Tests;
 
+/// <summary>
+/// File-based regressions for the author dashboard markup and styles.
+/// Covers: replacement of the flat published chapter table with the hierarchical
+/// reader-progress component and its supporting CSS hooks.
+/// Excludes: runtime Razor rendering and controller data mapping.
+/// </summary>
 public class MobileDashboardTableRegressionTests
 {
     [Fact]
-    public void MobileStyles_PreserveDashboardActionsAndGuidanceOnNarrowPortraitScreens()
+    public void DashboardView_ReplacesFlatPublishedChapterTableWithHierarchicalReaderProgress()
     {
         var solutionRoot = GetSolutionRoot();
-        var mobileCssPath = Path.Combine(solutionRoot, "DraftView.Web", "wwwroot", "css", "DraftView.Mobile.css");
+        var dashboardCssPath = Path.Combine(solutionRoot, "DraftView.Web", "wwwroot", "css", "DraftView.Dashboard.css");
         var dashboardViewPath = Path.Combine(solutionRoot, "DraftView.Web", "Views", "Author", "Dashboard.cshtml");
+        var chapterPartialPath = Path.Combine(solutionRoot, "DraftView.Web", "Views", "Author", "_DashboardChapterProgress.cshtml");
 
-        var mobileCss = File.ReadAllText(mobileCssPath);
+        var dashboardCss = File.ReadAllText(dashboardCssPath);
         var dashboardView = File.ReadAllText(dashboardViewPath);
+        var chapterPartial = File.ReadAllText(chapterPartialPath);
 
-        Assert.DoesNotContain("\n        td:last-child {", mobileCss, StringComparison.Ordinal);
-        Assert.DoesNotContain("\r\n        td:last-child {", mobileCss, StringComparison.Ordinal);
-        Assert.Contains(".dashboard-table__actions {", mobileCss, StringComparison.Ordinal);
-        Assert.Contains(".projects-table__col-sync,", mobileCss, StringComparison.Ordinal);
-        Assert.Contains(".projects-table__col-reader-active {", mobileCss, StringComparison.Ordinal);
-        Assert.Contains(".published-table__col-published,", mobileCss, StringComparison.Ordinal);
-        Assert.Contains(".published-table__col-changed {", mobileCss, StringComparison.Ordinal);
-        Assert.Contains(".dashboard-table-card__mobile-note {", mobileCss, StringComparison.Ordinal);
+        Assert.Contains(".dashboard-progress__summary {", dashboardCss, StringComparison.Ordinal);
+        Assert.Contains(".dashboard-progress__reader {", dashboardCss, StringComparison.Ordinal);
+        Assert.Contains(".dashboard-progress__status--not-viewed {", dashboardCss, StringComparison.Ordinal);
         Assert.Contains("class=\"dashboard-table__actions projects-table__col-actions\"", dashboardView, StringComparison.Ordinal);
         Assert.Contains("class=\"projects-table__col-sync\"", dashboardView, StringComparison.Ordinal);
         Assert.Contains("class=\"projects-table__col-reader-active\"", dashboardView, StringComparison.Ordinal);
-        Assert.Contains("class=\"published-table__col-published\"", dashboardView, StringComparison.Ordinal);
-        Assert.Contains("class=\"published-table__col-changed\"", dashboardView, StringComparison.Ordinal);
+        Assert.Contains("Reader Progress", dashboardView, StringComparison.Ordinal);
+        Assert.Contains("class=\"dashboard-progress__group\"", dashboardView, StringComparison.Ordinal);
+        Assert.Contains("Html.PartialAsync(\"_DashboardChapterProgress\", chapter)", dashboardView, StringComparison.Ordinal);
         Assert.Contains("Rotate to landscape to view additional project details.", dashboardView, StringComparison.Ordinal);
-        Assert.Contains("Rotate to landscape to view additional chapter details.", dashboardView, StringComparison.Ordinal);
+        Assert.Contains("Expand acts, chapters, and readers without leaving the dashboard.", dashboardView, StringComparison.Ordinal);
+        Assert.DoesNotContain("class=\"published-table__col-published\"", dashboardView, StringComparison.Ordinal);
+        Assert.DoesNotContain("class=\"published-table__col-changed\"", dashboardView, StringComparison.Ordinal);
+        Assert.Contains("Not viewed yet", chapterPartial, StringComparison.Ordinal);
+        Assert.Contains("Reader page", chapterPartial, StringComparison.Ordinal);
+        Assert.Contains("Latest comment on", chapterPartial, StringComparison.Ordinal);
     }
 
     private static string GetSolutionRoot()

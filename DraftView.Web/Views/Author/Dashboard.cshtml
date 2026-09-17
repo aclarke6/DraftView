@@ -1,7 +1,13 @@
 ﻿@using DraftView.Domain.Enumerations
+@using DraftView.Domain.Interfaces.Services
 @using DraftView.Domain.Notifications
 @model DashboardViewModel
-@{ ViewData["Title"] = "Dashboard"; }
+@{
+    ViewData["Title"] = "Dashboard";
+
+    string FormatDashboardDate(DateTime? value) =>
+        value.HasValue ? value.Value.ToString("dd MMM yyyy HH:mm") : "—";
+}
 
 <div class="page-header page-header--image">
     <div class="page-header__inner">
@@ -24,7 +30,7 @@
     </div>
     <div class="stat-card">
         <div class="stat-card__label">Published Chapters</div>
-        <div class="stat-card__value">@Model.PublishedSections.Count</div>
+        <div class="stat-card__value">@Model.PublishedChapterCount</div>
         <div class="stat-card__sub">
             @if (Model.ActiveProject is not null)
             {
@@ -179,63 +185,62 @@
         </div>
 
         <!-- Published chapters -->
-        @if (Model.PublishedSections.Any())
+        @if (Model.PublishedChapterCount > 0)
         {
             <div class="card dashboard-table-card">
                 <div class="card__header">
-                    <span class="card__title">Published Chapters</span>
+                    <span class="card__title">Reader Progress</span>
                     @if (Model.ActiveProject is not null)
                     {
                         <a asp-action="Sections" asp-route-projectId="@Model.ActiveProject.Id"
                            class="btn btn--ghost btn--sm">All sections</a>
                     }
                 </div>
-                <div class="table-wrapper" style="border:none; border-radius:0; box-shadow:none;">
-                    <table class="published-table">
-                        <thead>
-                            <tr>
-                                <th class="published-table__col-title">Chapter</th>
-                                <th class="published-table__col-published">Published</th>
-                                <th class="published-table__col-changed">Content Changed</th>
-                                <th class="published-table__col-actions">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var s in Model.PublishedSections)
+                <div class="dashboard-progress">
+                    @if (Model.PublishedChapterProgress.UsesStructuralGroups)
+                    {
+                        <div class="dashboard-progress__list">
+                            @foreach (var group in Model.PublishedChapterProgress.Groups)
                             {
-                                <tr>
-                                    <td class="published-table__col-title" style="font-weight:500;">@s.Title</td>
-                                    <td class="published-table__col-published" style="color:var(--color-ink-muted); font-size:var(--text-sm);">
-                                        @(s.PublishedAt.HasValue ? s.PublishedAt.Value.ToString("dd MMM yyyy") : "-")
-                                    </td>
-                                    <td class="published-table__col-changed">
-                                        @if (s.ContentChangedSincePublish)
+                                <details class="dashboard-progress__group">
+                                    <summary class="dashboard-progress__summary">
+                                        <span class="dashboard-progress__summary-main">
+                                            <span class="dashboard-progress__summary-title">@group.Title</span>
+                                            <span class="dashboard-progress__summary-meta">
+                                                @group.ViewedReaderChapterCount of @group.TotalReaderChapterCount reader views
+                                            </span>
+                                            <span class="dashboard-progress__summary-meta">@group.CommentCount comments</span>
+                                            @if (group.NewCommentCount > 0)
+                                            {
+                                                <span class="badge badge--warning">@group.NewCommentCount new</span>
+                                            }
+                                            <span class="dashboard-progress__summary-meta">
+                                                Latest activity: @FormatDashboardDate(group.LatestActivityAt)
+                                            </span>
+                                        </span>
+                                    </summary>
+                                    <div class="dashboard-progress__children">
+                                        @foreach (var chapter in group.Chapters)
                                         {
-                                            <span class="badge badge--warning">Updated</span>
+                                            @await Html.PartialAsync("_DashboardChapterProgress", chapter)
                                         }
-                                        else
-                                        {
-                                            <span style="color:var(--color-ink-subtle); font-size:var(--text-sm);">-</span>
-                                        }
-                                    </td>
-                                    <td class="published-table__col-actions">
-                                        @if (Model.ActiveProject is not null)
-                                        {
-                                            <form asp-action="UnpublishChapter" method="post" style="display:inline">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="chapterId" value="@s.Id" />
-                                                <input type="hidden" name="projectId" value="@Model.ActiveProject.Id" />
-                                                <button type="submit" class="btn btn--danger btn--sm">Unpublish</button>
-                                            </form>
-                                        }
-                                    </td>
-                                </tr>
+                                    </div>
+                                </details>
                             }
-                        </tbody>
-                    </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="dashboard-progress__list">
+                            @foreach (var chapter in Model.PublishedChapterProgress.Chapters)
+                            {
+                                @await Html.PartialAsync("_DashboardChapterProgress", chapter)
+                            }
+                        </div>
+                    }
                 </div>
                 <div class="dashboard-table-card__mobile-note">
-                    Rotate to landscape to view additional chapter details.
+                    Expand acts, chapters, and readers without leaving the dashboard.
                 </div>
             </div>
         }
@@ -379,7 +384,6 @@
         setTimeout(pollSyncStatus, 2000);
     </script>
 }
-
 
 
 

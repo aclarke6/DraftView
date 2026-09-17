@@ -8,10 +8,10 @@ using DraftView.Domain.Notifications;
 namespace DraftView.Application.Tests.Services;
 
 /// <summary>
-/// Tests for DashboardService notification methods.
-/// Covers: get notifications (unfiltered, type-filtered, pruning), dismiss single,
-/// dismiss all, dismiss by type.
-/// Excludes: project overview, reader summary, email health (each covered separately).
+/// Tests for DashboardService dashboard-summary and notification methods.
+/// Covers: published chapter progress hierarchy, notification retrieval/filtering,
+/// and notification dismissal flows.
+/// Excludes: controller/view rendering, which is covered in Web layer tests.
 /// </summary>
 public class DashboardServiceTests
 {
@@ -20,6 +20,9 @@ public class DashboardServiceTests
     private readonly Mock<ISectionRepository>              _sectionRepo      = new();
     private readonly Mock<IUserRepository>                 _userRepo         = new();
     private readonly Mock<IEmailDeliveryLogRepository>     _logRepo          = new();
+    private readonly Mock<ICommentRepository>              _commentRepo      = new();
+    private readonly Mock<IReadEventRepository>            _readEventRepo    = new();
+    private readonly Mock<IReaderAccessRepository>         _readerAccessRepo = new();
     private readonly Mock<IAuthorNotificationRepository>   _notificationRepo = new();
     private readonly Mock<IUnitOfWork>                     _unitOfWork       = new();
 
@@ -27,6 +30,9 @@ public class DashboardServiceTests
         _sectionRepo.Object,
         _userRepo.Object,
         _logRepo.Object,
+        _commentRepo.Object,
+        _readEventRepo.Object,
+        _readerAccessRepo.Object,
         _notificationRepo.Object,
         _unitOfWork.Object);
 
@@ -82,6 +88,163 @@ public class DashboardServiceTests
 
         Assert.Single(result);
         Assert.Equal(EmailStatus.Failed, result[0].Status);
+    }
+
+    [Fact]
+    public async Task GetPublishedChapterProgressAsync_WithStructuralParents_GroupsChaptersAndAggregatesReaderActivity()
+    {
+        var projectId  = Guid.NewGuid();
+        var partA      = Section.CreateFolder(projectId, "part-a", "Part A", null, 0);
+        var emptyPart  = Section.CreateFolder(projectId, "part-empty", "Empty Part", null, 1);
+        var chapterOne = Section.CreateFolder(projectId, "chapter-1", "Chapter 1", partA.Id, 0);
+        var chapterTwo = Section.CreateFolder(projectId, "chapter-2", "Chapter 2", null, 2);
+        var sceneOne   = Section.CreateDocument(projectId, "scene-1", "Scene 1", chapterOne.Id, 0, "<p>x</p>", "hash-1", "Done");
+
+        chapterOne.MarkAsPublishedContainer();
+        chapterTwo.MarkAsPublishedContainer();
+        sceneOne.PublishAsPartOfChapter("hash-1");
+
+        var readerAlice = User.Create("alice@example.com", "Alice", Role.BetaReader);
+        var readerBen   = User.Create("ben@example.com", "Ben", Role.BetaReader);
+        readerAlice.Activate();
+        readerBen.Activate();
+
+        var aliceAccess = ReaderAccess.Grant(readerAlice.Id, AuthorId, projectId);
+        var benAccess   = ReaderAccess.Grant(readerBen.Id, AuthorId, projectId);
+        var readEvent   = ReadEvent.Create(sceneOne.Id, readerAlice.Id);
+
+        var chapterComment = Comment.CreateForImport(
+            chapterOne.Id,
+            readerBen.Id,
+            "Chapter comment",
+            Visibility.Public,
+            CommentStatus.Done,
+            new DateTime(2026, 9, 1, 10, 0, 0, DateTimeKind.Utc));
+        var sceneComment = Comment.CreateForImport(
+            sceneOne.Id,
+            readerAlice.Id,
+            "Scene comment",
+            Visibility.Public,
+            CommentStatus.New,
+            new DateTime(2026, 9, 1, 11, 0, 0, DateTimeKind.Utc));
+
+        _sectionRepo.Setup(r => r.GetByProjectIdAsync(projectId, default))
+            .ReturnsAsync([emptyPart, chapterTwo, sceneOne, partA, chapterOne]);
+        _readerAccessRepo.Setup(r => r.GetByProjectIdAsync(projectId, default))
+            .ReturnsAsync([aliceAccess, benAccess]);
+        _userRepo.Setup(r => r.GetByIdAsync(readerAlice.Id, default)).ReturnsAsync(readerAlice);
+        _userRepo.Setup(r => r.GetByIdAsync(readerBen.Id, default)).ReturnsAsync(readerBen);
+        _readEventRepo.Setup(r => r.GetByProjectIdAsync(projectId, default)).ReturnsAsync([readEvent]);
+        _commentRepo.Setup(r => r.GetAllBySectionIdAsync(chapterOne.Id, default)).ReturnsAsync([chapterComment]);
+        _commentRepo.Setup(r => r.GetAllBySectionIdAsync(sceneOne.Id, default)).ReturnsAsync([sceneComment]);
+        _commentRepo.Setup(r => r.GetAllBySectionIdAsync(chapterTwo.Id, default)).ReturnsAsync([]);
+
+        var result = await CreateSut().GetPublishedChapterProgressAsync(projectId, AuthorId);
+
+        Assert.True(result.UsesStructuralGroups);
+        Assert.Empty(result.Chapters);
+        Assert.Equal(2, result.Groups.Count);
+
+        var grouped = result.Groups[0];
+        Assert.Equal("Part A", grouped.Title);
+        Assert.False(grouped.IsUngrouped);
+        Assert.Equal(1, grouped.ViewedReaderChapterCount);
+        Assert.Equal(2, grouped.TotalReaderChapterCount);
+        Assert.Equal(2, grouped.CommentCount);
+        Assert.Equal(1, grouped.NewCommentCount);
+        Assert.Equal(new[] { sceneComment.CreatedAt, readEvent.LastOpenedAt }.Max(), grouped.LatestActivityAt);
+
+        var chapter = Assert.Single(grouped.Chapters);
+        Assert.Equal(chapterOne.Id, chapter.Chapter.Id);
+        Assert.Equal(1, chapter.ViewedReaderCount);
+        Assert.Equal(2, chapter.TotalReaderCount);
+        Assert.Equal(readEvent.LastOpenedAt, chapter.LatestViewAt);
+        Assert.Equal(2, chapter.CommentCount);
+        Assert.Equal(1, chapter.NewCommentCount);
+        Assert.NotNull(chapter.LatestComment);
+        Assert.Equal(sceneOne.Id, chapter.LatestComment!.SectionId);
+        Assert.Equal(sceneComment.Id, chapter.LatestComment.CommentId);
+        Assert.Equal("Scene 1", chapter.LatestComment.SectionTitle);
+
+        Assert.Equal(2, chapter.Readers.Count);
+        Assert.Equal("Alice", chapter.Readers[0].ReaderName);
+        Assert.True(chapter.Readers[0].HasViewed);
+        Assert.Equal(readEvent.LastOpenedAt, chapter.Readers[0].LastViewedAt);
+        Assert.Equal(1, chapter.Readers[0].CommentCount);
+        Assert.Equal("Ben", chapter.Readers[1].ReaderName);
+        Assert.False(chapter.Readers[1].HasViewed);
+        Assert.Null(chapter.Readers[1].LastViewedAt);
+        Assert.Equal(1, chapter.Readers[1].CommentCount);
+
+        var ungrouped = result.Groups[1];
+        Assert.Equal("Ungrouped chapters", ungrouped.Title);
+        Assert.True(ungrouped.IsUngrouped);
+        Assert.Single(ungrouped.Chapters);
+        Assert.Equal(chapterTwo.Id, ungrouped.Chapters[0].Chapter.Id);
+        Assert.Equal(0, ungrouped.CommentCount);
+        Assert.Equal(0, ungrouped.NewCommentCount);
+    }
+
+    [Fact]
+    public async Task GetPublishedChapterProgressAsync_WithoutStructuralParents_ReturnsChapterRowsWithViewedAndUnviewedReaders()
+    {
+        var projectId = Guid.NewGuid();
+        var chapter   = Section.CreateFolder(projectId, "chapter-1", "Chapter 1", null, 0);
+        var scene     = Section.CreateDocument(projectId, "scene-1", "Scene 1", chapter.Id, 0, "<p>x</p>", "hash-1", "Done");
+
+        chapter.MarkAsPublishedContainer();
+        scene.PublishAsPartOfChapter("hash-1");
+
+        var readerAlice = User.Create("alice@example.com", "Alice", Role.BetaReader);
+        var readerBen   = User.Create("ben@example.com", "Ben", Role.BetaReader);
+        readerAlice.Activate();
+        readerBen.Activate();
+
+        var aliceAccess = ReaderAccess.Grant(readerAlice.Id, AuthorId, projectId);
+        var benAccess   = ReaderAccess.Grant(readerBen.Id, AuthorId, projectId);
+        var readEvent   = ReadEvent.Create(scene.Id, readerBen.Id);
+        var benComment  = Comment.CreateForImport(
+            scene.Id,
+            readerBen.Id,
+            "Ben comment",
+            Visibility.Public,
+            CommentStatus.New,
+            new DateTime(2026, 9, 2, 11, 0, 0, DateTimeKind.Utc));
+
+        _sectionRepo.Setup(r => r.GetByProjectIdAsync(projectId, default))
+            .ReturnsAsync([chapter, scene]);
+        _readerAccessRepo.Setup(r => r.GetByProjectIdAsync(projectId, default))
+            .ReturnsAsync([benAccess, aliceAccess]);
+        _userRepo.Setup(r => r.GetByIdAsync(readerAlice.Id, default)).ReturnsAsync(readerAlice);
+        _userRepo.Setup(r => r.GetByIdAsync(readerBen.Id, default)).ReturnsAsync(readerBen);
+        _readEventRepo.Setup(r => r.GetByProjectIdAsync(projectId, default)).ReturnsAsync([readEvent]);
+        _commentRepo.Setup(r => r.GetAllBySectionIdAsync(chapter.Id, default)).ReturnsAsync([]);
+        _commentRepo.Setup(r => r.GetAllBySectionIdAsync(scene.Id, default)).ReturnsAsync([benComment]);
+
+        var result = await CreateSut().GetPublishedChapterProgressAsync(projectId, AuthorId);
+
+        Assert.False(result.UsesStructuralGroups);
+        Assert.Empty(result.Groups);
+
+        var chapterRow = Assert.Single(result.Chapters);
+        Assert.Equal(chapter.Id, chapterRow.Chapter.Id);
+        Assert.Equal(1, chapterRow.ViewedReaderCount);
+        Assert.Equal(2, chapterRow.TotalReaderCount);
+        Assert.Equal(1, chapterRow.CommentCount);
+        Assert.Equal(1, chapterRow.NewCommentCount);
+        Assert.NotNull(chapterRow.LatestComment);
+        Assert.Equal(scene.Id, chapterRow.LatestComment!.SectionId);
+
+        Assert.Equal(2, chapterRow.Readers.Count);
+        Assert.Equal("Alice", chapterRow.Readers[0].ReaderName);
+        Assert.False(chapterRow.Readers[0].HasViewed);
+        Assert.Null(chapterRow.Readers[0].LastViewedAt);
+        Assert.Equal(0, chapterRow.Readers[0].CommentCount);
+
+        Assert.Equal("Ben", chapterRow.Readers[1].ReaderName);
+        Assert.True(chapterRow.Readers[1].HasViewed);
+        Assert.Equal(readEvent.LastOpenedAt, chapterRow.Readers[1].LastViewedAt);
+        Assert.Equal(1, chapterRow.Readers[1].CommentCount);
     }
 
     // -----------------------------------------------------------------------

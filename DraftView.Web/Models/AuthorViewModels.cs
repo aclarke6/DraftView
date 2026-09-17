@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
+using DraftView.Domain.Interfaces.Services;
 using DraftView.Domain.Notifications;
 using Microsoft.AspNetCore.Http;
 
@@ -10,11 +11,19 @@ public class DashboardViewModel
 {
     public Project? ActiveProject { get; set; }
     public IReadOnlyList<Project> AllProjects { get; set; } = [];
-    public IReadOnlyList<Section> PublishedSections { get; set; } = [];
+    public AuthorDashboardProgressDto PublishedChapterProgress { get; set; } = new()
+    {
+        UsesStructuralGroups = false,
+        Groups = [],
+        Chapters = []
+    };
     public IReadOnlyList<EmailDeliveryLog> EmailFailures { get; set; } = [];
     public int ActiveReaderCount { get; set; }
     public IReadOnlyList<AuthorNotification> Notifications { get; set; } = [];
     public NotificationFilterGroup? ActiveTypeFilter { get; set; }
+    public int PublishedChapterCount => PublishedChapterProgress.UsesStructuralGroups
+        ? PublishedChapterProgress.Groups.Sum(group => group.Chapters.Count)
+        : PublishedChapterProgress.Chapters.Count;
 }
 
 public class SectionViewModel

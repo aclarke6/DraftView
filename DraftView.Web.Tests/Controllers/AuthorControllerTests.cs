@@ -228,6 +228,80 @@ public class AuthorControllerTests
         Assert.Equal("Reader", redirect.ControllerName);
     }
 
+    [Fact]
+    public async Task Dashboard_WhenAuthor_MapsPublishedChapterProgressToViewModel()
+    {
+        var author = User.Create("author@example.test", "Author", Role.Author);
+        var activeProject = Project.Create("Project One", "/Apps/Scrivener/ProjectOne", author.Id, "sync-root");
+        var chapter = Section.CreateFolder(activeProject.Id, Guid.NewGuid().ToString(), "Chapter 1", null, 0);
+        chapter.MarkAsPublishedContainer();
+        var reader = User.Create("reader@example.test", "Reader One", Role.BetaReader);
+        reader.Activate();
+
+        var publishedChapterProgress = new AuthorDashboardProgressDto
+        {
+            UsesStructuralGroups = false,
+            Groups = [],
+            Chapters =
+            [
+                new AuthorDashboardChapterProgressDto
+                {
+                    Chapter = chapter,
+                    ViewedReaderCount = 1,
+                    TotalReaderCount = 1,
+                    LatestViewAt = DateTime.UtcNow,
+                    CommentCount = 2,
+                    NewCommentCount = 1,
+                    LatestComment = new AuthorDashboardCommentLinkDto
+                    {
+                        SectionId = chapter.Id,
+                        CommentId = Guid.NewGuid(),
+                        SectionTitle = chapter.Title,
+                        CreatedAt = DateTime.UtcNow
+                    },
+                    Readers =
+                    [
+                        new AuthorDashboardReaderProgressDto
+                        {
+                            ReaderId = reader.Id,
+                            ReaderName = reader.DisplayName,
+                            HasViewed = true,
+                            LastViewedAt = DateTime.UtcNow,
+                            CommentCount = 2
+                        }
+                    ]
+                }
+            ]
+        };
+
+        var sut = CreateSut();
+
+        userRepo.Setup(r => r.GetByEmailAsync("author@example.test", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(author);
+        projectRepo.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([activeProject]);
+        projectRepo.Setup(r => r.GetReaderActiveProjectAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(activeProject);
+        dashboardService.Setup(s => s.GetPublishedChapterProgressAsync(activeProject.Id, author.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(publishedChapterProgress);
+        dashboardService.Setup(s => s.GetEmailHealthSummaryAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        dashboardService.Setup(s => s.GetNotificationsAsync(author.Id, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        userRepo.Setup(r => r.GetAllBetaReadersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([reader]);
+
+        var result = await sut.Dashboard();
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<DashboardViewModel>(view.Model);
+        Assert.Equal(1, model.PublishedChapterCount);
+        var chapterRow = Assert.Single(model.PublishedChapterProgress.Chapters);
+        Assert.Equal(chapter.Id, chapterRow.Chapter.Id);
+        Assert.Equal(1, chapterRow.ViewedReaderCount);
+        Assert.Equal(1, chapterRow.NewCommentCount);
+    }
+
     // ---------------------------------------------------------------------------
     // Publishing
     // ---------------------------------------------------------------------------
