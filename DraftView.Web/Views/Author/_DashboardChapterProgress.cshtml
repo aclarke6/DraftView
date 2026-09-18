@@ -3,14 +3,6 @@
 @{
     string FormatChapterDate(DateTime? value) =>
         value.HasValue ? value.Value.ToString("dd MMM yyyy HH:mm") : "—";
-
-    var latestCommentBaseUrl = Model.LatestComment is null
-        ? null
-        : Url.Action("Section", "Author", new { id = Model.LatestComment.SectionId });
-    var latestCommentUrl = string.IsNullOrWhiteSpace(latestCommentBaseUrl)
-        ? null
-        : $"{latestCommentBaseUrl}#comment-{Model.LatestComment!.CommentId}";
-    var chapterReaderPageUrl = Url.Action("Read", "Reader", new { id = Model.Chapter.Id });
     var chapterTitleId = $"dashboard-progress-title-{Model.Chapter.Id:N}";
 }
 
@@ -35,23 +27,24 @@
         </span>
     </summary>
 
-    @if (!string.IsNullOrWhiteSpace(chapterReaderPageUrl) || latestCommentUrl is not null)
-    {
+    <div class="dashboard-progress__children">
         <nav class="dashboard-progress__chapter-links" aria-labelledby="@chapterTitleId">
-            @if (!string.IsNullOrWhiteSpace(chapterReaderPageUrl))
+            <a asp-action="Read"
+               asp-controller="Reader"
+               asp-route-id="@Model.Chapter.Id"
+               class="dashboard-progress__action-link">Reader page</a>
+            @if (Model.LatestComment is not null)
             {
-                <a href="@chapterReaderPageUrl" class="dashboard-progress__action-link">Reader page</a>
-            }
-            @if (latestCommentUrl is not null)
-            {
-                <a href="@latestCommentUrl" class="dashboard-progress__action-link">
-                    Latest comment on @Model.LatestComment!.SectionTitle
+                <a asp-action="Section"
+                   asp-controller="Author"
+                   asp-route-id="@Model.LatestComment.SectionId"
+                   asp-fragment="comment-@Model.LatestComment.CommentId"
+                   class="dashboard-progress__action-link">
+                    Latest comment on @Model.LatestComment.SectionTitle
                 </a>
             }
         </nav>
-    }
 
-    <div class="dashboard-progress__children">
         @if (Model.Readers.Any())
         {
             <ul class="dashboard-progress__reader-list">
