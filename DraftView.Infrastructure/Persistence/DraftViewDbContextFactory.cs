@@ -17,9 +17,10 @@ public sealed class DraftViewDbContextFactory : IDesignTimeDbContextFactory<Draf
             : null;
         var userSecretsPath = FindUserSecretsPath();
 
+        var headless = webProjectRoot is null && userSecretsPath is null;
         var connectionString = ReadConnectionString(appSettingsPath, userSecretsPath);
-        var encryptionKey = ReadEmailProtectionKey("EmailProtection:EncryptionKey", userSecretsPath);
-        var lookupHmacKey = ReadEmailProtectionKey("EmailProtection:LookupHmacKey", userSecretsPath);
+        var encryptionKey = ReadEmailProtectionKey("EmailProtection:EncryptionKey", userSecretsPath, headless);
+        var lookupHmacKey = ReadEmailProtectionKey("EmailProtection:LookupHmacKey", userSecretsPath, headless);
 
         var options = new DbContextOptionsBuilder<DraftViewDbContext>()
             .UseNpgsql(connectionString)
@@ -55,7 +56,7 @@ public sealed class DraftViewDbContextFactory : IDesignTimeDbContextFactory<Draf
             "DefaultConnection was not found in environment variables, DraftView.Web user secrets, or DraftView.Web/appsettings.json.");
     }
 
-    private static byte[] ReadEmailProtectionKey(string keyPath, string? userSecretsPath)
+    private static byte[] ReadEmailProtectionKey(string keyPath, string? userSecretsPath, bool headless)
     {
         var environmentKey = Environment.GetEnvironmentVariable(keyPath.Replace(':', '_')) ??
                              Environment.GetEnvironmentVariable(keyPath.Replace(":", "__"));
@@ -68,6 +69,12 @@ public sealed class DraftViewDbContextFactory : IDesignTimeDbContextFactory<Draf
             if (!string.IsNullOrWhiteSpace(secretValue))
                 return DecodeKey(secretValue, keyPath);
         }
+
+        // Migrations never perform email operations. When running headless (no solution
+        // root, no user secrets -- i.e. the migration bundle on the server), placeholder
+        // keys are safe and avoid blocking the bundle on secrets that aren't present.
+        if (headless)
+            return new byte[32];
 
         throw new InvalidOperationException(
             $"Missing required configuration value '{keyPath}' for design-time DraftViewDbContext creation.");
