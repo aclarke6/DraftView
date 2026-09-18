@@ -12,7 +12,9 @@ public sealed class DraftViewDbContextFactory : IDesignTimeDbContextFactory<Draf
     public DraftViewDbContext CreateDbContext(string[] args)
     {
         var webProjectRoot = FindWebProjectRoot();
-        var appSettingsPath = Path.Combine(webProjectRoot, "appsettings.json");
+        var appSettingsPath = webProjectRoot is not null
+            ? Path.Combine(webProjectRoot, "appsettings.json")
+            : null;
         var userSecretsPath = FindUserSecretsPath();
 
         var connectionString = ReadConnectionString(appSettingsPath, userSecretsPath);
@@ -29,7 +31,7 @@ public sealed class DraftViewDbContextFactory : IDesignTimeDbContextFactory<Draf
             new UserEmailLookupHmacService(lookupHmacKey));
     }
 
-    private static string ReadConnectionString(string appSettingsPath, string? userSecretsPath)
+    private static string ReadConnectionString(string? appSettingsPath, string? userSecretsPath)
     {
         var environmentValue = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
         if (!string.IsNullOrWhiteSpace(environmentValue))
@@ -42,9 +44,12 @@ public sealed class DraftViewDbContextFactory : IDesignTimeDbContextFactory<Draf
                 return userSecretsConnection;
         }
 
-        var appSettingsConnection = ReadJsonValue(appSettingsPath, "ConnectionStrings:DefaultConnection");
-        if (!string.IsNullOrWhiteSpace(appSettingsConnection))
-            return appSettingsConnection;
+        if (!string.IsNullOrWhiteSpace(appSettingsPath))
+        {
+            var appSettingsConnection = ReadJsonValue(appSettingsPath, "ConnectionStrings:DefaultConnection");
+            if (!string.IsNullOrWhiteSpace(appSettingsConnection))
+                return appSettingsConnection;
+        }
 
         throw new InvalidOperationException(
             "DefaultConnection was not found in environment variables, DraftView.Web user secrets, or DraftView.Web/appsettings.json.");
@@ -108,7 +113,7 @@ public sealed class DraftViewDbContextFactory : IDesignTimeDbContextFactory<Draf
         return null;
     }
 
-    private static string FindWebProjectRoot()
+    private static string? FindWebProjectRoot()
     {
         var dir = Directory.GetCurrentDirectory();
 
@@ -119,10 +124,7 @@ public sealed class DraftViewDbContextFactory : IDesignTimeDbContextFactory<Draf
             dir = Directory.GetParent(dir)?.FullName;
         }
 
-        if (dir is null)
-            throw new InvalidOperationException("Solution root not found.");
-
-        return Path.Combine(dir, "DraftView.Web");
+        return dir is not null ? Path.Combine(dir, "DraftView.Web") : null;
     }
 
     private static string? ReadJsonValue(string filePath, string keyPath)
