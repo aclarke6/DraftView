@@ -18,14 +18,7 @@
         <span class="dashboard-progress__summary-main">
             <span class="dashboard-progress__summary-title" role="heading" aria-level="4">
                 <span class="dashboard-progress__summary-toggle" aria-hidden="true"></span>
-                @if (!string.IsNullOrWhiteSpace(chapterReaderPageUrl))
-                {
-                    <a href="@chapterReaderPageUrl" class="dashboard-progress__summary-title-link">@Model.Chapter.Title</a>
-                }
-                else
-                {
-                    <span>@Model.Chapter.Title</span>
-                }
+                <span>@Model.Chapter.Title</span>
             </span>
             <span class="dashboard-progress__summary-meta">
                 @Model.ViewedReaderCount of @Model.TotalReaderCount readers viewed
@@ -39,15 +32,23 @@
                 <span class="badge badge--warning">@Model.NewCommentCount new</span>
             }
         </span>
-        @if (latestCommentUrl is not null)
-        {
-            <span class="dashboard-progress__summary-actions">
+    </summary>
+
+    @if (!string.IsNullOrWhiteSpace(chapterReaderPageUrl) || latestCommentUrl is not null)
+    {
+        <div class="dashboard-progress__chapter-links">
+            @if (!string.IsNullOrWhiteSpace(chapterReaderPageUrl))
+            {
+                <a href="@chapterReaderPageUrl" class="dashboard-progress__action-link">Reader page</a>
+            }
+            @if (latestCommentUrl is not null)
+            {
                 <a href="@latestCommentUrl" class="dashboard-progress__action-link">
                     Latest comment on @Model.LatestComment!.SectionTitle
                 </a>
-            </span>
-        }
-    </summary>
+            }
+        </div>
+    }
 
     <div class="dashboard-progress__children">
         @if (Model.Readers.Any())

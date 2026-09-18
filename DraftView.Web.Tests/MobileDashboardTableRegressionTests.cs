@@ -38,9 +38,9 @@ public class MobileDashboardTableRegressionTests
         Assert.Contains("Not viewed yet", chapterPartial, StringComparison.Ordinal);
         Assert.Contains("Latest comment on", chapterPartial, StringComparison.Ordinal);
         Assert.Contains("dashboard-progress__summary-toggle", chapterPartial, StringComparison.Ordinal);
-        Assert.Contains("dashboard-progress__summary-title-link", chapterPartial, StringComparison.Ordinal);
+        Assert.Contains("class=\"dashboard-progress__chapter-links\"", chapterPartial, StringComparison.Ordinal);
         Assert.Contains("Url.Action(\"Read\", \"Reader\", new { id = Model.Chapter.Id })", chapterPartial, StringComparison.Ordinal);
-        Assert.DoesNotContain(">Reader page</a>", chapterPartial, StringComparison.Ordinal);
+        Assert.Contains(">Reader page</a>", chapterPartial, StringComparison.Ordinal);
     }
 
     private static string GetSolutionRoot()
