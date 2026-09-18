@@ -37,7 +37,7 @@
     <div class="dashboard-progress__children">
         @if (!string.IsNullOrWhiteSpace(chapterReaderPageUrl) || latestCommentUrl is not null)
         {
-            <div class="dashboard-progress__chapter-links" aria-label="Chapter actions">
+            <nav class="dashboard-progress__chapter-links" aria-label="Chapter actions">
                 @if (!string.IsNullOrWhiteSpace(chapterReaderPageUrl))
                 {
                     <a href="@chapterReaderPageUrl" class="dashboard-progress__action-link">Reader page</a>
@@ -48,7 +48,7 @@
                         Latest comment on @Model.LatestComment!.SectionTitle
                     </a>
                 }
-            </div>
+            </nav>
         }
 
         @if (Model.Readers.Any())
