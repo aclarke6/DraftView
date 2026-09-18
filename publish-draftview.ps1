@@ -142,7 +142,7 @@ CONN=$(python3 -c 'import json; print(json.load(open("/var/www/draftview/appsett
 ASPNETCORE_ENVIRONMENT=Production /tmp/efbundle --connection "$CONN"
 rm -f /tmp/efbundle
 '@
-$migrateScript | ssh -i $key $server "bash -s"
+($migrateScript -replace "`r`n", "`n") | ssh -i $key $server "bash -s"
 if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: Migration bundle failed. Aborting - service NOT restarted." -ForegroundColor Red; exit 1 }
 Write-Host "Migrations applied." -ForegroundColor Green
 
