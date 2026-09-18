@@ -122,11 +122,12 @@ if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: SCP of migration bundle failed." -
 # binary starts. All current migrations are additive so the running app is
 # unaffected while the bundle executes.
 #
-# --connection is passed explicitly because the self-contained bundle uses
-# EF's design-time host builder, which walks up the directory tree looking
-# for a .sln/.slnx file to resolve user-secrets. No solution file exists
-# in /var/www/draftview, so the lookup fails with "Solution root not found."
-# Passing --connection bypasses the design-time host entirely.
+# ConnectionStrings__DefaultConnection is set as an env var so the custom
+# IDesignTimeDbContextFactory picks it up directly. --connection does NOT
+# bypass a custom factory: the factory runs first and must resolve the
+# connection string itself before EF Core can apply any override.
+# Email protection keys are not required for migrations; the factory uses
+# placeholder keys when running headless (no solution root, no user secrets).
 #
 # QUOTING: the migration script is a single-quoted PowerShell here-string
 # (@'...'@) so PowerShell makes zero changes to its content. It is piped
@@ -139,7 +140,7 @@ $migrateScript = @'
 set -e
 chmod +x /tmp/efbundle
 CONN=$(python3 -c 'import json; print(json.load(open("/var/www/draftview/appsettings.Production.json"))["ConnectionStrings"]["DefaultConnection"])')
-ASPNETCORE_ENVIRONMENT=Production /tmp/efbundle --connection "$CONN"
+ConnectionStrings__DefaultConnection="$CONN" ASPNETCORE_ENVIRONMENT=Production /tmp/efbundle
 rm -f /tmp/efbundle
 '@
 ($migrateScript -replace "`r`n", "`n") | ssh -i $key $server "bash -s"
