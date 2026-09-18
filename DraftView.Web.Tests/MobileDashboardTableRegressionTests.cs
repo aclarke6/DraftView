@@ -36,8 +36,11 @@ public class MobileDashboardTableRegressionTests
         Assert.DoesNotContain("class=\"published-table__col-published\"", dashboardView, StringComparison.Ordinal);
         Assert.DoesNotContain("class=\"published-table__col-changed\"", dashboardView, StringComparison.Ordinal);
         Assert.Contains("Not viewed yet", chapterPartial, StringComparison.Ordinal);
-        Assert.Contains("Reader page", chapterPartial, StringComparison.Ordinal);
         Assert.Contains("Latest comment on", chapterPartial, StringComparison.Ordinal);
+        Assert.Contains("dashboard-progress__summary-toggle", chapterPartial, StringComparison.Ordinal);
+        Assert.Contains("dashboard-progress__summary-title-link", chapterPartial, StringComparison.Ordinal);
+        Assert.Contains("Url.Action(\"Read\", \"Reader\", new { id = Model.Chapter.Id })", chapterPartial, StringComparison.Ordinal);
+        Assert.DoesNotContain(">Reader page</a>", chapterPartial, StringComparison.Ordinal);
     }
 
     private static string GetSolutionRoot()

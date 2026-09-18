@@ -4,16 +4,29 @@
     string FormatChapterDate(DateTime? value) =>
         value.HasValue ? value.Value.ToString("dd MMM yyyy HH:mm") : "—";
 
-    var latestCommentUrl = Model.LatestComment is null
+    var latestCommentBaseUrl = Model.LatestComment is null
         ? null
-        : $"{Url.Action("Section", "Author", new { id = Model.LatestComment.SectionId })}#comment-{Model.LatestComment.CommentId}";
-    var readerPageUrl = Url.Action("Read", "Reader", new { id = Model.Chapter.Id });
+        : Url.Action("Section", "Author", new { id = Model.LatestComment.SectionId });
+    var latestCommentUrl = string.IsNullOrWhiteSpace(latestCommentBaseUrl)
+        ? null
+        : $"{latestCommentBaseUrl}#comment-{Model.LatestComment!.CommentId}";
+    var chapterReaderPageUrl = Url.Action("Read", "Reader", new { id = Model.Chapter.Id });
 }
 
 <details class="dashboard-progress__chapter">
     <summary class="dashboard-progress__summary dashboard-progress__summary--chapter">
         <span class="dashboard-progress__summary-main">
-            <span class="dashboard-progress__summary-title" role="heading" aria-level="4">@Model.Chapter.Title</span>
+            <span class="dashboard-progress__summary-title" role="heading" aria-level="4">
+                <span class="dashboard-progress__summary-toggle" aria-hidden="true"></span>
+                @if (!string.IsNullOrWhiteSpace(chapterReaderPageUrl))
+                {
+                    <a href="@chapterReaderPageUrl" class="dashboard-progress__summary-title-link">@Model.Chapter.Title</a>
+                }
+                else
+                {
+                    <span>@Model.Chapter.Title</span>
+                }
+            </span>
             <span class="dashboard-progress__summary-meta">
                 @Model.ViewedReaderCount of @Model.TotalReaderCount readers viewed
             </span>
@@ -53,10 +66,6 @@
                             </span>
                             <span class="dashboard-progress__reader-meta">@reader.CommentCount comments</span>
                         </div>
-                        @if (!string.IsNullOrWhiteSpace(readerPageUrl))
-                        {
-                            <a href="@readerPageUrl" class="dashboard-progress__action-link">Reader page</a>
-                        }
                     </li>
                 }
             </ul>
