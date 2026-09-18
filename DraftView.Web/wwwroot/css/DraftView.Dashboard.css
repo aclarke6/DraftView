@@ -581,4 +581,9 @@ textarea {
         flex-direction: column;
         align-items: stretch;
     }
+
+    .dashboard-progress__chapter-links {
+        flex-direction: column;
+        align-items: flex-start;
+    }
 }
