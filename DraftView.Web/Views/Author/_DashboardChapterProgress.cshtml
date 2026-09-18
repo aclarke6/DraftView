@@ -3,17 +3,16 @@
 @{
     string FormatChapterDate(DateTime? value) =>
         value.HasValue ? value.Value.ToString("dd MMM yyyy HH:mm") : "—";
-
-    var latestCommentUrl = Model.LatestComment is null
-        ? null
-        : $"{Url.Action("Section", "Author", new { id = Model.LatestComment.SectionId })}#comment-{Model.LatestComment.CommentId}";
-    var readerPageUrl = Url.Action("Read", "Reader", new { id = Model.Chapter.Id });
+    var chapterTitleId = $"dashboard-progress-title-{Model.Chapter.Id:N}";
 }
 
 <details class="dashboard-progress__chapter">
     <summary class="dashboard-progress__summary dashboard-progress__summary--chapter">
         <span class="dashboard-progress__summary-main">
-            <span class="dashboard-progress__summary-title" role="heading" aria-level="4">@Model.Chapter.Title</span>
+            <span class="dashboard-progress__summary-title">
+                <span class="dashboard-progress__summary-toggle" aria-hidden="true"></span>
+                <span id="@chapterTitleId" role="heading" aria-level="4">@Model.Chapter.Title</span>
+            </span>
             <span class="dashboard-progress__summary-meta">
                 @Model.ViewedReaderCount of @Model.TotalReaderCount readers viewed
             </span>
@@ -26,17 +25,26 @@
                 <span class="badge badge--warning">@Model.NewCommentCount new</span>
             }
         </span>
-        @if (latestCommentUrl is not null)
-        {
-            <span class="dashboard-progress__summary-actions">
-                <a href="@latestCommentUrl" class="dashboard-progress__action-link">
-                    Latest comment on @Model.LatestComment!.SectionTitle
-                </a>
-            </span>
-        }
     </summary>
 
     <div class="dashboard-progress__children">
+        <nav class="dashboard-progress__chapter-links" aria-labelledby="@chapterTitleId">
+            <a asp-action="Read"
+               asp-controller="Reader"
+               asp-route-id="@Model.Chapter.Id"
+               class="dashboard-progress__action-link">Reader page</a>
+            @if (Model.LatestComment is not null)
+            {
+                <a asp-action="Section"
+                   asp-controller="Author"
+                   asp-route-id="@Model.LatestComment.SectionId"
+                   asp-fragment="comment-@Model.LatestComment.CommentId"
+                   class="dashboard-progress__action-link">
+                    Latest comment on @Model.LatestComment.SectionTitle
+                </a>
+            }
+        </nav>
+
         @if (Model.Readers.Any())
         {
             <ul class="dashboard-progress__reader-list">
@@ -53,10 +61,6 @@
                             </span>
                             <span class="dashboard-progress__reader-meta">@reader.CommentCount comments</span>
                         </div>
-                        @if (!string.IsNullOrWhiteSpace(readerPageUrl))
-                        {
-                            <a href="@readerPageUrl" class="dashboard-progress__action-link">Reader page</a>
-                        }
                     </li>
                 }
             </ul>
