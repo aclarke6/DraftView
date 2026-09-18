@@ -12,6 +12,7 @@
         : $"{latestCommentBaseUrl}#comment-{Model.LatestComment!.CommentId}";
     var chapterReaderPageUrl = Url.Action("Read", "Reader", new { id = Model.Chapter.Id });
     var chapterTitleId = $"dashboard-progress-title-{Model.Chapter.Id:N}";
+    var chapterTitleTextId = $"{chapterTitleId}-text";
 }
 
 <details class="dashboard-progress__chapter">
@@ -19,7 +20,7 @@
         <span class="dashboard-progress__summary-main">
             <span id="@chapterTitleId" class="dashboard-progress__summary-title" role="heading" aria-level="4">
                 <span class="dashboard-progress__summary-toggle" aria-hidden="true"></span>
-                <span>@Model.Chapter.Title</span>
+                <span id="@chapterTitleTextId">@Model.Chapter.Title</span>
             </span>
             <span class="dashboard-progress__summary-meta">
                 @Model.ViewedReaderCount of @Model.TotalReaderCount readers viewed
@@ -37,7 +38,7 @@
 
     @if (!string.IsNullOrWhiteSpace(chapterReaderPageUrl) || latestCommentUrl is not null)
     {
-        <nav class="dashboard-progress__chapter-links" aria-labelledby="@chapterTitleId">
+        <nav class="dashboard-progress__chapter-links" aria-labelledby="@chapterTitleTextId">
             @if (!string.IsNullOrWhiteSpace(chapterReaderPageUrl))
             {
                 <a href="@chapterReaderPageUrl" class="dashboard-progress__action-link">Reader page</a>
