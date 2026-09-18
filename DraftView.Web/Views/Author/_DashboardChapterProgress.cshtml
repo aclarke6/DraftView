@@ -34,23 +34,23 @@
         </span>
     </summary>
 
-    @if (!string.IsNullOrWhiteSpace(chapterReaderPageUrl) || latestCommentUrl is not null)
-    {
-        <div class="dashboard-progress__chapter-links">
-            @if (!string.IsNullOrWhiteSpace(chapterReaderPageUrl))
-            {
-                <a href="@chapterReaderPageUrl" class="dashboard-progress__action-link">Reader page</a>
-            }
-            @if (latestCommentUrl is not null)
-            {
-                <a href="@latestCommentUrl" class="dashboard-progress__action-link">
-                    Latest comment on @Model.LatestComment!.SectionTitle
-                </a>
-            }
-        </div>
-    }
-
     <div class="dashboard-progress__children">
+        @if (!string.IsNullOrWhiteSpace(chapterReaderPageUrl) || latestCommentUrl is not null)
+        {
+            <div class="dashboard-progress__chapter-links" aria-label="Chapter actions">
+                @if (!string.IsNullOrWhiteSpace(chapterReaderPageUrl))
+                {
+                    <a href="@chapterReaderPageUrl" class="dashboard-progress__action-link">Reader page</a>
+                }
+                @if (latestCommentUrl is not null)
+                {
+                    <a href="@latestCommentUrl" class="dashboard-progress__action-link">
+                        Latest comment on @Model.LatestComment!.SectionTitle
+                    </a>
+                }
+            </div>
+        }
+
         @if (Model.Readers.Any())
         {
             <ul class="dashboard-progress__reader-list">
