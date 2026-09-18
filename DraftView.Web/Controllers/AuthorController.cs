@@ -52,23 +52,29 @@ public class AuthorController(
 
         NotificationFilterGroup? group = Enum.TryParse<NotificationFilterGroup>(type, out var parsed) ? parsed : null;
 
-        var projects          = await projectRepo.GetAllAsync();
-        var active            = await projectRepo.GetReaderActiveProjectAsync();
-        var publishedChapters = active is not null
-            ? await publicationService.GetPublishedChaptersAsync(active.Id) : [];
-        var failures      = await dashboardService.GetEmailHealthSummaryAsync();
-        var readers       = await userRepo.GetAllBetaReadersAsync();
+        var projects = await projectRepo.GetAllAsync();
+        var active = await projectRepo.GetReaderActiveProjectAsync();
+        var publishedChapterProgress = active is not null
+            ? await dashboardService.GetPublishedChapterProgressAsync(active.Id, author.Id)
+            : new Domain.Interfaces.Services.AuthorDashboardProgressDto
+            {
+                UsesStructuralGroups = false,
+                Groups = [],
+                Chapters = []
+            };
+        var failures = await dashboardService.GetEmailHealthSummaryAsync();
+        var readers = await userRepo.GetAllBetaReadersAsync();
         var notifications = await dashboardService.GetNotificationsAsync(author.Id, group);
 
         return View(new DashboardViewModel
         {
-            ActiveProject     = active,
-            AllProjects       = projects,
-            PublishedSections = publishedChapters,
-            EmailFailures     = failures,
+            ActiveProject = active,
+            AllProjects = projects,
+            PublishedChapterProgress = publishedChapterProgress,
+            EmailFailures = failures,
             ActiveReaderCount = readers.Count(r => r.IsActive && !r.IsSoftDeleted),
-            Notifications     = notifications,
-            ActiveTypeFilter  = group
+            Notifications = notifications,
+            ActiveTypeFilter = group
         });
     }
 

@@ -1,0 +1,69 @@
+@using DraftView.Domain.Interfaces.Services
+@model AuthorDashboardChapterProgressDto
+@{
+    string FormatChapterDate(DateTime? value) =>
+        value.HasValue ? value.Value.ToString("dd MMM yyyy HH:mm") : "—";
+
+    var latestCommentUrl = Model.LatestComment is null
+        ? null
+        : $"{Url.Action("Section", "Author", new { id = Model.LatestComment.SectionId })}#comment-{Model.LatestComment.CommentId}";
+    var readerPageUrl = Url.Action("Read", "Reader", new { id = Model.Chapter.Id });
+}
+
+<details class="dashboard-progress__chapter">
+    <summary class="dashboard-progress__summary dashboard-progress__summary--chapter">
+        <span class="dashboard-progress__summary-main">
+            <span class="dashboard-progress__summary-title" role="heading" aria-level="4">@Model.Chapter.Title</span>
+            <span class="dashboard-progress__summary-meta">
+                @Model.ViewedReaderCount of @Model.TotalReaderCount readers viewed
+            </span>
+            <span class="dashboard-progress__summary-meta">
+                Last viewed: @FormatChapterDate(Model.LatestViewAt)
+            </span>
+            <span class="dashboard-progress__summary-meta">@Model.CommentCount comments</span>
+            @if (Model.NewCommentCount > 0)
+            {
+                <span class="badge badge--warning">@Model.NewCommentCount new</span>
+            }
+        </span>
+        @if (latestCommentUrl is not null)
+        {
+            <span class="dashboard-progress__summary-actions">
+                <a href="@latestCommentUrl" class="dashboard-progress__action-link">
+                    Latest comment on @Model.LatestComment!.SectionTitle
+                </a>
+            </span>
+        }
+    </summary>
+
+    <div class="dashboard-progress__children">
+        @if (Model.Readers.Any())
+        {
+            <ul class="dashboard-progress__reader-list">
+                @foreach (var reader in Model.Readers)
+                {
+                    <li class="dashboard-progress__reader">
+                        <div class="dashboard-progress__reader-main">
+                            <span class="dashboard-progress__reader-name">@reader.ReaderName</span>
+                            <span class="dashboard-progress__status @(reader.HasViewed ? "dashboard-progress__status--viewed" : "dashboard-progress__status--not-viewed")">
+                                @(reader.HasViewed ? "Viewed" : "Not viewed yet")
+                            </span>
+                            <span class="dashboard-progress__reader-meta">
+                                Last viewed: @FormatChapterDate(reader.LastViewedAt)
+                            </span>
+                            <span class="dashboard-progress__reader-meta">@reader.CommentCount comments</span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(readerPageUrl))
+                        {
+                            <a href="@readerPageUrl" class="dashboard-progress__action-link">Reader page</a>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            <p class="dashboard-progress__empty">No readers currently have access to this chapter.</p>
+        }
+    </div>
+</details>

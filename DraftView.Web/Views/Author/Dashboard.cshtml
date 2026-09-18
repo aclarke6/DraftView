@@ -1,7 +1,13 @@
 ﻿@using DraftView.Domain.Enumerations
+@using DraftView.Domain.Interfaces.Services
 @using DraftView.Domain.Notifications
 @model DashboardViewModel
-@{ ViewData["Title"] = "Dashboard"; }
+@{
+    ViewData["Title"] = "Dashboard";
+
+    string FormatDashboardDate(DateTime? value) =>
+        value.HasValue ? value.Value.ToString("dd MMM yyyy HH:mm") : "—";
+}
 
 <div class="page-header page-header--image">
     <div class="page-header__inner">
@@ -24,7 +30,7 @@
     </div>
     <div class="stat-card">
         <div class="stat-card__label">Published Chapters</div>
-        <div class="stat-card__value">@Model.PublishedSections.Count</div>
+        <div class="stat-card__value">@Model.PublishedChapterCount</div>
         <div class="stat-card__sub">
             @if (Model.ActiveProject is not null)
             {
@@ -39,17 +45,17 @@
         <div class="stat-card__value">
             @if (Model.EmailFailures.Count > 0)
             {
-                <span style="color:var(--color-danger);">@Model.EmailFailures.Count</span>
+                <span class="dashboard-email-health__value dashboard-email-health__value--danger">@Model.EmailFailures.Count</span>
             }
             else
             {
-                <span style="color:var(--color-success);">OK</span>
+                <span class="dashboard-email-health__value dashboard-email-health__value--success">OK</span>
             }
         </div>
         <div class="stat-card__sub">
             @if (Model.EmailFailures.Count > 0)
             {
-                <span style="color:var(--color-danger);">@Model.EmailFailures.Count failed</span>
+                <span class="dashboard-email-health__sub dashboard-email-health__sub--danger">@Model.EmailFailures.Count failed</span>
             }
             else
             {
@@ -66,12 +72,12 @@
     <div class="dashboard-main">
 
         <!-- Projects -->
-        <div class="card dashboard-table-card" style="margin-bottom:var(--space-8);">
+        <div class="card dashboard-table-card dashboard-table-card--spaced">
             <div class="card__header">
                 <span class="card__title">Projects</span>
                 <a asp-action="Projects" class="btn btn--secondary btn--sm desktop-only">+ Add Project</a>
             </div>
-            <div class="table-wrapper" style="border:none; border-radius:0; box-shadow:none;">
+            <div class="table-wrapper table-wrapper--plain">
                 <table class="projects-table">
                     <thead>
                         <tr>
@@ -89,12 +95,12 @@
                                     @if (p.ProjectType == ProjectType.Manual)
                                     {
                                         <a asp-action="ManualChapters" asp-route-projectId="@p.Id"
-                                           style="font-weight:500;">@p.Name</a>
+                                           class="dashboard-project-link">@p.Name</a>
                                     }
                                     else
                                     {
                                         <a asp-action="Sections" asp-route-projectId="@p.Id"
-                                           style="font-weight:500;">@p.Name</a>
+                                           class="dashboard-project-link">@p.Name</a>
                                     }
                                 </td>
                                 <td class="projects-table__col-sync">
@@ -107,15 +113,15 @@
                                         <span class="badge badge--danger" title="@p.SyncErrorMessage">Error</span>
                                         @if (!string.IsNullOrWhiteSpace(p.SyncErrorMessage))
                                         {
-                                            <div style="font-size:0.75rem; color:var(--color-danger, #c62828); margin-top:4px; max-width:200px; line-height:1.3;">@p.SyncErrorMessage</div>
+                                            <div class="projects-table__sync-error">@p.SyncErrorMessage</div>
                                         }
                                     }
                                     else if (p.SyncStatus == SyncStatus.Syncing)
                                     {
                                         <span class="badge badge--accent" id="sync-badge-@p.Id">Syncing...</span>
-                                        <div id="sync-count-@p.Id" style="font-size:0.75rem; color:var(--color-ink-muted); margin-top:2px;">Starting...</div>
-                                        <div style="margin-top:4px; width:120px; height:4px; background:var(--color-border); border-radius:2px; overflow:hidden; position:relative;">
-                                            <div id="sync-bar-@p.Id" style="height:100%; width:0%; background:var(--color-accent); border-radius:2px; position:absolute; transition:width 0.4s ease;"></div>
+                                        <div id="sync-count-@p.Id" class="projects-table__sync-count">Starting...</div>
+                                        <div class="projects-table__sync-progress">
+                                            <div id="sync-bar-@p.Id" class="projects-table__sync-progress-bar"></div>
                                         </div>
                                     }
                                     else
@@ -130,12 +136,12 @@
                                     }
                                     else
                                     {
-                                        <span style="color:var(--color-ink-subtle); font-size:var(--text-sm);">-</span>
+                                        <span class="dashboard-placeholder">-</span>
                                     }
                                 </td>
                                 <td class="dashboard-table__actions projects-table__col-actions">
                                     <div class="dashboard-table__actions-list">
-                                        <form asp-action="Sync" method="post" style="display:inline">
+                                        <form asp-action="Sync" method="post" class="dashboard-form-inline">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="projectId" value="@p.Id" />
                                             <button type="submit" class="btn btn--secondary btn--sm desktop-only"
@@ -146,7 +152,7 @@
                                            class="btn btn--secondary btn--sm desktop-only">Publishing</a>
                                         @if (!p.IsReaderActive)
                                         {
-                                            <form asp-action="ActivateProject" method="post" style="display:inline">
+                                            <form asp-action="ActivateProject" method="post" class="dashboard-form-inline">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="projectId" value="@p.Id" />
                                                 <button type="submit" class="btn btn--primary btn--sm">Activate</button>
@@ -154,13 +160,13 @@
                                         }
                                         else
                                         {
-                                            <form asp-action="DeactivateProject" method="post" style="display:inline">
+                                            <form asp-action="DeactivateProject" method="post" class="dashboard-form-inline">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="projectId" value="@p.Id" />
                                                 <button type="submit" class="btn btn--secondary btn--sm">Deactivate</button>
                                             </form>
                                         }
-                                        <form asp-action="RemoveProject" method="post" style="display:inline"
+                                        <form asp-action="RemoveProject" method="post" class="dashboard-form-inline"
                                               onsubmit="return confirm(@Html.Raw(Json.Serialize($"Remove {p.Name}? You can re-add it later.")))">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="projectId" value="@p.Id" />
@@ -179,63 +185,62 @@
         </div>
 
         <!-- Published chapters -->
-        @if (Model.PublishedSections.Any())
+        @if (Model.PublishedChapterCount > 0)
         {
             <div class="card dashboard-table-card">
                 <div class="card__header">
-                    <span class="card__title">Published Chapters</span>
+                    <span class="card__title">Reader Progress</span>
                     @if (Model.ActiveProject is not null)
                     {
                         <a asp-action="Sections" asp-route-projectId="@Model.ActiveProject.Id"
                            class="btn btn--ghost btn--sm">All sections</a>
                     }
                 </div>
-                <div class="table-wrapper" style="border:none; border-radius:0; box-shadow:none;">
-                    <table class="published-table">
-                        <thead>
-                            <tr>
-                                <th class="published-table__col-title">Chapter</th>
-                                <th class="published-table__col-published">Published</th>
-                                <th class="published-table__col-changed">Content Changed</th>
-                                <th class="published-table__col-actions">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var s in Model.PublishedSections)
+                <div class="dashboard-progress">
+                    @if (Model.PublishedChapterProgress.UsesStructuralGroups)
+                    {
+                        <div class="dashboard-progress__list">
+                            @foreach (var group in Model.PublishedChapterProgress.Groups)
                             {
-                                <tr>
-                                    <td class="published-table__col-title" style="font-weight:500;">@s.Title</td>
-                                    <td class="published-table__col-published" style="color:var(--color-ink-muted); font-size:var(--text-sm);">
-                                        @(s.PublishedAt.HasValue ? s.PublishedAt.Value.ToString("dd MMM yyyy") : "-")
-                                    </td>
-                                    <td class="published-table__col-changed">
-                                        @if (s.ContentChangedSincePublish)
+                                <details class="dashboard-progress__group">
+                                    <summary class="dashboard-progress__summary">
+                                        <span class="dashboard-progress__summary-main">
+                                            <span class="dashboard-progress__summary-title" role="heading" aria-level="3">@group.Title</span>
+                                            <span class="dashboard-progress__summary-meta">
+                                                @group.ViewedReaderChapterCount of @group.TotalReaderChapterCount reader views
+                                            </span>
+                                            <span class="dashboard-progress__summary-meta">@group.CommentCount comments</span>
+                                            @if (group.NewCommentCount > 0)
+                                            {
+                                                <span class="badge badge--warning">@group.NewCommentCount new</span>
+                                            }
+                                            <span class="dashboard-progress__summary-meta">
+                                                Latest activity: @FormatDashboardDate(group.LatestActivityAt)
+                                            </span>
+                                        </span>
+                                    </summary>
+                                    <div class="dashboard-progress__children">
+                                        @foreach (var chapter in group.Chapters)
                                         {
-                                            <span class="badge badge--warning">Updated</span>
+                                            @await Html.PartialAsync("_DashboardChapterProgress", chapter)
                                         }
-                                        else
-                                        {
-                                            <span style="color:var(--color-ink-subtle); font-size:var(--text-sm);">-</span>
-                                        }
-                                    </td>
-                                    <td class="published-table__col-actions">
-                                        @if (Model.ActiveProject is not null)
-                                        {
-                                            <form asp-action="UnpublishChapter" method="post" style="display:inline">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="chapterId" value="@s.Id" />
-                                                <input type="hidden" name="projectId" value="@Model.ActiveProject.Id" />
-                                                <button type="submit" class="btn btn--danger btn--sm">Unpublish</button>
-                                            </form>
-                                        }
-                                    </td>
-                                </tr>
+                                    </div>
+                                </details>
                             }
-                        </tbody>
-                    </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="dashboard-progress__list">
+                            @foreach (var chapter in Model.PublishedChapterProgress.Chapters)
+                            {
+                                @await Html.PartialAsync("_DashboardChapterProgress", chapter)
+                            }
+                        </div>
+                    }
                 </div>
                 <div class="dashboard-table-card__mobile-note">
-                    Rotate to landscape to view additional chapter details.
+                    Expand acts, chapters, and readers without leaving the dashboard.
                 </div>
             </div>
         }
@@ -243,9 +248,9 @@
         {
             <div class="card">
                 <div class="card__body">
-                    <div class="empty-state" style="padding:var(--space-10);">
+                    <div class="empty-state dashboard-empty-state">
                         <div class="empty-state__title">No chapters published yet</div>
-                        <p class="empty-state__body" style="margin-bottom:var(--space-5);">
+                        <p class="empty-state__body dashboard-empty-state__body">
                             Sync your project and publish chapters to make them available to readers.
                         </p>
                         <a asp-action="Sections" asp-route-projectId="@Model.ActiveProject.Id"
@@ -265,7 +270,7 @@
                     Recent Activity
                     @if (Model.Notifications.Any())
                     {
-                        <span class="badge badge--neutral" style="font-size:var(--text-xs); margin-left:var(--space-2);">
+                        <span class="badge badge--neutral dashboard-activity-count">
                             @Model.Notifications.Count
                         </span>
                     }
@@ -297,11 +302,11 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24"
                          fill="none" stroke="currentColor" stroke-width="1.5"
                          stroke-linecap="round" stroke-linejoin="round"
-                         style="color:var(--color-ink-subtle); margin-bottom:var(--space-3);">
+                         class="notifications-empty__icon">
                         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                         <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
                     </svg>
-                    <p style="color:var(--color-ink-muted); font-size:var(--text-sm); margin:0;">
+                    <p class="notifications-empty__text">
                         No recent activity
                     </p>
                 </div>
@@ -313,7 +318,7 @@
                     {
                         <li class="notification-item">
                             @await Html.PartialAsync("_NotificationItem", n)
-                            <form asp-action="DismissNotification" method="post" style="display:contents">
+                            <form asp-action="DismissNotification" method="post" class="dashboard-form-contents">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="notificationId" value="@n.Id" />
                                 <button type="submit" class="notification-item__dismiss" aria-label="Dismiss">&#x2715;</button>
@@ -379,8 +384,6 @@
         setTimeout(pollSyncStatus, 2000);
     </script>
 }
-
-
 
 
 
