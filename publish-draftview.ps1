@@ -15,6 +15,9 @@ $bundle   = "C:\Users\alast\publish\efbundle"
 $server   = "ubuntu@141.147.71.62"
 $key      = "C:\Users\alast\.ssh\draftview-prod.key"
 $remote   = "/var/www/draftview"
+$rsync    = "C:\ProgramData\chocolatey\lib\rsync\tools\bin\rsync.exe"
+$rsyncSsh = "C:/ProgramData/chocolatey/lib/rsync/tools/bin/ssh.exe -i C:/Users/alast/.ssh/draftview-prod.key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+$outputCyg = "/cygdrive/c/Users/alast/publish/draftview"
 
 # ---------------------------------------------------------------------------
 # Guard: must be on main branch before publishing
@@ -88,19 +91,19 @@ Write-Host "Migration bundle built." -ForegroundColor Green
 
 # ---------------------------------------------------------------------------
 # Copy app to server
-# Uses scp because rsync is not natively available on Windows.
-# To enable incremental transfers install rsync via Chocolatey (choco install
-# rsync) or via WSL, then replace this block with:
-#   rsync -az --checksum --delete -e "ssh -i $key" "$output/" "${server}:${remote}/"
-# (--checksum is required because dotnet publish always produces fresh
-#  timestamps even for unchanged files, so timestamp-based sync copies
-#  everything every time.)
+# Uses cwrsync (Chocolatey rsync) with --checksum so only files whose content
+# has changed are transferred. dotnet publish always writes fresh timestamps
+# even for unchanged files, so timestamp-based sync would copy everything;
+# --checksum compares file content instead.
+# cwrsync requires Cygwin-style paths for the local source and its own ssh
+# binary for the remote connection. StrictHostKeyChecking is suppressed
+# because cwrsync uses its own isolated known_hosts store.
 # appsettings.json is included in $output and arrives here before the
 # migration bundle runs, so the bundle always finds it in its working dir.
 # ---------------------------------------------------------------------------
 Write-Host "Copying app to server..." -ForegroundColor Cyan
-scp -i $key -r "$output/*" "${server}:${remote}"
-if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: SCP of app failed." -ForegroundColor Red; exit 1 }
+& $rsync --checksum -az -e $rsyncSsh "$outputCyg/" "${server}:${remote}/"
+if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: rsync of app failed." -ForegroundColor Red; exit 1 }
 
 Write-Host "Copying production appsettings to server..." -ForegroundColor Cyan
 $prodConfig = "C:\Users\alast\source\repos\DraftView\appsettings.Production.json"
@@ -149,8 +152,9 @@ Write-Host "Migrations applied." -ForegroundColor Green
 
 # ---------------------------------------------------------------------------
 # Fix permissions
-# scp creates new directories with restrictive modes; re-normalize after every
-# deploy so wwwroot is traversable by www-data and static files are served.
+# rsync preserves existing permissions on unchanged files but may set
+# restrictive modes on new files/directories; re-normalize after every deploy
+# so wwwroot is traversable by www-data and static files are served.
 # ---------------------------------------------------------------------------
 Write-Host "Fixing file permissions..." -ForegroundColor Cyan
 ssh -i $key $server "sudo find $remote -type d -exec chmod 755 {} \; ; sudo find $remote -type f -exec chmod 644 {} \; ; sudo chown www-data:www-data $remote/appsettings.Production.json ; sudo chmod 640 $remote/appsettings.Production.json"
