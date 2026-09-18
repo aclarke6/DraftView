@@ -11,12 +11,13 @@
         ? null
         : $"{latestCommentBaseUrl}#comment-{Model.LatestComment!.CommentId}";
     var chapterReaderPageUrl = Url.Action("Read", "Reader", new { id = Model.Chapter.Id });
+    var chapterTitleId = $"dashboard-progress-title-{Model.Chapter.Id:N}";
 }
 
 <details class="dashboard-progress__chapter">
     <summary class="dashboard-progress__summary dashboard-progress__summary--chapter">
         <span class="dashboard-progress__summary-main">
-            <span class="dashboard-progress__summary-title" role="heading" aria-level="4">
+            <span id="@chapterTitleId" class="dashboard-progress__summary-title" role="heading" aria-level="4">
                 <span class="dashboard-progress__summary-toggle" aria-hidden="true"></span>
                 <span>@Model.Chapter.Title</span>
             </span>
@@ -34,23 +35,23 @@
         </span>
     </summary>
 
-    <div class="dashboard-progress__children">
-        @if (!string.IsNullOrWhiteSpace(chapterReaderPageUrl) || latestCommentUrl is not null)
-        {
-            <nav class="dashboard-progress__chapter-links" aria-label="Chapter actions">
-                @if (!string.IsNullOrWhiteSpace(chapterReaderPageUrl))
-                {
-                    <a href="@chapterReaderPageUrl" class="dashboard-progress__action-link">Reader page</a>
-                }
-                @if (latestCommentUrl is not null)
-                {
-                    <a href="@latestCommentUrl" class="dashboard-progress__action-link">
-                        Latest comment on @Model.LatestComment!.SectionTitle
-                    </a>
-                }
-            </nav>
-        }
+    @if (!string.IsNullOrWhiteSpace(chapterReaderPageUrl) || latestCommentUrl is not null)
+    {
+        <nav class="dashboard-progress__chapter-links" aria-labelledby="@chapterTitleId">
+            @if (!string.IsNullOrWhiteSpace(chapterReaderPageUrl))
+            {
+                <a href="@chapterReaderPageUrl" class="dashboard-progress__action-link">Reader page</a>
+            }
+            @if (latestCommentUrl is not null)
+            {
+                <a href="@latestCommentUrl" class="dashboard-progress__action-link">
+                    Latest comment on @Model.LatestComment!.SectionTitle
+                </a>
+            }
+        </nav>
+    }
 
+    <div class="dashboard-progress__children">
         @if (Model.Readers.Any())
         {
             <ul class="dashboard-progress__reader-list">
