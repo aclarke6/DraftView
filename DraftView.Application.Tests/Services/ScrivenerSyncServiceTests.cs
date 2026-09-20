@@ -815,11 +815,12 @@ public class ScrivenerSyncServiceTests
     }
 
     [Fact]
-    public async Task ParseProjectAsync_DoesNotWriteNotification_WhenNothingChanges()
+    public async Task ParseProjectAsync_WritesNotification_EvenWhenNothingChanges()
     {
         var project = MakeProject();
         project.UpdateDropboxCursor("cursor-old");
         var existingFolder = Section.CreateFolder(project.Id, "ROOT-001", "Manuscript", null, 0);
+        var author = User.Create("author@example.com", "Author", Role.Author);
         var sut = CreateSut();
 
         SetupPathResolver(project);
@@ -835,12 +836,52 @@ public class ScrivenerSyncServiceTests
             .ReturnsAsync(new List<Section> { existingFolder });
         _fileDownloader.Setup(x => x.ListChangedEntriesAsync(project.AuthorId, "cursor-old", default))
             .ReturnsAsync((new List<DropboxChangedEntry>(), "cursor-new"));
+        _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
 
         await sut.ParseProjectAsync(project.Id);
 
         _notificationRepo.Verify(
-            r => r.AddAsync(It.IsAny<AuthorNotification>(), default),
-            Times.Never);
+            r => r.AddAsync(It.Is<AuthorNotification>(n =>
+                n.AuthorId == author.Id &&
+                n.EventType == NotificationEventType.SyncCompleted),
+                default),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ParseProjectAsync_WritesNotification_WhenSyncCompletesWithNoChanges()
+    {
+        // #161 — a manual sync that finds no Dropbox changes must still record a SyncCompleted
+        // notification so the Sync tab in Recent Activity is not empty.
+        var project = MakeProject();
+        project.UpdateDropboxCursor("cursor-old");
+        var existingFolder = Section.CreateFolder(project.Id, "ROOT-001", "Manuscript", null, 0);
+        var author = User.Create("author@example.com", "Author", Role.Author);
+        var sut = CreateSut();
+
+        SetupPathResolver(project);
+        SetupParserWithTree(project, new ParsedBinderNode
+        {
+            Uuid = "ROOT-001", Title = "Manuscript",
+            NodeType = ParsedNodeType.Folder, Children = new()
+        });
+
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "ROOT-001", default))
+            .ReturnsAsync(existingFolder);
+        _sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, default))
+            .ReturnsAsync(new List<Section> { existingFolder });
+        _fileDownloader.Setup(x => x.ListChangedEntriesAsync(project.AuthorId, "cursor-old", default))
+            .ReturnsAsync((new List<DropboxChangedEntry>(), "cursor-new"));
+        _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
+
+        await sut.ParseProjectAsync(project.Id);
+
+        _notificationRepo.Verify(
+            r => r.AddAsync(It.Is<AuthorNotification>(n =>
+                n.AuthorId == author.Id &&
+                n.EventType == NotificationEventType.SyncCompleted),
+                default),
+            Times.Once);
     }
 
     [Fact]
