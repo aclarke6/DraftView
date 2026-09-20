@@ -220,6 +220,55 @@ public class ScrivenerSyncServiceTests
         Assert.Equal("New Title", existing.Title);
     }
 
+    [Fact]
+    public async Task ParseProjectAsync_ExistingSection_ParentChanged_UpdatesParent()
+    {
+        // #160 — when a chapter moves to a new parent in the Scrivener binder, the
+        // sync must update ParentId in the database to match. Previously UpdateSectionAsync
+        // did not call UpdateParent, leaving chapters grouped under the wrong heading.
+        var project       = MakeProject();
+        var sut           = CreateSut();
+        var rootSection   = Section.CreateFolder(project.Id, "ROOT-001", "Manuscript",    null,              0);
+        var bookSection   = Section.CreateFolder(project.Id, "BOOK-001", "Book 1",        rootSection.Id,    0);
+        var brokenSection = Section.CreateFolder(project.Id, "BROKEN-001", "Broken",      bookSection.Id,    0);
+        var chap31        = Section.CreateFolder(project.Id, "CHAP-31",  "Chapter 31",    bookSection.Id,    0);
+
+        SetupPathResolver(project);
+        SetupParserWithTree(project, new ParsedBinderNode
+        {
+            Uuid = "ROOT-001", Title = "Manuscript", NodeType = ParsedNodeType.Folder,
+            Children = new List<ParsedBinderNode>
+            {
+                new()
+                {
+                    Uuid = "BOOK-001", Title = "Book 1", NodeType = ParsedNodeType.Folder, SortOrder = 0,
+                    Children = new List<ParsedBinderNode>
+                    {
+                        new()
+                        {
+                            Uuid = "BROKEN-001", Title = "Broken", NodeType = ParsedNodeType.Folder, SortOrder = 0,
+                            Children = new List<ParsedBinderNode>
+                            {
+                                new() { Uuid = "CHAP-31", Title = "Chapter 31", NodeType = ParsedNodeType.Folder, SortOrder = 0, Children = new() }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "ROOT-001",   default)).ReturnsAsync(rootSection);
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "BOOK-001",   default)).ReturnsAsync(bookSection);
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "BROKEN-001", default)).ReturnsAsync(brokenSection);
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "CHAP-31",    default)).ReturnsAsync(chap31);
+        _sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, default))
+            .ReturnsAsync(new List<Section> { rootSection, bookSection, brokenSection, chap31 });
+
+        await sut.ParseProjectAsync(project.Id);
+
+        Assert.Equal(brokenSection.Id, chap31.ParentId);
+    }
+
     // ---------------------------------------------------------------------------
     // ParseProjectAsync - missing sections soft-deleted
     // ---------------------------------------------------------------------------
