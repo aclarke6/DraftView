@@ -927,6 +927,125 @@ public class ScrivenerSyncServiceTests
     }
 
     // ---------------------------------------------------------------------------
+    // Notification message — file count
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task ParseProjectAsync_NotificationTitle_IncludesFileCount_OnIncrementalSync()
+    {
+        var project = MakeProject();
+        project.UpdateDropboxCursor("cursor-old");
+        var author = User.Create("author@example.com", "Author", Role.Author);
+        var entries = new List<DropboxChangedEntry>
+        {
+            new("/book.scriv/Files/Data/SCEN-001/content.rtf", DropboxEntryType.Modified, "h1"),
+            new("/book.scriv/Files/Data/SCEN-002/content.rtf", DropboxEntryType.Modified, "h2"),
+            new("/book.scriv/Files/Data/SCEN-003/content.rtf", DropboxEntryType.Modified, "h3"),
+        };
+        var sut = CreateSut();
+
+        SetupPathResolver(project);
+        SetupParserWithTree(project, new ParsedBinderNode
+        {
+            Uuid = "ROOT-001", Title = "Manuscript",
+            NodeType = ParsedNodeType.Folder, Children = new()
+        });
+
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "ROOT-001", default))
+            .ReturnsAsync((Section?)null);
+        _sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, default))
+            .ReturnsAsync(new List<Section>());
+        _fileDownloader.Setup(x => x.ListChangedEntriesAsync(project.AuthorId, "cursor-old", default))
+            .ReturnsAsync((entries, "cursor-new"));
+        _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
+
+        await sut.ParseProjectAsync(project.Id);
+
+        _notificationRepo.Verify(
+            r => r.AddAsync(It.Is<AuthorNotification>(n =>
+                n.EventType == NotificationEventType.SyncCompleted &&
+                n.Title.Contains("3 files")),
+                default),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ParseProjectAsync_NotificationTitle_UsesSingularForm_WhenOneFileTransferred()
+    {
+        var project = MakeProject();
+        project.UpdateDropboxCursor("cursor-old");
+        var author = User.Create("author@example.com", "Author", Role.Author);
+        var entries = new List<DropboxChangedEntry>
+        {
+            new("/book.scriv/Files/Data/SCEN-001/content.rtf", DropboxEntryType.Modified, "h1"),
+        };
+        var sut = CreateSut();
+
+        SetupPathResolver(project);
+        SetupParserWithTree(project, new ParsedBinderNode
+        {
+            Uuid = "ROOT-001", Title = "Manuscript",
+            NodeType = ParsedNodeType.Folder, Children = new()
+        });
+
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "ROOT-001", default))
+            .ReturnsAsync((Section?)null);
+        _sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, default))
+            .ReturnsAsync(new List<Section>());
+        _fileDownloader.Setup(x => x.ListChangedEntriesAsync(project.AuthorId, "cursor-old", default))
+            .ReturnsAsync((entries, "cursor-new"));
+        _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
+
+        await sut.ParseProjectAsync(project.Id);
+
+        _notificationRepo.Verify(
+            r => r.AddAsync(It.Is<AuthorNotification>(n =>
+                n.EventType == NotificationEventType.SyncCompleted &&
+                n.Title.Contains("1 file") &&
+                !n.Title.Contains("1 files")),
+                default),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ParseProjectAsync_NotificationTitle_IncludesFileCount_OnFullSync()
+    {
+        var project = MakeProject();
+        var author = User.Create("author@example.com", "Author", Role.Author);
+        var entries = new List<DropboxChangedEntry>
+        {
+            new("/book.scriv/Files/Data/SCEN-001/content.rtf", DropboxEntryType.Modified, "h1"),
+            new("/book.scriv/Files/Data/SCEN-002/content.rtf", DropboxEntryType.Modified, "h2"),
+        };
+        var sut = CreateSut();
+
+        SetupPathResolver(project);
+        SetupParserWithTree(project, new ParsedBinderNode
+        {
+            Uuid = "ROOT-001", Title = "Manuscript",
+            NodeType = ParsedNodeType.Folder, Children = new()
+        });
+
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "ROOT-001", default))
+            .ReturnsAsync((Section?)null);
+        _sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, default))
+            .ReturnsAsync(new List<Section>());
+        _fileDownloader.Setup(x => x.ListAllEntriesWithCursorAsync(
+                project.AuthorId, project.DropboxPath, default))
+            .ReturnsAsync((entries, "initial-cursor"));
+        _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
+
+        await sut.ParseProjectAsync(project.Id);
+
+        _notificationRepo.Verify(
+            r => r.AddAsync(It.Is<AuthorNotification>(n =>
+                n.EventType == NotificationEventType.SyncCompleted &&
+                n.Title.Contains("2 files")),
+                default),
+            Times.Once);
+    }
+
+    // ---------------------------------------------------------------------------
     // Sync content update behaviour
     // ---------------------------------------------------------------------------
 
