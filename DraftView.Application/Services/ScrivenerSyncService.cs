@@ -153,7 +153,7 @@ public class ScrivenerSyncService(
         }
         else
         {
-            await UpdateSectionAsync(existing, node, safeTitle, scrivFolderPath, ct);
+            await UpdateSectionAsync(existing, node, safeTitle, parentId, scrivFolderPath, ct);
         }
 
         foreach (var child in node.Children)
@@ -322,10 +322,11 @@ public class ScrivenerSyncService(
 
     private async Task UpdateSectionAsync(
         Section existing, ParsedBinderNode node, string safeTitle,
-        string scrivFolderPath, CancellationToken ct)
+        Guid? parentId, string scrivFolderPath, CancellationToken ct)
     {
         existing.UpdateTitle(safeTitle);
         existing.UpdateSortOrder(node.SortOrder);
+        existing.UpdateParent(parentId);
         existing.UpdateScrivenerStatus(node.ScrivenerStatus);
 
         if (node.NodeType == ParsedNodeType.Document)
