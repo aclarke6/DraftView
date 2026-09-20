@@ -136,6 +136,24 @@
         <div class="chapter-toolbar">
             <button class="chapter-panel-btn" id="sidebarCollapseBtn" type="button">Hide Navigation</button>
             <button class="chapter-panel-btn" id="commentsToggleBtn" type="button">Hide Comments</button>
+            @if (Model.HasAnyDiff)
+            {
+                <div class="chapter-toolbar__changes-group">
+                    <button type="button"
+                            class="chapter-panel-btn chapter-panel-btn--changes"
+                            id="changesToggleBtn"
+                            data-show-edits="@Model.ShowEdits.ToString().ToLowerInvariant()"
+                            data-set-show-edits-url="@Url.Action("SetShowEdits", "Reader")">
+                        @(Model.ShowEdits ? "Hide Changes" : "Show Changes")
+                    </button>
+                    @if (Model.ShowEdits && Model.EarliestComparisonDate.HasValue)
+                    {
+                        <span class="chapter-toolbar__changes-context">
+                            Changes since @Model.EarliestComparisonDate.Value.ToLocalTime().ToString("d MMM yyyy")
+                        </span>
+                    }
+                </div>
+            }
         </div>
         <div class="chapter-content-row">
         <aside class="chapter-sidebar" id="chapterSidebar">
@@ -1777,6 +1795,25 @@
                 });
             });
         });
+
+        // Chapter-level Show/Hide Changes toolbar button
+        (function () {
+            var btn = document.getElementById('changesToggleBtn');
+            if (!btn) return;
+            var url       = btn.getAttribute('data-set-show-edits-url');
+            var showEdits = btn.getAttribute('data-show-edits') === 'true';
+            btn.addEventListener('click', function () {
+                showEdits = !showEdits;
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': antiForgeryInput.value
+                    },
+                    body: JSON.stringify(showEdits)
+                }).then(function () { window.location.reload(); });
+            });
+        })();
 
         // Auto mark-as-read: time + scroll per scene
         document.querySelectorAll('.diff-controls[data-section-id]').forEach(function (controls) {

@@ -180,6 +180,39 @@ public class ReaderControllerTests
     }
 
     [Fact]
+    public async Task Read_Desktop_WhenReadEventExists_PopulatesComparisonDateOnScene()
+    {
+        // #170 — BuildSceneWithCommentsAsync must call GetLastOpenedAtAsync so the
+        // toolbar context note has a date to display.
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+
+        var project = Project.Create("Project 1", "/Apps/Scrivener/Project1", user.Id, "project-root");
+        var chapter = Section.CreateFolder(project.Id, "chapter-uuid", "Chapter 1", null, 1);
+        chapter.MarkAsPublishedContainer();
+        var scene = Section.CreateDocument(project.Id, "scene-uuid", "Scene 1", chapter.Id, 1, "<p>Hello</p>", "hash", "Draft");
+        scene.PublishAsPartOfChapter("hash");
+
+        var expectedDate = new DateTime(2026, 8, 14, 10, 0, 0, DateTimeKind.Utc);
+
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0");
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, It.IsAny<CancellationToken>())).ReturnsAsync(chapter);
+        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
+        progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        progressService.Setup(r => r.GetLastOpenedAtAsync(scene.Id, user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(expectedDate);
+        commentService.Setup(r => r.GetThreadsForSectionAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<Comment>());
+        prefsRepo.Setup(r => r.GetByUserIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync((UserPreferences?)null);
+
+        var result = await sut.Read(chapter.Id);
+
+        var view  = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<DesktopChapterReadViewModel>(view.Model);
+        Assert.Equal(expectedDate, model.Scenes.Single().ComparisonDate);
+    }
+
+    [Fact]
     public async Task Read_Desktop_WithAnchoredComment_PopulatesPassageAnchorMetadata()
     {
         var user = User.Create("reader@example.test", "Reader", Role.BetaReader);

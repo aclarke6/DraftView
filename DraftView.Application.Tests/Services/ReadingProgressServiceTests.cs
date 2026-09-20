@@ -241,6 +241,39 @@ public class ReadingProgressServiceTests
     }
 
     // ---------------------------------------------------------------------------
+    // GetLastOpenedAtAsync
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetLastOpenedAtAsync_WhenReadEventExists_ReturnsLastOpenedAt()
+    {
+        var sectionId = Guid.NewGuid();
+        var userId    = Guid.NewGuid();
+        var sut       = CreateSut();
+        var readEvent = ReadEvent.Create(sectionId, userId);
+
+        _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default)).ReturnsAsync(readEvent);
+
+        var result = await sut.GetLastOpenedAtAsync(sectionId, userId);
+
+        Assert.Equal(readEvent.LastOpenedAt, result);
+    }
+
+    [Fact]
+    public async Task GetLastOpenedAtAsync_WhenNoReadEvent_ReturnsNull()
+    {
+        var sectionId = Guid.NewGuid();
+        var userId    = Guid.NewGuid();
+        var sut       = CreateSut();
+
+        _readEventRepo.Setup(r => r.GetAsync(sectionId, userId, default)).ReturnsAsync((ReadEvent?)null);
+
+        var result = await sut.GetLastOpenedAtAsync(sectionId, userId);
+
+        Assert.Null(result);
+    }
+
+    // ---------------------------------------------------------------------------
     // IsMarkedReadAsync
     // ---------------------------------------------------------------------------
 

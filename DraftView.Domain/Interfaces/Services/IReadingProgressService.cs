@@ -13,6 +13,12 @@ public interface IReadingProgressService
     Task<ReadEvent?> GetLastReadEventAcrossProjectsAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns the UTC timestamp when the reader last opened this scene,
+    /// or null if they have never opened it.
+    /// </summary>
+    Task<DateTime?> GetLastOpenedAtAsync(Guid sectionId, Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Marks a scene as read: sets IsRead=true on the ReadEvent and captures a
     /// ReaderSnapshot of the current content as the reader's new baseline.
     /// No-op if no ReadEvent exists (reader has not opened the scene).
