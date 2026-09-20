@@ -772,7 +772,8 @@ public class ReaderController(
         var (resolvedHtml, resumeCaptureText, resumeRestoreTarget) =
             await ResolveSceneContentAsync(scene, user.Id, showDiffOnRevisit, ct);
 
-        var isRead = await ProgressService.IsMarkedReadAsync(scene.Id, user.Id, ct);
+        var isRead         = await ProgressService.IsMarkedReadAsync(scene.Id, user.Id, ct);
+        var comparisonDate = await ProgressService.GetLastOpenedAtAsync(scene.Id, user.Id, ct);
         var (changeClassification, diffParagraphs) =
             await _changeStateService.GetChangeStateWithDiffAsync(scene.Id, user.Id, ct);
 
@@ -799,7 +800,8 @@ public class ReaderController(
             ShowEdits                    = showEdits,
             WordCount                    = CountWords(resolvedHtml),
             ChangeClassification         = changeClassification,
-            IsRead                       = isRead
+            IsRead                       = isRead,
+            ComparisonDate               = comparisonDate,
         };
     }
 

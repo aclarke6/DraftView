@@ -30,6 +30,10 @@ public class ContentGroup
     public IReadOnlyList<ContentGroup> SubGroups { get; set; } = new List<ContentGroup>();
 }
 
+/// <summary>
+/// View model for the desktop chapter read page. Carries all scenes with their
+/// comments, diff state, and book navigation context.
+/// </summary>
 public class DesktopChapterReadViewModel
 {
     public Section Chapter { get; set; } = default!;
@@ -44,6 +48,26 @@ public class DesktopChapterReadViewModel
     public ProseFontSize ProseFontSize { get; set; } = ProseFontSize.Medium;
     public int ReaderWordsPerMinute { get; set; } = 200;
     public int MinimumReadDwellSeconds { get; set; } = 60;
+
+    /// <summary>True when at least one scene in this chapter has visible diff content.</summary>
+    public bool HasAnyDiff => Scenes.Any(s => s.HasDiff);
+
+    /// <summary>
+    /// The current ShowEdits preference, derived from the first scene that has a diff.
+    /// False when no scene has a diff.
+    /// </summary>
+    public bool ShowEdits => Scenes.FirstOrDefault(s => s.HasDiff)?.ShowEdits ?? false;
+
+    /// <summary>
+    /// The earliest ComparisonDate across scenes that have visible diffs —
+    /// the oldest unreviewed change baseline. Null when no diff exists or no scene
+    /// has a recorded read event.
+    /// </summary>
+    public DateTime? EarliestComparisonDate => Scenes
+        .Where(s => s.HasDiff && s.ComparisonDate.HasValue)
+        .Select(s => s.ComparisonDate!.Value)
+        .DefaultIfEmpty()
+        .Min() is DateTime d && d != default ? d : null;
 }
 
 public class SceneWithComments
@@ -91,6 +115,12 @@ public class SceneWithComments
     /// True when the reader's ReadEvent has IsRead = true for this scene.
     /// </summary>
     public bool IsRead { get; set; }
+
+    /// <summary>
+    /// UTC timestamp of the reader's last open of this scene — the baseline for the diff.
+    /// Null when the reader has never opened the scene.
+    /// </summary>
+    public DateTime? ComparisonDate { get; set; }
 
 }
 

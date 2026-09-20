@@ -43,6 +43,16 @@ public class ReadingProgressService(
         await unitOfWork.SaveChangesAsync(ct);
     }
 
+    /// <summary>
+    /// Returns the UTC timestamp when the reader last opened this scene,
+    /// or null if they have never opened it.
+    /// </summary>
+    public async Task<DateTime?> GetLastOpenedAtAsync(Guid sectionId, Guid userId, CancellationToken ct = default)
+    {
+        var readEvent = await readEventRepo.GetAsync(sectionId, userId, ct);
+        return readEvent?.LastOpenedAt;
+    }
+
     public async Task<bool> IsMarkedReadAsync(Guid sectionId, Guid userId, CancellationToken ct = default)
     {
         var readEvent = await readEventRepo.GetAsync(sectionId, userId, ct);
