@@ -247,6 +247,31 @@ HttpContextAuthorizationFacade>();
                 options.ExpireTimeSpan = TimeSpan.FromDays(14);
             });
 
+            // Preserve impersonation claims when the SecurityStampValidator refreshes
+            // the auth cookie. Identity's PostConfigureCookieAuthenticationOptions sets
+            // OnValidatePrincipal; our PostConfigure runs after it, wraps that handler,
+            // and copies ImpersonatorEmail/ImpersonatedDisplayName from the pre-refresh
+            // principal to the new one (#175).
+            services.AddOptions<Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationOptions>(
+                    Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme)
+                .PostConfigure(options =>
+                {
+                    var existing = options.Events.OnValidatePrincipal;
+                    options.Events.OnValidatePrincipal = async context =>
+                    {
+                        var prePrincipal = context.Principal;
+                        if (existing is not null)
+                            await existing(context);
+                        if (context.Principal is not null &&
+                            prePrincipal is not null &&
+                            !ReferenceEquals(prePrincipal, context.Principal))
+                        {
+                            DraftView.Web.Infrastructure.ImpersonationClaims
+                                .PreserveImpersonationClaims(prePrincipal, context.Principal);
+                        }
+                    };
+                });
+
             // Register simple role-based authorization policies for stage-1 migration
             services.AddAuthorizationBuilder()
                 .AddPolicy("RequireAuthorPolicy", p => p.RequireRole(Role.Author.ToString()))
