@@ -25,7 +25,6 @@ public class ScrivenerSyncService(
     IUserRepository userRepo,
     IChangeNotificationService changeNotificationService) : ISyncService
 {
-    private bool _syncHadChanges;
     private Guid _currentAuthorId;
     private readonly HashSet<Guid> _contentChangedPublishedSectionIds = [];
 
@@ -49,35 +48,29 @@ public class ScrivenerSyncService(
             return;
         }
 
-        _syncHadChanges = false;
         _currentAuthorId = project.AuthorId;
         _contentChangedPublishedSectionIds.Clear();
 
         try
         {
+            int fileCount;
             if (string.IsNullOrWhiteSpace(project.DropboxCursor))
-            {
-                await SyncUsingFullListingAsync(project, ct);
-            }
+                fileCount = await SyncUsingFullListingAsync(project, ct);
             else
-            {
-                await SyncUsingIncrementalListingAsync(project, ct);
-            }
+                fileCount = await SyncUsingIncrementalListingAsync(project, ct);
 
-            if (_syncHadChanges)
+            var author = await userRepo.GetAuthorAsync(ct);
+            if (author is not null)
             {
-                var author = await userRepo.GetAuthorAsync(ct);
-                if (author is not null)
-                {
-                    var notification = AuthorNotification.Create(
-                        author.Id,
-                        NotificationEventType.SyncCompleted,
-                        $"Sync completed for {project.Name}",
-                        null,
-                        null,
-                        DateTime.UtcNow);
-                    await notificationRepo.AddAsync(notification, ct);
-                }
+                var fileWord = fileCount == 1 ? "file" : "files";
+                var notification = AuthorNotification.Create(
+                    author.Id,
+                    NotificationEventType.SyncCompleted,
+                    $"Sync completed for {project.Name} — {fileCount} {fileWord} transferred",
+                    null,
+                    null,
+                    DateTime.UtcNow);
+                await notificationRepo.AddAsync(notification, ct);
             }
 
             project.UpdateSyncStatus(SyncStatus.Healthy, DateTime.UtcNow, null);
@@ -151,7 +144,6 @@ public class ScrivenerSyncService(
             existing = await CreateSectionAsync(node, safeTitle, parentId, projectId, scrivFolderPath, ct);
             await sectionRepo.AddAsync(existing, ct);
             created = true;
-            _syncHadChanges = true;
 
             if (created && node.NodeType == ParsedNodeType.Document)
             {
@@ -168,7 +160,7 @@ public class ScrivenerSyncService(
             await ReconcileNodeAsync(child, existing.Id, existing, projectId, scrivFolderPath, seenUuids, ct);
     }
 
-    private async Task SyncUsingFullListingAsync(Project project, CancellationToken ct)
+    private async Task<int> SyncUsingFullListingAsync(Project project, CancellationToken ct)
     {
         var (entries, initialCursor) = await fileDownloader
             .ListAllEntriesWithCursorAsync(project.AuthorId, project.DropboxPath, ct);
@@ -183,9 +175,11 @@ public class ScrivenerSyncService(
             entries.Count,
             project.Id,
             TruncateCursor(initialCursor));
+
+        return entries.Count;
     }
 
-    private async Task SyncUsingIncrementalListingAsync(Project project, CancellationToken ct)
+    private async Task<int> SyncUsingIncrementalListingAsync(Project project, CancellationToken ct)
     {
         try
         {
@@ -201,6 +195,8 @@ public class ScrivenerSyncService(
                 entries.Count,
                 project.Id,
                 TruncateCursor(newCursor));
+
+            return entries.Count;
         }
         catch (Exception ex) when (IsResetCursorError(ex))
         {
@@ -209,7 +205,7 @@ public class ScrivenerSyncService(
                 project.Id);
 
             project.ClearDropboxCursor();
-            await SyncUsingFullListingAsync(project, ct);
+            return await SyncUsingFullListingAsync(project, ct);
         }
     }
 
@@ -285,7 +281,6 @@ public class ScrivenerSyncService(
     {
         if (!section.IsSoftDeleted)
         {
-            _syncHadChanges = true;
             var descendants = await sectionRepo.GetAllDescendantsAsync(section.Id, ct);
             foreach (var descendant in descendants)
                 descendant.SoftDelete();
@@ -339,7 +334,6 @@ public class ScrivenerSyncService(
             if (rtf is not null && rtf.Hash != existing.ContentHash)
             {
                 existing.UpdateContent(rtf.Html, rtf.Hash);
-                _syncHadChanges = true;
                 if (existing.IsPublished)
                     _contentChangedPublishedSectionIds.Add(existing.Id);
             }
