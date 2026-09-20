@@ -137,6 +137,49 @@ public class ReaderControllerTests
     }
 
     [Fact]
+    public async Task Read_MobileRead_WhenSceneHasDiff_PopulatesParagraphGroups()
+    {
+        // #169 — mobile path must call GetChangeStateWithDiffAsync and populate
+        // ParagraphGroups so tracked changes render in the mobile view.
+        var user = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+
+        var project = Project.Create("Project 1", "/Apps/Scrivener/Project1", user.Id, "project-root");
+        var chapter = Section.CreateFolder(project.Id, "chapter-uuid", "Chapter 1", null, 1);
+        chapter.MarkAsPublishedContainer();
+        var scene = Section.CreateDocument(project.Id, "scene-uuid", "Scene 1", chapter.Id, 1, "<p>New text</p>", "hash-new", "Draft");
+        scene.PublishAsPartOfChapter("hash-new");
+
+        var diffResults = new List<ParagraphDiffResult>
+        {
+            new("<p>Old text</p>", "Old text", DiffResultType.Removed),
+            new("<p>New text</p>", "New text", DiffResultType.Added),
+        };
+
+        changeStateService.Setup(s => s.GetChangeStateWithDiffAsync(scene.Id, user.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ChangeClassification.Revision, (IReadOnlyList<ParagraphDiffResult>)diffResults));
+
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0 (iPhone)");
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        sectionRepo.Setup(r => r.GetByIdAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(scene);
+        sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, It.IsAny<CancellationToken>())).ReturnsAsync(chapter);
+        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
+        progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        commentService.Setup(r => r.GetThreadsForSectionAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<Comment>());
+        prefsRepo.Setup(r => r.GetByUserIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync((UserPreferences?)null);
+
+        var result = await sut.Read(scene.Id);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<MobileReadViewModel>(view.Model);
+        Assert.NotEmpty(model.ParagraphGroups);
+        changeStateService.Verify(
+            s => s.GetChangeStateWithDiffAsync(scene.Id, user.Id, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task Read_Desktop_WithAnchoredComment_PopulatesPassageAnchorMetadata()
     {
         var user = User.Create("reader@example.test", "Reader", Role.BetaReader);

@@ -721,6 +721,11 @@ public class ReaderController(
 
         var isRead = await ProgressService.IsMarkedReadAsync(scene.Id, user.Id);
 
+        var (changeClassification, diffParagraphs) =
+            await _changeStateService.GetChangeStateWithDiffAsync(scene.Id, user.Id);
+        var readingStyle     = preferences?.ReadingStyle ?? ReadingStyle.StoryReader;
+        var paragraphGroups  = _paragraphGroupingService.Group(diffParagraphs, readingStyle, _minDiffGroupWords);
+
         return View("MobileRead", new MobileReadViewModel {
             Scene                    = scene,
             Chapter                  = chapter,
@@ -738,7 +743,9 @@ public class ReaderController(
             ResumeRestoreStatus      = resumeRestoreTarget?.Status,
             ResumeRestoreConfidenceScore = resumeRestoreTarget?.ConfidenceScore,
             ResumeRestoreMatchMethod = resumeRestoreTarget?.MatchMethod,
-            IsRead                   = isRead
+            IsRead                   = isRead,
+            ChangeClassification     = changeClassification,
+            ParagraphGroups          = paragraphGroups,
         });
     }
 

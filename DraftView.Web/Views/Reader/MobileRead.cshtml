@@ -1,4 +1,5 @@
 ﻿@model DraftView.Web.Models.MobileReadViewModel
+@using DraftView.Domain.Diff
 @{
     ViewData["Title"] = Model.Scene.Title;
 }
@@ -62,7 +63,38 @@
          data-resume-restore-status="@(Model.ResumeRestoreStatus?.ToString() ?? string.Empty)"
          data-resume-restore-confidence="@(Model.ResumeRestoreConfidenceScore?.ToString() ?? string.Empty)"
          data-resume-restore-match-method="@(Model.ResumeRestoreMatchMethod?.ToString() ?? string.Empty)">
-        @Html.Raw(Model.ResolvedHtmlContent ?? "<p><em>The author has not added content to this scene yet.</em></p>")
+        @if (Model.HasDiff)
+        {
+            @foreach (var group in Model.ParagraphGroups)
+            {
+                if (group.ShowDiff)
+                {
+                    foreach (var para in group.Paragraphs)
+                    {
+                        if (para.Type == DiffResultType.Removed)
+                        {
+                            <div class="diff-para diff-para--removed">@Html.Raw(para.Html)</div>
+                        }
+                        else
+                        {
+                            @Html.Raw(para.Html)
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (var para in group.Paragraphs)
+                    {
+                        if (para.Type != DiffResultType.Removed)
+                            @Html.Raw(para.Html)
+                    }
+                }
+            }
+        }
+        else
+        {
+            @Html.Raw(Model.ResolvedHtmlContent ?? "<p><em>The author has not added content to this scene yet.</em></p>")
+        }
     </div>
 
     <a asp-action="SceneComments" asp-route-sceneId="@Model.Scene.Id"
