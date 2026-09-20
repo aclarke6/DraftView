@@ -104,9 +104,16 @@ public class MobileReadViewModel
 
     /// <summary>
     /// Snapshot-based change state for this scene. Null when reader is up to date.
-    /// Populated by IChangeStateService in Phase 5.
     /// </summary>
     public ChangeClassification? ChangeClassification { get; set; }
+
+    /// <summary>
+    /// Grouped diff paragraphs for rendering tracked changes. Empty when reader is up to date.
+    /// </summary>
+    public IReadOnlyList<ParagraphGroup> ParagraphGroups { get; set; } = [];
+
+    /// <summary>True when at least one paragraph group has visible diff content.</summary>
+    public bool HasDiff => ParagraphGroups.Any(g => g.ShowDiff);
 
     /// <summary>
     /// True when the reader's ReadEvent has IsRead = true for this scene.
