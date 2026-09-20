@@ -135,15 +135,12 @@
     <div class="chapter-layout">
         <div class="chapter-toolbar">
             <button class="chapter-panel-btn" id="sidebarCollapseBtn" type="button">Hide Navigation</button>
-            <button class="chapter-panel-btn" id="commentsToggleBtn" type="button">Hide Comments</button>
             @if (Model.HasAnyDiff)
             {
                 <div class="chapter-toolbar__changes-group">
                     <button type="button"
                             class="chapter-panel-btn chapter-panel-btn--changes"
-                            id="changesToggleBtn"
-                            data-show-edits="@Model.ShowEdits.ToString().ToLowerInvariant()"
-                            data-set-show-edits-url="@Url.Action("SetShowEdits", "Reader")">
+                            id="changesToggleBtn">
                         @(Model.ShowEdits ? "Hide Changes" : "Show Changes")
                     </button>
                     @if (Model.ShowEdits && Model.EarliestComparisonDate.HasValue)
@@ -154,6 +151,7 @@
                     }
                 </div>
             }
+            <button class="chapter-panel-btn" id="commentsToggleBtn" type="button">Hide Comments</button>
         </div>
         <div class="chapter-content-row">
         <aside class="chapter-sidebar" id="chapterSidebar">
@@ -1796,22 +1794,14 @@
             });
         });
 
-        // Chapter-level Show/Hide Changes toolbar button
+        // Chapter-level Show/Hide Changes toolbar button — delegates to the first
+        // per-scene diff-toggle button so it reuses the already-wired fetch logic.
         (function () {
             var btn = document.getElementById('changesToggleBtn');
             if (!btn) return;
-            var url       = btn.getAttribute('data-set-show-edits-url');
-            var showEdits = btn.getAttribute('data-show-edits') === 'true';
             btn.addEventListener('click', function () {
-                showEdits = !showEdits;
-                fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'RequestVerificationToken': antiForgeryInput.value
-                    },
-                    body: JSON.stringify(showEdits)
-                }).then(function () { window.location.reload(); });
+                var firstSceneToggle = document.querySelector('[data-diff-toggle]');
+                if (firstSceneToggle) firstSceneToggle.click();
             });
         })();
 
