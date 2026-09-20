@@ -349,31 +349,30 @@
                                 {
                                     @foreach (var group in item.ParagraphGroups)
                                     {
-                                        if (group.ShowDiff)
-                                        {
-                                            foreach (var para in group.Paragraphs)
+                                        <div class="diff-group">
+                                            @if (group.ShowDiff)
                                             {
-                                                if (para.Type == DiffResultType.Removed)
+                                                foreach (var para in group.Paragraphs)
                                                 {
-                                                    <div class="diff-para diff-para--removed">@Html.Raw(para.Html)</div>
-                                                }
-                                                else
-                                                {
-                                                    // Modified paragraphs already contain <del>/<ins> spans from HtmlDiffService
-                                                    // Added/Unchanged paragraphs render cleanly
-                                                    @Html.Raw(para.Html)
+                                                    if (para.Type == DiffResultType.Removed)
+                                                    {
+                                                        <div class="diff-para diff-para--removed">@Html.Raw(para.Html)</div>
+                                                    }
+                                                    else
+                                                    {
+                                                        @Html.Raw(para.Html)
+                                                    }
                                                 }
                                             }
-                                        }
-                                        else
-                                        {
-                                            // Below threshold — render clean current prose
-                                            foreach (var para in group.Paragraphs)
+                                            else
                                             {
-                                                if (para.Type != DiffResultType.Removed)
-                                                    @Html.Raw(para.Html)
+                                                foreach (var para in group.Paragraphs)
+                                                {
+                                                    if (para.Type != DiffResultType.Removed)
+                                                        @Html.Raw(para.Html)
+                                                }
                                             }
-                                        }
+                                        </div>
                                     }
                                 }
                                 else
@@ -1878,5 +1877,24 @@
                     });
             }
         });
+    })();
+
+    // Align each diff-margin mark height with the height of its corresponding
+    // diff-group in the prose. Runs on load and on resize. Only active when
+    // ShowEdits=true (diff-group elements are only rendered in that branch).
+    (function () {
+        function alignDiffMargins() {
+            document.querySelectorAll('.scene-prose-shell').forEach(function (shell) {
+                var marks  = Array.from(shell.querySelectorAll('.diff-margin__mark'));
+                var groups = Array.from(shell.querySelectorAll('.diff-group'));
+                if (!marks.length || marks.length !== groups.length) return;
+                marks.forEach(function (mark, i) {
+                    mark.style.flex   = 'none';
+                    mark.style.height = groups[i].offsetHeight + 'px';
+                });
+            });
+        }
+        alignDiffMargins();
+        window.addEventListener('resize', alignDiffMargins);
     })();
 </script>
