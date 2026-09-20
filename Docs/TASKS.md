@@ -1,5 +1,5 @@
 ﻿# DraftView — Task List
-Last updated: 2026-09-16
+Last updated: 2026-09-20
 Last deployed: 2026-09-18 18:01 (commit: d17867a)
 Last merged: 2026-09-16 — PRs #142/#143/#145 (comment email alerts, dwell-time read gate, dashboard sync filter) merged to main
 
@@ -56,6 +56,7 @@ Last merged: 2026-09-16 — PRs #142/#143/#145 (comment email alerts, dwell-time
 | 3 | Resolve 3 build warnings | [#59](https://github.com/aclarke6/DraftView/issues/59) | PR #62 open |
 | 4 | UAT: complete scenarios C-K | — | In progress |
 | 5 | Go-Live Day: password reset emails to Becca and Hilary | — | Blocked by UAT |
+| 6 | Chapter 31 appears under wrong section in Reader Progress | [#160](https://github.com/aclarke6/DraftView/issues/160) | Open |
 
 ### P2 — Active Sprint Work
 
