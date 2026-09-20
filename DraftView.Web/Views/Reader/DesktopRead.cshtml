@@ -338,64 +338,39 @@
                             </div>
                         }
 
-                        <div class="scene-prose-shell">
-                            @if (item.HasDiff)
+                        <div class="scene-prose-content prose" id="prose-@item.Scene.Id">
+                            @if (item.ShowEdits && item.HasDiff)
                             {
-                                <div class="diff-margin" aria-hidden="true">
-                                    @foreach (var group in item.ParagraphGroups)
-                                    {
-                                        if (group.ShowDiff)
-                                        {
-                                            var anyAdded   = group.Paragraphs.Any(p => p.Type == DiffResultType.Added || p.Type == DiffResultType.Modified);
-                                            var anyRemoved = group.Paragraphs.Any(p => p.Type == DiffResultType.Removed || p.Type == DiffResultType.Modified);
-                                            var markClass  = anyAdded && anyRemoved ? "diff-margin__mark--modified"
-                                                           : anyAdded               ? "diff-margin__mark--added"
-                                                                                    : "diff-margin__mark--removed";
-                                            <div class="diff-margin__mark @markClass"></div>
-                                        }
-                                        else
-                                        {
-                                            <div class="diff-margin__mark"></div>
-                                        }
-                                    }
-                                </div>
-                            }
-                            <div class="scene-prose-content prose" id="prose-@item.Scene.Id">
-                                @if (item.ShowEdits && item.HasDiff)
+                                @foreach (var group in item.ParagraphGroups)
                                 {
-                                    @foreach (var group in item.ParagraphGroups)
+                                    if (group.ShowDiff)
                                     {
-                                        <div class="diff-group">
-                                            @if (group.ShowDiff)
+                                        foreach (var para in group.Paragraphs)
+                                        {
+                                            if (para.Type == DiffResultType.Removed)
                                             {
-                                                foreach (var para in group.Paragraphs)
-                                                {
-                                                    if (para.Type == DiffResultType.Removed)
-                                                    {
-                                                        <div class="diff-para diff-para--removed">@Html.Raw(para.Html)</div>
-                                                    }
-                                                    else
-                                                    {
-                                                        @Html.Raw(para.Html)
-                                                    }
-                                                }
+                                                <div class="diff-para diff-para--removed">@Html.Raw(para.Html)</div>
                                             }
                                             else
                                             {
-                                                foreach (var para in group.Paragraphs)
-                                                {
-                                                    if (para.Type != DiffResultType.Removed)
-                                                        @Html.Raw(para.Html)
-                                                }
+                                                @Html.Raw(para.Html)
                                             }
-                                        </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        foreach (var para in group.Paragraphs)
+                                        {
+                                            if (para.Type != DiffResultType.Removed)
+                                                @Html.Raw(para.Html)
+                                        }
                                     }
                                 }
-                                else
-                                {
-                                    @Html.Raw(item.ResolvedHtmlContent ?? "<p><em>The author has not added content to this scene yet.</em></p>")
-                                }
-                            </div>
+                            }
+                            else
+                            {
+                                @Html.Raw(item.ResolvedHtmlContent ?? "<p><em>The author has not added content to this scene yet.</em></p>")
+                            }
                         </div>
                     </div>
 
@@ -1906,22 +1881,4 @@
         });
     })();
 
-    // Align each diff-margin mark height with the height of its corresponding
-    // diff-group in the prose. Runs on load and on resize. Only active when
-    // ShowEdits=true (diff-group elements are only rendered in that branch).
-    (function () {
-        function alignDiffMargins() {
-            document.querySelectorAll('.scene-prose-shell').forEach(function (shell) {
-                var marks  = Array.from(shell.querySelectorAll('.diff-margin__mark'));
-                var groups = Array.from(shell.querySelectorAll('.diff-group'));
-                if (!marks.length || marks.length !== groups.length) return;
-                marks.forEach(function (mark, i) {
-                    mark.style.flex   = 'none';
-                    mark.style.height = groups[i].offsetHeight + 'px';
-                });
-            });
-        }
-        alignDiffMargins();
-        window.addEventListener('resize', alignDiffMargins);
-    })();
 </script>
