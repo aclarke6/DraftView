@@ -57,6 +57,7 @@ Last merged: 2026-09-16 — PRs #142/#143/#145 (comment email alerts, dwell-time
 | 4 | UAT: complete scenarios C-K | — | In progress |
 | 5 | Go-Live Day: password reset emails to Becca and Hilary | — | Blocked by UAT |
 | 6 | Chapter 31 appears under wrong section in Reader Progress | [#160](https://github.com/aclarke6/DraftView/issues/160) | Open |
+| 7 | Manual sync not recorded in Recent Activity | [#161](https://github.com/aclarke6/DraftView/issues/161) | Open |
 
 ### P2 — Active Sprint Work
 
