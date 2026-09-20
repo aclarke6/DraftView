@@ -10,6 +10,13 @@ using DraftView.Domain.Notifications;
 
 namespace DraftView.Application.Tests.Services;
 
+/// <summary>
+/// Tests for ScrivenerSyncService.ParseProjectAsync and DetectContentChangesAsync.
+/// Covers: section creation, title/sort-order/parent updates, soft-deletion, cursor
+/// management, full vs incremental listing, SyncCompleted notification emission,
+/// file count in notification title, and content-hash change detection.
+/// Excludes: Dropbox OAuth token management, EF persistence, email delivery.
+/// </summary>
 public class ScrivenerSyncServiceTests
 {
     private static readonly Guid ValidAuthorId = Guid.NewGuid();

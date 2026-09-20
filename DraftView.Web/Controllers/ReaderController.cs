@@ -664,91 +664,100 @@ public class ReaderController(
         });
     }
 
+    /// <summary>
+    /// Renders the mobile read view for a scene or leaf chapter. Resolves the scene/chapter
+    /// pair, loads preferences and diff state, and returns the MobileRead view.
+    /// </summary>
     private async Task<IActionResult> MobileRead(Guid id, Domain.Entities.User user)
     {
-        var section = await SectionRepo.GetByIdAsync(id);
-        if (section is null || !section.IsPublished)
+        var resolved = await ResolveMobileSceneAndChapterAsync(id);
+        if (resolved is null)
             return NotFound();
 
-        var project = await ProjectRepo.GetByIdAsync(section.ProjectId);
-        if (project is null)
-            return NotFound();
-
-        var allSections = await SectionRepo.GetByProjectIdAsync(project.Id);
-
-        // Determine whether this is a normal scene (Document inside a Folder chapter)
-        // or a leaf chapter (Folder with no published Document children).
-        Section scene;
-        Section chapter;
-
-        if (section.NodeType == NodeType.Document)
-        {
-            scene = section;
-            var parentChapter = section.ParentId.HasValue
-                ? allSections.FirstOrDefault(s => s.Id == section.ParentId.Value)
-                : null;
-            if (parentChapter is null)
-                return NotFound();
-            chapter = parentChapter;
-        }
-        else if (section.NodeType == NodeType.Folder && IsLeafChapter(section, allSections))
-        {
-            // Leaf chapter — the Folder itself contains the readable content.
-            scene   = section;
-            chapter = section;
-        }
-        else
-        {
-            return NotFound();
-        }
-
+        var (scene, chapter, project, allSections) = resolved.Value;
         var isModerator = user.Role == Role.Author;
 
         await ProgressService.RecordOpenAsync(id, user.Id);
 
-        var preferences       = await _userPreferencesRepo.GetByUserIdAsync(user.Id);
-        var showDiffMobile    = preferences?.ShowDiffOnRevisit ?? false;
+        var preferences    = await _userPreferencesRepo.GetByUserIdAsync(user.Id);
+        var readingStyle   = preferences?.ReadingStyle ?? ReadingStyle.StoryReader;
 
         var (resolvedHtml, resumeCaptureText, resumeRestoreTarget) =
-            await ResolveSceneContentAsync(scene, user.Id, showDiffMobile);
+            await ResolveSceneContentAsync(scene, user.Id, preferences?.ShowDiffOnRevisit ?? false);
 
-        var (prevSceneId, nextSceneId) = section.NodeType == NodeType.Document
+        var (prevSceneId, nextSceneId) = scene.NodeType == NodeType.Document
             ? GetPrevNextSceneIds(scene.Id, chapter.Id, allSections)
             : ((Guid?)null, (Guid?)null);
 
-        var commentsRaw       = await CommentService.GetThreadsForSectionAsync(id, user.Id);
-        var sceneCommentCount = commentsRaw.Count(c => !c.IsSoftDeleted);
+        var sceneCommentCount = (await CommentService.GetThreadsForSectionAsync(id, user.Id))
+            .Count(c => !c.IsSoftDeleted);
 
         var isRead = await ProgressService.IsMarkedReadAsync(scene.Id, user.Id);
 
         var (changeClassification, diffParagraphs) =
             await _changeStateService.GetChangeStateWithDiffAsync(scene.Id, user.Id);
-        var readingStyle     = preferences?.ReadingStyle ?? ReadingStyle.StoryReader;
-        var paragraphGroups  = _paragraphGroupingService.Group(diffParagraphs, readingStyle, _minDiffGroupWords);
+        var paragraphGroups = _paragraphGroupingService.Group(diffParagraphs, readingStyle, _minDiffGroupWords);
 
         return View("MobileRead", new MobileReadViewModel {
-            Scene                    = scene,
-            Chapter                  = chapter,
-            ProjectName              = project.Name,
-            SceneCommentCount        = sceneCommentCount,
-            PrevSceneId              = prevSceneId,
-            NextSceneId              = nextSceneId,
-            ProseFont                = preferences?.ProseFont ?? ProseFont.SystemSerif,
-            ProseFontSize            = preferences?.ProseFontSize ?? ProseFontSize.Medium,
-            ResolvedHtmlContent      = resolvedHtml,
-            ResumeCaptureText        = resumeCaptureText,
-            HasResumeRestoreTarget   = resumeRestoreTarget?.HasTarget ?? false,
-            ResumeRestoreStartOffset = resumeRestoreTarget?.StartOffset,
-            ResumeRestoreEndOffset   = resumeRestoreTarget?.EndOffset,
-            ResumeRestoreStatus      = resumeRestoreTarget?.Status,
+            Scene                        = scene,
+            Chapter                      = chapter,
+            ProjectName                  = project.Name,
+            SceneCommentCount            = sceneCommentCount,
+            PrevSceneId                  = prevSceneId,
+            NextSceneId                  = nextSceneId,
+            ProseFont                    = preferences?.ProseFont ?? ProseFont.SystemSerif,
+            ProseFontSize                = preferences?.ProseFontSize ?? ProseFontSize.Medium,
+            ResolvedHtmlContent          = resolvedHtml,
+            ResumeCaptureText            = resumeCaptureText,
+            HasResumeRestoreTarget       = resumeRestoreTarget?.HasTarget ?? false,
+            ResumeRestoreStartOffset     = resumeRestoreTarget?.StartOffset,
+            ResumeRestoreEndOffset       = resumeRestoreTarget?.EndOffset,
+            ResumeRestoreStatus          = resumeRestoreTarget?.Status,
             ResumeRestoreConfidenceScore = resumeRestoreTarget?.ConfidenceScore,
-            ResumeRestoreMatchMethod = resumeRestoreTarget?.MatchMethod,
-            IsRead                   = isRead,
-            ChangeClassification     = changeClassification,
-            ParagraphGroups          = paragraphGroups,
+            ResumeRestoreMatchMethod     = resumeRestoreTarget?.MatchMethod,
+            IsRead                       = isRead,
+            ChangeClassification         = changeClassification,
+            ParagraphGroups              = paragraphGroups,
         });
     }
 
+    /// <summary>
+    /// Resolves the scene and chapter for a mobile read request. Returns null when the
+    /// section does not exist, is unpublished, or cannot be mapped to a scene/chapter pair.
+    /// Handles both Document-inside-Folder and leaf-Folder cases.
+    /// </summary>
+    private async Task<(Section scene, Section chapter, Project project, IReadOnlyList<Section> allSections)?>
+        ResolveMobileSceneAndChapterAsync(Guid id)
+    {
+        var section = await SectionRepo.GetByIdAsync(id);
+        if (section is null || !section.IsPublished)
+            return null;
+
+        var project = await ProjectRepo.GetByIdAsync(section.ProjectId);
+        if (project is null)
+            return null;
+
+        var allSections = await SectionRepo.GetByProjectIdAsync(project.Id);
+
+        if (section.NodeType == NodeType.Document)
+        {
+            var chapter = section.ParentId.HasValue
+                ? allSections.FirstOrDefault(s => s.Id == section.ParentId.Value)
+                : null;
+            return chapter is null ? null : (section, chapter, project, allSections);
+        }
+
+        if (section.NodeType == NodeType.Folder && IsLeafChapter(section, allSections))
+            return (section, section, project, allSections);
+
+        return null;
+    }
+
+    /// <summary>
+    /// Builds the full <see cref="SceneWithComments"/> for a desktop scene, recording the
+    /// open event, resolving HTML content, computing paragraph diff groups, loading comments,
+    /// and populating read/change state for the view.
+    /// </summary>
     private async Task<SceneWithComments> BuildSceneWithCommentsAsync(
         Section scene,
         Domain.Entities.User user,

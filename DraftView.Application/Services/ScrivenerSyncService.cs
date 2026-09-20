@@ -8,6 +8,11 @@ using DraftView.Domain.Notifications;
 
 namespace DraftView.Application.Services;
 
+/// <summary>
+/// Implements <see cref="ISyncService"/> for Scrivener projects synced via Dropbox.
+/// Reconciles the live Scrivener binder tree against the database section records,
+/// downloads changed file entries, and emits a SyncCompleted notification on success.
+/// </summary>
 #pragma warning disable CS9113 // clientFactory used internally by DropboxFileDownloader
 public class ScrivenerSyncService(
     IProjectRepository projectRepo,
@@ -28,6 +33,13 @@ public class ScrivenerSyncService(
     private Guid _currentAuthorId;
     private readonly HashSet<Guid> _contentChangedPublishedSectionIds = [];
 
+    /// <summary>
+    /// Runs a full sync cycle for the given project: checks Dropbox connectivity,
+    /// performs full or incremental file listing, reconciles the binder tree, and
+    /// emits a SyncCompleted notification. Updates the project SyncStatus on completion
+    /// or failure and sends change notifications for any published sections whose
+    /// content changed.
+    /// </summary>
     public async Task ParseProjectAsync(Guid projectId, CancellationToken ct = default)
     {
         var project = await projectRepo.GetByIdAsync(projectId, ct)
@@ -160,6 +172,11 @@ public class ScrivenerSyncService(
             await ReconcileNodeAsync(child, existing.Id, existing, projectId, scrivFolderPath, seenUuids, ct);
     }
 
+    /// <summary>
+    /// Performs a full Dropbox listing, downloads all entries, reconciles the binder,
+    /// stores the initial cursor, and returns the number of entries transferred.
+    /// Used on first sync or after a cursor reset.
+    /// </summary>
     private async Task<int> SyncUsingFullListingAsync(Project project, CancellationToken ct)
     {
         var (entries, initialCursor) = await fileDownloader
@@ -179,6 +196,11 @@ public class ScrivenerSyncService(
         return entries.Count;
     }
 
+    /// <summary>
+    /// Fetches only changed Dropbox entries since the last cursor, processes them,
+    /// reconciles the binder, advances the cursor, and returns the entry count.
+    /// Falls back to <see cref="SyncUsingFullListingAsync"/> if the cursor has expired.
+    /// </summary>
     private async Task<int> SyncUsingIncrementalListingAsync(Project project, CancellationToken ct)
     {
         try
@@ -320,6 +342,10 @@ public class ScrivenerSyncService(
             node.SortOrder, rtf?.Html, rtf?.Hash, node.ScrivenerStatus);
     }
 
+    /// <summary>
+    /// Applies binder-sourced field updates to an existing section: title, sort order,
+    /// parent, Scrivener status, and — for Document nodes — content when the hash has changed.
+    /// </summary>
     private async Task UpdateSectionAsync(
         Section existing, ParsedBinderNode node, string safeTitle,
         Guid? parentId, string scrivFolderPath, CancellationToken ct)
