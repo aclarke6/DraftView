@@ -6,7 +6,7 @@
     @if (Model.ChapterTitle is not null)
     {
         <p class="author-section-view__breadcrumb">
-            <a asp-action="Sections" class="author-section-view__breadcrumb-link">Sections</a>
+            <a asp-action="Sections" asp-route-projectId="@Model.Section.ProjectId" class="author-section-view__breadcrumb-link">Sections</a>
             <span class="author-section-view__breadcrumb-sep">&rsaquo;</span>
             <span>@Model.ChapterTitle</span>
         </p>
