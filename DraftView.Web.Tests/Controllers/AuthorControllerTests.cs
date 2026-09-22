@@ -595,6 +595,7 @@ public class AuthorControllerTests
             DisplayName: "Alice",
             Status: ReaderStatus.Active,
             ActivatedAt: null,
+            LastLoginAt: null,
             HasPendingInvitation: false);
 
         readerManagementService.Setup(s => s.GetReaderSummaryAsync(It.IsAny<CancellationToken>()))

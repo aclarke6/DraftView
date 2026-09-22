@@ -46,6 +46,7 @@ public class ReaderRowViewModel
     public string Email       { get; init; } = string.Empty;
     public ReaderStatus Status { get; init; }
     public DateTime? ActivatedAt { get; init; }
+    public DateTime? LastLoginAt { get; init; }
     public bool HasPendingInvitation { get; init; }
 }
 

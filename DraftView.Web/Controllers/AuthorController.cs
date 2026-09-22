@@ -465,6 +465,7 @@ public class AuthorController(
             Email                = string.Empty,
             Status               = r.Status,
             ActivatedAt          = r.ActivatedAt,
+            LastLoginAt          = r.LastLoginAt,
             HasPendingInvitation = r.HasPendingInvitation
         }).ToList());
     }

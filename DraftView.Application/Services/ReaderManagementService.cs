@@ -43,6 +43,7 @@ public class ReaderManagementService(
                 DisplayName: string.IsNullOrWhiteSpace(r.DisplayName) ? "Pending reader" : r.DisplayName,
                 Status: status,
                 ActivatedAt: r.ActivatedAt,
+                LastLoginAt: r.LastLoginAt,
                 HasPendingInvitation: hasPending));
         }
 

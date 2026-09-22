@@ -394,4 +394,34 @@ public class UserServiceTests
 
         UnitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Never);
     }
+
+    // -----------------------------------------------------------------------
+    // RecordLoginAsync
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task RecordLoginAsync_ActiveUser_SetsLastLoginAtAndSaves()
+    {
+        var user = User.Create("reader@example.com", "Reader", Role.BetaReader);
+        user.Activate();
+        var sut = CreateSut();
+
+        UserRepo.Setup(r => r.GetByIdAsync(user.Id, default)).ReturnsAsync(user);
+
+        await sut.RecordLoginAsync(user.Id);
+
+        Assert.NotNull(user.LastLoginAt);
+        UnitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task RecordLoginAsync_UserNotFound_ThrowsEntityNotFoundException()
+    {
+        var userId = Guid.NewGuid();
+        var sut = CreateSut();
+
+        UserRepo.Setup(r => r.GetByIdAsync(userId, default)).ReturnsAsync((User?)null);
+
+        await Assert.ThrowsAsync<EntityNotFoundException>(() => sut.RecordLoginAsync(userId));
+    }
 }

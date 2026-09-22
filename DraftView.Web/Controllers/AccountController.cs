@@ -74,6 +74,8 @@ public class AccountController(
                         ?? await userManager.FindByEmailAsync(loginInput);
                     var emailForLookup = idUser?.Email ?? loginInput;
                     var domainUser = await authenticationUserLookupService.FindByLoginEmailAsync(emailForLookup);
+                    if (domainUser is not null)
+                        await userService.RecordLoginAsync(domainUser.Id);
                     if (domainUser?.Role == Domain.Enumerations.Role.Author)
                         return RedirectToAction("Dashboard", "Author");
                     if (domainUser?.Role == Domain.Enumerations.Role.SystemSupport)
