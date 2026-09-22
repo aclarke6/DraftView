@@ -64,8 +64,6 @@ public class AccountController(
         {
             case { Succeeded: true }:
                 logger.LogInformation("User login succeeded.");
-                if (Url.IsLocalUrl(returnUrl))
-                    return Redirect(returnUrl);
                 try
                 {
                     // Resolve the actual email for domain user lookup regardless of whether
@@ -76,6 +74,8 @@ public class AccountController(
                     var domainUser = await authenticationUserLookupService.FindByLoginEmailAsync(emailForLookup);
                     if (domainUser is not null)
                         await userService.RecordLoginAsync(domainUser.Id);
+                    if (Url.IsLocalUrl(returnUrl))
+                        return Redirect(returnUrl);
                     if (domainUser?.Role == Domain.Enumerations.Role.Author)
                         return RedirectToAction("Dashboard", "Author");
                     if (domainUser?.Role == Domain.Enumerations.Role.SystemSupport)
