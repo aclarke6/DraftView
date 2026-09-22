@@ -9,6 +9,7 @@ public sealed record ReaderSummaryRow(
     string DisplayName,
     ReaderStatus Status,
     DateTime? ActivatedAt,
+    DateTime? LastLoginAt,
     bool HasPendingInvitation);
 
 /// <summary>

@@ -97,6 +97,37 @@ public class ReaderManagementServiceTests
     }
 
     [Fact]
+    public async Task GetReaderSummaryAsync_ActiveReaderWithLastLogin_LastLoginAtIsPassedThrough()
+    {
+        var reader = User.Create("reader@example.test", "Alice", Role.BetaReader);
+        reader.Activate();
+        reader.RecordLogin();
+
+        _userRepo.Setup(r => r.GetAllBetaReadersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([reader]);
+        SetupNoPendingInvitations(reader.Id);
+
+        var result = await CreateSut().GetReaderSummaryAsync();
+
+        Assert.NotNull(Assert.Single(result).LastLoginAt);
+    }
+
+    [Fact]
+    public async Task GetReaderSummaryAsync_ReaderNeverLoggedIn_LastLoginAtIsNull()
+    {
+        var reader = User.Create("reader@example.test", "Alice", Role.BetaReader);
+        reader.Activate();
+
+        _userRepo.Setup(r => r.GetAllBetaReadersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([reader]);
+        SetupNoPendingInvitations(reader.Id);
+
+        var result = await CreateSut().GetReaderSummaryAsync();
+
+        Assert.Null(Assert.Single(result).LastLoginAt);
+    }
+
+    [Fact]
     public async Task GetReaderSummaryAsync_MultipleReaders_OrderedByDisplayName()
     {
         var charlie = User.Create("c@example.test", "Charlie", Role.BetaReader);

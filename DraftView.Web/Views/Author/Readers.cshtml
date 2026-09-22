@@ -30,6 +30,7 @@ else
                     <th>Name</th>
                     <th>Status</th>
                     <th>Joined</th>
+                    <th>Last logged in</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -57,6 +58,9 @@ else
                         </td>
                         <td class="readers-table__joined">
                             @(r.ActivatedAt.HasValue ? r.ActivatedAt.Value.ToString("dd MMM yyyy") : "-")
+                        </td>
+                        <td>
+                            @(r.LastLoginAt.HasValue ? r.LastLoginAt.Value.ToString("dd MMM yyyy") : "Never")
                         </td>
                         <td>
                             <div class="actions-cell">

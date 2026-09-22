@@ -337,6 +337,18 @@ public class UserService(
         return trimmedDisplayName;
     }
 
+    /// <summary>
+    /// Records a successful login for the given user by calling RecordLogin on the domain entity and saving.
+    /// Throws EntityNotFoundException if the user does not exist.
+    /// </summary>
+    public async Task RecordLoginAsync(Guid userId, CancellationToken ct = default)
+    {
+        var user = await userRepo.GetByIdAsync(userId, ct)
+            ?? throw new EntityNotFoundException(nameof(User), userId);
+        user.RecordLogin();
+        await unitOfWork.SaveChangesAsync(ct);
+    }
+
     private static bool LooksLikeEmailAddress(string value)
     {
         return MailAddress.TryCreate(value, out var address)
