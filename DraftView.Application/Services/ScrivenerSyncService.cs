@@ -75,10 +75,17 @@ public class ScrivenerSyncService(
             if (author is not null)
             {
                 var fileWord = fileCount == 1 ? "file" : "files";
+                var title = $"Sync completed for {project.Name} — {fileCount} {fileWord} transferred";
+
+                // Keep only the most recent 0-file notification per project.
+                if (fileCount == 0)
+                    await notificationRepo.DeleteByAuthorIdTypeAndTitleAsync(
+                        author.Id, NotificationEventType.SyncCompleted, title, ct);
+
                 var notification = AuthorNotification.Create(
                     author.Id,
                     NotificationEventType.SyncCompleted,
-                    $"Sync completed for {project.Name} — {fileCount} {fileWord} transferred",
+                    title,
                     null,
                     null,
                     DateTime.UtcNow);

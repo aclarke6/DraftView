@@ -941,6 +941,87 @@ public class ScrivenerSyncServiceTests
     }
 
     [Fact]
+    public async Task ParseProjectAsync_ZeroFileSync_RemovesPreviousZeroFileNotificationBeforeAdding()
+    {
+        // Background sync runs every few minutes; only the most recent 0-file
+        // notification per project is kept.
+        var project = MakeProject();
+        project.UpdateDropboxCursor("cursor-old");
+        var existingFolder = Section.CreateFolder(project.Id, "ROOT-001", "Manuscript", null, 0);
+        var author = User.Create("author@example.com", "Author", Role.Author);
+        var sut = CreateSut();
+        var calls = new List<string>();
+
+        SetupPathResolver(project);
+        SetupParserWithTree(project, new ParsedBinderNode
+        {
+            Uuid = "ROOT-001", Title = "Manuscript",
+            NodeType = ParsedNodeType.Folder, Children = new()
+        });
+
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "ROOT-001", default))
+            .ReturnsAsync(existingFolder);
+        _sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, default))
+            .ReturnsAsync(new List<Section> { existingFolder });
+        _fileDownloader.Setup(x => x.ListChangedEntriesAsync(project.AuthorId, "cursor-old", default))
+            .ReturnsAsync((new List<DropboxChangedEntry>(), "cursor-new"));
+        _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
+        _notificationRepo.Setup(r => r.DeleteByAuthorIdTypeAndTitleAsync(
+                It.IsAny<Guid>(), It.IsAny<NotificationEventType>(), It.IsAny<string>(), default))
+            .Callback(() => calls.Add("delete"))
+            .Returns(Task.CompletedTask);
+        _notificationRepo.Setup(r => r.AddAsync(It.IsAny<AuthorNotification>(), default))
+            .Callback(() => calls.Add("add"))
+            .Returns(Task.CompletedTask);
+
+        await sut.ParseProjectAsync(project.Id);
+
+        _notificationRepo.Verify(
+            r => r.DeleteByAuthorIdTypeAndTitleAsync(
+                author.Id,
+                NotificationEventType.SyncCompleted,
+                "Sync completed for Test Novel — 0 files transferred",
+                default),
+            Times.Once);
+        Assert.Equal(new[] { "delete", "add" }, calls);
+    }
+
+    [Fact]
+    public async Task ParseProjectAsync_SyncWithTransferredFiles_DoesNotRemoveExistingNotifications()
+    {
+        var project = MakeProject();
+        project.UpdateDropboxCursor("cursor-old");
+        var author = User.Create("author@example.com", "Author", Role.Author);
+        var entries = new List<DropboxChangedEntry>
+        {
+            new("/book.scriv/Files/Data/SCEN-001/content.rtf", DropboxEntryType.Modified, "h1"),
+        };
+        var sut = CreateSut();
+
+        SetupPathResolver(project);
+        SetupParserWithTree(project, new ParsedBinderNode
+        {
+            Uuid = "ROOT-001", Title = "Manuscript",
+            NodeType = ParsedNodeType.Folder, Children = new()
+        });
+
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "ROOT-001", default))
+            .ReturnsAsync((Section?)null);
+        _sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, default))
+            .ReturnsAsync(new List<Section>());
+        _fileDownloader.Setup(x => x.ListChangedEntriesAsync(project.AuthorId, "cursor-old", default))
+            .ReturnsAsync((entries, "cursor-new"));
+        _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
+
+        await sut.ParseProjectAsync(project.Id);
+
+        _notificationRepo.Verify(
+            r => r.DeleteByAuthorIdTypeAndTitleAsync(
+                It.IsAny<Guid>(), It.IsAny<NotificationEventType>(), It.IsAny<string>(), default),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task ParseProjectAsync_WritesNotification_WhenContentHashChanges()
     {
         var project = MakeProject();
