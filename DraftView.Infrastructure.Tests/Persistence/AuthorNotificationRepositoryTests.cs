@@ -248,6 +248,45 @@ public class AuthorNotificationRepositoryTests : IDisposable
     }
 
     // -----------------------------------------------------------------------
+    // DeleteByAuthorIdTypeAndTitleAsync
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task DeleteByAuthorIdTypeAndTitleAsync_RemovesOnlyExactTitleMatchesOfType()
+    {
+        const string zeroTitle = "Sync completed for Book 1 — 0 files transferred";
+        await _sut.AddAsync(Make(AuthorA, title: zeroTitle, type: NotificationEventType.SyncCompleted));
+        await _sut.AddAsync(Make(AuthorA, title: zeroTitle, type: NotificationEventType.SyncCompleted));
+        await _sut.AddAsync(Make(AuthorA, title: "Sync completed for Book 1 — 3 files transferred", type: NotificationEventType.SyncCompleted));
+        await _sut.AddAsync(Make(AuthorA, title: "Sync completed for Test — 0 files transferred", type: NotificationEventType.SyncCompleted));
+        await _sut.AddAsync(Make(AuthorA, title: zeroTitle, type: NotificationEventType.NewComment));
+        await _db.SaveChangesAsync();
+
+        await _sut.DeleteByAuthorIdTypeAndTitleAsync(AuthorA, NotificationEventType.SyncCompleted, zeroTitle);
+        await _db.SaveChangesAsync();
+
+        var remaining = await _sut.GetByAuthorIdAsync(AuthorA);
+        Assert.Equal(3, remaining.Count);
+        Assert.DoesNotContain(remaining, n =>
+            n.EventType == NotificationEventType.SyncCompleted && n.Title == zeroTitle);
+    }
+
+    [Fact]
+    public async Task DeleteByAuthorIdTypeAndTitleAsync_LeavesOtherAuthorsIntact()
+    {
+        const string zeroTitle = "Sync completed for Book 1 — 0 files transferred";
+        await _sut.AddAsync(Make(AuthorA, title: zeroTitle, type: NotificationEventType.SyncCompleted));
+        await _sut.AddAsync(Make(AuthorB, title: zeroTitle, type: NotificationEventType.SyncCompleted));
+        await _db.SaveChangesAsync();
+
+        await _sut.DeleteByAuthorIdTypeAndTitleAsync(AuthorA, NotificationEventType.SyncCompleted, zeroTitle);
+        await _db.SaveChangesAsync();
+
+        Assert.Empty(await _sut.GetByAuthorIdAsync(AuthorA));
+        Assert.Single(await _sut.GetByAuthorIdAsync(AuthorB));
+    }
+
+    // -----------------------------------------------------------------------
     // GetByAuthorIdAndTypesAsync
     // -----------------------------------------------------------------------
 

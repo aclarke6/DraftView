@@ -12,5 +12,6 @@ public interface IAuthorNotificationRepository
     Task DeleteAsync(Guid notificationId, CancellationToken ct = default);
     Task DeleteAllByAuthorIdAsync(Guid authorId, CancellationToken ct = default);
     Task DeleteByAuthorIdAndTypeAsync(Guid authorId, NotificationEventType type, CancellationToken ct = default);
+    Task DeleteByAuthorIdTypeAndTitleAsync(Guid authorId, NotificationEventType type, string title, CancellationToken ct = default);
     Task PruneOlderThanAsync(Guid authorId, DateTime cutoff, CancellationToken ct = default);
 }

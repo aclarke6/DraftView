@@ -67,6 +67,19 @@ public class AuthorNotificationRepository(DraftViewDbContext db) : IAuthorNotifi
         db.AuthorNotifications.RemoveRange(items);
     }
 
+    /// <summary>
+    /// Removes all notifications for the given author matching both the event type and exact title.
+    /// Does not call SaveChanges — the caller is responsible for the unit of work.
+    /// </summary>
+    public async Task DeleteByAuthorIdTypeAndTitleAsync(
+        Guid authorId, NotificationEventType type, string title, CancellationToken ct = default)
+    {
+        var items = await db.AuthorNotifications
+            .Where(n => n.AuthorId == authorId && n.EventType == type && n.Title == title)
+            .ToListAsync(ct);
+        db.AuthorNotifications.RemoveRange(items);
+    }
+
     public async Task PruneOlderThanAsync(Guid authorId, DateTime cutoff, CancellationToken ct = default)
     {
         var old = await db.AuthorNotifications
