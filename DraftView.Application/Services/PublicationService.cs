@@ -10,12 +10,6 @@ public class PublicationService(
     ISectionRepository sectionRepo,
     IUnitOfWork unitOfWork) : IPublicationService
 {
-    private static readonly IReadOnlySet<string> PublishableStatuses =
-        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "First Draft", "Revised Draft", "Final Draft", "Done"
-        };
-
     public async Task PublishChapterAsync(
         Guid chapterId, Guid authorId, CancellationToken ct = default)
     {
@@ -32,7 +26,7 @@ public class PublicationService(
         // Validate all scenes are publishable
         var notReady = scenes
             .Where(s => !string.IsNullOrWhiteSpace(s.ScrivenerStatus) &&
-                        !PublishableStatuses.Contains(s.ScrivenerStatus))
+                        !PublishableStatus.Contains(s.ScrivenerStatus))
             .ToList();
 
         if (notReady.Any())
@@ -132,7 +126,7 @@ public class PublicationService(
 
         return scenes.All(s =>
             string.IsNullOrWhiteSpace(s.ScrivenerStatus) ||
-            PublishableStatuses.Contains(s.ScrivenerStatus));
+            PublishableStatus.Contains(s.ScrivenerStatus));
     }
 }
 
