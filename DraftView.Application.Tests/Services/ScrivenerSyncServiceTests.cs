@@ -666,6 +666,104 @@ public class ScrivenerSyncServiceTests
         Assert.True(existingChapter.ContentChangedSincePublish);
     }
 
+    private (Project project, Section chapter) SetupPublishedChapterWithNewScene(
+        string? newSceneStatus, bool chapterPublished = true)
+    {
+        var project = MakeProject();
+        var existingRoot = Section.CreateFolder(project.Id, "ROOT-001", "Manuscript", null, 0);
+        var existingChapter = Section.CreateFolder(project.Id, "CHAP-001", "Chapter 1", existingRoot.Id, 0);
+        if (chapterPublished)
+            existingChapter.MarkAsPublishedContainer();
+
+        SetupPathResolver(project);
+        SetupParserWithTree(project, new ParsedBinderNode
+        {
+            Uuid = "ROOT-001", Title = "Manuscript", NodeType = ParsedNodeType.Folder,
+            Children = new List<ParsedBinderNode>
+            {
+                new()
+                {
+                    Uuid = "CHAP-001", Title = "Chapter 1", NodeType = ParsedNodeType.Folder, SortOrder = 0,
+                    Children = new List<ParsedBinderNode>
+                    {
+                        new()
+                        {
+                            Uuid = "SCEN-NEW", Title = "Scene 7", NodeType = ParsedNodeType.Document,
+                            SortOrder = 0, ScrivenerStatus = newSceneStatus, Children = new()
+                        }
+                    }
+                }
+            }
+        });
+
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "ROOT-001", default))
+            .ReturnsAsync(existingRoot);
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "CHAP-001", default))
+            .ReturnsAsync(existingChapter);
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "SCEN-NEW", default))
+            .ReturnsAsync((Section?)null);
+        _sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, default))
+            .ReturnsAsync(new List<Section> { existingRoot, existingChapter });
+        _converter.Setup(c => c.ConvertAsync("/fake/path", "SCEN-NEW", default))
+            .ReturnsAsync(new RtfConversionResult { Html = "<p>Scene 7</p>", Hash = "h-new" });
+
+        return (project, existingChapter);
+    }
+
+    [Theory]
+    [InlineData("First Draft")]
+    [InlineData("Revised Draft")]
+    [InlineData("Final Draft")]
+    [InlineData("Done")]
+    public async Task ParseProjectAsync_NewPublishableSceneInPublishedChapter_IsPublishedAndChapterNotFlagged(string status)
+    {
+        var (project, chapter) = SetupPublishedChapterWithNewScene(status);
+        Section? added = null;
+        _sectionRepo.Setup(r => r.AddAsync(It.Is<Section>(s => s.ScrivenerUuid == "SCEN-NEW"), default))
+            .Callback<Section, CancellationToken>((s, _) => added = s)
+            .Returns(Task.CompletedTask);
+
+        await CreateSut().ParseProjectAsync(project.Id);
+
+        Assert.NotNull(added);
+        Assert.True(added!.IsPublished);
+        Assert.Equal("h-new", added.ContentHash);
+        Assert.False(chapter.ContentChangedSincePublish);
+    }
+
+    [Theory]
+    [InlineData("To Do")]
+    [InlineData(null)]
+    public async Task ParseProjectAsync_NewNonPublishableSceneInPublishedChapter_StaysUnpublishedAndFlagsChapter(string? status)
+    {
+        var (project, chapter) = SetupPublishedChapterWithNewScene(status);
+        Section? added = null;
+        _sectionRepo.Setup(r => r.AddAsync(It.Is<Section>(s => s.ScrivenerUuid == "SCEN-NEW"), default))
+            .Callback<Section, CancellationToken>((s, _) => added = s)
+            .Returns(Task.CompletedTask);
+
+        await CreateSut().ParseProjectAsync(project.Id);
+
+        Assert.NotNull(added);
+        Assert.False(added!.IsPublished);
+        Assert.True(chapter.ContentChangedSincePublish);
+    }
+
+    [Fact]
+    public async Task ParseProjectAsync_NewPublishableSceneInUnpublishedChapter_StaysUnpublished()
+    {
+        var (project, _) = SetupPublishedChapterWithNewScene("First Draft", chapterPublished: false);
+        Section? added = null;
+        _sectionRepo.Setup(r => r.AddAsync(It.Is<Section>(s => s.ScrivenerUuid == "SCEN-NEW"), default))
+            .Callback<Section, CancellationToken>((s, _) => added = s)
+            .Returns(Task.CompletedTask);
+
+        await CreateSut().ParseProjectAsync(project.Id);
+
+        Assert.NotNull(added);
+        Assert.False(added!.IsPublished);
+    }
+
     [Fact]
     public async Task ParseProjectAsync_WithPublishedChapter_NoNewScene_DoesNotMarkChapterContentChanged()
     {
