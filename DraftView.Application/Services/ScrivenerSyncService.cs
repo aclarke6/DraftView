@@ -160,7 +160,15 @@ public class ScrivenerSyncService(
             if (created && node.NodeType == ParsedNodeType.Document)
             {
                 if (parentSection is not null && parentSection.NodeType == NodeType.Folder && parentSection.IsPublished)
-                    parentSection.MarkContentChanged();
+                {
+                    // A new scene in a published chapter goes straight to readers when its
+                    // Scrivener status is First Draft or above; otherwise the chapter is
+                    // flagged so the author can republish once it is ready.
+                    if (PublishableStatus.Contains(existing.ScrivenerStatus))
+                        existing.PublishAsPartOfChapter(existing.ContentHash ?? string.Empty);
+                    else
+                        parentSection.MarkContentChanged();
+                }
             }
         }
         else
