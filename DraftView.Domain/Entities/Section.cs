@@ -167,8 +167,9 @@ public sealed class Section
             throw new InvariantViolationException("I-18",
                 "A soft-deleted section may not be published.");
 
-        IsPublished = true;
-        PublishedAt = DateTime.UtcNow;
+        IsPublished                = true;
+        PublishedAt                = DateTime.UtcNow;
+        ContentChangedSincePublish = false;
     }
 
     public void UnmarkAsPublishedContainer()

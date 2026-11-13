@@ -179,7 +179,7 @@ else
                                             </span>
                                         }
 
-                                        <form asp-action="RepublishChapter" method="post" style="display:inline">
+                                        <form asp-action="PublishChapter" method="post" style="display:inline">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="chapterId" value="@s.Id" />
                                             <input type="hidden" name="projectId" value="@project!.Id" />
