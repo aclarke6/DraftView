@@ -249,4 +249,65 @@ public class DropboxConnectionTests
 
         Assert.False(conn.IsTokenValid(DateTime.UtcNow));
     }
+
+    // ---------------------------------------------------------------------------
+    // CanAttemptSync
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void CanAttemptSync_WhenConnected_ReturnsTrue()
+    {
+        var conn = DropboxConnection.CreateStub(ValidUserId);
+        conn.Authorise("access-token", "refresh-token", DateTime.UtcNow.AddHours(4));
+
+        Assert.True(conn.CanAttemptSync());
+    }
+
+    [Fact]
+    public void CanAttemptSync_WhenTokenExpiredWithRefreshToken_ReturnsTrue()
+    {
+        var conn = DropboxConnection.CreateStub(ValidUserId);
+        conn.Authorise("access-token", "refresh-token", DateTime.UtcNow.AddHours(4));
+        conn.MarkTokenExpired();
+
+        Assert.True(conn.CanAttemptSync());
+    }
+
+    [Fact]
+    public void CanAttemptSync_WhenNotConnected_ReturnsFalse()
+    {
+        var conn = DropboxConnection.CreateStub(ValidUserId);
+
+        Assert.False(conn.CanAttemptSync());
+    }
+
+    [Fact]
+    public void CanAttemptSync_WhenRevoked_ReturnsFalse()
+    {
+        var conn = DropboxConnection.CreateStub(ValidUserId);
+        conn.Authorise("access-token", "refresh-token", DateTime.UtcNow.AddHours(4));
+        conn.MarkRevoked();
+
+        Assert.False(conn.CanAttemptSync());
+    }
+
+    [Fact]
+    public void CanAttemptSync_WhenError_ReturnsFalse()
+    {
+        var conn = DropboxConnection.CreateStub(ValidUserId);
+        conn.Authorise("access-token", "refresh-token", DateTime.UtcNow.AddHours(4));
+        conn.MarkError("Something failed.");
+
+        Assert.False(conn.CanAttemptSync());
+    }
+
+    [Fact]
+    public void CanAttemptSync_WhenDisconnected_ReturnsFalse()
+    {
+        var conn = DropboxConnection.CreateStub(ValidUserId);
+        conn.Authorise("access-token", "refresh-token", DateTime.UtcNow.AddHours(4));
+        conn.Disconnect();
+
+        Assert.False(conn.CanAttemptSync());
+    }
 }

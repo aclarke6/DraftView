@@ -28,9 +28,16 @@ public class DropboxConnectionChecker(IDropboxConnectionRepository connectionRep
         return connection.Status;
     }
 
+    /// <summary>
+    /// Returns true if a sync may proceed. An expired access token with a refresh
+    /// token still counts, so the client factory can attempt the refresh.
+    /// </summary>
     public async Task<bool> IsConnectedAsync(CancellationToken ct = default)
     {
-        var status = await GetStatusAsync(ct);
-        return status == DropboxConnectionStatus.Connected;
+        if (_userId == Guid.Empty)
+            return false;
+
+        var connection = await connectionRepo.GetByUserIdAsync(_userId, ct);
+        return connection?.CanAttemptSync() ?? false;
     }
 }

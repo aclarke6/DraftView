@@ -131,6 +131,15 @@ public sealed class DropboxConnection
     }
 
     /// <summary>
+    /// Returns true if a sync may be attempted: the connection is Connected, or the
+    /// access token has expired but a refresh token is available to renew it.
+    /// </summary>
+    public bool CanAttemptSync() =>
+        Status == DropboxConnectionStatus.Connected ||
+        (Status == DropboxConnectionStatus.TokenExpired &&
+         !string.IsNullOrWhiteSpace(RefreshToken));
+
+    /// <summary>
     /// Returns true if the access token is present and not yet expired.
     /// Includes a 60-second buffer to allow for clock skew.
     /// </summary>
