@@ -223,6 +223,15 @@ public sealed class Section
         ContentChangedSincePublish = true;
     }
 
+    /// <summary>
+    /// Clears the pending-changes flag without republishing, e.g. once every held
+    /// scene in a published chapter has arrived. Publication state is unchanged.
+    /// </summary>
+    public void ClearContentChanged()
+    {
+        ContentChangedSincePublish = false;
+    }
+
     public void UpdateContent(string? htmlContent, string? contentHash)
     {
         HtmlContent = htmlContent;

@@ -136,7 +136,7 @@ public class ScrivenerSyncService(
         await unitOfWork.SaveChangesAsync(ct);
     }
 
-    private async Task ReconcileNodeAsync(
+    private async Task<Section> ReconcileNodeAsync(
         ParsedBinderNode node, Guid? parentId, Section? parentSection, Guid projectId,
         string scrivFolderPath, HashSet<string> seenUuids, CancellationToken ct)
     {
@@ -149,36 +149,77 @@ public class ScrivenerSyncService(
                 node.Uuid, projectId);
 
         var existing = await sectionRepo.GetByScrivenerUuidAsync(projectId, node.Uuid, ct);
-        var created = false;
 
         if (existing is null)
         {
             existing = await CreateSectionAsync(node, safeTitle, parentId, projectId, scrivFolderPath, ct);
             await sectionRepo.AddAsync(existing, ct);
-            created = true;
-
-            if (created && node.NodeType == ParsedNodeType.Document)
-            {
-                if (parentSection is not null && parentSection.NodeType == NodeType.Folder && parentSection.IsPublished)
-                {
-                    // A new scene in a published chapter goes straight to readers when its
-                    // Scrivener status is First Draft or above; otherwise the chapter is
-                    // flagged so the author can republish once it is ready.
-                    if (PublishableStatus.Contains(existing.ScrivenerStatus))
-                        existing.PublishAsPartOfChapter(existing.ContentHash ?? string.Empty);
-                    else
-                        parentSection.MarkContentChanged();
-                }
-            }
+            ApplyNewSceneInPublishedChapterRule(existing, parentSection);
         }
         else
         {
             await UpdateSectionAsync(existing, node, safeTitle, parentId, scrivFolderPath, ct);
+            ReleaseHeldSceneWhenReady(existing, parentSection);
         }
 
+        var children = new List<Section>();
         foreach (var child in node.Children)
-            await ReconcileNodeAsync(child, existing.Id, existing, projectId, scrivFolderPath, seenUuids, ct);
+            children.Add(await ReconcileNodeAsync(child, existing.Id, existing, projectId, scrivFolderPath, seenUuids, ct));
+
+        ClearChapterFlagWhenNoSceneHeld(existing, children);
+        return existing;
     }
+
+    /// <summary>
+    /// A new scene in a published chapter goes straight to readers when it is ready
+    /// (First Draft or above, with content); otherwise it is held and the chapter is
+    /// flagged until it becomes ready.
+    /// </summary>
+    private static void ApplyNewSceneInPublishedChapterRule(Section scene, Section? parentSection)
+    {
+        if (scene.NodeType != NodeType.Document || !IsPublishedChapter(parentSection))
+            return;
+
+        if (IsReadyForReaders(scene))
+            scene.PublishAsPartOfChapter(scene.ContentHash ?? string.Empty);
+        else
+            parentSection!.MarkContentChanged();
+    }
+
+    /// <summary>
+    /// Publishes an existing unpublished scene in a published chapter once it is ready,
+    /// so a scene held on its first sync arrives on a later one without a republish.
+    /// </summary>
+    private static void ReleaseHeldSceneWhenReady(Section scene, Section? parentSection)
+    {
+        if (scene.NodeType != NodeType.Document || scene.IsPublished || scene.IsSoftDeleted)
+            return;
+
+        if (IsPublishedChapter(parentSection) && IsReadyForReaders(scene))
+            scene.PublishAsPartOfChapter(scene.ContentHash ?? string.Empty);
+    }
+
+    /// <summary>
+    /// Clears a published chapter's pending flag once none of its scenes are still held.
+    /// </summary>
+    private static void ClearChapterFlagWhenNoSceneHeld(Section chapter, IReadOnlyList<Section> children)
+    {
+        if (!IsPublishedChapter(chapter) || !chapter.ContentChangedSincePublish)
+            return;
+
+        var anyHeld = children.Any(c =>
+            c.NodeType == NodeType.Document && !c.IsSoftDeleted && !c.IsPublished);
+
+        if (!anyHeld)
+            chapter.ClearContentChanged();
+    }
+
+    private static bool IsReadyForReaders(Section scene) =>
+        PublishableStatus.Contains(scene.ScrivenerStatus) &&
+        !string.IsNullOrWhiteSpace(scene.HtmlContent);
+
+    private static bool IsPublishedChapter(Section? section) =>
+        section is not null && section.NodeType == NodeType.Folder && section.IsPublished;
 
     /// <summary>
     /// Performs a full Dropbox listing, downloads all entries, reconciles the binder,

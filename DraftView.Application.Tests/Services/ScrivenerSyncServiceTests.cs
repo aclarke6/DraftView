@@ -14,7 +14,8 @@ namespace DraftView.Application.Tests.Services;
 /// Tests for ScrivenerSyncService.ParseProjectAsync and DetectContentChangesAsync.
 /// Covers: section creation, title/sort-order/parent updates, soft-deletion, cursor
 /// management, full vs incremental listing, SyncCompleted notification emission,
-/// file count in notification title, and content-hash change detection.
+/// file count in notification title, content-hash change detection, and held scenes
+/// in published chapters arriving once ready (First Draft+ with content).
 /// Excludes: Dropbox OAuth token management, EF persistence, email delivery.
 /// </summary>
 public class ScrivenerSyncServiceTests
@@ -664,6 +665,163 @@ public class ScrivenerSyncServiceTests
         await sut.ParseProjectAsync(project.Id);
 
         Assert.True(existingChapter.ContentChangedSincePublish);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Held scenes in published chapters arrive once ready - #198
+    // ---------------------------------------------------------------------------
+
+    [Theory]
+    [InlineData("First Draft")]
+    [InlineData("Revised Draft")]
+    [InlineData("Final Draft")]
+    [InlineData("Done")]
+    public async Task ParseProjectAsync_HeldSceneInPublishedChapter_WhenReady_IsPublished(string status)
+    {
+        var (project, _, scene) = SetupPublishedChapterWithHeldScene(status, "<p>Written</p>");
+
+        await CreateSut().ParseProjectAsync(project.Id);
+
+        Assert.True(scene.IsPublished);
+        Assert.Equal("h-written", scene.ContentHash);
+    }
+
+    [Fact]
+    public async Task ParseProjectAsync_HeldSceneInPublishedChapter_WhenLastHeldSceneArrives_ClearsChapterFlag()
+    {
+        var (project, chapter, _) = SetupPublishedChapterWithHeldScene("First Draft", "<p>Written</p>");
+
+        await CreateSut().ParseProjectAsync(project.Id);
+
+        Assert.False(chapter.ContentChangedSincePublish);
+    }
+
+    [Theory]
+    [InlineData("To Do")]
+    [InlineData(null)]
+    public async Task ParseProjectAsync_HeldSceneInPublishedChapter_WhenStatusNotReady_StaysHeldAndChapterStaysFlagged(string? status)
+    {
+        var (project, chapter, scene) = SetupPublishedChapterWithHeldScene(status, "<p>Written</p>");
+
+        await CreateSut().ParseProjectAsync(project.Id);
+
+        Assert.False(scene.IsPublished);
+        Assert.True(chapter.ContentChangedSincePublish);
+    }
+
+    [Fact]
+    public async Task ParseProjectAsync_HeldSceneInPublishedChapter_WhenReadyButEmpty_StaysHeld()
+    {
+        var (project, chapter, scene) = SetupPublishedChapterWithHeldScene("First Draft", html: null);
+
+        await CreateSut().ParseProjectAsync(project.Id);
+
+        Assert.False(scene.IsPublished);
+        Assert.True(chapter.ContentChangedSincePublish);
+    }
+
+    [Fact]
+    public async Task ParseProjectAsync_UnpublishedSceneInUnpublishedChapter_WhenReady_StaysUnpublished()
+    {
+        var (project, _, scene) = SetupPublishedChapterWithHeldScene(
+            "First Draft", "<p>Written</p>", chapterPublished: false);
+
+        await CreateSut().ParseProjectAsync(project.Id);
+
+        Assert.False(scene.IsPublished);
+    }
+
+    /// <summary>
+    /// Two held scenes in the same published chapter; only one becomes ready on this
+    /// sync. The ready one arrives but the chapter must stay flagged for the other.
+    /// </summary>
+    [Fact]
+    public async Task ParseProjectAsync_HeldScenesInPublishedChapter_WhenOnlyOneReady_ChapterStaysFlagged()
+    {
+        var (project, chapter, scene) = SetupPublishedChapterWithHeldScene(
+            "First Draft", "<p>Written</p>", secondHeldSceneStatus: "To Do");
+
+        await CreateSut().ParseProjectAsync(project.Id);
+
+        Assert.True(scene.IsPublished);
+        Assert.True(chapter.ContentChangedSincePublish);
+    }
+
+    [Fact]
+    public async Task ParseProjectAsync_NewReadySceneInPublishedChapter_WhenEmpty_IsHeldAndFlagsChapter()
+    {
+        var (project, chapter) = SetupPublishedChapterWithNewScene("First Draft");
+        _converter.Setup(c => c.ConvertAsync("/fake/path", "SCEN-NEW", default))
+            .ReturnsAsync((RtfConversionResult?)null);
+        Section? added = null;
+        _sectionRepo.Setup(r => r.AddAsync(It.Is<Section>(s => s.ScrivenerUuid == "SCEN-NEW"), default))
+            .Callback<Section, CancellationToken>((s, _) => added = s)
+            .Returns(Task.CompletedTask);
+
+        await CreateSut().ParseProjectAsync(project.Id);
+
+        Assert.NotNull(added);
+        Assert.False(added!.IsPublished);
+        Assert.True(chapter.ContentChangedSincePublish);
+    }
+
+    /// <summary>
+    /// Arranges a published, flagged chapter containing an existing unpublished (held)
+    /// scene created earlier with To Do status and no content. The binder now reports
+    /// <paramref name="status"/> and the converter returns <paramref name="html"/>
+    /// (null = no RTF yet). Optionally adds a second held scene that stays To Do.
+    /// </summary>
+    private (Project project, Section chapter, Section scene) SetupPublishedChapterWithHeldScene(
+        string? status, string? html, bool chapterPublished = true, string? secondHeldSceneStatus = null)
+    {
+        var project = MakeProject();
+        var root    = Section.CreateFolder(project.Id, "ROOT-001", "Manuscript", null, 0);
+        var chapter = Section.CreateFolder(project.Id, "CHAP-001", "Chapter 1", root.Id, 0);
+        if (chapterPublished)
+        {
+            chapter.MarkAsPublishedContainer();
+            chapter.MarkContentChanged();
+        }
+        var scene  = Section.CreateDocument(project.Id, "SCEN-HELD", "Scene 7", chapter.Id, 0, null, null, "To Do");
+        var second = Section.CreateDocument(project.Id, "SCEN-HELD-2", "Scene 8", chapter.Id, 1, null, null, "To Do");
+
+        var sceneNodes = new List<ParsedBinderNode>
+        {
+            new() { Uuid = "SCEN-HELD", Title = "Scene 7", NodeType = ParsedNodeType.Document,
+                    SortOrder = 0, ScrivenerStatus = status, Children = new() }
+        };
+        if (secondHeldSceneStatus is not null)
+            sceneNodes.Add(new() { Uuid = "SCEN-HELD-2", Title = "Scene 8", NodeType = ParsedNodeType.Document,
+                                   SortOrder = 1, ScrivenerStatus = secondHeldSceneStatus, Children = new() });
+
+        SetupPathResolver(project);
+        SetupParserWithTree(project, new ParsedBinderNode
+        {
+            Uuid = "ROOT-001", Title = "Manuscript", NodeType = ParsedNodeType.Folder,
+            Children = new List<ParsedBinderNode>
+            {
+                new()
+                {
+                    Uuid = "CHAP-001", Title = "Chapter 1", NodeType = ParsedNodeType.Folder,
+                    SortOrder = 0, Children = sceneNodes
+                }
+            }
+        });
+
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "ROOT-001", default)).ReturnsAsync(root);
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "CHAP-001", default)).ReturnsAsync(chapter);
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "SCEN-HELD", default)).ReturnsAsync(scene);
+        _sectionRepo.Setup(r => r.GetByScrivenerUuidAsync(project.Id, "SCEN-HELD-2", default)).ReturnsAsync(second);
+        _sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, default))
+            .ReturnsAsync(secondHeldSceneStatus is null
+                ? new List<Section> { root, chapter, scene }
+                : new List<Section> { root, chapter, scene, second });
+        _converter.Setup(c => c.ConvertAsync("/fake/path", "SCEN-HELD", default))
+            .ReturnsAsync(html is null ? null : new RtfConversionResult { Html = html, Hash = "h-written" });
+        _converter.Setup(c => c.ConvertAsync("/fake/path", "SCEN-HELD-2", default))
+            .ReturnsAsync((RtfConversionResult?)null);
+
+        return (project, chapter, scene);
     }
 
     private (Project project, Section chapter) SetupPublishedChapterWithNewScene(
