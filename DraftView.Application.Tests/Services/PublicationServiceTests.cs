@@ -19,7 +19,7 @@ public class PublicationServiceTests
     private static Section MakeChapter(Guid projectId) =>
         Section.CreateFolder(projectId, Guid.NewGuid().ToString(), "Chapter 1", null, 0);
 
-    private static Section MakeScene(Guid projectId, Guid chapterId, string status) =>
+    private static Section MakeScene(Guid projectId, Guid chapterId, string? status) =>
         Section.CreateDocument(projectId, Guid.NewGuid().ToString(),
             "Scene 1", chapterId, 0, "<p>x</p>", "hash", status);
 
@@ -62,6 +62,29 @@ public class PublicationServiceTests
             () => sut.PublishChapterAsync(chapter.Id, Guid.NewGuid()));
 
         Assert.Equal("I-CHAPTER-PUBLISH", ex.InvariantCode);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("In Progress")]
+    public async Task PublishChapterAsync_SceneWithNoStatusOrInProgress_ThrowsInvariantViolation(string? status)
+    {
+        var projectId = Guid.NewGuid();
+        var chapter   = MakeChapter(projectId);
+        var scene     = MakeScene(projectId, chapter.Id, status);
+        var sut       = CreateSut();
+
+        _sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, default)).ReturnsAsync(chapter);
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapter.Id, default))
+            .ReturnsAsync(new List<Section> { scene });
+
+        var ex = await Assert.ThrowsAsync<InvariantViolationException>(
+            () => sut.PublishChapterAsync(chapter.Id, Guid.NewGuid()));
+
+        Assert.Equal("I-CHAPTER-PUBLISH", ex.InvariantCode);
+        Assert.False(scene.IsPublished);
+        Assert.False(chapter.IsPublished);
     }
 
     [Fact]
@@ -169,6 +192,24 @@ public class PublicationServiceTests
 
         Assert.False(result);
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("In Progress")]
+    public async Task CanPublishAsync_SceneWithNoStatusOrInProgress_ReturnsFalse(string? status)
+    {
+        var projectId = Guid.NewGuid();
+        var chapter   = MakeChapter(projectId);
+        var ready     = MakeScene(projectId, chapter.Id, "First Draft");
+        var notReady  = MakeScene(projectId, chapter.Id, status);
+        var sut       = CreateSut();
+
+        _sectionRepo.Setup(r => r.GetAllDescendantsAsync(chapter.Id, default))
+            .ReturnsAsync(new List<Section> { ready, notReady });
+
+        var result = await sut.CanPublishAsync(chapter.Id);
+
+        Assert.False(result);
+    }
 }
-
-

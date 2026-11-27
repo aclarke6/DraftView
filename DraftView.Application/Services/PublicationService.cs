@@ -23,10 +23,9 @@ public class PublicationService(
         var descendants = await sectionRepo.GetAllDescendantsAsync(chapterId, ct);
         var scenes      = descendants.Where(s => s.NodeType == NodeType.Document && !s.IsSoftDeleted).ToList();
 
-        // Validate all scenes are publishable
+        // Validate all scenes are First Draft or above (No Status is not ready)
         var notReady = scenes
-            .Where(s => !string.IsNullOrWhiteSpace(s.ScrivenerStatus) &&
-                        !PublishableStatus.Contains(s.ScrivenerStatus))
+            .Where(s => !PublishableStatus.Contains(s.ScrivenerStatus))
             .ToList();
 
         if (notReady.Any())
@@ -124,9 +123,7 @@ public class PublicationService(
 
         if (!scenes.Any()) return false;
 
-        return scenes.All(s =>
-            string.IsNullOrWhiteSpace(s.ScrivenerStatus) ||
-            PublishableStatus.Contains(s.ScrivenerStatus));
+        return scenes.All(s => PublishableStatus.Contains(s.ScrivenerStatus));
     }
 }
 
