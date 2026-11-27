@@ -5,7 +5,6 @@ using DraftView.Domain.Enumerations;
 using DraftView.Domain.Exceptions;
 using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Interfaces.Services;
-using DraftView.Domain.Notifications;
 
 namespace DraftView.Application.Services;
 
@@ -13,12 +12,12 @@ namespace DraftView.Application.Services;
 /// Orchestrates manual chapter upload, edit, reorder, replace, and version history management.
 /// All content-change operations snapshot the previous content as a ManualChapterVersion
 /// before overwriting. Unit-of-work semantics are enforced via IUnitOfWork.SaveChangesAsync.
+/// No AuthorNotification is emitted for upload — the author performed the action themselves.
 /// </summary>
 public class ManualUploadService(
     IProjectRepository projectRepo,
     IManualChapterRepository chapterRepo,
     IManualChapterVersionRepository versionRepo,
-    IAuthorNotificationRepository notificationRepo,
     IChapterFileParserResolver parserResolver,
     IUnitOfWork unitOfWork,
     ISectionRepository sectionRepo,
@@ -28,7 +27,7 @@ public class ManualUploadService(
 
     /// <summary>
     /// Parses and stores a chapter from a file upload. Rejects if the project is not Manual.
-    /// Enforces the 250 chapter-per-project limit. Emits an AuthorNotification on success.
+    /// Enforces the 250 chapter-per-project limit.
     /// </summary>
     public async Task<ManualChapter> UploadChapterAsync(
         Guid projectId, Guid authorId, string title,
@@ -48,7 +47,6 @@ public class ManualUploadService(
         var chapter = ManualChapter.Create(authorId, projectId, title, count, rawText, fileName, DateTime.UtcNow);
 
         await chapterRepo.AddAsync(chapter, ct);
-        await EmitChapterUploadedNotificationAsync(authorId, project.Name, ct);
         await unitOfWork.SaveChangesAsync(ct);
 
         return chapter;
@@ -56,7 +54,6 @@ public class ManualUploadService(
 
     /// <summary>
     /// Stores a chapter contributed via cut/paste. OriginalFileName is null.
-    /// Emits an AuthorNotification on success.
     /// </summary>
     public async Task<ManualChapter> UploadChapterFromPasteAsync(
         Guid projectId, Guid authorId, string title,
@@ -73,7 +70,6 @@ public class ManualUploadService(
         var chapter = ManualChapter.Create(authorId, projectId, title, count, rawContent, null, DateTime.UtcNow);
 
         await chapterRepo.AddAsync(chapter, ct);
-        await EmitChapterUploadedNotificationAsync(authorId, project.Name, ct);
         await unitOfWork.SaveChangesAsync(ct);
 
         return chapter;
@@ -254,17 +250,4 @@ public class ManualUploadService(
         await chapterRepo.GetByIdAsync(chapterId, authorId, ct)
             ?? throw new EntityNotFoundException(nameof(ManualChapter), chapterId);
 
-    private async Task EmitChapterUploadedNotificationAsync(
-        Guid authorId, string projectName, CancellationToken ct)
-    {
-        var notification = AuthorNotification.Create(
-            authorId,
-            NotificationEventType.ChapterUploaded,
-            $"Chapter uploaded to \"{projectName}\"",
-            null,
-            null,
-            DateTime.UtcNow);
-
-        await notificationRepo.AddAsync(notification, ct);
-    }
 }

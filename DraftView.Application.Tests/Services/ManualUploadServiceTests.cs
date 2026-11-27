@@ -35,7 +35,6 @@ public class ManualUploadServiceTests
         _projectRepo.Object,
         _chapterRepo.Object,
         _versionRepo.Object,
-        _notificationRepo.Object,
         _parserResolver.Object,
         _unitOfWork.Object,
         _sectionRepo.Object,
@@ -49,7 +48,7 @@ public class ManualUploadServiceTests
     // -----------------------------------------------------------------------
 
     [Fact]
-    public async Task UploadChapterAsync_ManualProject_CreatesChapterAndNotification()
+    public async Task UploadChapterAsync_ManualProject_CreatesChapter()
     {
         var project = BuildManualProject();
         _projectRepo.Setup(r => r.GetByIdAsync(ProjectId, default)).ReturnsAsync(project);
@@ -68,10 +67,26 @@ public class ManualUploadServiceTests
         Assert.Equal("parsed content", result.RawContent);
         Assert.Equal("chapter.txt", result.OriginalFileName);
         _chapterRepo.Verify(r => r.AddAsync(It.IsAny<ManualChapter>(), default), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task UploadChapterAsync_ManualProject_DoesNotCreateChapterUploadedNotification()
+    {
+        var project = BuildManualProject();
+        _projectRepo.Setup(r => r.GetByIdAsync(ProjectId, default)).ReturnsAsync(project);
+        _chapterRepo.Setup(r => r.CountByProjectAsync(ProjectId, AuthorId, default)).ReturnsAsync(0);
+        _parser.Setup(p => p.ParseAsync(It.IsAny<Stream>(), default)).ReturnsAsync("parsed content");
+        _parserResolver.Setup(r => r.Resolve(".txt")).Returns(_parser.Object);
+
+        var sut = CreateSut();
+        using var stream = new MemoryStream(new byte[10]);
+
+        await sut.UploadChapterAsync(ProjectId, AuthorId, "Chapter 1", stream, "chapter.txt");
+
         _notificationRepo.Verify(r => r.AddAsync(
             It.Is<AuthorNotification>(n => n.EventType == NotificationEventType.ChapterUploaded),
-            default), Times.Once);
-        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+            default), Times.Never);
     }
 
     [Fact]
@@ -137,10 +152,24 @@ public class ManualUploadServiceTests
         Assert.Equal("# My content\n\nHello world.", result.RawContent);
         Assert.Null(result.OriginalFileName);
         _chapterRepo.Verify(r => r.AddAsync(It.IsAny<ManualChapter>(), default), Times.Once);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+    }
+
+    [Fact]
+    public async Task UploadChapterFromPasteAsync_ManualProject_DoesNotCreateChapterUploadedNotification()
+    {
+        var project = BuildManualProject();
+        _projectRepo.Setup(r => r.GetByIdAsync(ProjectId, default)).ReturnsAsync(project);
+        _chapterRepo.Setup(r => r.CountByProjectAsync(ProjectId, AuthorId, default)).ReturnsAsync(0);
+
+        var sut = CreateSut();
+
+        await sut.UploadChapterFromPasteAsync(
+            ProjectId, AuthorId, "Pasted Chapter", "content");
+
         _notificationRepo.Verify(r => r.AddAsync(
             It.Is<AuthorNotification>(n => n.EventType == NotificationEventType.ChapterUploaded),
-            default), Times.Once);
-        _unitOfWork.Verify(u => u.SaveChangesAsync(default), Times.Once);
+            default), Times.Never);
     }
 
     [Fact]
