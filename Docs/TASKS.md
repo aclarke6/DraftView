@@ -1,7 +1,7 @@
 ﻿# DraftView — Task List
 Last updated: 2026-09-20
 Last merged: 2026-09-20 — PR #162 (sync activity missing, file count in notification)
-Last deployed: 2026-11-27 09:58 (commit: ab4f0b6)
+Last deployed: 2026-11-27 13:26 (commit: 985ffd0)
 Last merged: 2026-09-16 — PRs #142/#143/#145 (comment email alerts, dwell-time read gate, dashboard sync filter) merged to main
 
 ---
