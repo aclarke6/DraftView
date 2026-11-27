@@ -9,6 +9,12 @@ using DraftView.Infrastructure.Persistence;
 
 namespace DraftView.DevTools;
 
+/// <summary>
+/// One-off importer used for the original BetaBooks migration. Do not re-run as-is:
+/// section matching uses Title.StartsWith(chapter), so "Chapter 1" can match
+/// "Chapter 1x" and "Chapter 2" can match "Chapter 2x". The resulting production
+/// data was corrected manually — see #164 and #193 (Docs/fix-193-betabooks-comment-links.sql).
+/// </summary>
 public static class BetaBooksImporter
 {
     public static async Task<int> RunAsync(DraftViewDbContext db, IUserRepository userRepo, string jsonPath, string authorEmail, string projectName = "Book 1 - The Fractured Lattice")
