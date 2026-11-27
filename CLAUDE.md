@@ -18,8 +18,9 @@ No active task file. Consult `Docs/TASKS.md` for the current state of all work t
 and choose the highest-priority open item.
 
 ## How to work
-1. Check open "Claude CLI" issues first: `gh issue list --label "Claude CLI" --state open`
-2. Read `Docs/TASKS.md` for priority context before starting any task
+1. **Read `AGENTS.md` before touching any code** — it is the authoritative execution ruleset and overrides all other guidance
+2. Check open "Claude CLI" issues first: `gh issue list --label "Claude CLI" --state open`
+3. Read `Docs/TASKS.md` for priority context before starting any task
 3. All bugs and sprint work runs from a GitHub Issue — read the issue for full detail
 4. For implementation tasks, follow the red/green cycle strictly:
    - Write the stub (NotImplementedException) first
@@ -32,6 +33,9 @@ and choose the highest-priority open item.
 4. Do not modify any file outside the scope described in the task
 
 ## Key files (read these before starting)
+
+### Mandatory — read before every task
+- `AGENTS.md` — branching rules, TDD requirements, layer boundaries, chore exceptions, stop conditions
 
 ### Existing patterns to follow
 - Entity pattern: `DraftView.Domain/Entities/Comment.cs`
