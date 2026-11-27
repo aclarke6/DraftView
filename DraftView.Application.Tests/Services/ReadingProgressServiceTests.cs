@@ -1094,7 +1094,7 @@ public class ReadingProgressServiceTests
     }
 
     // ---------------------------------------------------------------------------
-    // RecordOpen — author self-suppression
+    // RecordOpen — notifications only for BetaReader (non-reader suppression)
     // ---------------------------------------------------------------------------
 
     [Fact]
@@ -1144,6 +1144,29 @@ public class ReadingProgressServiceTests
 
         Assert.NotNull(added);
         Assert.Equal(author.Id, added!.UserId);
+    }
+
+    [Fact]
+    public async Task RecordOpenAsync_SystemSupportOpensScene_DoesNotWriteAnyNotification()
+    {
+        var projectId = Guid.NewGuid();
+        var author    = User.Create("a@test.com", "Author Name", Role.Author);
+        var support   = User.Create("s@test.com", "Support User", Role.SystemSupport);
+        var section   = MakePublishedDocument(projectId);
+        var sut       = CreateSut();
+
+        _readEventRepo.Setup(r => r.GetAsync(section.Id, support.Id, default)).ReturnsAsync((ReadEvent?)null);
+        _readEventRepo.Setup(r => r.GetByUserIdAsync(support.Id, default)).ReturnsAsync(new List<ReadEvent>());
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
+        _userRepo.Setup(r => r.GetByIdAsync(support.Id, default)).ReturnsAsync(support);
+        _sectionRepo.Setup(r => r.GetPublishedByProjectIdAsync(section.ProjectId, default))
+            .ReturnsAsync(new List<Section> { section });
+        _readEventRepo.Setup(r => r.HasReadAsync(section.Id, support.Id, default)).ReturnsAsync(false);
+
+        await sut.RecordOpenAsync(section.Id, support.Id);
+
+        _notificationRepo.Verify(r => r.AddAsync(It.IsAny<AuthorNotification>(), default), Times.Never);
     }
 
     // ---------------------------------------------------------------------------

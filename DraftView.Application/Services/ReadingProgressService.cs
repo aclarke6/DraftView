@@ -1,4 +1,4 @@
-using DraftView.Domain.Contracts;
+﻿using DraftView.Domain.Contracts;
 using DraftView.Domain.Entities;
 using DraftView.Domain.Enumerations;
 using DraftView.Domain.Exceptions;
@@ -96,7 +96,8 @@ public class ReadingProgressService(
         if (author is null || reader is null)
             return;
 
-        if (reader.Id == author.Id)
+        // Only beta reader activity is notified; the author and support users are excluded.
+        if (reader.Role != Role.BetaReader)
             return;
 
         var now = DateTime.UtcNow;
