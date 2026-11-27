@@ -940,7 +940,7 @@ public class ReaderControllerTests
 
         var view    = Assert.IsType<ViewResult>(result);
         var model   = Assert.IsType<DesktopDashboardViewModel>(view.Model);
-        Assert.Equal(1, model.Projects.Count);
+        Assert.Single(model.Projects);
     }
 
     /// <summary>
