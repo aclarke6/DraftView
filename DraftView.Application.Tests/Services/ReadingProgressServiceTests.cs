@@ -1094,6 +1094,59 @@ public class ReadingProgressServiceTests
     }
 
     // ---------------------------------------------------------------------------
+    // RecordOpen — author self-suppression
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task RecordOpenAsync_AuthorOpensScene_DoesNotWriteAnyNotification()
+    {
+        var projectId = Guid.NewGuid();
+        var author    = User.Create("a@test.com", "Author Name", Role.Author);
+        var section   = MakePublishedDocument(projectId);
+        var sut       = CreateSut();
+
+        _readEventRepo.Setup(r => r.GetAsync(section.Id, author.Id, default)).ReturnsAsync((ReadEvent?)null);
+        _readEventRepo.Setup(r => r.GetByUserIdAsync(author.Id, default)).ReturnsAsync(new List<ReadEvent>());
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
+        _userRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
+        _sectionRepo.Setup(r => r.GetPublishedByProjectIdAsync(section.ProjectId, default))
+            .ReturnsAsync(new List<Section> { section });
+        _readEventRepo.Setup(r => r.HasReadAsync(section.Id, author.Id, default)).ReturnsAsync(false);
+
+        await sut.RecordOpenAsync(section.Id, author.Id);
+
+        _notificationRepo.Verify(r => r.AddAsync(It.IsAny<AuthorNotification>(), default), Times.Never);
+    }
+
+    [Fact]
+    public async Task RecordOpenAsync_AuthorOpensScene_StillCreatesReadEvent()
+    {
+        var projectId = Guid.NewGuid();
+        var author    = User.Create("a@test.com", "Author Name", Role.Author);
+        var section   = MakePublishedDocument(projectId);
+        var sut       = CreateSut();
+
+        _readEventRepo.Setup(r => r.GetAsync(section.Id, author.Id, default)).ReturnsAsync((ReadEvent?)null);
+        _readEventRepo.Setup(r => r.GetByUserIdAsync(author.Id, default)).ReturnsAsync(new List<ReadEvent>());
+        _sectionRepo.Setup(r => r.GetByIdAsync(section.Id, default)).ReturnsAsync(section);
+        _userRepo.Setup(r => r.GetAuthorAsync(default)).ReturnsAsync(author);
+        _userRepo.Setup(r => r.GetByIdAsync(author.Id, default)).ReturnsAsync(author);
+        _sectionRepo.Setup(r => r.GetPublishedByProjectIdAsync(section.ProjectId, default))
+            .ReturnsAsync(new List<Section> { section });
+        _readEventRepo.Setup(r => r.HasReadAsync(section.Id, author.Id, default)).ReturnsAsync(false);
+
+        ReadEvent? added = null;
+        _readEventRepo.Setup(r => r.AddAsync(It.IsAny<ReadEvent>(), default))
+            .Callback<ReadEvent, CancellationToken>((e, _) => added = e);
+
+        await sut.RecordOpenAsync(section.Id, author.Id);
+
+        Assert.NotNull(added);
+        Assert.Equal(author.Id, added!.UserId);
+    }
+
+    // ---------------------------------------------------------------------------
     // GetLastReadEventAcrossProjectsAsync (MT-Sprint-4)
     // ---------------------------------------------------------------------------
 

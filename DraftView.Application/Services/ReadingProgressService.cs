@@ -96,6 +96,9 @@ public class ReadingProgressService(
         if (author is null || reader is null)
             return;
 
+        if (reader.Id == author.Id)
+            return;
+
         var now = DateTime.UtcNow;
 
         var chapterTitle = section.ParentId.HasValue
