@@ -8,6 +8,7 @@ using DraftView.Domain.Enumerations;
 using DraftView.Domain.Exceptions;
 using DraftView.Domain.Interfaces.Repositories;
 using DraftView.Domain.Interfaces.Services;
+using DraftView.Web.Infrastructure;
 using DraftView.Web.Models;
 
 namespace DraftView.Web.Controllers;
@@ -594,7 +595,8 @@ public class ReaderController(
 
         var isModerator = user.Role == Role.Author;
 
-        await ProgressService.RecordOpenAsync(id, user.Id);
+        if (!ImpersonationClaims.IsImpersonating(User))
+            await ProgressService.RecordOpenAsync(id, user.Id);
 
         var project     = await ProjectRepo.GetByIdAsync(chapter.ProjectId);
         var allSections = project is not null
@@ -677,7 +679,8 @@ public class ReaderController(
         var (scene, chapter, project, allSections) = resolved.Value;
         var isModerator = user.Role == Role.Author;
 
-        await ProgressService.RecordOpenAsync(id, user.Id);
+        if (!ImpersonationClaims.IsImpersonating(User))
+            await ProgressService.RecordOpenAsync(id, user.Id);
 
         var preferences    = await _userPreferencesRepo.GetByUserIdAsync(user.Id);
         var readingStyle   = preferences?.ReadingStyle ?? ReadingStyle.StoryReader;
@@ -767,7 +770,8 @@ public class ReaderController(
         UserPreferences? preferences,
         CancellationToken ct = default)
     {
-        await ProgressService.RecordOpenAsync(scene.Id, user.Id, ct);
+        if (!ImpersonationClaims.IsImpersonating(User))
+            await ProgressService.RecordOpenAsync(scene.Id, user.Id, ct);
 
         var (resolvedHtml, resumeCaptureText, resumeRestoreTarget) =
             await ResolveSceneContentAsync(scene, user.Id, showDiffOnRevisit, ct);

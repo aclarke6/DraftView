@@ -12,6 +12,13 @@ public static class ImpersonationClaims
     public const string ImpersonatedDisplayName = "draftview:impersonated_name";
 
     /// <summary>
+    /// Returns true when <paramref name="principal"/> carries the impersonator-email claim,
+    /// indicating the session is running in Pretend mode.
+    /// </summary>
+    public static bool IsImpersonating(ClaimsPrincipal? principal) =>
+        principal?.HasClaim(c => c.Type == ImpersonatorEmail) == true;
+
+    /// <summary>
     /// Copies impersonation claims from <paramref name="oldPrincipal"/> to
     /// <paramref name="newPrincipal"/> so that Pretend mode survives a
     /// SecurityStamp refresh (which re-creates the principal from the database
