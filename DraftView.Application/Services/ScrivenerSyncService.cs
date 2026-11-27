@@ -149,27 +149,12 @@ public class ScrivenerSyncService(
                 node.Uuid, projectId);
 
         var existing = await sectionRepo.GetByScrivenerUuidAsync(projectId, node.Uuid, ct);
-        var created = false;
 
         if (existing is null)
         {
             existing = await CreateSectionAsync(node, safeTitle, parentId, projectId, scrivFolderPath, ct);
             await sectionRepo.AddAsync(existing, ct);
-            created = true;
-
-            if (created && node.NodeType == ParsedNodeType.Document)
-            {
-                if (parentSection is not null && parentSection.NodeType == NodeType.Folder && parentSection.IsPublished)
-                {
-                    // A new scene in a published chapter goes straight to readers when its
-                    // Scrivener status is First Draft or above; otherwise the chapter is
-                    // flagged so the author can republish once it is ready.
-                    if (PublishableStatus.Contains(existing.ScrivenerStatus))
-                        existing.PublishAsPartOfChapter(existing.ContentHash ?? string.Empty);
-                    else
-                        parentSection.MarkContentChanged();
-                }
-            }
+            ApplyNewSceneInPublishedChapterRule(existing, parentSection);
         }
         else
         {
@@ -179,6 +164,25 @@ public class ScrivenerSyncService(
         foreach (var child in node.Children)
             await ReconcileNodeAsync(child, existing.Id, existing, projectId, scrivFolderPath, seenUuids, ct);
     }
+
+    /// <summary>
+    /// A new scene in a published chapter goes straight to readers when its Scrivener
+    /// status is First Draft or above; otherwise the chapter is flagged so the author
+    /// can republish once it is ready.
+    /// </summary>
+    private static void ApplyNewSceneInPublishedChapterRule(Section scene, Section? parentSection)
+    {
+        if (scene.NodeType != NodeType.Document || !IsPublishedChapter(parentSection))
+            return;
+
+        if (PublishableStatus.Contains(scene.ScrivenerStatus))
+            scene.PublishAsPartOfChapter(scene.ContentHash ?? string.Empty);
+        else
+            parentSection!.MarkContentChanged();
+    }
+
+    private static bool IsPublishedChapter(Section? section) =>
+        section is not null && section.NodeType == NodeType.Folder && section.IsPublished;
 
     /// <summary>
     /// Performs a full Dropbox listing, downloads all entries, reconciles the binder,
