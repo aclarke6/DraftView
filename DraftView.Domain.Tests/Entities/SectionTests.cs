@@ -204,6 +204,36 @@ public class SectionTests
         Assert.True(section.ContentChangedSincePublish);
     }
 
+    // ---------------------------------------------------------------------------
+    // ClearContentChanged
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void ClearContentChanged_ClearsContentChangedSincePublish()
+    {
+        var chapter = Section.CreateFolder(ProjectId, ValidUuid, ValidTitle, null, 1);
+        chapter.MarkAsPublishedContainer();
+        chapter.MarkContentChanged();
+
+        chapter.ClearContentChanged();
+
+        Assert.False(chapter.ContentChangedSincePublish);
+    }
+
+    [Fact]
+    public void ClearContentChanged_LeavesPublicationStateUnchanged()
+    {
+        var chapter = Section.CreateFolder(ProjectId, ValidUuid, ValidTitle, null, 1);
+        chapter.MarkAsPublishedContainer();
+        var publishedAt = chapter.PublishedAt;
+        chapter.MarkContentChanged();
+
+        chapter.ClearContentChanged();
+
+        Assert.True(chapter.IsPublished);
+        Assert.Equal(publishedAt, chapter.PublishedAt);
+    }
+
     [Fact]
     public void MarkAsPublishedContainer_ClearsContentChangedSincePublish()
     {
