@@ -12,6 +12,7 @@ using DraftView.Domain.Interfaces.Services;
 using DraftView.Domain.Notifications;
 using DraftView.Web;
 using DraftView.Web.Controllers;
+using DraftView.Web.Infrastructure;
 using DraftView.Web.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -1048,7 +1049,96 @@ public class ReaderControllerTests
         return controller;
     }
 
-    private ReaderController CreateSut(User user, string userAgent)
+    // ---------------------------------------------------------------------------
+    // Pretend-mode (impersonation) guard on RecordOpenAsync — #196
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Read_DesktopRead_WhenImpersonating_DoesNotCallRecordOpenAsync()
+    {
+        var (user, project, chapter, scene) = MakeReaderWithPublishedChapterAndScene();
+        ArrangeReadDeps(user, project, chapter, scene);
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0", isImpersonating: true);
+
+        await sut.Read(chapter.Id);
+
+        progressService.Verify(
+            s => s.RecordOpenAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Read_DesktopRead_WhenNotImpersonating_CallsRecordOpenAsync()
+    {
+        var (user, project, chapter, scene) = MakeReaderWithPublishedChapterAndScene();
+        ArrangeReadDeps(user, project, chapter, scene);
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0", isImpersonating: false);
+
+        await sut.Read(chapter.Id);
+
+        progressService.Verify(
+            s => s.RecordOpenAsync(It.IsAny<Guid>(), user.Id, It.IsAny<CancellationToken>()),
+            Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task Read_MobileRead_WhenImpersonating_DoesNotCallRecordOpenAsync()
+    {
+        var (user, project, chapter, scene) = MakeReaderWithPublishedChapterAndScene();
+        ArrangeReadDeps(user, project, chapter, scene);
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0 (iPhone)", isImpersonating: true);
+
+        await sut.Read(scene.Id);
+
+        progressService.Verify(
+            s => s.RecordOpenAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Read_MobileRead_WhenNotImpersonating_CallsRecordOpenAsync()
+    {
+        var (user, project, chapter, scene) = MakeReaderWithPublishedChapterAndScene();
+        ArrangeReadDeps(user, project, chapter, scene);
+        var sut = CreateSut(user, userAgent: "Mozilla/5.0 (iPhone)", isImpersonating: false);
+
+        await sut.Read(scene.Id);
+
+        progressService.Verify(
+            s => s.RecordOpenAsync(scene.Id, user.Id, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    private (User user, Project project, Section chapter, Section scene)
+        MakeReaderWithPublishedChapterAndScene()
+    {
+        var user    = User.Create("reader@example.test", "Reader", Role.BetaReader);
+        user.Activate();
+        var project = Project.Create("Book", "/dropbox/book", user.Id, "root");
+        var chapter = Section.CreateFolder(project.Id, "ch-uuid", "Chapter 1", null, 0);
+        chapter.MarkAsPublishedContainer();
+        var scene = Section.CreateDocument(
+            project.Id, "sc-uuid", "Scene 1", chapter.Id, 0,
+            "<p>Hello</p>", "h", "First Draft");
+        scene.PublishAsPartOfChapter("h");
+        return (user, project, chapter, scene);
+    }
+
+    private void ArrangeReadDeps(User user, Project project, Section chapter, Section scene)
+    {
+        userRepo.Setup(r => r.GetByEmailAsync(user.Email, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        sectionRepo.Setup(r => r.GetByIdAsync(chapter.Id, It.IsAny<CancellationToken>())).ReturnsAsync(chapter);
+        sectionRepo.Setup(r => r.GetByIdAsync(scene.Id, It.IsAny<CancellationToken>())).ReturnsAsync(scene);
+        sectionRepo.Setup(r => r.GetByProjectIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync([chapter, scene]);
+        projectRepo.Setup(r => r.GetByIdAsync(project.Id, It.IsAny<CancellationToken>())).ReturnsAsync(project);
+        progressService.Setup(r => r.RecordOpenAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        progressService.Setup(r => r.GetLastOpenedAtAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((DateTime?)null);
+        progressService.Setup(r => r.IsMarkedReadAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        commentService.Setup(r => r.GetThreadsForSectionAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(Array.Empty<Comment>());
+        prefsRepo.Setup(r => r.GetByUserIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync((UserPreferences?)null);
+    }
+
+    private ReaderController CreateSut(User user, string userAgent, bool isImpersonating = false)
     {
         var controller = new ReaderController(
             projectRepo.Object,
@@ -1070,14 +1160,15 @@ public class ReaderControllerTests
             userService.Object,
             logger.Object);
 
+        List<Claim> claims = [new Claim(ClaimTypes.Name, user.Email)];
+        if (isImpersonating)
+            claims.Add(new Claim(ImpersonationClaims.ImpersonatorEmail, "author@example.test"));
+
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext
             {
-                User = new ClaimsPrincipal(
-                    new ClaimsIdentity(
-                        [new Claim(ClaimTypes.Name, user.Email)],
-                        "TestAuth"))
+                User = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"))
             }
         };
 

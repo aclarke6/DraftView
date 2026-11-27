@@ -5,13 +5,44 @@ using Xunit;
 namespace DraftView.Web.Tests.Infrastructure;
 
 /// <summary>
-/// Tests for ImpersonationClaims.PreserveImpersonationClaims.
-/// Covers: impersonation claims copied from old to new principal, no-op when
+/// Tests for ImpersonationClaims helpers.
+/// Covers: IsImpersonating returns true/false based on claim presence, null principal;
+/// PreserveImpersonationClaims copies claims from old to new principal, no-op when
 /// old principal has no claims, null old principal handled safely.
 /// Excludes: SecurityStampValidator wiring (integration concern).
 /// </summary>
 public class ImpersonationClaimsTests
 {
+    // ---------------------------------------------------------------------------
+    // IsImpersonating
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void IsImpersonating_WhenImpersonatorEmailClaimPresent_ReturnsTrue()
+    {
+        var principal = MakePrincipal((ImpersonationClaims.ImpersonatorEmail, "author@example.test"));
+
+        Assert.True(ImpersonationClaims.IsImpersonating(principal));
+    }
+
+    [Fact]
+    public void IsImpersonating_WhenImpersonatorEmailClaimAbsent_ReturnsFalse()
+    {
+        var principal = MakePrincipal();
+
+        Assert.False(ImpersonationClaims.IsImpersonating(principal));
+    }
+
+    [Fact]
+    public void IsImpersonating_WhenPrincipalIsNull_ReturnsFalse()
+    {
+        Assert.False(ImpersonationClaims.IsImpersonating(null));
+    }
+
+    // ---------------------------------------------------------------------------
+    // PreserveImpersonationClaims
+    // ---------------------------------------------------------------------------
+
     [Fact]
     public void PreserveImpersonationClaims_WhenOldPrincipalHasBothClaims_CopiesThemToNewPrincipal()
     {
